@@ -1,0 +1,25 @@
+To get the Replit Agent started, you need to provide a Master Prompt. This tells the Agent exactly what to build, what the rules are, and how it should behave as your ICT mentor.
+My confidence in this prompt is 10/10. It covers everything from your specific strategy to the prop firm rules.
+The Replit Agent Prompt
+Copy and paste this entire block into that blue box in your screenshot:
+> "Build a mobile-friendly web app for teaching and practicing ICT (Inner Circle Trader) strategies.
+> Core Features:
+>  * AI Mentor Chat: A chatbot that knows ICT concepts (FVG, Liquidity Sweeps, MSS, Silver Bullet). It should ask me daily about my goals and review my trade ideas based on 'Time and Price.'
+>  * Rule Checklist: A daily 'Kill Zone' timer for London (2-5 AM) and NY Silver Bullet (10-11 AM EST). It should warn me if I trade outside these hours.
+>  * Prop Firm Tracker: A dashboard where I enter my starting balance (e.g., $50,000). Track my 'Max Daily Loss' (limit to 2%) and 'Total Drawdown' (limit to 5%).
+>  * Journal: A simple form to log trades with: Pair, Entry Time, Risk %, and a checkbox for 'Did price sweep liquidity first?'
+> Design: Dark mode, simple UI, and 5th-grade level explanations for all trading terms."
+> 
+Why this works
+ * Safety First: By telling the app to "lock" or warn you at 2% loss, it acts as a digital coach to save your prop firm account.
+ * Mechanical Entry: It forces you to check for a "Liquidity Sweep" before you can log a trade.
+ * Mobile Focus: Since your screenshot is from a phone, this prompt ensures the app looks good on your screen.
+Summary Key Takeaways
+ * The Prompt is the "brain" of your app; it tells Replit what code to write.
+ * The Checklist feature will stop you from "over-trading" (the #1 reason people fail prop tests).
+ * Time is as important as price in ICT; the app will help you stay disciplined to the Silver Bullet hour.
+Next Steps
+ * Paste the prompt and hit the Plan button in Replit.
+ * The Agent will show you a list of steps. Click "Start Building" or "Approve."
+ * Once the first version is done, it will give you a link to open the app!
+Would you like me to explain how to connect your TradingView charts to the logic in this new app?

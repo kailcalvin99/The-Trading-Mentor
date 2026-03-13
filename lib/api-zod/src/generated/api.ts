@@ -14,3 +14,180 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary List all conversations
+ */
+export const ListGeminiConversationsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListGeminiConversationsResponse = zod.array(
+  ListGeminiConversationsResponseItem,
+);
+
+/**
+ * @summary Create a new conversation
+ */
+export const CreateGeminiConversationBody = zod.object({
+  title: zod.string(),
+});
+
+/**
+ * @summary Get conversation with messages
+ */
+export const GetGeminiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetGeminiConversationResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.date(),
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      conversationId: zod.number(),
+      role: zod.string(),
+      content: zod.string(),
+      createdAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a conversation
+ */
+export const DeleteGeminiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List messages in a conversation
+ */
+export const ListGeminiMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListGeminiMessagesResponseItem = zod.object({
+  id: zod.number(),
+  conversationId: zod.number(),
+  role: zod.string(),
+  content: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListGeminiMessagesResponse = zod.array(
+  ListGeminiMessagesResponseItem,
+);
+
+/**
+ * @summary Send a message and receive an AI response (SSE stream)
+ */
+export const SendGeminiMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendGeminiMessageBody = zod.object({
+  content: zod.string(),
+});
+
+/**
+ * @summary Get prop firm account
+ */
+export const GetPropAccountResponse = zod.object({
+  id: zod.number(),
+  startingBalance: zod.number(),
+  currentBalance: zod.number(),
+  dailyLoss: zod.number(),
+  totalDrawdown: zod.number(),
+  maxDailyLossPct: zod.number(),
+  maxTotalDrawdownPct: zod.number(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Create or update prop account
+ */
+export const CreatePropAccountBody = zod.object({
+  startingBalance: zod.number(),
+  maxDailyLossPct: zod.number().optional(),
+  maxTotalDrawdownPct: zod.number().optional(),
+});
+
+export const CreatePropAccountResponse = zod.object({
+  id: zod.number(),
+  startingBalance: zod.number(),
+  currentBalance: zod.number(),
+  dailyLoss: zod.number(),
+  totalDrawdown: zod.number(),
+  maxDailyLossPct: zod.number(),
+  maxTotalDrawdownPct: zod.number(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Add a daily loss amount
+ */
+export const AddDailyLossBody = zod.object({
+  amount: zod.number(),
+});
+
+export const AddDailyLossResponse = zod.object({
+  id: zod.number(),
+  startingBalance: zod.number(),
+  currentBalance: zod.number(),
+  dailyLoss: zod.number(),
+  totalDrawdown: zod.number(),
+  maxDailyLossPct: zod.number(),
+  maxTotalDrawdownPct: zod.number(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Reset daily loss to zero
+ */
+export const ResetDailyLossResponse = zod.object({
+  id: zod.number(),
+  startingBalance: zod.number(),
+  currentBalance: zod.number(),
+  dailyLoss: zod.number(),
+  totalDrawdown: zod.number(),
+  maxDailyLossPct: zod.number(),
+  maxTotalDrawdownPct: zod.number(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary List all trades
+ */
+export const ListTradesResponseItem = zod.object({
+  id: zod.number(),
+  pair: zod.string(),
+  entryTime: zod.string(),
+  riskPct: zod.number(),
+  liquiditySweep: zod.boolean(),
+  outcome: zod.string().optional(),
+  notes: zod.string().optional(),
+  createdAt: zod.date(),
+});
+export const ListTradesResponse = zod.array(ListTradesResponseItem);
+
+/**
+ * @summary Log a new trade
+ */
+export const CreateTradeBody = zod.object({
+  pair: zod.string(),
+  entryTime: zod.string(),
+  riskPct: zod.number(),
+  liquiditySweep: zod.boolean(),
+  outcome: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Delete a trade
+ */
+export const DeleteTradeParams = zod.object({
+  id: zod.coerce.number(),
+});

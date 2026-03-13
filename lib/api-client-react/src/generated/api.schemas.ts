@@ -8,3 +8,77 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface GeminiConversation {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export interface GeminiMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CreateGeminiConversationBody {
+  title: string;
+}
+
+export interface SendGeminiMessageBody {
+  content: string;
+}
+
+export interface GeminiConversationWithMessages {
+  id: number;
+  title: string;
+  createdAt: string;
+  messages: GeminiMessage[];
+}
+
+export interface GeminiError {
+  error: string;
+}
+
+export interface PropAccount {
+  id: number;
+  startingBalance: number;
+  currentBalance: number;
+  dailyLoss: number;
+  totalDrawdown: number;
+  maxDailyLossPct: number;
+  maxTotalDrawdownPct: number;
+  updatedAt: string;
+}
+
+export interface CreatePropAccountBody {
+  startingBalance: number;
+  maxDailyLossPct?: number;
+  maxTotalDrawdownPct?: number;
+}
+
+export interface AddDailyLossBody {
+  amount: number;
+}
+
+export interface Trade {
+  id: number;
+  pair: string;
+  entryTime: string;
+  riskPct: number;
+  liquiditySweep: boolean;
+  outcome?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface CreateTradeBody {
+  pair: string;
+  entryTime: string;
+  riskPct: number;
+  liquiditySweep: boolean;
+  outcome?: string;
+  notes?: string;
+}
