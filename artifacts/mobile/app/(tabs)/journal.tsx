@@ -188,15 +188,18 @@ export default function JournalScreen() {
 
   function openDraftForm(draft: any) {
     setEditingDraftId(draft.id);
-    setEntryMode("conservative");
+    const draftNotes = draft.notes || "";
+    const inferredMode: EntryMode = draftNotes.startsWith("[Silver Bullet]") ? "aggressive" : "conservative";
+    setEntryMode(inferredMode);
     setEntryCriteria({});
+    const cleanNotes = draftNotes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "");
     setForm({
       pair: draft.pair || "NQ1!",
       entryTime: draft.entryTime || new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
       riskPct: draft.riskPct?.toString() || "0.5",
       liquiditySweep: draft.liquiditySweep || false,
       outcome: draft.outcome || "",
-      notes: draft.notes || "",
+      notes: cleanNotes,
       behaviorTag: draft.behaviorTag || "",
       followedTimeRule: draft.followedTimeRule ?? null,
       hasFvgConfirmation: draft.hasFvgConfirmation ?? null,
@@ -368,6 +371,8 @@ export default function JournalScreen() {
                     <Text style={styles.tradeDetail}>📊 {trade.riskPct}% risk</Text>
                     {trade.liquiditySweep && <Text style={styles.tradeDetail}>💧 Sweep</Text>}
                     {trade.stressLevel && <Text style={styles.tradeDetail}>🧠 Stress: {trade.stressLevel}/10</Text>}
+                    {trade.notes?.startsWith("[Silver Bullet]") && <Text style={[styles.tradeDetail, { color: "#F59E0B" }]}>⚡ Silver Bullet</Text>}
+                    {trade.notes?.startsWith("[Conservative]") && <Text style={[styles.tradeDetail, { color: C.accent }]}>🛡 Conservative</Text>}
                   </View>
                   {(trade.followedTimeRule !== null || trade.hasFvgConfirmation !== null) && (
                     <View style={styles.tradeChecks}>
@@ -385,7 +390,9 @@ export default function JournalScreen() {
                       )}
                     </View>
                   )}
-                  {trade.notes ? <Text style={styles.tradeNotes} numberOfLines={2}>{trade.notes}</Text> : null}
+                  {trade.notes && trade.notes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "").trim() ? (
+                    <Text style={styles.tradeNotes} numberOfLines={2}>{trade.notes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "").trim()}</Text>
+                  ) : null}
                   <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(trade.id)}>
                     <Ionicons name="trash-outline" size={14} color={C.textSecondary} />
                   </TouchableOpacity>
