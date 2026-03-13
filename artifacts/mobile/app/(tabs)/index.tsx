@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   Switch,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -54,7 +55,11 @@ const ROUTINE_ITEMS = [
 ];
 
 export default function PlannerScreen() {
-  const { routineItems, isRoutineComplete, hasRedNews, toggleItem, toggleRedNews } = usePlanner();
+  const {
+    routineItems, isRoutineComplete, hasRedNews, toggleItem, toggleRedNews,
+    customItems, addCustomItem, removeCustomItem, toggleCustomItem, snoozeCustomItem,
+  } = usePlanner();
+  const [newItemText, setNewItemText] = useState("");
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -66,6 +71,7 @@ export default function PlannerScreen() {
   const timeStr = est.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
   const dateStr = est.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
   const completedCount = Object.values(routineItems).filter(Boolean).length;
+  const todayDate = new Date().toISOString().split("T")[0];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -174,6 +180,89 @@ export default function PlannerScreen() {
               )}
             </View>
           ))}
+        </View>
+
+        {/* My Routine */}
+        <Text style={styles.sectionTitle}>My Routine</Text>
+        <View style={styles.card}>
+          {customItems.filter((item) => item.snoozedDate !== todayDate).length === 0 && !newItemText ? (
+            <View style={styles.emptyRoutine}>
+              <Ionicons name="add-circle-outline" size={20} color={C.textTertiary} />
+              <Text style={styles.emptyRoutineText}>Add personal routine items below</Text>
+            </View>
+          ) : (
+            customItems
+              .filter((item) => item.snoozedDate !== todayDate)
+              .map((item, idx) => (
+                <View key={item.id}>
+                  {idx > 0 && <View style={styles.divider} />}
+                  <View style={styles.customRow}>
+                    <TouchableOpacity
+                      style={styles.customRowLeft}
+                      onPress={() => toggleCustomItem(item.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.checkbox, item.checked && styles.customCheckboxChecked]}>
+                        {item.checked && <Ionicons name="checkmark" size={13} color="#0A0A0F" />}
+                      </View>
+                      <Text style={[styles.routineLabel, item.checked && styles.routineLabelDone]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                    <View style={styles.customActions}>
+                      <TouchableOpacity
+                        onPress={() => snoozeCustomItem(item.id)}
+                        style={styles.actionBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="time-outline" size={18} color={C.textSecondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() =>
+                          Alert.alert("Delete Item", `Remove "${item.label}" from your routine?`, [
+                            { text: "Cancel", style: "cancel" },
+                            { text: "Delete", style: "destructive", onPress: () => removeCustomItem(item.id) },
+                          ])
+                        }
+                        style={styles.actionBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color={C.accentAlert} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              ))
+          )}
+          <View style={styles.divider} />
+          <View style={styles.addItemRow}>
+            <TextInput
+              style={styles.addItemInput}
+              placeholder="Add a routine item..."
+              placeholderTextColor={C.textTertiary}
+              value={newItemText}
+              onChangeText={setNewItemText}
+              onSubmitEditing={() => {
+                if (newItemText.trim()) {
+                  addCustomItem(newItemText);
+                  setNewItemText("");
+                }
+              }}
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              onPress={() => {
+                if (newItemText.trim()) {
+                  addCustomItem(newItemText);
+                  setNewItemText("");
+                }
+              }}
+              style={[styles.addBtn, !newItemText.trim() && styles.addBtnDisabled]}
+              disabled={!newItemText.trim()}
+            >
+              <Ionicons name="add" size={20} color={newItemText.trim() ? "#0A0A0F" : C.textTertiary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Trading Windows */}
@@ -290,4 +379,15 @@ const styles = StyleSheet.create({
   ruleRowBorder: { borderTopWidth: 1, borderTopColor: C.cardBorder },
   ruleNum: { width: 22, fontSize: 13, fontFamily: "Inter_700Bold", color: C.accent },
   ruleText: { flex: 1, fontSize: 13, color: C.text, lineHeight: 20 },
+  emptyRoutine: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 18, gap: 8 },
+  emptyRoutineText: { fontSize: 13, color: C.textTertiary },
+  customRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingLeft: 14, paddingRight: 6 },
+  customRowLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
+  customCheckboxChecked: { backgroundColor: C.textSecondary, borderColor: C.textSecondary },
+  customActions: { flexDirection: "row", alignItems: "center", gap: 2 },
+  actionBtn: { padding: 8 },
+  addItemRow: { flexDirection: "row", alignItems: "center", padding: 10, paddingLeft: 14, gap: 8 },
+  addItemInput: { flex: 1, fontSize: 14, color: C.text, fontFamily: "Inter_500Medium", paddingVertical: 6 },
+  addBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: C.accent, alignItems: "center", justifyContent: "center" },
+  addBtnDisabled: { backgroundColor: C.cardBorder },
 });
