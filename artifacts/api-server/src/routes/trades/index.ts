@@ -17,31 +17,55 @@ router.get("/", async (_req, res) => {
         riskPct: parseFloat(t.riskPct),
       }))
     );
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to list trades" });
   }
 });
 
 router.post("/", async (req, res) => {
   try {
-    const { pair, entryTime, riskPct, liquiditySweep, outcome, notes } = req.body;
-    if (!pair || !entryTime || riskPct === undefined || liquiditySweep === undefined) {
+    const {
+      pair,
+      entryTime,
+      riskPct,
+      liquiditySweep,
+      outcome,
+      notes,
+      behaviorTag,
+      followedTimeRule,
+      hasFvgConfirmation,
+      stressLevel,
+      isDraft,
+      ticker,
+      sideDirection,
+    } = req.body;
+
+    if (!pair || !entryTime || riskPct === undefined) {
       res.status(400).json({ error: "Missing required fields" });
       return;
     }
+
     const [trade] = await db
       .insert(tradesTable)
       .values({
         pair,
         entryTime,
         riskPct: riskPct.toString(),
-        liquiditySweep,
+        liquiditySweep: liquiditySweep ?? false,
         outcome: outcome || null,
         notes: notes || null,
+        behaviorTag: behaviorTag || null,
+        followedTimeRule: followedTimeRule ?? null,
+        hasFvgConfirmation: hasFvgConfirmation ?? null,
+        stressLevel: stressLevel ?? null,
+        isDraft: isDraft ?? false,
+        ticker: ticker || null,
+        sideDirection: sideDirection || null,
       })
       .returning();
+
     res.status(201).json({ ...trade, riskPct: parseFloat(trade.riskPct) });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to create trade" });
   }
 });
@@ -51,7 +75,7 @@ router.delete("/:id", async (req, res) => {
     const id = parseInt(req.params.id);
     await db.delete(tradesTable).where(eq(tradesTable.id, id));
     res.status(204).end();
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to delete trade" });
   }
 });

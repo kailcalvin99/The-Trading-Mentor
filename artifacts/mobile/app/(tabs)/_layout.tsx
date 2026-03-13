@@ -5,7 +5,7 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 import Colors from "@/constants/colors";
 
@@ -15,16 +15,16 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "clock", selected: "clock.fill" }} />
-        <Label>Kill Zone</Label>
+        <Icon sf={{ default: "checklist", selected: "checklist" }} />
+        <Label>Planner</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="chat">
-        <Icon sf={{ default: "brain", selected: "brain.fill" }} />
-        <Label>Mentor</Label>
+        <Icon sf={{ default: "graduationcap", selected: "graduationcap.fill" }} />
+        <Label>Academy</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="tracker">
-        <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>Tracker</Label>
+        <Icon sf={{ default: "shield.checkered", selected: "shield.checkered" }} />
+        <Label>Risk</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="journal">
         <Icon sf={{ default: "book", selected: "book.fill" }} />
@@ -54,51 +54,45 @@ function ClassicTabLayout() {
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView
-              intensity={80}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
           ) : isWeb ? (
-            <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: C.backgroundSecondary }]}
-            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: C.backgroundSecondary }]} />
           ) : null,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Kill Zone",
+          title: "Planner",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="clock" tintColor={color} size={24} />
+              <SymbolView name="checklist" tintColor={color} size={24} />
             ) : (
-              <Ionicons name="time-outline" size={22} color={color} />
+              <Ionicons name="checkbox-outline" size={22} color={color} />
             ),
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
-          title: "Mentor",
+          title: "Academy",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="brain" tintColor={color} size={24} />
+              <SymbolView name="graduationcap.fill" tintColor={color} size={24} />
             ) : (
-              <Ionicons name="chatbubble-ellipses-outline" size={22} color={color} />
+              <Ionicons name="school-outline" size={22} color={color} />
             ),
         }}
       />
       <Tabs.Screen
         name="tracker"
         options={{
-          title: "Tracker",
+          title: "Risk",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="chart.bar" tintColor={color} size={24} />
+              <SymbolView name="shield.checkered" tintColor={color} size={24} />
             ) : (
-              <Ionicons name="bar-chart-outline" size={22} color={color} />
+              <Ionicons name="shield-outline" size={22} color={color} />
             ),
         }}
       />
@@ -108,7 +102,7 @@ function ClassicTabLayout() {
           title: "Journal",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="book" tintColor={color} size={24} />
+              <SymbolView name="book.fill" tintColor={color} size={24} />
             ) : (
               <Ionicons name="book-outline" size={22} color={color} />
             ),

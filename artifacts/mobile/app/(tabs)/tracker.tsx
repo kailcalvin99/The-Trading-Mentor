@@ -1,528 +1,377 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
+  TouchableOpacity,
   TextInput,
-  Pressable,
-  Platform,
+  StyleSheet,
   Alert,
-  ActivityIndicator,
+  Modal,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
-import { apiGet, apiPost } from "@/lib/api";
 
 const C = Colors.dark;
 
-interface PropAccount {
-  id: number;
-  startingBalance: number;
-  currentBalance: number;
-  dailyLoss: number;
-  totalDrawdown: number;
-  maxDailyLossPct: number;
-  maxTotalDrawdownPct: number;
-  updatedAt: string;
-}
+const NQ_POINT_VALUE = 20;
+const MNQ_POINT_VALUE = 2;
 
-function formatMoney(val: number): string {
-  return val.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 });
-}
+const STOP_TRADING_RULES = [
+  "Max 2% daily loss reached — you are DONE for today",
+  "Close ALL open positions immediately",
+  "No revenge trading — log what happened",
+  "Walk away and reset mentally",
+  "Come back tomorrow with fresh eyes",
+];
 
-function GaugeBar({
-  label,
-  value,
-  max,
-  color,
-  dangerAt,
-}: {
-  label: string;
-  value: number;
-  max: number;
-  color: string;
-  dangerAt: number;
-}) {
-  const pct = Math.min((value / max) * 100, 100);
-  const isDanger = pct >= dangerAt;
-  const barColor = isDanger ? C.accentAlert : pct > dangerAt * 0.7 ? C.accentWarn : color;
-
+function GaugeMeter({ value, max, label, color }: { value: number; max: number; label: string; color: string }) {
+  const pct = Math.min(value / max, 1);
   return (
-    <View style={styles.gaugeContainer}>
-      <View style={styles.gaugeHeader}>
-        <Text style={styles.gaugeLabel}>{label}</Text>
-        <Text style={[styles.gaugeValue, { color: barColor }]}>
-          {pct.toFixed(1)}% <Text style={styles.gaugeMax}>/ {max}%</Text>
-        </Text>
+    <View style={gaugeStyles.container}>
+      <View style={gaugeStyles.header}>
+        <Text style={gaugeStyles.label}>{label}</Text>
+        <Text style={[gaugeStyles.value, { color }]}>{value.toFixed(2)}%</Text>
       </View>
-      <View style={styles.gaugeTrack}>
-        <View
-          style={[styles.gaugeFill, { width: `${pct}%` as any, backgroundColor: barColor }]}
-        />
+      <View style={gaugeStyles.track}>
+        <View style={[gaugeStyles.fill, { width: `${pct * 100}%` as any, backgroundColor: color }]} />
       </View>
-      {isDanger && (
-        <View style={styles.dangerRow}>
-          <Ionicons name="warning" size={12} color={C.accentAlert} />
-          <Text style={styles.dangerText}>Limit reached — STOP trading today</Text>
-        </View>
-      )}
+      <Text style={gaugeStyles.max}>Limit: {max}%</Text>
     </View>
   );
 }
 
-export default function TrackerScreen() {
-  const insets = useSafeAreaInsets();
-  const qc = useQueryClient();
-  const [balanceInput, setBalanceInput] = useState("");
-  const [dailyLossInput, setDailyLossInput] = useState("");
+export default function RiskShieldScreen() {
+  const [pointsAtRisk, setPointsAtRisk] = useState("");
+  const [customBalance, setCustomBalance] = useState("");
   const [lossInput, setLossInput] = useState("");
-  const [showSetup, setShowSetup] = useState(false);
+  const [showMonkMode, setShowMonkMode] = useState(false);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const { data: account, refetch } = apiClient.useQuery("get", "/prop/account");
+  const { mutateAsync: addLoss } = apiClient.useMutation("post", "/prop/account/daily-loss");
+  const { mutateAsync: resetLoss } = apiClient.useMutation("post", "/prop/account/reset-daily-loss");
 
-  const { data: account, isLoading } = useQuery<PropAccount>({
-    queryKey: ["prop-account"],
-    queryFn: () => apiGet("prop/account"),
-    retry: false,
-  });
+  const balance = account?.balance ?? 50000;
+  const startingBalance = account?.startingBalance ?? 50000;
+  const dailyLoss = account?.dailyLoss ?? 0;
+  const maxDailyLoss = account?.maxDailyLoss ?? 2;
+  const maxTotalLoss = account?.maxTotalLoss ?? 10;
 
-  const createMutation = useMutation({
-    mutationFn: (data: { startingBalance: number; maxDailyLossPct: number; maxTotalDrawdownPct: number }) =>
-      apiPost<PropAccount>("prop/account", data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["prop-account"] });
-      setShowSetup(false);
-      setBalanceInput("");
-      setDailyLossInput("");
-    },
-    onError: () => Alert.alert("Error", "Could not save account."),
-  });
+  const dailyLossPct = (dailyLoss / startingBalance) * 100;
+  const totalLossPct = ((startingBalance - balance) / startingBalance) * 100;
+  const isStopTrading = dailyLossPct >= maxDailyLoss;
+  const isDanger = dailyLossPct >= maxDailyLoss * 0.75;
 
-  const addLossMutation = useMutation({
-    mutationFn: (amount: number) => apiPost<PropAccount>("prop/account/daily-loss", { amount }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["prop-account"] });
+  const calcBalance = customBalance ? parseFloat(customBalance) : balance;
+  const riskAmount = calcBalance * 0.005;
+  const pts = parseFloat(pointsAtRisk) || 0;
+  const nqContracts = pts > 0 ? riskAmount / (pts * NQ_POINT_VALUE) : 0;
+  const mnqContracts = pts > 0 ? riskAmount / (pts * MNQ_POINT_VALUE) : 0;
+
+  const handleAddLoss = useCallback(async () => {
+    const amount = parseFloat(lossInput);
+    if (isNaN(amount) || amount <= 0) return Alert.alert("Enter a valid loss amount");
+    try {
+      await addLoss({ body: { amount } });
       setLossInput("");
-    },
-    onError: () => Alert.alert("Error", "Could not update loss."),
-  });
-
-  const resetDailyMutation = useMutation({
-    mutationFn: () => apiPost<PropAccount>("prop/account/reset-daily", {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["prop-account"] }),
-  });
-
-  function handleSetup() {
-    const bal = parseFloat(balanceInput);
-    const dl = parseFloat(dailyLossInput) || 2;
-    if (!bal || bal <= 0) {
-      Alert.alert("Error", "Enter a valid starting balance.");
-      return;
+      refetch();
+    } catch {
+      Alert.alert("Error", "Could not log loss");
     }
-    createMutation.mutate({
-      startingBalance: bal,
-      maxDailyLossPct: dl,
-      maxTotalDrawdownPct: 5,
-    });
-  }
+  }, [lossInput, addLoss, refetch]);
 
-  function handleAddLoss() {
-    const amt = parseFloat(lossInput);
-    if (!amt || amt <= 0) {
-      Alert.alert("Error", "Enter a valid loss amount.");
-      return;
-    }
-    addLossMutation.mutate(amt);
-  }
-
-  if (isLoading) {
-    return (
-      <View style={[styles.container, styles.center, { paddingTop: topPad }]}>
-        <ActivityIndicator color={C.accent} size="large" />
-      </View>
-    );
-  }
-
-  if (!account || showSetup) {
-    return (
-      <View style={[styles.container, { paddingTop: topPad }]}>
-        <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: Platform.OS === "web" ? 34 + 100 : 100 }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={styles.heading}>Prop Firm Tracker</Text>
-          <Text style={styles.subheading}>Set up your account to start tracking</Text>
-
-          <View style={styles.setupCard}>
-            <Ionicons name="wallet-outline" size={32} color={C.accent} style={{ marginBottom: 16 }} />
-            <Text style={styles.setupTitle}>Account Setup</Text>
-            <Text style={styles.setupDesc}>
-              Enter your prop firm starting balance. The app will track your daily loss (2%) and total drawdown (5%) limits.
-            </Text>
-
-            <Text style={styles.inputLabel}>Starting Balance ($)</Text>
-            <TextInput
-              style={styles.textInput}
-              value={balanceInput}
-              onChangeText={setBalanceInput}
-              placeholder="e.g. 50000"
-              placeholderTextColor={C.textTertiary}
-              keyboardType="numeric"
-            />
-
-            <Text style={styles.inputLabel}>Max Daily Loss % (default: 2%)</Text>
-            <TextInput
-              style={styles.textInput}
-              value={dailyLossInput}
-              onChangeText={setDailyLossInput}
-              placeholder="2"
-              placeholderTextColor={C.textTertiary}
-              keyboardType="numeric"
-            />
-
-            <View style={styles.ruleBox}>
-              <Ionicons name="shield-checkmark-outline" size={16} color={C.accent} />
-              <Text style={styles.ruleText}>
-                Total Drawdown is fixed at 5% — standard for most prop firms.
-              </Text>
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.85 }]}
-              onPress={handleSetup}
-            >
-              {createMutation.isPending ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text style={styles.primaryBtnText}>Save Account</Text>
-              )}
-            </Pressable>
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  const dailyLossPct = (account.dailyLoss / account.startingBalance) * 100;
-  const totalDrawdownPct = (account.totalDrawdown / account.startingBalance) * 100;
-  const dailyLimitAmount = (account.startingBalance * account.maxDailyLossPct) / 100;
-  const totalLimitAmount = (account.startingBalance * account.maxTotalDrawdownPct) / 100;
-  const dailyOk = dailyLossPct < account.maxDailyLossPct;
-  const totalOk = totalDrawdownPct < account.maxTotalDrawdownPct;
-  const canTrade = dailyOk && totalOk;
+  const handleReset = useCallback(async () => {
+    Alert.alert("Reset Daily Loss?", "This will reset today's loss counter to zero.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Reset", onPress: async () => { await resetLoss({}); refetch(); } },
+    ]);
+  }, [resetLoss, refetch]);
 
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: topPad + 16, paddingBottom: Platform.OS === "web" ? 34 + 100 : 100 },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.headingRow}>
-          <View>
-            <Text style={styles.heading}>Prop Tracker</Text>
-            <Text style={styles.subheading}>Account Protection Mode</Text>
-          </View>
-          <Pressable
-            style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
-            onPress={() => setShowSetup(true)}
-          >
-            <Ionicons name="settings-outline" size={20} color={C.textSecondary} />
-          </Pressable>
+    <SafeAreaView style={[styles.safe, isStopTrading && styles.safeRed]} edges={["top"]}>
+      {/* STOP TRADING BANNER */}
+      {isStopTrading && (
+        <View style={styles.stopBanner}>
+          <Ionicons name="warning" size={22} color="#FF1111" />
+          <Text style={styles.stopBannerText}>STOP TRADING — DAILY LIMIT HIT</Text>
+          <Ionicons name="warning" size={22} color="#FF1111" />
+        </View>
+      )}
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <View style={styles.headerRow}>
+          <Text style={[styles.title, isStopTrading && { color: "#FF4444" }]}>Risk Shield</Text>
+          <TouchableOpacity style={[styles.monkBtn, showMonkMode && { backgroundColor: C.accent }]} onPress={() => setShowMonkMode(true)}>
+            <Ionicons name="eye-off-outline" size={16} color={showMonkMode ? "#0A0A0F" : C.accent} />
+            <Text style={[styles.monkBtnText, showMonkMode && { color: "#0A0A0F" }]}>Focus Mode</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Status Card */}
-        <View style={[styles.statusCard, canTrade ? styles.statusOk : styles.statusDanger]}>
-          <Ionicons
-            name={canTrade ? "checkmark-circle" : "warning"}
-            size={28}
-            color={canTrade ? C.accent : C.accentAlert}
+        {/* STOP TRADING CARD */}
+        {isStopTrading && (
+          <View style={styles.stopCard}>
+            <Text style={styles.stopCardTitle}>🛑 STOP TRADING</Text>
+            <Text style={styles.stopCardSub}>Daily drawdown limit reached. Respect the rules.</Text>
+            {STOP_TRADING_RULES.map((rule, i) => (
+              <View key={i} style={styles.stopRule}>
+                <Text style={styles.stopRuleNum}>{i + 1}.</Text>
+                <Text style={styles.stopRuleText}>{rule}</Text>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
+              <Text style={styles.resetBtnText}>Reset Daily Loss Counter</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Account Balance Card */}
+        <View style={[styles.card, isStopTrading && styles.cardRed]}>
+          <Text style={styles.cardLabel}>Account Balance</Text>
+          <Text style={[styles.balanceText, { color: isStopTrading ? "#FF4444" : C.accent }]}>
+            ${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+          </Text>
+          <Text style={styles.cardSub}>Starting: ${startingBalance.toLocaleString()}</Text>
+        </View>
+
+        {/* Gauge Meters */}
+        <View style={[styles.card, isStopTrading && styles.cardRed]}>
+          <GaugeMeter
+            value={dailyLossPct}
+            max={maxDailyLoss}
+            label="Daily Drawdown"
+            color={isStopTrading ? "#FF4444" : isDanger ? "#F59E0B" : C.accent}
           />
-          <View style={styles.statusText}>
-            <Text style={[styles.statusTitle, { color: canTrade ? C.accent : C.accentAlert }]}>
-              {canTrade ? "Safe to Trade" : "STOP — Limit Reached"}
-            </Text>
-            <Text style={styles.statusSub}>
-              {canTrade
-                ? "You are within all prop firm rules"
-                : "You have exceeded a loss limit. Protect your account!"}
-            </Text>
-          </View>
-        </View>
-
-        {/* Balance Cards */}
-        <View style={styles.balanceRow}>
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Starting</Text>
-            <Text style={styles.balanceAmount}>{formatMoney(account.startingBalance)}</Text>
-          </View>
-          <View style={[styles.balanceCard, styles.balanceCardAccent]}>
-            <Text style={[styles.balanceLabel, { color: C.accent }]}>Current</Text>
-            <Text style={[styles.balanceAmount, { color: C.accent }]}>
-              {formatMoney(account.currentBalance)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Gauges */}
-        <View style={styles.gaugesCard}>
-          <GaugeBar
-            label="Daily Loss"
-            value={account.dailyLoss}
-            max={account.maxDailyLossPct}
-            color={C.accent}
-            dangerAt={90}
-          />
-          <View style={styles.gaugeSep} />
-          <GaugeBar
+          <View style={styles.divider} />
+          <GaugeMeter
+            value={totalLossPct}
+            max={maxTotalLoss}
             label="Total Drawdown"
-            value={account.totalDrawdown}
-            max={account.maxTotalDrawdownPct}
-            color="#5E9BFF"
-            dangerAt={90}
+            color={totalLossPct >= maxTotalLoss * 0.75 ? "#F59E0B" : C.accent}
           />
-        </View>
-
-        {/* Info Row */}
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Daily Limit</Text>
-            <Text style={styles.infoValue}>{formatMoney(dailyLimitAmount)}</Text>
-            <Text style={styles.infoSub}>({account.maxDailyLossPct}%)</Text>
-          </View>
-          <View style={styles.infoDivider} />
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Today's Loss</Text>
-            <Text style={[styles.infoValue, { color: account.dailyLoss > 0 ? C.accentAlert : C.text }]}>
-              {formatMoney(account.dailyLoss)}
-            </Text>
-            <Text style={styles.infoSub}>{dailyLossPct.toFixed(2)}% used</Text>
-          </View>
-          <View style={styles.infoDivider} />
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Max Drawdown</Text>
-            <Text style={styles.infoValue}>{formatMoney(totalLimitAmount)}</Text>
-            <Text style={styles.infoSub}>(5%)</Text>
-          </View>
         </View>
 
         {/* Log Loss */}
-        <Text style={styles.sectionTitle}>Log a Loss</Text>
-        <View style={styles.logCard}>
-          <View style={styles.logRow}>
-            <TextInput
-              style={[styles.textInput, { flex: 1 }]}
-              value={lossInput}
-              onChangeText={setLossInput}
-              placeholder="Loss amount ($)"
-              placeholderTextColor={C.textTertiary}
-              keyboardType="numeric"
-            />
-            <Pressable
-              style={({ pressed }) => [styles.logBtn, pressed && { opacity: 0.85 }]}
-              onPress={handleAddLoss}
-            >
-              {addLossMutation.isPending ? (
-                <ActivityIndicator color="#000" size="small" />
-              ) : (
-                <Text style={styles.logBtnText}>Add</Text>
-              )}
-            </Pressable>
+        {!isStopTrading && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Log a Loss</Text>
+            <View style={styles.inputRow}>
+              <Text style={styles.dollarSign}>$</Text>
+              <TextInput
+                style={styles.input}
+                value={lossInput}
+                onChangeText={setLossInput}
+                placeholder="Amount lost on this trade"
+                placeholderTextColor={C.textSecondary}
+                keyboardType="decimal-pad"
+              />
+              <TouchableOpacity style={styles.logBtn} onPress={handleAddLoss}>
+                <Text style={styles.logBtnText}>Log</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <Pressable
-            style={({ pressed }) => [styles.resetBtn, pressed && { opacity: 0.7 }]}
-            onPress={() =>
-              Alert.alert("Reset Daily Loss", "Start a new trading day?", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Reset", onPress: () => resetDailyMutation.mutate() },
-              ])
-            }
-          >
-            <Ionicons name="refresh-outline" size={16} color={C.textSecondary} />
-            <Text style={styles.resetBtnText}>Reset Daily Loss (New Day)</Text>
-          </Pressable>
+        )}
+
+        {/* Position Size Calculator */}
+        <Text style={styles.sectionTitle2}>Position Size Calculator</Text>
+        <View style={styles.card}>
+          <Text style={styles.calcSubtitle}>Risk exactly 0.5% on your next trade</Text>
+
+          <View style={styles.calcRow}>
+            <Text style={styles.calcLabel}>Account Balance</Text>
+            <View style={styles.calcInputWrap}>
+              <Text style={styles.dollarSign}>$</Text>
+              <TextInput
+                style={styles.calcInput}
+                value={customBalance}
+                onChangeText={setCustomBalance}
+                placeholder={balance.toFixed(0)}
+                placeholderTextColor={C.textSecondary}
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
+
+          <View style={styles.calcRow}>
+            <Text style={styles.calcLabel}>Points at Risk (SL distance)</Text>
+            <View style={styles.calcInputWrap}>
+              <TextInput
+                style={styles.calcInput}
+                value={pointsAtRisk}
+                onChangeText={setPointsAtRisk}
+                placeholder="e.g. 10"
+                placeholderTextColor={C.textSecondary}
+                keyboardType="decimal-pad"
+              />
+              <Text style={styles.calcUnit}>pts</Text>
+            </View>
+          </View>
+
+          <View style={styles.riskAmountRow}>
+            <Ionicons name="warning-outline" size={14} color={C.accent} />
+            <Text style={styles.riskAmountText}>
+              Max Risk: ${riskAmount.toFixed(2)} (0.5% of ${calcBalance.toLocaleString()})
+            </Text>
+          </View>
+
+          {pts > 0 ? (
+            <View style={styles.resultsBox}>
+              <View style={styles.resultItem}>
+                <View>
+                  <Text style={styles.resultInstrument}>NQ Full Contract</Text>
+                  <Text style={styles.resultDetail}>${NQ_POINT_VALUE}/point</Text>
+                </View>
+                <View style={styles.resultValueWrap}>
+                  <Text style={styles.resultValue}>{nqContracts.toFixed(2)}</Text>
+                  <Text style={styles.resultUnit}>contracts</Text>
+                </View>
+              </View>
+              <View style={styles.resultDivider} />
+              <View style={styles.resultItem}>
+                <View>
+                  <Text style={styles.resultInstrument}>MNQ Micro Contract</Text>
+                  <Text style={styles.resultDetail}>${MNQ_POINT_VALUE}/point</Text>
+                </View>
+                <View style={styles.resultValueWrap}>
+                  <Text style={[styles.resultValue, { color: "#F59E0B" }]}>{Math.round(mnqContracts)}</Text>
+                  <Text style={styles.resultUnit}>contracts</Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.calcPlaceholder}>
+              <Text style={styles.calcPlaceholderText}>Enter points at risk to calculate position size</Text>
+            </View>
+          )}
         </View>
 
-        {/* Rules */}
-        <Text style={styles.sectionTitle}>Prop Firm Rules</Text>
-        {[
-          { icon: "shield-outline", text: `Max Daily Loss: ${account.maxDailyLossPct}% (${formatMoney(dailyLimitAmount)})` },
-          { icon: "trending-down-outline", text: `Max Total Drawdown: 5% (${formatMoney(totalLimitAmount)})` },
-          { icon: "close-circle-outline", text: "Stop trading immediately when either limit is hit" },
-          { icon: "alarm-outline", text: "Reset daily loss counter every trading morning" },
-        ].map(({ icon, text }, i) => (
-          <View key={i} style={styles.ruleItem}>
-            <Ionicons name={icon as any} size={16} color={C.accent} />
-            <Text style={styles.ruleItemText}>{text}</Text>
-          </View>
-        ))}
+        {!isStopTrading && (
+          <TouchableOpacity style={styles.resetSmallBtn} onPress={handleReset}>
+            <Ionicons name="refresh-outline" size={14} color={C.textSecondary} />
+            <Text style={styles.resetSmallText}>Reset Daily Loss</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </View>
+
+      {/* Monk Mode Modal */}
+      <Modal visible={showMonkMode} animationType="fade" statusBarTranslucent>
+        <View style={monkStyles.overlay}>
+          <View style={monkStyles.header}>
+            <Text style={monkStyles.title}>⚡ FOCUS MODE</Text>
+            <Text style={monkStyles.subtitle}>P&L hidden — stay disciplined</Text>
+          </View>
+
+          <View style={monkStyles.rulesCard}>
+            <Text style={monkStyles.rulesTitle}>EXIT RULES</Text>
+            {[
+              "Honor your stop loss — no exceptions",
+              "Don't move your stop to breakeven too early",
+              "Let price reach your target — no early exits",
+              "Exit immediately if market structure breaks against you",
+              "One trade at a time — no adding to losers",
+            ].map((rule, i) => (
+              <View key={i} style={monkStyles.ruleRow}>
+                <View style={monkStyles.ruleBullet} />
+                <Text style={monkStyles.ruleText}>{rule}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={monkStyles.mindsetCard}>
+            <Text style={monkStyles.mindsetTitle}>MINDSET ANCHOR</Text>
+            <Text style={monkStyles.mindsetText}>"I trade the process, not the P&L. My job is to execute the setup correctly. The outcome takes care of itself."</Text>
+          </View>
+
+          <TouchableOpacity style={monkStyles.exitBtn} onPress={() => setShowMonkMode(false)}>
+            <Ionicons name="eye-outline" size={18} color="#0A0A0F" />
+            <Text style={monkStyles.exitBtnText}>Exit Focus Mode</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.background },
-  center: { alignItems: "center", justifyContent: "center" },
-  scroll: { paddingHorizontal: 20 },
-  headingRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 },
-  heading: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: C.text,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 4,
-  },
-  subheading: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_400Regular" },
-  iconBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  statusCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    gap: 14,
-    borderWidth: 1,
-  },
-  statusOk: { backgroundColor: C.accent + "12", borderColor: C.accent + "40" },
-  statusDanger: { backgroundColor: C.accentAlert + "15", borderColor: C.accentAlert + "40" },
-  statusText: { flex: 1 },
-  statusTitle: { fontSize: 16, fontWeight: "700", fontFamily: "Inter_700Bold", marginBottom: 2 },
-  statusSub: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_400Regular" },
-  balanceRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
-  balanceCard: {
-    flex: 1,
-    backgroundColor: C.card,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-  },
-  balanceCardAccent: { borderColor: C.accent + "50" },
-  balanceLabel: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
-  balanceAmount: { fontSize: 20, fontWeight: "700", color: C.text, fontFamily: "Inter_700Bold" },
-  gaugesCard: {
-    backgroundColor: C.card,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-  },
-  gaugeContainer: { marginBottom: 4 },
-  gaugeHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-  gaugeLabel: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_500Medium" },
-  gaugeValue: { fontSize: 14, fontWeight: "700", fontFamily: "Inter_700Bold" },
-  gaugeMax: { fontSize: 11, color: C.textTertiary },
-  gaugeTrack: { height: 8, backgroundColor: C.backgroundTertiary, borderRadius: 4, overflow: "hidden" },
-  gaugeFill: { height: "100%", borderRadius: 4 },
-  gaugeSep: { height: 1, backgroundColor: C.cardBorder, marginVertical: 16 },
-  dangerRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 },
-  dangerText: { fontSize: 11, color: C.accentAlert, fontFamily: "Inter_500Medium" },
-  infoRow: { flexDirection: "row", backgroundColor: C.card, borderRadius: 14, marginBottom: 24, borderWidth: 1, borderColor: C.cardBorder },
-  infoItem: { flex: 1, padding: 14, alignItems: "center" },
-  infoDivider: { width: 1, backgroundColor: C.cardBorder, marginVertical: 10 },
-  infoLabel: { fontSize: 10, color: C.textTertiary, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 },
-  infoValue: { fontSize: 15, fontWeight: "700", color: C.text, fontFamily: "Inter_700Bold" },
-  infoSub: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular", marginTop: 2 },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: C.textSecondary,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  logCard: {
-    backgroundColor: C.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    gap: 12,
-  },
-  logRow: { flexDirection: "row", gap: 10, alignItems: "center" },
-  logBtn: {
-    backgroundColor: C.accentAlert,
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 13,
-  },
-  logBtnText: { fontSize: 14, fontWeight: "700", color: "#fff", fontFamily: "Inter_700Bold" },
-  resetBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 4,
-  },
-  resetBtnText: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_400Regular" },
-  ruleItem: {
-    flexDirection: "row",
-    backgroundColor: C.card,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    gap: 10,
-    alignItems: "flex-start",
-  },
-  ruleItemText: { flex: 1, fontSize: 13, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 18 },
-  setupCard: {
-    backgroundColor: C.card,
-    borderRadius: 20,
-    padding: 24,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    alignItems: "center",
-  },
-  setupTitle: { fontSize: 22, fontWeight: "700", color: C.text, fontFamily: "Inter_700Bold", marginBottom: 10 },
-  setupDesc: { fontSize: 14, color: C.textSecondary, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20, marginBottom: 24 },
-  inputLabel: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_500Medium", alignSelf: "flex-start", width: "100%", marginBottom: 6, marginTop: 8 },
-  textInput: {
-    backgroundColor: C.inputBackground,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 15,
-    color: C.text,
-    fontFamily: "Inter_400Regular",
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    width: "100%",
-  },
-  ruleBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: C.accent + "12",
-    borderRadius: 10,
-    padding: 12,
-    gap: 8,
-    marginTop: 16,
-    marginBottom: 20,
-    width: "100%",
-    borderWidth: 1,
-    borderColor: C.accent + "30",
-  },
-  ruleText: { flex: 1, fontSize: 13, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 18 },
-  primaryBtn: {
-    backgroundColor: C.accent,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    width: "100%",
-    alignItems: "center",
-  },
-  primaryBtnText: { fontSize: 16, fontWeight: "700", color: "#000", fontFamily: "Inter_700Bold" },
+  safe: { flex: 1, backgroundColor: C.background },
+  safeRed: { backgroundColor: "#0F0505" },
+  stopBanner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "rgba(255,17,17,0.15)", padding: 10, borderBottomWidth: 1, borderBottomColor: "rgba(255,17,17,0.3)" },
+  stopBannerText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#FF4444", letterSpacing: 1 },
+  scroll: { flex: 1 },
+  content: { padding: 16 },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  title: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.text },
+  monkBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: C.accent },
+  monkBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.accent },
+  stopCard: { backgroundColor: "rgba(255,17,17,0.1)", borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1.5, borderColor: "rgba(255,17,17,0.4)" },
+  stopCardTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#FF4444", marginBottom: 6 },
+  stopCardSub: { fontSize: 14, color: "#FF9999", marginBottom: 14 },
+  stopRule: { flexDirection: "row", gap: 8, marginBottom: 8 },
+  stopRuleNum: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#FF4444", width: 20 },
+  stopRuleText: { flex: 1, fontSize: 13, color: "#FF9999", lineHeight: 20 },
+  resetBtn: { marginTop: 14, backgroundColor: "rgba(255,17,17,0.2)", borderRadius: 10, padding: 12, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,17,17,0.4)" },
+  resetBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#FF4444" },
+  card: { backgroundColor: C.backgroundSecondary, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 14 },
+  cardRed: { borderColor: "rgba(255,17,17,0.4)", backgroundColor: "rgba(255,17,17,0.06)" },
+  cardLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+  balanceText: { fontSize: 32, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  cardSub: { fontSize: 12, color: C.textSecondary },
+  divider: { height: 1, backgroundColor: C.cardBorder, marginVertical: 14 },
+  sectionTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 12 },
+  sectionTitle2: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 },
+  inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dollarSign: { fontSize: 16, color: C.textSecondary },
+  input: { flex: 1, backgroundColor: C.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: C.text, borderWidth: 1, borderColor: C.cardBorder },
+  logBtn: { backgroundColor: C.accent, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
+  logBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+  calcSubtitle: { fontSize: 13, color: C.textSecondary, marginBottom: 14 },
+  calcRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  calcLabel: { flex: 1, fontSize: 13, color: C.text, marginRight: 12 },
+  calcInputWrap: { flexDirection: "row", alignItems: "center", backgroundColor: C.background, borderRadius: 10, paddingHorizontal: 10, borderWidth: 1, borderColor: C.cardBorder, minWidth: 110 },
+  calcInput: { fontSize: 14, color: C.text, paddingVertical: 8, flex: 1 },
+  calcUnit: { fontSize: 12, color: C.textSecondary },
+  riskAmountRow: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.accent + "15", borderRadius: 8, padding: 10, marginBottom: 14 },
+  riskAmountText: { fontSize: 13, color: C.accent, fontFamily: "Inter_500Medium" },
+  resultsBox: { backgroundColor: C.background, borderRadius: 12, borderWidth: 1, borderColor: C.cardBorder, overflow: "hidden" },
+  resultItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14 },
+  resultInstrument: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 2 },
+  resultDetail: { fontSize: 12, color: C.textSecondary },
+  resultValueWrap: { alignItems: "flex-end" },
+  resultValue: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.accent },
+  resultUnit: { fontSize: 12, color: C.textSecondary },
+  resultDivider: { height: 1, backgroundColor: C.cardBorder },
+  calcPlaceholder: { backgroundColor: C.background, borderRadius: 12, padding: 20, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
+  calcPlaceholderText: { fontSize: 13, color: C.textSecondary, textAlign: "center" },
+  resetSmallBtn: { flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center", padding: 12 },
+  resetSmallText: { fontSize: 13, color: C.textSecondary },
+});
+
+const gaugeStyles = StyleSheet.create({
+  container: { marginBottom: 4 },
+  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  label: { fontSize: 13, color: C.textSecondary },
+  value: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  track: { height: 8, backgroundColor: C.background, borderRadius: 4, overflow: "hidden", marginBottom: 4 },
+  fill: { height: "100%" as any, borderRadius: 4 },
+  max: { fontSize: 11, color: C.textSecondary, textAlign: "right" },
+});
+
+const monkStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "#050505", padding: 24, justifyContent: "center" },
+  header: { alignItems: "center", marginBottom: 32 },
+  title: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 6 },
+  subtitle: { fontSize: 14, color: C.textSecondary },
+  rulesCard: { backgroundColor: "#0F1A14", borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.accent + "44", marginBottom: 16 },
+  rulesTitle: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.accent, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 16 },
+  ruleRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 12 },
+  ruleBullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.accent, marginTop: 7 },
+  ruleText: { flex: 1, fontSize: 15, color: C.text, lineHeight: 24 },
+  mindsetCard: { backgroundColor: "#111", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 32 },
+  mindsetTitle: { fontSize: 10, fontFamily: "Inter_700Bold", color: C.textSecondary, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 },
+  mindsetText: { fontSize: 14, color: C.textSecondary, lineHeight: 23, fontStyle: "italic" },
+  exitBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: C.accent, borderRadius: 16, padding: 18 },
+  exitBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 });

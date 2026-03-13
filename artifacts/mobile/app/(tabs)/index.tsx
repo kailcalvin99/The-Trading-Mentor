@@ -1,414 +1,293 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
-  Pressable,
-  Platform,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Switch,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { usePlanner } from "@/contexts/PlannerContext";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
 
-interface KillZone {
-  name: string;
-  label: string;
-  description: string;
-  startHour: number;
-  startMin: number;
-  endHour: number;
-  endMin: number;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-}
-
-const KILL_ZONES: KillZone[] = [
-  {
-    name: "London Open",
-    label: "LON",
-    description: "Best time for FVGs and liquidity sweeps in European session",
-    startHour: 2,
-    startMin: 0,
-    endHour: 5,
-    endMin: 0,
-    icon: "partly-sunny-outline",
-    color: "#5E9BFF",
-  },
-  {
-    name: "NY Silver Bullet",
-    label: "SB",
-    description: "The ICT Silver Bullet window — high probability setups with FVG entries",
-    startHour: 10,
-    startMin: 0,
-    endHour: 11,
-    endMin: 0,
-    icon: "flash-outline",
-    color: C.accent,
-  },
-  {
-    name: "NY Open",
-    label: "NY",
-    description: "New York session open — high volatility and liquidity events",
-    startHour: 7,
-    startMin: 0,
-    endHour: 10,
-    endMin: 0,
-    icon: "sunny-outline",
-    color: "#FFB340",
-  },
-];
-
-const ICT_TIPS = [
-  "💡 Time AND Price must align. A great setup at the wrong hour is not a trade.",
-  "💡 Always ask: Did price sweep liquidity BEFORE my entry?",
-  "💡 The Silver Bullet (10–11 AM NY) gives you the cleanest FVG entries.",
-  "💡 Protect your account first. A 2% daily limit keeps you in the game.",
-  "💡 Look for a Market Structure Shift (MSS) after a liquidity sweep.",
-  "💡 OTE zone is 61.8%–78.6% — wait for price to pull back there.",
-  "💡 Don't chase price. If you missed the entry, wait for the next setup.",
-  "💡 Less is more in ICT. One clean trade beats five messy ones.",
-];
-
-function getESTTime() {
+function getESTNow(): Date {
   const now = new Date();
   const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const estOffset = -5 * 60 * 60 * 1000;
-  return new Date(utc + estOffset);
+  return new Date(utc + -5 * 3600000);
 }
 
-function isInZone(zone: KillZone, estTime: Date): boolean {
-  const h = estTime.getHours();
-  const m = estTime.getMinutes();
-  const current = h * 60 + m;
-  const start = zone.startHour * 60 + zone.startMin;
-  const end = zone.endHour * 60 + zone.endMin;
-  return current >= start && current < end;
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "LIVE NOW";
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
 }
 
-function minutesUntilZone(zone: KillZone, estTime: Date): number {
-  const h = estTime.getHours();
-  const m = estTime.getMinutes();
-  const current = h * 60 + m;
-  const start = zone.startHour * 60 + zone.startMin;
-  if (current < start) return start - current;
-  const nextDayStart = start + 24 * 60;
-  return nextDayStart - current;
+interface Session {
+  name: string;
+  subtitle: string;
+  startH: number;
+  startM: number;
+  endH: number;
+  endM: number;
+  color: string;
+  icon: string;
 }
 
-function formatMinutes(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
+const SESSIONS: Session[] = [
+  { name: "NY Open", subtitle: "9:30 AM EST — Main session opens", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896", icon: "trending-up" },
+  { name: "Silver Bullet", subtitle: "10:00–11:00 AM EST — Prime ICT window", startH: 10, startM: 0, endH: 11, endM: 0, color: "#F59E0B", icon: "flash" },
+  { name: "London Open", subtitle: "2:00–5:00 AM EST — European session", startH: 2, startM: 0, endH: 5, endM: 0, color: "#818CF8", icon: "globe" },
+];
 
-function formatTime(h: number, m: number): string {
-  const hour = h > 12 ? h - 12 : h === 0 ? 12 : h;
-  const ampm = h >= 12 ? "PM" : "AM";
-  return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
-}
+const ROUTINE_ITEMS = [
+  { key: "water" as const, label: "Water & Physical Reset", icon: "water-outline" as const, desc: "Hydrate, stretch, step outside 2 min" },
+  { key: "breathing" as const, label: "5-Min Box Breathing", icon: "wind-outline" as const, desc: "Inhale 4s → Hold 4s → Exhale 4s → Hold 4s" },
+  { key: "news" as const, label: "ForexFactory News Check", icon: "newspaper-outline" as const, desc: "Check for Red folder high-impact events" },
+  { key: "bias" as const, label: "HTF Bias Review", icon: "trending-up-outline" as const, desc: "Daily & 4H chart — Premium or Discount?" },
+];
 
-export default function KillZoneScreen() {
-  const insets = useSafeAreaInsets();
-  const [estTime, setEstTime] = useState(getESTTime());
-  const [tipIndex, setTipIndex] = useState(0);
-  const tipTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+export default function PlannerScreen() {
+  const { routineItems, isRoutineComplete, hasRedNews, toggleItem, toggleRedNews } = usePlanner();
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => setEstTime(getESTTime()), 1000);
-    return () => clearInterval(timer);
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    tipTimer.current = setInterval(() => {
-      setTipIndex((i) => (i + 1) % ICT_TIPS.length);
-    }, 8000);
-    return () => {
-      if (tipTimer.current) clearInterval(tipTimer.current);
-    };
-  }, []);
-
-  const activeZone = KILL_ZONES.find((z) => isInZone(z, estTime));
-  const h = estTime.getHours();
-  const m = estTime.getMinutes();
-  const s = estTime.getSeconds();
-
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : 0;
+  const est = getESTNow();
+  const timeStr = est.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+  const dateStr = est.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  const completedCount = Object.values(routineItems).filter(Boolean).length;
 
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: topPad + 16, paddingBottom: bottomPad + 100 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+
         {/* Header */}
-        <Text style={styles.heading}>Kill Zone Timer</Text>
-        <Text style={styles.subheading}>New York EST · Resets daily</Text>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Daily Planner</Text>
+            <Text style={styles.dateText}>{dateStr}</Text>
+          </View>
+          <View style={styles.clockBadge}>
+            <Text style={styles.clockText}>{timeStr}</Text>
+            <Text style={styles.clockSub}>EST</Text>
+          </View>
+        </View>
 
-        {/* Clock */}
-        <View style={styles.clockCard}>
-          <Text style={styles.clockTime}>
-            {h > 12 ? h - 12 : h === 0 ? 12 : h}:{m.toString().padStart(2, "0")}
-            <Text style={styles.clockSec}>:{s.toString().padStart(2, "0")}</Text>
-          </Text>
-          <Text style={styles.clockAmPm}>{h >= 12 ? "PM" : "AM"} EST</Text>
-
-          {activeZone ? (
-            <View style={[styles.activeBadge, { backgroundColor: activeZone.color + "22" }]}>
-              <View style={[styles.activeDot, { backgroundColor: activeZone.color }]} />
-              <Text style={[styles.activeText, { color: activeZone.color }]}>
-                {activeZone.name} is OPEN
-              </Text>
+        {/* Red News Warning Banner */}
+        {hasRedNews && (
+          <View style={styles.redAlert}>
+            <Ionicons name="warning" size={22} color="#FF4444" />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.redAlertTitle}>🔴 RED FOLDER ACTIVE</Text>
+              <Text style={styles.redAlertText}>You are a SPECTATOR — not a trader. Wait until volatility settles after the event.</Text>
             </View>
-          ) : (
-            <View style={styles.inactiveBadge}>
-              <View style={styles.inactiveDot} />
-              <Text style={styles.inactiveText}>Outside Kill Zone — Wait</Text>
+          </View>
+        )}
+
+        {/* Trading Status */}
+        <View style={[styles.statusCard, { borderColor: isRoutineComplete && !hasRedNews ? C.accent : "#F59E0B" }]}>
+          <View style={styles.statusRow}>
+            <Ionicons
+              name={isRoutineComplete && !hasRedNews ? "checkmark-circle" : "lock-closed"}
+              size={22}
+              color={isRoutineComplete && !hasRedNews ? C.accent : "#F59E0B"}
+            />
+            <Text style={[styles.statusText, { color: isRoutineComplete && !hasRedNews ? C.accent : "#F59E0B" }]}>
+              {hasRedNews
+                ? "SPECTATOR MODE — Red News Event"
+                : isRoutineComplete
+                ? "✓ TRADING UNLOCKED"
+                : `Complete Routine (${completedCount}/4) to unlock trading`}
+            </Text>
+          </View>
+          {!isRoutineComplete && (
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${(completedCount / 4) * 100}%` as any }]} />
             </View>
           )}
         </View>
 
-        {/* Kill Zones */}
-        <Text style={styles.sectionTitle}>Trading Sessions</Text>
-        {KILL_ZONES.map((zone) => {
-          const active = isInZone(zone, estTime);
-          const minsUntil = active ? 0 : minutesUntilZone(zone, estTime);
+        {/* Morning Routine Checklist */}
+        <Text style={styles.sectionTitle}>Morning Routine</Text>
+        <View style={styles.card}>
+          {ROUTINE_ITEMS.map((item, idx) => (
+            <View key={item.key}>
+              {idx > 0 && <View style={styles.divider} />}
+              <TouchableOpacity
+                style={styles.routineRow}
+                onPress={() => {
+                  toggleItem(item.key);
+                  if (item.key === "news" && !routineItems.news) {
+                    setTimeout(() => {
+                      Alert.alert(
+                        "Red Folder News?",
+                        "Are there any high-impact Red folder events today?",
+                        [
+                          { text: "No Red News", style: "cancel" },
+                          {
+                            text: "Yes — Red Active",
+                            style: "destructive",
+                            onPress: () => { if (!hasRedNews) toggleRedNews(); },
+                          },
+                        ]
+                      );
+                    }, 300);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, routineItems[item.key] && styles.checkboxChecked]}>
+                  {routineItems[item.key] && <Ionicons name="checkmark" size={13} color="#0A0A0F" />}
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.routineLabel, routineItems[item.key] && styles.routineLabelDone]}>
+                    {item.label}
+                  </Text>
+                  <Text style={styles.routineDesc}>{item.desc}</Text>
+                </View>
+                <Ionicons name={item.icon} size={18} color={routineItems[item.key] ? C.accent : C.textSecondary} />
+              </TouchableOpacity>
+
+              {/* Red news toggle appears after checking ForexFactory item */}
+              {item.key === "news" && routineItems.news && (
+                <View style={styles.redNewsToggle}>
+                  <Ionicons name="alert-circle-outline" size={16} color="#FF9999" />
+                  <Text style={styles.redNewsLabel}>Red folder news today?</Text>
+                  <Switch
+                    value={hasRedNews}
+                    onValueChange={toggleRedNews}
+                    trackColor={{ false: C.cardBorder, true: "rgba(255,68,68,0.5)" }}
+                    thumbColor={hasRedNews ? "#FF4444" : C.textSecondary}
+                    style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
+                  />
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+
+        {/* Trading Windows */}
+        <Text style={styles.sectionTitle}>Trading Windows</Text>
+        {SESSIONS.map((session) => {
+          const estNow = getESTNow();
+          const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
+          const startMins = session.startH * 60 + session.startM;
+          const endMins = session.endH * 60 + session.endM;
+          const isLive = nowMins >= startMins && nowMins < endMins;
+          const isEnded = nowMins >= endMins;
+
+          const target = new Date(estNow);
+          target.setHours(session.startH, session.startM, 0, 0);
+          if (!isLive && estNow >= target) target.setDate(target.getDate() + 1);
+          const msUntil = isLive ? 0 : target.getTime() - estNow.getTime();
 
           return (
-            <View
-              key={zone.name}
-              style={[
-                styles.zoneCard,
-                active && { borderColor: zone.color, borderWidth: 1.5 },
-              ]}
-            >
-              <View style={styles.zoneHeader}>
-                <View style={[styles.zoneIconBg, { backgroundColor: zone.color + "22" }]}>
-                  <Ionicons name={zone.icon} size={18} color={zone.color} />
+            <View key={session.name} style={[styles.sessionCard, isLive && { borderColor: session.color, borderWidth: 1.5 }]}>
+              <View style={styles.sessionRow}>
+                <View style={[styles.sessionDot, { backgroundColor: isLive ? session.color : isEnded ? "#333" : C.cardBorder }]} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.sessionName, { color: isLive ? session.color : C.text }]}>{session.name}</Text>
+                  <Text style={styles.sessionSub}>{session.subtitle}</Text>
                 </View>
-                <View style={styles.zoneInfo}>
-                  <Text style={styles.zoneName}>{zone.name}</Text>
-                  <Text style={styles.zoneTime}>
-                    {formatTime(zone.startHour, zone.startMin)} – {formatTime(zone.endHour, zone.endMin)} EST
-                  </Text>
-                </View>
-                <View style={styles.zoneStatus}>
-                  {active ? (
-                    <View style={[styles.statusBadge, { backgroundColor: zone.color + "22" }]}>
-                      <Text style={[styles.statusText, { color: zone.color }]}>LIVE</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.statusBadgeGray}>
-                      <Text style={styles.statusTextGray}>in {formatMinutes(minsUntil)}</Text>
-                    </View>
-                  )}
-                </View>
+                {isLive ? (
+                  <View style={[styles.liveBadge, { backgroundColor: session.color }]}>
+                    <Text style={styles.liveBadgeText}>LIVE</Text>
+                  </View>
+                ) : isEnded ? (
+                  <Text style={styles.endedText}>ENDED</Text>
+                ) : (
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={styles.countdownText}>{formatCountdown(msUntil)}</Text>
+                    <Text style={styles.countdownLabel}>until open</Text>
+                  </View>
+                )}
               </View>
-              <Text style={styles.zoneDesc}>{zone.description}</Text>
+              {isLive && session.name === "Silver Bullet" && (
+                <View style={[styles.liveNote, { borderColor: session.color }]}>
+                  <Ionicons name="flash" size={13} color={session.color} />
+                  <Text style={[styles.liveNoteText, { color: session.color }]}>Prime window — look for FVG entries after liquidity sweep!</Text>
+                </View>
+              )}
             </View>
           );
         })}
 
-        {/* Warning */}
-        <View style={styles.warningCard}>
-          <Ionicons name="warning-outline" size={18} color={C.accentWarn} />
-          <Text style={styles.warningText}>
-            Trading outside these windows is risky. ICT teaches that{" "}
-            <Text style={{ color: C.accentWarn }}>Time is as important as Price.</Text>
-          </Text>
+        {/* Trader's Code */}
+        <Text style={styles.sectionTitle}>Trader's Code</Text>
+        <View style={styles.card}>
+          {[
+            "Never risk more than 0.5% per trade on NQ",
+            "No new trades outside the 10–11 AM Silver Bullet window",
+            "Red folder news = you are a spectator, not a trader",
+            "Complete Morning Routine before any trade entry",
+            "Honor your stop loss — no exceptions",
+          ].map((rule, i) => (
+            <View key={i} style={[styles.ruleRow, i > 0 && styles.ruleRowBorder]}>
+              <Text style={styles.ruleNum}>{i + 1}</Text>
+              <Text style={styles.ruleText}>{rule}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Tips */}
-        <View style={styles.tipCard}>
-          <Ionicons name="bulb-outline" size={16} color={C.accent} />
-          <Text style={styles.tipText}>{ICT_TIPS[tipIndex]}</Text>
-        </View>
-
-        {/* Glossary */}
-        <Text style={styles.sectionTitle}>Quick Glossary</Text>
-        {[
-          { term: "FVG", def: "Fair Value Gap — a price hole the market usually fills later" },
-          { term: "MSS", def: "Market Structure Shift — price breaks pattern and reverses" },
-          { term: "OTE", def: "Optimal Trade Entry — the 61.8–78.6% pullback sweet spot" },
-          { term: "Liquidity Sweep", def: "Price grabs stop-losses above/below a level, then reverses" },
-        ].map(({ term, def }) => (
-          <View key={term} style={styles.glossaryItem}>
-            <Text style={styles.glossaryTerm}>{term}</Text>
-            <Text style={styles.glossaryDef}>{def}</Text>
-          </View>
-        ))}
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { paddingHorizontal: 20 },
-  heading: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: C.text,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 4,
-  },
-  subheading: {
-    fontSize: 13,
-    color: C.textSecondary,
-    fontFamily: "Inter_400Regular",
-    marginBottom: 24,
-  },
-  clockCard: {
-    backgroundColor: C.card,
-    borderRadius: 20,
-    padding: 28,
-    alignItems: "center",
-    marginBottom: 28,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-  },
-  clockTime: {
-    fontSize: 64,
-    fontWeight: "700",
-    color: C.text,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -2,
-  },
-  clockSec: {
-    fontSize: 40,
-    color: C.textTertiary,
-  },
-  clockAmPm: {
-    fontSize: 15,
-    color: C.textSecondary,
-    fontFamily: "Inter_500Medium",
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  activeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 30,
-    gap: 7,
-  },
-  activeDot: { width: 8, height: 8, borderRadius: 4 },
-  activeText: { fontSize: 14, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
-  inactiveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 30,
-    backgroundColor: C.backgroundTertiary,
-    gap: 7,
-  },
-  inactiveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.textTertiary },
-  inactiveText: { fontSize: 14, color: C.textSecondary, fontFamily: "Inter_500Medium" },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: C.textSecondary,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  zoneCard: {
-    backgroundColor: C.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-  },
-  zoneHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  zoneIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  zoneInfo: { flex: 1 },
-  zoneName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: C.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  zoneTime: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", marginTop: 1 },
-  zoneStatus: { alignItems: "flex-end" },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  statusText: { fontSize: 11, fontWeight: "700", fontFamily: "Inter_700Bold" },
-  statusBadgeGray: {
-    backgroundColor: C.backgroundTertiary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  statusTextGray: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular" },
-  zoneDesc: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 18 },
-  warningCard: {
-    flexDirection: "row",
-    backgroundColor: C.accentWarn + "15",
-    borderRadius: 14,
-    padding: 14,
-    gap: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: C.accentWarn + "40",
-    alignItems: "flex-start",
-  },
-  warningText: {
-    flex: 1,
-    fontSize: 13,
-    color: C.textSecondary,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-  },
-  tipCard: {
-    flexDirection: "row",
-    backgroundColor: C.accent + "12",
-    borderRadius: 14,
-    padding: 14,
-    gap: 10,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: C.accent + "30",
-    alignItems: "flex-start",
-  },
-  tipText: {
-    flex: 1,
-    fontSize: 13,
-    color: C.textSecondary,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-  },
-  glossaryItem: {
-    backgroundColor: C.card,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-  },
-  glossaryTerm: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: C.accent,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 3,
-  },
-  glossaryDef: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  safe: { flex: 1, backgroundColor: C.background },
+  scroll: { flex: 1 },
+  content: { padding: 16 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
+  title: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.text },
+  dateText: { fontSize: 13, color: C.textSecondary, marginTop: 2 },
+  clockBadge: { backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
+  clockText: { fontSize: 14, fontFamily: "Inter_700Bold", color: C.accent },
+  clockSub: { fontSize: 10, color: C.textSecondary, marginTop: 1 },
+  redAlert: { flexDirection: "row", alignItems: "flex-start", backgroundColor: "rgba(255,68,68,0.1)", borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "rgba(255,68,68,0.35)" },
+  redAlertTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#FF4444", marginBottom: 3 },
+  redAlertText: { fontSize: 13, color: "#FF9999", lineHeight: 18 },
+  statusCard: { borderRadius: 14, padding: 14, marginBottom: 22, backgroundColor: C.backgroundSecondary, borderWidth: 1.5 },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  statusText: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
+  progressBar: { height: 4, backgroundColor: C.cardBorder, borderRadius: 2, marginTop: 10, overflow: "hidden" },
+  progressFill: { height: "100%" as any, backgroundColor: "#F59E0B", borderRadius: 2 },
+  sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10, marginTop: 2 },
+  card: { backgroundColor: C.backgroundSecondary, borderRadius: 16, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 22, overflow: "hidden" },
+  divider: { height: 1, backgroundColor: C.cardBorder },
+  routineRow: { flexDirection: "row", alignItems: "center", padding: 14 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
+  checkboxChecked: { backgroundColor: C.accent, borderColor: C.accent },
+  routineLabel: { fontSize: 15, fontFamily: "Inter_500Medium", color: C.text, marginBottom: 2 },
+  routineLabelDone: { color: C.textSecondary, textDecorationLine: "line-through" },
+  routineDesc: { fontSize: 12, color: C.textSecondary },
+  redNewsToggle: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingBottom: 12 },
+  redNewsLabel: { flex: 1, fontSize: 13, color: "#FF9999" },
+  sessionCard: { backgroundColor: C.backgroundSecondary, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.cardBorder },
+  sessionRow: { flexDirection: "row", alignItems: "center" },
+  sessionDot: { width: 10, height: 10, borderRadius: 5 },
+  sessionName: { fontSize: 16, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  sessionSub: { fontSize: 12, color: C.textSecondary },
+  liveBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  liveBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+  endedText: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  countdownText: { fontSize: 15, fontFamily: "Inter_700Bold", color: C.text, textAlign: "right" },
+  countdownLabel: { fontSize: 11, color: C.textSecondary },
+  liveNote: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
+  liveNoteText: { fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 },
+  ruleRow: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: 14, paddingVertical: 10 },
+  ruleRowBorder: { borderTopWidth: 1, borderTopColor: C.cardBorder },
+  ruleNum: { width: 22, fontSize: 13, fontFamily: "Inter_700Bold", color: C.accent },
+  ruleText: { flex: 1, fontSize: 13, color: C.text, lineHeight: 20 },
 });

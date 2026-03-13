@@ -1,0 +1,35 @@
+To combine everything we’ve discussed—ICT concepts, NQ Futures strategy, TradingView automation, Prop Firm risk rules, and the Daily Routine Planner—into a single powerhouse app, use the prompt below.
+This is a "Master Prompt." It tells the Replit Agent to build the structure, the logic, and the user interface all at once. My confidence in this final version is 10/10.
+The Master Upgrade Prompt
+Copy and paste this into the Replit Agent:
+> "Build a comprehensive, mobile-friendly NQ Futures Trading Performance App. Use a dark-themed, professional UI. Include these 4 core modules:
+> 1. Daily Performance Planner:
+>  * Create a 'Morning Routine' checklist: Water/Physical Reset, 5-min Box Breathing, ForexFactory News Check, and HTF Bias Review.
+>  * Add a 'Trading Windows' dashboard with countdown timers for NY Open (9:30 AM) and Silver Bullet (10 AM - 11 AM EST).
+>  * Lockout Logic: Disable the 'New Trade' journal button until the Morning Routine is checked off.
+> 2. ICT Academy & Practice Lab:
+>  * Glossary: Add definitions and visual text-descriptions for FVG, MSS, Liquidity Sweeps, and OTE.
+>  * Practice Quiz: Create an interactive test that presents NQ scenarios (e.g., 'Price sweeps London Low and breaks structure up') and asks me to identify the entry gap. Give 5th-grade level feedback.
+> 3. Smart Journal with Webhooks:
+>  * Create a /webhook endpoint to accept TradingView alerts (Ticker, Side, Price). Auto-fill these into a 'Draft' journal entry.
+>  * Guided Journaling: Every entry must ask: 'Did you follow the 10 AM-11 AM rule?', 'Is there a 15m FVG confirmation?', and 'What is your current stress level (1-10)?'
+>  * Behavioral Tags: Allow me to tag trades with 'FOMO,' 'Chased,' 'Disciplined,' or 'Greedy.'
+> 4. Prop Firm Risk Shield:
+>  * Dashboard: Track a starting balance (default $50,000).
+>  * Hard Rules: If the 'Daily Loss' hits 2%, change the app theme to RED and show a 'STOP TRADING' message with my core trading rules.
+>  * Position Size Tool: A calculator where I enter 'Points at Risk' and it tells me how many NQ/MNQ contracts to trade to risk exactly 0.5%."
+> 
+Key Additions for Success
+ * The "Monk Mode" Feature: When you start a trade, the app should have a "Focus" button that hides your P&L and only shows your "Exit Rules" to keep you calm.
+ * The Red Folder Guard: The planner will remind you that if the news is "Red," you are a spectator, not a trader, until the volatility settles.
+Your Final NQ Setup
+Once the app is updated, your workflow looks like this:
+ * Prep: Complete the app's checklist (Breathing, News, Bias).
+ * Wait: Watch the "Silver Bullet" countdown.
+ * Execute: TradingView sends an alert to your Replit app; you confirm the rules in your app's "Guided Journal."
+ * Review: Tag your emotions to see if "FOMO" is what's holding you back from being funded.
+Summary Key Takeaways
+ * Process over Profit: This app forces you to be a professional by locking features until you do your "homework."
+ * Risk is King: The 2% hard-stop and the 0.5% calculator are your most important tools for passing the prop test.
+ * Automation: Webhooks stop you from fumbling with your phone while the NQ market is moving fast.
+Would you like me to give you the specific JSON code for the TradingView alert so it talks to your new Webhook perfectly?
