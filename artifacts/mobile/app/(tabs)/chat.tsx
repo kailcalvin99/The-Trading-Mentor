@@ -174,6 +174,8 @@ const DIFFICULTY_COLORS: Record<Difficulty, string> = { easy: "#00C896", medium:
 const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
 const TOTAL_QUIZ_QUESTIONS = 10;
 
+const TIER_ORDER: Difficulty[] = ["easy", "medium", "hard"];
+
 function pickQuestion(diff: Difficulty, used: Set<number>): { q: QuizQuestion; idx: number } | null {
   const tierQuestions = QUIZ_BANK
     .map((q, idx) => ({ q, idx }))
@@ -181,11 +183,18 @@ function pickQuestion(diff: Difficulty, used: Set<number>): { q: QuizQuestion; i
   if (tierQuestions.length > 0) {
     return tierQuestions[Math.floor(Math.random() * tierQuestions.length)];
   }
-  const anyRemaining = QUIZ_BANK
-    .map((q, idx) => ({ q, idx }))
-    .filter(({ idx }) => !used.has(idx));
-  if (anyRemaining.length > 0) {
-    return anyRemaining[Math.floor(Math.random() * anyRemaining.length)];
+  const diffIdx = TIER_ORDER.indexOf(diff);
+  for (let i = diffIdx + 1; i < TIER_ORDER.length; i++) {
+    const harder = QUIZ_BANK
+      .map((q, idx) => ({ q, idx }))
+      .filter(({ q, idx }) => q.difficulty === TIER_ORDER[i] && !used.has(idx));
+    if (harder.length > 0) return harder[Math.floor(Math.random() * harder.length)];
+  }
+  for (let i = diffIdx - 1; i >= 0; i--) {
+    const easier = QUIZ_BANK
+      .map((q, idx) => ({ q, idx }))
+      .filter(({ q, idx }) => q.difficulty === TIER_ORDER[i] && !used.has(idx));
+    if (easier.length > 0) return easier[Math.floor(Math.random() * easier.length)];
   }
   return null;
 }
