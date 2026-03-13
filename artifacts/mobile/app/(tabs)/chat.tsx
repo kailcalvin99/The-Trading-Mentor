@@ -25,7 +25,7 @@ const C = Colors.dark;
 
 // ─── Glossary Data ───────────────────────────────────────────────────────────
 
-const GLOSSARY_IMAGES: Record<string, any> = {
+const GLOSSARY_IMAGES: Record<string, number> = {
   FVG: require("@/assets/images/chart-fvg.png"),
   MSS: require("@/assets/images/chart-mss.png"),
   "Liquidity Sweep": require("@/assets/images/chart-liquidity-sweep.png"),
@@ -195,6 +195,7 @@ function QuizView() {
   const [answered, setAnswered] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
+  const [maxScore, setMaxScore] = useState(0);
   const [diffScore, setDiffScore] = useState(0);
   const [done, setDone] = useState(false);
   const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
@@ -205,12 +206,17 @@ function QuizView() {
   const q = activeQuestion?.q ?? null;
   const isCorrect = q ? selected === q.answer : false;
 
+  function diffPoints(d: Difficulty): number {
+    return d === "easy" ? 1 : d === "medium" ? 2 : 3;
+  }
+
   function handleSelect(idx: number) {
     if (selected !== null || !q || !activeQuestion) return;
     setSelected(idx);
+    const pts = diffPoints(q.difficulty);
+    setMaxScore((s) => s + pts);
     const correct = idx === q.answer;
     if (correct) {
-      const pts = q.difficulty === "easy" ? 1 : q.difficulty === "medium" ? 2 : 3;
       setScore((s) => s + pts);
       setDiffScore((s) => s + 1);
     } else {
@@ -251,6 +257,7 @@ function QuizView() {
     setAnswered(0);
     setSelected(null);
     setScore(0);
+    setMaxScore(0);
     setDiffScore(0);
     setDone(false);
     const emptySet = new Set<number>();
@@ -258,15 +265,14 @@ function QuizView() {
     setActiveQuestion(pickQuestion("medium", emptySet));
   }
 
-  const maxPossible = TOTAL_QUIZ_QUESTIONS * 3;
-  const pct = Math.round((score / maxPossible) * 100);
+  const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
 
   if (done) {
     return (
       <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }}>
         <View style={quizStyles.resultCard}>
           <Text style={quizStyles.resultEmoji}>{pct >= 70 ? "🏆" : pct >= 40 ? "📈" : "📚"}</Text>
-          <Text style={quizStyles.resultScore}>{score}/{maxPossible}</Text>
+          <Text style={quizStyles.resultScore}>{score}/{maxScore}</Text>
           <Text style={quizStyles.resultPct}>{pct}%</Text>
           <Text style={quizStyles.resultMsg}>
             {pct >= 70 ? "ICT Concept Master! You dominated the adaptive quiz." : pct >= 40 ? "Good progress — the quiz adjusted to your level. Review and retry!" : "Keep studying — review the glossary and plan, then try again!"}
@@ -302,7 +308,7 @@ function QuizView() {
         <Text style={quizStyles.scoreText}>Score: {score}</Text>
       </View>
       <View style={quizStyles.progressBar}>
-        <View style={[quizStyles.progressFill, { width: `${((answered) / TOTAL_QUIZ_QUESTIONS) * 100}%` as any }]} />
+        <View style={[quizStyles.progressFill, { width: `${((answered) / TOTAL_QUIZ_QUESTIONS) * 100}%` }]} />
       </View>
 
       <View style={quizStyles.diffBadgeRow}>
@@ -508,7 +514,7 @@ function MentorView() {
 
 // ─── Trading Plan Data ────────────────────────────────────────────────────────
 
-const PLAN_IMAGES: Record<string, any> = {
+const PLAN_IMAGES: Record<string, number> = {
   "Conservative Entry": require("@/assets/images/chart-conservative-entry.png"),
   "Aggressive Entry (Silver Bullet)": require("@/assets/images/chart-silver-bullet.png"),
   "Exit Criteria": require("@/assets/images/chart-exit-criteria.png"),
@@ -683,7 +689,7 @@ const glossStyles = StyleSheet.create({
   fullName: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: C.textSecondary },
   cardBody: { paddingHorizontal: 14, paddingBottom: 14 },
   definition: { fontSize: 14, color: C.text, lineHeight: 22, marginBottom: 12 },
-  chartImage: { width: "100%" as any, height: 200, borderRadius: 10, marginBottom: 12 },
+  chartImage: { width: "100%", height: 200, borderRadius: 10, marginBottom: 12 },
   tipBox: { borderLeftWidth: 3, paddingLeft: 12, paddingVertical: 4 },
   tipLabel: { fontSize: 11, fontFamily: "Inter_700Bold", marginBottom: 4 },
   tipText: { fontSize: 13, color: C.textSecondary, lineHeight: 20 },
@@ -694,7 +700,7 @@ const quizStyles = StyleSheet.create({
   progressText: { fontSize: 13, color: C.textSecondary },
   scoreText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.accent },
   progressBar: { height: 4, backgroundColor: C.cardBorder, borderRadius: 2, marginBottom: 16, overflow: "hidden" },
-  progressFill: { height: "100%" as any, backgroundColor: C.accent, borderRadius: 2 },
+  progressFill: { height: 4, backgroundColor: C.accent, borderRadius: 2 },
   diffBadgeRow: { marginBottom: 10 },
   diffBadge: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   diffBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
@@ -751,7 +757,7 @@ const planStyles = StyleSheet.create({
   card: { backgroundColor: C.backgroundSecondary, borderRadius: 14, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 12, overflow: "hidden" },
   cardHeaderBar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
   cardTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  chartImage: { width: "100%" as any, height: 180, marginBottom: 4 },
+  chartImage: { width: "100%", height: 180, marginBottom: 4 },
   itemRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   itemDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
   itemLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 2 },
