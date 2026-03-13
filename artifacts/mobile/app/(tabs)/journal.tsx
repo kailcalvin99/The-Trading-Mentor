@@ -11,8 +11,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useListTrades, useCreateTrade, useDeleteTrade } from "@workspace/api-client-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import Colors from "@/constants/colors";
 
@@ -120,9 +120,9 @@ export default function JournalScreen() {
   const [form, setForm] = useState<TradeFormData>({ ...DEFAULT_FORM });
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
 
-  const { data: trades = [] } = apiClient.useQuery("get", "/trades");
-  const { mutateAsync: createTrade } = apiClient.useMutation("post", "/trades");
-  const { mutateAsync: deleteTrade } = apiClient.useMutation("delete", "/trades/{id}");
+  const { data: trades = [] } = useListTrades();
+  const { mutateAsync: createTradeMut } = useCreateTrade();
+  const { mutateAsync: deleteTradeMut } = useDeleteTrade();
 
   const draftTrades = (trades as any[]).filter((t: any) => t.isDraft);
   const completedTrades = (trades as any[]).filter((t: any) => !t.isDraft);
@@ -177,30 +177,28 @@ export default function JournalScreen() {
     if (!form.pair || !form.riskPct) return Alert.alert("Fill in pair and risk %");
     try {
       if (editingDraftId) {
-        await deleteTrade({ params: { path: { id: editingDraftId } } });
+        await deleteTradeMut(editingDraftId);
       }
-      await createTrade({
-        body: {
-          pair: form.pair,
-          entryTime: form.entryTime,
-          riskPct: form.riskPct,
-          liquiditySweep: form.liquiditySweep,
-          outcome: form.outcome || undefined,
-          notes: form.notes || undefined,
-          behaviorTag: form.behaviorTag || undefined,
-          followedTimeRule: form.followedTimeRule ?? undefined,
-          hasFvgConfirmation: form.hasFvgConfirmation ?? undefined,
-          stressLevel: form.stressLevel,
-          isDraft: false,
-        } as any,
-      });
-      qc.invalidateQueries({ queryKey: ["get", "/trades"] });
+      await createTradeMut({
+        pair: form.pair,
+        entryTime: form.entryTime,
+        riskPct: form.riskPct,
+        liquiditySweep: form.liquiditySweep,
+        outcome: form.outcome || undefined,
+        notes: form.notes || undefined,
+        behaviorTag: form.behaviorTag || undefined,
+        followedTimeRule: form.followedTimeRule ?? undefined,
+        hasFvgConfirmation: form.hasFvgConfirmation ?? undefined,
+        stressLevel: form.stressLevel,
+        isDraft: false,
+      } as any);
+      qc.invalidateQueries({ queryKey: [`/api/trades`] });
       setShowForm(false);
       setEditingDraftId(null);
     } catch {
       Alert.alert("Error", "Could not save trade");
     }
-  }, [form, editingDraftId, createTrade, deleteTrade, qc]);
+  }, [form, editingDraftId, createTradeMut, deleteTradeMut, qc]);
 
   const handleDelete = useCallback(async (id: number) => {
     Alert.alert("Delete Trade?", "This cannot be undone.", [
@@ -209,12 +207,12 @@ export default function JournalScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await deleteTrade({ params: { path: { id } } });
-          qc.invalidateQueries({ queryKey: ["get", "/trades"] });
+          await deleteTradeMut(id);
+          qc.invalidateQueries({ queryKey: [`/api/trades`] });
         },
       },
     ]);
-  }, [deleteTrade, qc]);
+  }, [deleteTradeMut, qc]);
 
   const tagInfo = (tag: string) => BEHAVIOR_TAGS.find((b) => b.tag === tag);
 
@@ -405,7 +403,7 @@ export default function JournalScreen() {
             <Text style={formStyles.fieldLabel}>Outcome</Text>
             <View style={formStyles.outcomeRow}>
               {(["win", "loss", "breakeven"] as OutcomeType[]).map((o) => (
-                <TouchableOpacity key={o} style={[formStyles.outcomeBtn, form.outcome === o && formStyles.outcomeBtnActive(o as string)]} onPress={() => setField("outcome", o)}>
+                <TouchableOpacity key={o} style={[formStyles.outcomeBtn, form.outcome === o && { backgroundColor: o === "win" ? "#00C89625" : o === "loss" ? "#EF444425" : "#55555525", borderColor: o === "win" ? "#00C896" : o === "loss" ? "#EF4444" : "#888" }]} onPress={() => setField("outcome", o)}>
                   <Text style={[formStyles.outcomeBtnText, form.outcome === o && { color: "#0A0A0F", fontFamily: "Inter_700Bold" }]}>
                     {o.charAt(0).toUpperCase() + o.slice(1)}
                   </Text>
@@ -563,10 +561,6 @@ const formStyles = StyleSheet.create({
   pairBtnTextActive: { color: "#0A0A0F" },
   outcomeRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   outcomeBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder, alignItems: "center" },
-  outcomeBtnActive: (o: string) => ({
-    backgroundColor: o === "win" ? "#00C89625" : o === "loss" ? "#EF444425" : "#55555525",
-    borderColor: o === "win" ? "#00C896" : o === "loss" ? "#EF4444" : "#888",
-  }),
   outcomeBtnText: { fontSize: 14, fontFamily: "Inter_500Medium", color: C.textSecondary },
   toggleRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 16, padding: 14, backgroundColor: C.backgroundSecondary, borderRadius: 12, borderWidth: 1, borderColor: C.cardBorder },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center", marginTop: 2 },

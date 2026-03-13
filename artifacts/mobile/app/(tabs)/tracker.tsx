@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { apiClient } from "@workspace/api-client-react";
+import { useGetPropAccount, useAddDailyLoss, useResetDailyLoss } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
@@ -49,9 +49,9 @@ export default function RiskShieldScreen() {
   const [lossInput, setLossInput] = useState("");
   const [showMonkMode, setShowMonkMode] = useState(false);
 
-  const { data: account, refetch } = apiClient.useQuery("get", "/prop/account");
-  const { mutateAsync: addLoss } = apiClient.useMutation("post", "/prop/account/daily-loss");
-  const { mutateAsync: resetLoss } = apiClient.useMutation("post", "/prop/account/reset-daily-loss");
+  const { data: account, refetch } = useGetPropAccount();
+  const { mutateAsync: addLoss } = useAddDailyLoss();
+  const { mutateAsync: resetLoss } = useResetDailyLoss();
 
   const balance = account?.balance ?? 50000;
   const startingBalance = account?.startingBalance ?? 50000;
@@ -74,7 +74,7 @@ export default function RiskShieldScreen() {
     const amount = parseFloat(lossInput);
     if (isNaN(amount) || amount <= 0) return Alert.alert("Enter a valid loss amount");
     try {
-      await addLoss({ body: { amount } });
+      await addLoss({ amount });
       setLossInput("");
       refetch();
     } catch {
@@ -85,7 +85,7 @@ export default function RiskShieldScreen() {
   const handleReset = useCallback(async () => {
     Alert.alert("Reset Daily Loss?", "This will reset today's loss counter to zero.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Reset", onPress: async () => { await resetLoss({}); refetch(); } },
+      { text: "Reset", onPress: async () => { await resetLoss(); refetch(); } },
     ]);
   }, [resetLoss, refetch]);
 

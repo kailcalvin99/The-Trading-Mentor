@@ -12,8 +12,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { apiClient } from "@workspace/api-client-react";
-import { streamChat } from "@/lib/api";
+import {
+  useListGeminiConversations,
+  createGeminiConversation,
+  getGeminiConversation,
+} from "@workspace/api-client-react";
+import { streamMessage } from "@/lib/api";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
@@ -290,7 +294,7 @@ function MentorView() {
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const { data: conversations, refetch } = apiClient.useQuery("get", "/gemini/conversations");
+  const { data: conversations, refetch } = useListGeminiConversations();
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
@@ -298,9 +302,9 @@ function MentorView() {
 
   async function startConversation() {
     try {
-      const res = await apiClient.POST("/gemini/conversations", { body: { title: "NQ Session" } });
-      if (res.data) {
-        setConversationId(res.data.id);
+      const res = await createGeminiConversation({ title: "NQ Session" });
+      if (res) {
+        setConversationId(res.id);
         setMessages([{ role: "assistant", content: "I'm your ICT Trading Mentor. Ask me about FVGs, Liquidity Sweeps, Silver Bullet setups, or NQ Futures strategy." }]);
         refetch();
       }
@@ -310,9 +314,9 @@ function MentorView() {
   async function loadConversation(id: number) {
     setConversationId(id);
     try {
-      const res = await apiClient.GET("/gemini/conversations/{id}", { params: { path: { id } } });
-      if (res.data) {
-        setMessages(res.data.messages.map((m: any) => ({ role: m.role, content: m.content })));
+      const res = await getGeminiConversation(id);
+      if (res) {
+        setMessages((res as any).messages.map((m: any) => ({ role: m.role, content: m.content })));
       }
     } catch {}
   }
@@ -328,21 +332,33 @@ function MentorView() {
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
-      await streamChat(conversationId, userMsg, (chunk) => {
-        assistantMsg += chunk;
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: assistantMsg };
-          return updated;
-        });
-      });
+      await streamMessage(
+        conversationId,
+        userMsg,
+        (chunk) => {
+          assistantMsg += chunk;
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: "assistant", content: assistantMsg };
+            return updated;
+          });
+        },
+        () => { setIsStreaming(false); },
+        () => {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: "assistant", content: "Connection error. Please try again." };
+            return updated;
+          });
+          setIsStreaming(false);
+        }
+      );
     } catch {
       setMessages((prev) => {
         const updated = [...prev];
         updated[updated.length - 1] = { role: "assistant", content: "Connection error. Please try again." };
         return updated;
       });
-    } finally {
       setIsStreaming(false);
     }
   }
