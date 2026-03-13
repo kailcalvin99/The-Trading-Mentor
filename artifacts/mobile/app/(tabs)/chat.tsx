@@ -9,8 +9,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -154,7 +154,7 @@ function GlossaryView() {
                   <Image
                     source={GLOSSARY_IMAGES[item.term]}
                     style={glossStyles.chartImage}
-                    resizeMode="cover"
+                    contentFit="cover"
                   />
                 )}
                 <View style={[glossStyles.tipBox, { borderLeftColor: item.color }]}>
@@ -594,13 +594,6 @@ function PlanView() {
             <Ionicons name={section.icon as any} size={16} color={section.color} />
             <Text style={[planStyles.cardTitle, { color: section.color }]}>{section.title}</Text>
           </View>
-          {PLAN_IMAGES[section.title] && (
-            <Image
-              source={PLAN_IMAGES[section.title]}
-              style={planStyles.chartImage}
-              resizeMode="cover"
-            />
-          )}
           {section.items.map((item, idx) => (
             <View key={idx} style={planStyles.itemRow}>
               <View style={[planStyles.itemDot, { backgroundColor: section.color }]} />
@@ -610,6 +603,13 @@ function PlanView() {
               </View>
             </View>
           ))}
+          {PLAN_IMAGES[section.title] && (
+            <Image
+              source={PLAN_IMAGES[section.title]}
+              style={planStyles.chartImage}
+              contentFit="cover"
+            />
+          )}
         </View>
       ))}
     </ScrollView>
