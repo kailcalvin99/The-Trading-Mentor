@@ -20,6 +20,23 @@ const C = Colors.dark;
 
 type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
+type EntryMode = "conservative" | "aggressive";
+
+const CONSERVATIVE_CRITERIA = [
+  { key: "bias", label: "Bias Check", desc: "1-Hour chart is clearly Bullish or Bearish" },
+  { key: "sweep", label: "The Sweep", desc: "Price took out a 15-min High or Low" },
+  { key: "shift", label: "The Shift", desc: "5-min MSS with Displacement (fast move)" },
+  { key: "gap", label: "The Gap", desc: "FVG identified on the chart" },
+  { key: "fib", label: "The Fib", desc: "Entry is in Discount (buys) or Premium (sells)" },
+  { key: "trigger", label: "The Trigger", desc: "Limit Order placed at start of FVG" },
+];
+
+const AGGRESSIVE_CRITERIA = [
+  { key: "time", label: "Time Check", desc: "Between 10:00 AM and 11:00 AM EST" },
+  { key: "poi", label: "POI Identified", desc: "Price heading toward a clear High or Low" },
+  { key: "fvg1m", label: "1m FVG Entry", desc: "First 1-min FVG after a liquidity grab" },
+  { key: "risk", label: "Risk ≤ 1%", desc: "Max 1% risk on this trade" },
+];
 
 const BEHAVIOR_TAGS: { tag: BehaviorTag; color: string; icon: string }[] = [
   { tag: "Disciplined", color: "#00C896", icon: "shield-checkmark-outline" },
@@ -119,6 +136,8 @@ export default function JournalScreen() {
   const [showMonk, setShowMonk] = useState(false);
   const [form, setForm] = useState<TradeFormData>({ ...DEFAULT_FORM });
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
+  const [entryMode, setEntryMode] = useState<EntryMode>("conservative");
+  const [entryCriteria, setEntryCriteria] = useState<Record<string, boolean>>({});
 
   const { data: tradesData } = useListTrades();
   const trades = tradesData ?? [];
@@ -140,6 +159,14 @@ export default function JournalScreen() {
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
+  const activeCriteria = entryMode === "conservative" ? CONSERVATIVE_CRITERIA : AGGRESSIVE_CRITERIA;
+  const criteriaChecked = activeCriteria.filter((c) => entryCriteria[c.key]).length;
+  const allCriteriaMet = criteriaChecked === activeCriteria.length;
+
+  function toggleCriterion(key: string) {
+    setEntryCriteria((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
   function openNewForm() {
     if (!isRoutineComplete) {
       Alert.alert(
@@ -150,6 +177,8 @@ export default function JournalScreen() {
       return;
     }
     setEditingDraftId(null);
+    setEntryMode("conservative");
+    setEntryCriteria({});
     setForm({
       ...DEFAULT_FORM,
       entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
@@ -159,6 +188,8 @@ export default function JournalScreen() {
 
   function openDraftForm(draft: any) {
     setEditingDraftId(draft.id);
+    setEntryMode("conservative");
+    setEntryCriteria({});
     setForm({
       pair: draft.pair || "NQ1!",
       entryTime: draft.entryTime || new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
@@ -176,17 +207,20 @@ export default function JournalScreen() {
 
   const handleSubmit = useCallback(async () => {
     if (!form.pair || !form.riskPct) return Alert.alert("Fill in pair and risk %");
+    if (!allCriteriaMet) return Alert.alert("Entry Criteria Required", "Check off all entry criteria before saving.");
     try {
       if (editingDraftId) {
         await deleteTradeMut(editingDraftId);
       }
+      const modeTag = entryMode === "conservative" ? "[Conservative]" : "[Silver Bullet]";
+      const notesWithMode = form.notes ? `${modeTag} ${form.notes}` : modeTag;
       await createTradeMut({
         pair: form.pair,
         entryTime: form.entryTime,
         riskPct: form.riskPct,
         liquiditySweep: form.liquiditySweep,
         outcome: form.outcome || undefined,
-        notes: form.notes || undefined,
+        notes: notesWithMode,
         behaviorTag: form.behaviorTag || undefined,
         followedTimeRule: form.followedTimeRule ?? undefined,
         hasFvgConfirmation: form.hasFvgConfirmation ?? undefined,
@@ -199,7 +233,7 @@ export default function JournalScreen() {
     } catch {
       Alert.alert("Error", "Could not save trade");
     }
-  }, [form, editingDraftId, createTradeMut, deleteTradeMut, qc]);
+  }, [form, editingDraftId, entryMode, allCriteriaMet, createTradeMut, deleteTradeMut, qc]);
 
   const handleDelete = useCallback(async (id: number) => {
     Alert.alert("Delete Trade?", "This cannot be undone.", [
@@ -388,6 +422,59 @@ export default function JournalScreen() {
               </View>
             </ScrollView>
 
+            {/* Entry Mode Toggle */}
+            <Text style={formStyles.fieldLabel}>Entry Mode</Text>
+            <View style={ecStyles.modeRow}>
+              <TouchableOpacity
+                style={[ecStyles.modeBtn, entryMode === "conservative" && ecStyles.modeBtnActive]}
+                onPress={() => { setEntryMode("conservative"); setEntryCriteria({}); }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="shield-checkmark-outline" size={14} color={entryMode === "conservative" ? "#0A0A0F" : C.textSecondary} />
+                <Text style={[ecStyles.modeBtnText, entryMode === "conservative" && ecStyles.modeBtnTextActive]}>Conservative</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[ecStyles.modeBtn, entryMode === "aggressive" && ecStyles.modeBtnActiveAgg]}
+                onPress={() => { setEntryMode("aggressive"); setEntryCriteria({}); }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="flash-outline" size={14} color={entryMode === "aggressive" ? "#0A0A0F" : C.textSecondary} />
+                <Text style={[ecStyles.modeBtnText, entryMode === "aggressive" && ecStyles.modeBtnTextActive]}>Silver Bullet</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Entry Criteria Checklist */}
+            <View style={ecStyles.criteriaCard}>
+              <View style={ecStyles.criteriaHeader}>
+                <Ionicons name="list-outline" size={14} color={allCriteriaMet ? C.accent : "#F59E0B"} />
+                <Text style={[ecStyles.criteriaTitle, { color: allCriteriaMet ? C.accent : "#F59E0B" }]}>
+                  Entry Criteria
+                </Text>
+                <View style={[ecStyles.progressBadge, allCriteriaMet && { backgroundColor: C.accent + "25", borderColor: C.accent }]}>
+                  <Text style={[ecStyles.progressText, allCriteriaMet && { color: C.accent }]}>
+                    {criteriaChecked}/{activeCriteria.length}
+                  </Text>
+                </View>
+              </View>
+              <View style={ecStyles.progressBar}>
+                <View style={[ecStyles.progressFill, { width: `${(criteriaChecked / activeCriteria.length) * 100}%` as any, backgroundColor: allCriteriaMet ? C.accent : "#F59E0B" }]} />
+              </View>
+              {activeCriteria.map((c) => (
+                <TouchableOpacity key={c.key} style={ecStyles.criterionRow} onPress={() => toggleCriterion(c.key)} activeOpacity={0.7}>
+                  <View style={[ecStyles.criterionCheck, entryCriteria[c.key] && ecStyles.criterionChecked]}>
+                    {entryCriteria[c.key] && <Ionicons name="checkmark" size={13} color="#0A0A0F" />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[ecStyles.criterionLabel, entryCriteria[c.key] && { color: C.accent }]}>{c.label}</Text>
+                    <Text style={ecStyles.criterionDesc}>{c.desc}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {!allCriteriaMet && (
+                <Text style={ecStyles.gateWarning}>All criteria must be checked to save this trade</Text>
+              )}
+            </View>
+
             {/* Entry Time & Risk */}
             <View style={formStyles.row}>
               <View style={{ flex: 1 }}>
@@ -469,8 +556,10 @@ export default function JournalScreen() {
               numberOfLines={4}
             />
 
-            <TouchableOpacity style={formStyles.submitBtn} onPress={handleSubmit}>
-              <Text style={formStyles.submitBtnText}>{editingDraftId ? "Complete Trade Entry" : "Save Trade"}</Text>
+            <TouchableOpacity style={[formStyles.submitBtn, !allCriteriaMet && { backgroundColor: C.cardBorder, opacity: 0.6 }]} onPress={handleSubmit} disabled={!allCriteriaMet}>
+              <Text style={[formStyles.submitBtnText, !allCriteriaMet && { color: C.textSecondary }]}>
+                {!allCriteriaMet ? `${criteriaChecked}/${activeCriteria.length} Criteria Met` : editingDraftId ? "Complete Trade Entry" : "Save Trade"}
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -607,4 +696,26 @@ const monkStyles = StyleSheet.create({
   ruleText: { flex: 1, fontSize: 16, color: C.text, lineHeight: 26 },
   closeBtn: { backgroundColor: C.accent, borderRadius: 16, padding: 18, alignItems: "center" },
   closeBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+});
+
+const ecStyles = StyleSheet.create({
+  modeRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  modeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder },
+  modeBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
+  modeBtnActiveAgg: { backgroundColor: "#F59E0B", borderColor: "#F59E0B" },
+  modeBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.textSecondary },
+  modeBtnTextActive: { color: "#0A0A0F", fontFamily: "Inter_700Bold" },
+  criteriaCard: { backgroundColor: C.backgroundSecondary, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.accent + "33", marginBottom: 16 },
+  criteriaHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  criteriaTitle: { flex: 1, fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  progressBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(245,158,11,0.15)", borderWidth: 1, borderColor: "#F59E0B" },
+  progressText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#F59E0B" },
+  progressBar: { height: 3, backgroundColor: C.cardBorder, borderRadius: 2, marginBottom: 12, overflow: "hidden" },
+  progressFill: { height: "100%" as any, borderRadius: 2 },
+  criterionRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 8 },
+  criterionCheck: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center", marginTop: 1 },
+  criterionChecked: { backgroundColor: C.accent, borderColor: C.accent },
+  criterionLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 1 },
+  criterionDesc: { fontSize: 12, color: C.textSecondary, lineHeight: 18 },
+  gateWarning: { fontSize: 11, color: "#F59E0B", textAlign: "center", marginTop: 8, fontFamily: "Inter_500Medium" },
 });

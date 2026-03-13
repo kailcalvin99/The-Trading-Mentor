@@ -134,7 +134,7 @@ const QUIZ = [
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = "glossary" | "quiz" | "mentor";
+type Tab = "glossary" | "quiz" | "mentor" | "plan";
 
 interface Message {
   role: "user" | "assistant";
@@ -435,7 +435,121 @@ function MentorView() {
   );
 }
 
+// ─── Trading Plan Data ────────────────────────────────────────────────────────
+
+const PLAN_SECTIONS = [
+  {
+    title: "The Tools",
+    color: "#00C896",
+    icon: "construct-outline",
+    items: [
+      { label: "MSS", desc: "Market Structure Shift — our signal that the trend has changed." },
+      { label: "FVG", desc: "Fair Value Gap — our entry zone." },
+      { label: "Liquidity", desc: "Internal/External — our targets (Old Highs/Lows)." },
+      { label: "Premium vs. Discount", desc: "Fibonacci — we only buy in Discount and sell in Premium." },
+      { label: "Kill Zones", desc: "London (2–5 AM EST) and NY Silver Bullet (10–11 AM EST)." },
+    ],
+  },
+  {
+    title: "Timeframe Alignment",
+    color: "#818CF8",
+    icon: "layers-outline",
+    items: [
+      { label: "HTF: Daily & 1-Hour", desc: "Find the Draw on Liquidity — where is price going?" },
+      { label: "LTF: 15-Min & 5-Min", desc: "Find the MSS and the FVG entry." },
+    ],
+  },
+  {
+    title: "Conservative Entry",
+    color: "#00C896",
+    icon: "shield-checkmark-outline",
+    items: [
+      { label: "1. Bias Check", desc: "Is the 1-Hour chart Bullish or Bearish?" },
+      { label: "2. The Sweep", desc: "Wait for price to take out a 15-min High or Low." },
+      { label: "3. The Shift", desc: "Wait for a 5-min MSS with Displacement (a fast move)." },
+      { label: "4. The Gap", desc: "Identify the Fair Value Gap (FVG) left behind." },
+      { label: "5. The Fib", desc: "Ensure entry is in Discount (buys) or Premium (sells)." },
+      { label: "6. The Trigger", desc: "Place a Limit Order at the start of the FVG." },
+    ],
+  },
+  {
+    title: "Aggressive Entry (Silver Bullet)",
+    color: "#F59E0B",
+    icon: "flash-outline",
+    items: [
+      { label: "Time Check", desc: "Must be between 10:00 AM and 11:00 AM EST." },
+      { label: "Identify POI", desc: "Price must be heading toward a clear High or Low." },
+      { label: "The Gap", desc: "Enter at the first 1-min FVG after a liquidity grab." },
+      { label: "Risk", desc: "Max 1% risk per trade." },
+    ],
+  },
+  {
+    title: "Exit Criteria",
+    color: "#06B6D4",
+    icon: "exit-outline",
+    items: [
+      { label: "Stop Loss", desc: "Placed at the high/low of the candle that created the MSS." },
+      { label: "TP1", desc: "Next Internal High or Low (1:1 or 1:2 ratio)." },
+      { label: "TP2", desc: "External Liquidity — the main target." },
+      { label: "Trailing", desc: "Move SL to Breakeven once TP1 is hit." },
+    ],
+  },
+  {
+    title: "Prop Firm Survival Rules",
+    color: "#EF4444",
+    icon: "warning-outline",
+    items: [
+      { label: "Max Daily Loss", desc: "2% — if hit, app locks for 24 hours." },
+      { label: "Max Weekly Loss", desc: "4%." },
+      { label: "News Rule", desc: "No trading 5 min before or after Red Folder news." },
+    ],
+  },
+  {
+    title: "Key Takeaways",
+    color: "#EC4899",
+    icon: "bulb-outline",
+    items: [
+      { label: "Top-Down", desc: "Always start with Daily. If Daily is going down, don't buy on 1-min." },
+      { label: "Patience", desc: "If the market doesn't hit your FVG, there is no trade." },
+      { label: "Discipline", desc: "Following this plan is how you get funded. Breaking it is how you stay a student." },
+    ],
+  },
+];
+
+function PlanView() {
+  return (
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+      <Text style={planStyles.heading}>NQ Futures: ICT Trading Plan</Text>
+      <Text style={planStyles.subheading}>Your mechanical, top-down trading framework</Text>
+      {PLAN_SECTIONS.map((section) => (
+        <View key={section.title} style={planStyles.card}>
+          <View style={[planStyles.cardHeaderBar, { backgroundColor: section.color + "15" }]}>
+            <Ionicons name={section.icon as any} size={16} color={section.color} />
+            <Text style={[planStyles.cardTitle, { color: section.color }]}>{section.title}</Text>
+          </View>
+          {section.items.map((item, idx) => (
+            <View key={idx} style={planStyles.itemRow}>
+              <View style={[planStyles.itemDot, { backgroundColor: section.color }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={planStyles.itemLabel}>{item.label}</Text>
+                <Text style={planStyles.itemDesc}>{item.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
+
+const TAB_LABELS: Record<Tab, string> = {
+  glossary: "Glossary",
+  quiz: "Quiz",
+  mentor: "Mentor",
+  plan: "Plan",
+};
 
 export default function AcademyScreen() {
   const [tab, setTab] = useState<Tab>("glossary");
@@ -445,10 +559,10 @@ export default function AcademyScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>ICT Academy</Text>
         <View style={styles.tabBar}>
-          {(["glossary", "quiz", "mentor"] as Tab[]).map((t) => (
+          {(["glossary", "quiz", "mentor", "plan"] as Tab[]).map((t) => (
             <TouchableOpacity key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
               <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
-                {t === "glossary" ? "Glossary" : t === "quiz" ? "Quiz" : "Mentor"}
+                {TAB_LABELS[t]}
               </Text>
             </TouchableOpacity>
           ))}
@@ -458,6 +572,7 @@ export default function AcademyScreen() {
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
         {tab === "mentor" && <MentorView />}
+        {tab === "plan" && <PlanView />}
       </View>
     </SafeAreaView>
   );
@@ -540,4 +655,16 @@ const mentorStyles = StyleSheet.create({
   inputRow: { flexDirection: "row", alignItems: "flex-end", padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: C.cardBorder },
   input: { flex: 1, backgroundColor: C.backgroundSecondary, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: C.text, borderWidth: 1, borderColor: C.cardBorder, maxHeight: 100 },
   sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.accent, alignItems: "center", justifyContent: "center" },
+});
+
+const planStyles = StyleSheet.create({
+  heading: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 4 },
+  subheading: { fontSize: 13, color: C.textSecondary, marginBottom: 16 },
+  card: { backgroundColor: C.backgroundSecondary, borderRadius: 14, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 12, overflow: "hidden" },
+  cardHeaderBar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
+  cardTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  itemRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
+  itemDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
+  itemLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 2 },
+  itemDesc: { fontSize: 13, color: C.textSecondary, lineHeight: 20 },
 });
