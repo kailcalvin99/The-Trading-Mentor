@@ -96,7 +96,7 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 Expo React Native mobile app with 4 tabs:
 
 1. **Daily Planner** — Morning routine checklist (4 core ICT items gate trading lockout) + custom "My Routine" personal items with snooze + kill zone countdown timers + red news lockout
-2. **ICT Academy** — 4 sub-tabs: Glossary (ICT concept cards), Quiz (NQ scenario quiz), Mentor (Gemini AI chat), Plan (full ICT Trading Plan reference with Tools, Timeframe Alignment, Conservative/Aggressive entry, Exit Criteria, Prop Firm Rules, Key Takeaways)
+2. **ICT Academy** — 4 sub-tabs: Glossary (ICT concept cards with annotated chart images), Quiz (adaptive 10-question quiz with 3 difficulty tiers and weighted scoring), Mentor (Gemini AI chat), Plan (full ICT Trading Plan reference with chart diagrams for Conservative Entry, Silver Bullet, and Exit Criteria)
 3. **Risk Shield** — Prop firm tracker with RED mode (2% daily loss lockout), NQ/MNQ position size calculator, Focus Mode modal
 4. **Smart Journal** — Trade logging with mandatory Entry Criteria checklist (Conservative: 6 items, Silver Bullet: 4 items), behavioral tagging (FOMO/Disciplined/Chased/Greedy), TradingView webhook drafts, Monk Mode
 

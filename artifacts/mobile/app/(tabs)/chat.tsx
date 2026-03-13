@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +24,14 @@ import Colors from "@/constants/colors";
 const C = Colors.dark;
 
 // ─── Glossary Data ───────────────────────────────────────────────────────────
+
+const GLOSSARY_IMAGES: Record<string, any> = {
+  FVG: require("@/assets/images/chart-fvg.png"),
+  MSS: require("@/assets/images/chart-mss.png"),
+  "Liquidity Sweep": require("@/assets/images/chart-liquidity-sweep.png"),
+  OTE: require("@/assets/images/chart-ote.png"),
+  "Kill Zone": require("@/assets/images/chart-killzone.png"),
+};
 
 const GLOSSARY = [
   {
@@ -72,64 +81,37 @@ const GLOSSARY = [
   },
 ];
 
-// ─── Quiz Data ────────────────────────────────────────────────────────────────
+// ─── Adaptive Quiz Data ──────────────────────────────────────────────────────
 
-const QUIZ = [
-  {
-    scenario: "NQ sweeps the 9:00 AM candle low, then immediately breaks back above the 9:00 AM high with a full candle close. What should you do next?",
-    options: [
-      "Enter long immediately at market price",
-      "Wait for a 15-minute FVG to form, then buy into the gap",
-      "Short because the low was already swept",
-      "Skip — no valid setup here",
-    ],
-    answer: 1,
-    explanation: "5th-grade version: Imagine the market faked everyone out by going down first (sweep), then slammed back up (MSS). Now you wait for it to come back down a little to a 'price gap' (FVG) and that's your ride! Entering at market after the MSS gives you bad risk:reward.",
-  },
-  {
-    scenario: "NQ is clearly above the daily 50% level — it's in Premium. Price creates a bearish FVG on the 15-minute chart. What do you do?",
-    options: [
-      "Buy — the FVG is bullish",
-      "Wait for price to fill the FVG from below, then look for a short",
-      "Ignore FVGs in premium — they don't matter",
-      "Only trade if it's a Monday",
-    ],
-    answer: 1,
-    explanation: "5th-grade version: When prices are expensive (Premium), you want to SELL, not buy. The FVG is like a ceiling — when price comes back up to touch it, that's your chance to short. Think of it as a sale sign — you sell when things are overpriced!",
-  },
-  {
-    scenario: "It's 10:22 AM EST. NQ sweeps above the 9:30 AM opening high, then drops back through it and forms a bearish FVG. What is this called?",
-    options: [
-      "A failed breakout — avoid trading",
-      "A perfect Silver Bullet short setup",
-      "A buy signal because price went up first",
-      "Too late in the day to trade",
-    ],
-    answer: 1,
-    explanation: "5th-grade version: It's the Silver Bullet window (10–11 AM)! NQ went up to steal the stops above the opening high (sweep), then came back down (MSS) and left a price gap (FVG). This is exactly what ICT teaches — short into that gap! Cha-ching!",
-  },
-  {
-    scenario: "ForexFactory shows NFP (Non-Farm Payrolls) news at 8:30 AM with a red folder icon. When should you trade NQ today?",
-    options: [
-      "Right at 8:30 AM — biggest moves happen then",
-      "At 9:00 AM before the NY open",
-      "Wait until 10:00 AM after volatility settles",
-      "Don't trade at all — red folder = no trading ever",
-    ],
-    answer: 2,
-    explanation: "5th-grade version: Red folder news is like a tornado warning — you don't go outside! Wait until the storm (news spike) passes. By 10 AM, the dust has settled and you can see the real direction. Trading right at 8:30 AM is gambling, not trading.",
-  },
-  {
-    scenario: "NQ is in a clear downtrend. Price sweeps above yesterday's high (grabbing buy-side liquidity), then breaks a recent swing low. Where's your entry?",
-    options: [
-      "Short as soon as the high is swept",
-      "Short after the swing low break, ideally inside the bearish FVG",
-      "Long because price went up first",
-      "Wait for 3 more confirmations",
-    ],
-    answer: 1,
-    explanation: "5th-grade version: The market just tricked the buyers (swept their stops above the high), then showed it really wants to go DOWN (broke the swing low = MSS). Now you short inside the gap it left behind (FVG). It's like a trap — price went up to fool people, now it dives down!",
-  },
+type Difficulty = "easy" | "medium" | "hard";
+
+interface QuizQuestion {
+  difficulty: Difficulty;
+  scenario: string;
+  options: string[];
+  answer: number;
+  explanation: string;
+}
+
+const QUIZ_BANK: QuizQuestion[] = [
+  { difficulty: "easy", scenario: "What does FVG stand for in ICT trading?", options: ["Fast Volume Gain", "Fair Value Gap", "Forward Volatility Gauge", "Fibonacci Value Grid"], answer: 1, explanation: "FVG = Fair Value Gap. It's a 3-candle imbalance where the wicks of candles 1 and 3 don't overlap. Price tends to come back and fill this gap — that's where you enter!" },
+  { difficulty: "easy", scenario: "What is the Silver Bullet time window in EST?", options: ["8:00–9:00 AM", "10:00–11:00 AM", "2:00–3:00 PM", "12:00–1:00 PM"], answer: 1, explanation: "The Silver Bullet window is 10:00–11:00 AM EST. This is the prime ICT trading window for NQ — most consistent setups happen here!" },
+  { difficulty: "easy", scenario: "What does MSS mean?", options: ["Moving Stop Strategy", "Market Structure Shift", "Margin Safety System", "Multiple Swing Setup"], answer: 1, explanation: "MSS = Market Structure Shift. It's when price breaks a recent swing high/low with a full candle close, signaling a trend reversal." },
+  { difficulty: "easy", scenario: "In ICT, what is 'Premium' vs 'Discount'?", options: ["Price above/below the 50% level of a range", "High/low volume zones", "Pre-market/post-market sessions", "Bid/ask spread zones"], answer: 0, explanation: "Premium = above the 50% level (expensive zone — look to sell). Discount = below 50% (cheap zone — look to buy). Think of it like shopping — you buy on sale and sell when it's overpriced!" },
+  { difficulty: "easy", scenario: "What is the max daily loss rule for prop firms in this plan?", options: ["1%", "2%", "5%", "10%"], answer: 1, explanation: "Max daily loss is 2%. If you hit it, the app locks you out for 24 hours. This is how you survive prop firm evaluations — protect your capital!" },
+
+  { difficulty: "medium", scenario: "NQ sweeps the 9:00 AM candle low, then immediately breaks back above the 9:00 AM high with a full candle close. What should you do next?", options: ["Enter long immediately at market price", "Wait for a 15-minute FVG to form, then buy into the gap", "Short because the low was already swept", "Skip — no valid setup here"], answer: 1, explanation: "The market faked everyone out by going down first (sweep), then slammed back up (MSS). Now you wait for it to come back down a little to a 'price gap' (FVG) and that's your entry! Entering at market after MSS gives bad risk:reward." },
+  { difficulty: "medium", scenario: "NQ is clearly above the daily 50% level — it's in Premium. Price creates a bearish FVG on the 15-minute chart. What do you do?", options: ["Buy — the FVG is bullish", "Wait for price to fill the FVG from below, then look for a short", "Ignore FVGs in premium — they don't matter", "Only trade if it's a Monday"], answer: 1, explanation: "When prices are expensive (Premium), you want to SELL, not buy. The FVG is like a ceiling — when price comes back up to touch it, that's your chance to short." },
+  { difficulty: "medium", scenario: "ForexFactory shows NFP (Non-Farm Payrolls) news at 8:30 AM with a red folder icon. When should you trade NQ today?", options: ["Right at 8:30 AM — biggest moves happen then", "At 9:00 AM before the NY open", "Wait until 10:00 AM after volatility settles", "Don't trade at all — red folder = no trading ever"], answer: 2, explanation: "Red folder news is like a tornado warning — you don't go outside! Wait until the storm passes. By 10 AM, the dust has settled and you can see the real direction." },
+  { difficulty: "medium", scenario: "NQ is in a clear downtrend. Price sweeps above yesterday's high, then breaks a recent swing low. Where's your entry?", options: ["Short as soon as the high is swept", "Short after the swing low break, ideally inside the bearish FVG", "Long because price went up first", "Wait for 3 more confirmations"], answer: 1, explanation: "The market tricked the buyers (swept their stops above the high), then showed it really wants to go DOWN (MSS). Short inside the FVG it left behind." },
+  { difficulty: "medium", scenario: "You enter a long trade on NQ and TP1 is hit. What should you do with your stop loss?", options: ["Keep it where it is", "Move it to breakeven", "Remove it entirely", "Widen it by 50%"], answer: 1, explanation: "Once TP1 is hit, you move your stop loss to breakeven. This way you're in a risk-free trade while letting the remaining position run to TP2 (external liquidity)." },
+  { difficulty: "medium", scenario: "You're about to enter a trade. Your Entry Criteria checklist shows 4/6 items checked. Can you log this trade?", options: ["Yes — 4 out of 6 is good enough", "No — all 6 criteria must be checked", "Only if it's during the Silver Bullet window", "Yes, but only as a draft"], answer: 1, explanation: "ALL entry criteria must be checked before logging a trade. The app enforces this to keep your trading mechanical and disciplined. No shortcuts!" },
+
+  { difficulty: "hard", scenario: "It's 10:22 AM EST. NQ sweeps above the 9:30 AM opening high, then drops back through it and forms a bearish FVG on the 1-minute chart. What setup is this?", options: ["A failed breakout — avoid trading", "A perfect Silver Bullet short setup", "A buy signal because price went up first", "Too late in the day to trade"], answer: 1, explanation: "It's the Silver Bullet window (10–11 AM)! NQ went up to steal the stops above the opening high (sweep), then came back down (MSS) and left a 1-minute FVG. This is the aggressive Silver Bullet short entry!" },
+  { difficulty: "hard", scenario: "NQ shows a bullish MSS on the 5-minute chart, but the 1-Hour is in a bearish trend. The Fibonacci shows the entry is at the 55% retracement level. Should you take this trade?", options: ["Yes — the 5-minute MSS is enough confirmation", "No — the entry is NOT in the OTE zone (62%–79%)", "Yes — but only with half size", "No — because 5-minute and 1-hour disagree, AND it's not at OTE"], answer: 3, explanation: "Two problems here: 1) The 5-minute is bullish but 1-Hour is bearish — timeframes disagree (Top-Down rule violated). 2) The 55% level is NOT in the OTE zone (62%–79%). Both conditions fail." },
+  { difficulty: "hard", scenario: "NQ sweeps sell-side liquidity at 10:05 AM, creates a bullish MSS on the 5-minute with displacement, and leaves a FVG. The FVG is at the 71% Fibonacci retracement. The 1-Hour shows a bullish bias. How many Conservative Entry criteria does this meet?", options: ["3 out of 6", "4 out of 6", "5 out of 6", "All 6 — it's a textbook setup"], answer: 2, explanation: "Let's check: 1) Bias Check ✓ (1H bullish). 2) The Sweep ✓ (sell-side liquidity swept). 3) The Shift ✓ (5-min MSS with displacement). 4) The Gap ✓ (FVG identified). 5) The Fib ✓ (71% is in the OTE zone). That's 5/6 — you still need to place the limit order at the FVG (The Trigger)." },
+  { difficulty: "hard", scenario: "You're in a long trade on NQ. Price hits TP1 (internal liquidity) at a 1:2 ratio. You move SL to breakeven. Price then pulls back, touches your breakeven SL, and reverses to hit TP2. What happened?", options: ["You were stopped out at breakeven — no loss but missed TP2", "You still got TP2 because the SL is only mental", "You lost money because the pullback went below entry", "The trailing stop automatically moved to TP1"], answer: 0, explanation: "Once the SL is at breakeven and price touches it, you're out — zero loss, but you missed the run to TP2. This is why trailing stops are a double-edged sword. The plan says to move to BE after TP1, and sometimes the market shakes you out." },
+  { difficulty: "hard", scenario: "NQ is in a clear downtrend on the Daily. Price retraces to the 75% Fibonacci level and creates a bearish FVG on the 15-minute chart during the London Kill Zone (3:00 AM EST). The 5-minute shows a bearish MSS. Is this a valid Conservative short entry?", options: ["No — London Kill Zone doesn't count for NQ", "No — Conservative entries require the Silver Bullet window", "Yes — all 6 Conservative Entry criteria are met", "Yes — but with only half position size"], answer: 2, explanation: "Let's verify: 1) Bias ✓ (Daily bearish). 2) Sweep — implied by the retrace to 75% (premium). 3) Shift ✓ (5-min bearish MSS). 4) Gap ✓ (15-min bearish FVG). 5) Fib ✓ (75% is in OTE zone, Premium for sells). 6) Trigger = place limit at FVG. London Kill Zone is valid for Conservative entries — the Silver Bullet window is only required for Aggressive entries." },
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -168,6 +150,13 @@ function GlossaryView() {
             {isOpen && (
               <View style={glossStyles.cardBody}>
                 <Text style={glossStyles.definition}>{item.definition}</Text>
+                {GLOSSARY_IMAGES[item.term] && (
+                  <Image
+                    source={GLOSSARY_IMAGES[item.term]}
+                    style={glossStyles.chartImage}
+                    resizeMode="cover"
+                  />
+                )}
                 <View style={[glossStyles.tipBox, { borderLeftColor: item.color }]}>
                   <Text style={[glossStyles.tipLabel, { color: item.color }]}>NQ Tip</Text>
                   <Text style={glossStyles.tipText}>{item.tip}</Text>
@@ -181,47 +170,99 @@ function GlossaryView() {
   );
 }
 
+const DIFFICULTY_COLORS: Record<Difficulty, string> = { easy: "#00C896", medium: "#F59E0B", hard: "#EF4444" };
+const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
+const TOTAL_QUIZ_QUESTIONS = 10;
+
 function QuizView() {
-  const [current, setCurrent] = useState(0);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [answered, setAnswered] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
+  const [diffScore, setDiffScore] = useState(0);
   const [done, setDone] = useState(false);
+  const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
 
-  const q = QUIZ[current];
-  const isCorrect = selected === q.answer;
+  const currentQuestion = useMemo(() => {
+    const tierQuestions = QUIZ_BANK
+      .map((q, idx) => ({ q, idx }))
+      .filter(({ q, idx }) => q.difficulty === difficulty && !usedIndices.has(idx));
+    if (tierQuestions.length > 0) {
+      return tierQuestions[Math.floor(Math.random() * tierQuestions.length)];
+    }
+    const anyRemaining = QUIZ_BANK
+      .map((q, idx) => ({ q, idx }))
+      .filter(({ idx }) => !usedIndices.has(idx));
+    if (anyRemaining.length > 0) {
+      return anyRemaining[Math.floor(Math.random() * anyRemaining.length)];
+    }
+    return null;
+  }, [difficulty, usedIndices]);
+
+  const q = currentQuestion?.q;
+  const isCorrect = q ? selected === q.answer : false;
 
   function handleSelect(idx: number) {
-    if (selected !== null) return;
+    if (selected !== null || !q || !currentQuestion) return;
     setSelected(idx);
-    if (idx === q.answer) setScore((s) => s + 1);
+    const correct = idx === q.answer;
+    if (correct) {
+      const pts = q.difficulty === "easy" ? 1 : q.difficulty === "medium" ? 2 : 3;
+      setScore((s) => s + pts);
+      setDiffScore((s) => s + 1);
+    } else {
+      setDiffScore((s) => Math.max(0, s - 1));
+    }
+    setUsedIndices((prev) => new Set(prev).add(currentQuestion.idx));
   }
 
   function handleNext() {
-    if (current < QUIZ.length - 1) {
-      setCurrent((c) => c + 1);
-      setSelected(null);
-    } else {
+    if (answered + 1 >= TOTAL_QUIZ_QUESTIONS) {
       setDone(true);
+      return;
     }
+    let nextDiff = difficulty;
+    if (isCorrect) {
+      if (diffScore >= 2 && difficulty !== "hard") {
+        nextDiff = difficulty === "easy" ? "medium" : "hard";
+        setDiffScore(0);
+      }
+    } else {
+      if (difficulty !== "easy") {
+        nextDiff = difficulty === "hard" ? "medium" : "easy";
+        setDiffScore(0);
+      }
+    }
+    setDifficulty(nextDiff);
+    setAnswered((a) => a + 1);
+    setSelected(null);
   }
 
   function handleReset() {
-    setCurrent(0);
+    setDifficulty("medium");
+    setAnswered(0);
     setSelected(null);
     setScore(0);
+    setDiffScore(0);
     setDone(false);
+    setUsedIndices(new Set());
   }
 
+  const maxPossible = TOTAL_QUIZ_QUESTIONS * 3;
+  const pct = Math.round((score / maxPossible) * 100);
+
   if (done) {
-    const pct = Math.round((score / QUIZ.length) * 100);
     return (
       <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }}>
         <View style={quizStyles.resultCard}>
-          <Text style={quizStyles.resultEmoji}>{pct >= 80 ? "🏆" : pct >= 60 ? "📈" : "📚"}</Text>
-          <Text style={quizStyles.resultScore}>{score}/{QUIZ.length}</Text>
+          <Text style={quizStyles.resultEmoji}>{pct >= 70 ? "🏆" : pct >= 40 ? "📈" : "📚"}</Text>
+          <Text style={quizStyles.resultScore}>{score}/{maxPossible}</Text>
           <Text style={quizStyles.resultPct}>{pct}%</Text>
           <Text style={quizStyles.resultMsg}>
-            {pct >= 80 ? "ICT Concept Master! You're ready to execute." : pct >= 60 ? "Good progress — review the glossary for weak spots." : "Keep studying — re-read the glossary then retry!"}
+            {pct >= 70 ? "ICT Concept Master! You dominated the adaptive quiz." : pct >= 40 ? "Good progress — the quiz adjusted to your level. Review and retry!" : "Keep studying — review the glossary and plan, then try again!"}
+          </Text>
+          <Text style={[quizStyles.resultMsg, { marginTop: 8, color: C.textSecondary }]}>
+            Scoring: Easy = 1pt, Medium = 2pts, Hard = 3pts
           </Text>
           <TouchableOpacity style={quizStyles.retryBtn} onPress={handleReset}>
             <Text style={quizStyles.retryText}>Try Again</Text>
@@ -231,14 +272,34 @@ function QuizView() {
     );
   }
 
+  if (!q) {
+    return (
+      <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }}>
+        <Text style={{ color: C.text, fontSize: 16 }}>No more questions available!</Text>
+        <TouchableOpacity style={quizStyles.retryBtn} onPress={handleReset}>
+          <Text style={quizStyles.retryText}>Start Over</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  }
+
+  const diffColor = DIFFICULTY_COLORS[q.difficulty];
+
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
       <View style={quizStyles.progressRow}>
-        <Text style={quizStyles.progressText}>Question {current + 1} of {QUIZ.length}</Text>
+        <Text style={quizStyles.progressText}>Question {answered + 1} of {TOTAL_QUIZ_QUESTIONS}</Text>
         <Text style={quizStyles.scoreText}>Score: {score}</Text>
       </View>
       <View style={quizStyles.progressBar}>
-        <View style={[quizStyles.progressFill, { width: `${((current) / QUIZ.length) * 100}%` as any }]} />
+        <View style={[quizStyles.progressFill, { width: `${((answered) / TOTAL_QUIZ_QUESTIONS) * 100}%` as any }]} />
+      </View>
+
+      <View style={quizStyles.diffBadgeRow}>
+        <View style={[quizStyles.diffBadge, { backgroundColor: diffColor + "20", borderColor: diffColor }]}>
+          <Ionicons name={q.difficulty === "easy" ? "leaf-outline" : q.difficulty === "medium" ? "flash-outline" : "skull-outline"} size={12} color={diffColor} />
+          <Text style={[quizStyles.diffBadgeText, { color: diffColor }]}>{DIFFICULTY_LABELS[q.difficulty]}</Text>
+        </View>
       </View>
 
       <View style={quizStyles.scenarioCard}>
@@ -279,7 +340,7 @@ function QuizView() {
           </Text>
           <Text style={quizStyles.feedbackText}>{q.explanation}</Text>
           <TouchableOpacity style={[quizStyles.nextBtn, { backgroundColor: isCorrect ? C.accent : "#F59E0B" }]} onPress={handleNext}>
-            <Text style={quizStyles.nextBtnText}>{current < QUIZ.length - 1 ? "Next Question →" : "See Results"}</Text>
+            <Text style={quizStyles.nextBtnText}>{answered + 1 < TOTAL_QUIZ_QUESTIONS ? "Next Question →" : "See Results"}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -437,6 +498,12 @@ function MentorView() {
 
 // ─── Trading Plan Data ────────────────────────────────────────────────────────
 
+const PLAN_IMAGES: Record<string, any> = {
+  "Conservative Entry": require("@/assets/images/chart-conservative-entry.png"),
+  "Aggressive Entry (Silver Bullet)": require("@/assets/images/chart-silver-bullet.png"),
+  "Exit Criteria": require("@/assets/images/chart-exit-criteria.png"),
+};
+
 const PLAN_SECTIONS = [
   {
     title: "The Tools",
@@ -527,6 +594,13 @@ function PlanView() {
             <Ionicons name={section.icon as any} size={16} color={section.color} />
             <Text style={[planStyles.cardTitle, { color: section.color }]}>{section.title}</Text>
           </View>
+          {PLAN_IMAGES[section.title] && (
+            <Image
+              source={PLAN_IMAGES[section.title]}
+              style={planStyles.chartImage}
+              resizeMode="cover"
+            />
+          )}
           {section.items.map((item, idx) => (
             <View key={idx} style={planStyles.itemRow}>
               <View style={[planStyles.itemDot, { backgroundColor: section.color }]} />
@@ -599,6 +673,7 @@ const glossStyles = StyleSheet.create({
   fullName: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: C.textSecondary },
   cardBody: { paddingHorizontal: 14, paddingBottom: 14 },
   definition: { fontSize: 14, color: C.text, lineHeight: 22, marginBottom: 12 },
+  chartImage: { width: "100%" as any, height: 200, borderRadius: 10, marginBottom: 12 },
   tipBox: { borderLeftWidth: 3, paddingLeft: 12, paddingVertical: 4 },
   tipLabel: { fontSize: 11, fontFamily: "Inter_700Bold", marginBottom: 4 },
   tipText: { fontSize: 13, color: C.textSecondary, lineHeight: 20 },
@@ -610,6 +685,9 @@ const quizStyles = StyleSheet.create({
   scoreText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.accent },
   progressBar: { height: 4, backgroundColor: C.cardBorder, borderRadius: 2, marginBottom: 16, overflow: "hidden" },
   progressFill: { height: "100%" as any, backgroundColor: C.accent, borderRadius: 2 },
+  diffBadgeRow: { marginBottom: 10 },
+  diffBadge: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  diffBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   scenarioCard: { backgroundColor: C.backgroundSecondary, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 14 },
   scenarioBadge: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
   scenarioBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.accent, textTransform: "uppercase" },
@@ -663,6 +741,7 @@ const planStyles = StyleSheet.create({
   card: { backgroundColor: C.backgroundSecondary, borderRadius: 14, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 12, overflow: "hidden" },
   cardHeaderBar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
   cardTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  chartImage: { width: "100%" as any, height: 180, marginBottom: 4 },
   itemRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   itemDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
   itemLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 2 },
