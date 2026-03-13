@@ -120,7 +120,8 @@ export default function JournalScreen() {
   const [form, setForm] = useState<TradeFormData>({ ...DEFAULT_FORM });
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
 
-  const { data: trades = [] } = useListTrades();
+  const { data: tradesData } = useListTrades();
+  const trades = tradesData ?? [];
   const { mutateAsync: createTradeMut } = useCreateTrade();
   const { mutateAsync: deleteTradeMut } = useDeleteTrade();
 
