@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -174,6 +174,22 @@ const DIFFICULTY_COLORS: Record<Difficulty, string> = { easy: "#00C896", medium:
 const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
 const TOTAL_QUIZ_QUESTIONS = 10;
 
+function pickQuestion(diff: Difficulty, used: Set<number>): { q: QuizQuestion; idx: number } | null {
+  const tierQuestions = QUIZ_BANK
+    .map((q, idx) => ({ q, idx }))
+    .filter(({ q, idx }) => q.difficulty === diff && !used.has(idx));
+  if (tierQuestions.length > 0) {
+    return tierQuestions[Math.floor(Math.random() * tierQuestions.length)];
+  }
+  const anyRemaining = QUIZ_BANK
+    .map((q, idx) => ({ q, idx }))
+    .filter(({ idx }) => !used.has(idx));
+  if (anyRemaining.length > 0) {
+    return anyRemaining[Math.floor(Math.random() * anyRemaining.length)];
+  }
+  return null;
+}
+
 function QuizView() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [answered, setAnswered] = useState(0);
@@ -182,28 +198,15 @@ function QuizView() {
   const [diffScore, setDiffScore] = useState(0);
   const [done, setDone] = useState(false);
   const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
+  const [activeQuestion, setActiveQuestion] = useState<{ q: QuizQuestion; idx: number } | null>(
+    () => pickQuestion("medium", new Set())
+  );
 
-  const currentQuestion = useMemo(() => {
-    const tierQuestions = QUIZ_BANK
-      .map((q, idx) => ({ q, idx }))
-      .filter(({ q, idx }) => q.difficulty === difficulty && !usedIndices.has(idx));
-    if (tierQuestions.length > 0) {
-      return tierQuestions[Math.floor(Math.random() * tierQuestions.length)];
-    }
-    const anyRemaining = QUIZ_BANK
-      .map((q, idx) => ({ q, idx }))
-      .filter(({ idx }) => !usedIndices.has(idx));
-    if (anyRemaining.length > 0) {
-      return anyRemaining[Math.floor(Math.random() * anyRemaining.length)];
-    }
-    return null;
-  }, [difficulty, usedIndices]);
-
-  const q = currentQuestion?.q;
+  const q = activeQuestion?.q ?? null;
   const isCorrect = q ? selected === q.answer : false;
 
   function handleSelect(idx: number) {
-    if (selected !== null || !q || !currentQuestion) return;
+    if (selected !== null || !q || !activeQuestion) return;
     setSelected(idx);
     const correct = idx === q.answer;
     if (correct) {
@@ -213,10 +216,14 @@ function QuizView() {
     } else {
       setDiffScore((s) => Math.max(0, s - 1));
     }
-    setUsedIndices((prev) => new Set(prev).add(currentQuestion.idx));
   }
 
   function handleNext() {
+    if (!activeQuestion) return;
+    const newUsed = new Set(usedIndices);
+    newUsed.add(activeQuestion.idx);
+    setUsedIndices(newUsed);
+
     if (answered + 1 >= TOTAL_QUIZ_QUESTIONS) {
       setDone(true);
       return;
@@ -236,6 +243,7 @@ function QuizView() {
     setDifficulty(nextDiff);
     setAnswered((a) => a + 1);
     setSelected(null);
+    setActiveQuestion(pickQuestion(nextDiff, newUsed));
   }
 
   function handleReset() {
@@ -245,7 +253,9 @@ function QuizView() {
     setScore(0);
     setDiffScore(0);
     setDone(false);
-    setUsedIndices(new Set());
+    const emptySet = new Set<number>();
+    setUsedIndices(emptySet);
+    setActiveQuestion(pickQuestion("medium", emptySet));
   }
 
   const maxPossible = TOTAL_QUIZ_QUESTIONS * 3;
