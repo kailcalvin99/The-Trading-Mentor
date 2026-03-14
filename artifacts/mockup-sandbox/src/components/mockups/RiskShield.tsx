@@ -29,18 +29,12 @@ import {
   OctagonAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  useGetPropAccount,
-  useCreatePropAccount,
-  useAddDailyLoss,
-  useResetDailyLoss,
-} from "@workspace/api-client-react";
 
 const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
 
 const STOP_TRADING_RULES = [
-  "Max daily loss reached — you are DONE for today",
+  "Max 2% daily loss reached — you are DONE for today",
   "Close ALL open positions immediately",
   "No revenge trading — log what happened",
   "Walk away and reset mentally",
@@ -55,6 +49,14 @@ const EXIT_RULES = [
   "One trade at a time — no adding to losers",
 ];
 
+interface AccountState {
+  startingBalance: number;
+  currentBalance: number;
+  dailyLoss: number;
+  maxDailyLossPct: number;
+  maxTotalDrawdownPct: number;
+}
+
 function DrawdownGauge({
   value,
   max,
@@ -67,7 +69,8 @@ function DrawdownGauge({
   size?: number;
 }) {
   const pct = Math.min(value / max, 1);
-  const color = pct >= 1 ? "#EF4444" : pct >= 0.75 ? "#F59E0B" : "#00C896";
+  const color =
+    pct >= 1 ? "#EF4444" : pct >= 0.75 ? "#F59E0B" : "#00C896";
   const trackColor = "rgba(255,255,255,0.06)";
 
   const cx = size / 2;
@@ -96,11 +99,7 @@ function DrawdownGauge({
 
   return (
     <div className="flex flex-col items-center">
-      <svg
-        width={size}
-        height={size * 0.8}
-        viewBox={`0 0 ${size} ${size * 0.85}`}
-      >
+      <svg width={size} height={size * 0.8} viewBox={`0 0 ${size} ${size * 0.85}`}>
         <path
           d={describeArc(startAngle, endAngle)}
           fill="none"
@@ -162,7 +161,8 @@ function GaugeBar({
   isStopTrading?: boolean;
 }) {
   const pct = Math.min(value / max, 1);
-  const color = pct >= 1 ? "#EF4444" : pct >= 0.75 ? "#F59E0B" : "#00C896";
+  const color =
+    pct >= 1 ? "#EF4444" : pct >= 0.75 ? "#F59E0B" : "#00C896";
 
   return (
     <div className="space-y-2">
@@ -183,15 +183,20 @@ function GaugeBar({
         />
       </div>
       <div className="text-right">
-        <span className="text-[10px] text-muted-foreground">
-          Limit: {max}%
-        </span>
+        <span className="text-[10px] text-muted-foreground">Limit: {max}%</span>
       </div>
     </div>
   );
 }
 
 export default function RiskShield() {
+  const [account, setAccount] = useState<AccountState>({
+    startingBalance: 50000,
+    currentBalance: 50000,
+    dailyLoss: 0,
+    maxDailyLossPct: 2,
+    maxTotalDrawdownPct: 10,
+  });
   const [showAccountSetup, setShowAccountSetup] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -205,96 +210,85 @@ export default function RiskShield() {
     maxTotalDrawdownPct: "",
   });
 
-  const { data: account, refetch } = useGetPropAccount();
-  const { mutateAsync: createAccount } = useCreatePropAccount();
-  const { mutateAsync: addLoss } = useAddDailyLoss();
-  const { mutateAsync: resetLoss } = useResetDailyLoss();
-
-  const balance = account?.currentBalance ?? 50000;
-  const startingBalance = account?.startingBalance ?? 50000;
-  const dailyLoss = account?.dailyLoss ?? 0;
-  const maxDailyLoss = account?.maxDailyLossPct ?? 2;
-  const maxTotalLoss = account?.maxTotalDrawdownPct ?? 10;
-
   const dailyLossPct = useMemo(
-    () => (startingBalance > 0 ? (dailyLoss / startingBalance) * 100 : 0),
-    [dailyLoss, startingBalance],
+    () => (account.dailyLoss / account.startingBalance) * 100,
+    [account.dailyLoss, account.startingBalance],
   );
   const totalLossPct = useMemo(
     () =>
-      startingBalance > 0
-        ? ((startingBalance - balance) / startingBalance) * 100
-        : 0,
-    [startingBalance, balance],
+      ((account.startingBalance - account.currentBalance) /
+        account.startingBalance) *
+      100,
+    [account.startingBalance, account.currentBalance],
   );
-  const isStopTrading = dailyLossPct >= maxDailyLoss;
+  const isStopTrading = dailyLossPct >= account.maxDailyLossPct;
 
   const parsedCustomBalance = parseFloat(customBalance);
   const calcBalance =
     customBalance && !isNaN(parsedCustomBalance) && parsedCustomBalance > 0
       ? parsedCustomBalance
-      : balance;
+      : account.currentBalance;
   const riskAmount = calcBalance * 0.005;
   const pts = parseFloat(pointsAtRisk) || 0;
   const nqContracts = pts > 0 ? riskAmount / (pts * NQ_POINT_VALUE) : 0;
   const mnqContracts = pts > 0 ? riskAmount / (pts * MNQ_POINT_VALUE) : 0;
 
-  const handleAddLoss = useCallback(async () => {
+  const handleAddLoss = useCallback(() => {
     const amount = parseFloat(lossInput);
     if (isNaN(amount) || amount <= 0) return;
-    try {
-      await addLoss({ data: { amount } });
-      setLossInput("");
-      refetch();
-    } catch {
-      // error handled silently
-    }
-  }, [lossInput, addLoss, refetch]);
+    setAccount((prev) => ({
+      ...prev,
+      dailyLoss: prev.dailyLoss + amount,
+      currentBalance: prev.currentBalance - amount,
+    }));
+    setLossInput("");
+  }, [lossInput]);
 
-  const handleResetDaily = useCallback(async () => {
-    try {
-      await resetLoss();
-      refetch();
-    } catch {
-      // error handled silently
-    }
+  const handleResetDaily = useCallback(() => {
+    setAccount((prev) => ({ ...prev, dailyLoss: 0 }));
     setShowResetConfirm(false);
-  }, [resetLoss, refetch]);
+  }, []);
 
-  const openAccountSetup = useCallback(() => {
-    setSetupForm({
-      startingBalance: startingBalance.toString(),
-      maxDailyLossPct: maxDailyLoss.toString(),
-      maxTotalDrawdownPct: maxTotalLoss.toString(),
-    });
-    setShowAccountSetup(true);
-  }, [startingBalance, maxDailyLoss, maxTotalLoss]);
-
-  const handleSaveAccount = useCallback(async () => {
+  const handleSaveAccount = useCallback(() => {
     const sb = parseFloat(setupForm.startingBalance);
     const mdl = parseFloat(setupForm.maxDailyLossPct);
     const mtd = parseFloat(setupForm.maxTotalDrawdownPct);
     if (isNaN(sb) || sb <= 0) return;
-    try {
-      await createAccount({
-        data: {
+    setAccount((prev) => {
+      const newMaxDaily = isNaN(mdl) || mdl <= 0 ? 2 : mdl;
+      const newMaxTotal = isNaN(mtd) || mtd <= 0 ? 10 : mtd;
+      if (sb !== prev.startingBalance) {
+        return {
           startingBalance: sb,
-          maxDailyLossPct: isNaN(mdl) || mdl <= 0 ? 2 : mdl,
-          maxTotalDrawdownPct: isNaN(mtd) || mtd <= 0 ? 10 : mtd,
-        },
-      });
-      refetch();
-      setShowAccountSetup(false);
-    } catch {
-      // error handled silently
-    }
-  }, [setupForm, createAccount, refetch]);
+          currentBalance: sb,
+          dailyLoss: 0,
+          maxDailyLossPct: newMaxDaily,
+          maxTotalDrawdownPct: newMaxTotal,
+        };
+      }
+      return {
+        ...prev,
+        maxDailyLossPct: newMaxDaily,
+        maxTotalDrawdownPct: newMaxTotal,
+      };
+    });
+    setShowAccountSetup(false);
+  }, [setupForm]);
+
+  const openAccountSetup = useCallback(() => {
+    setSetupForm({
+      startingBalance: account.startingBalance.toString(),
+      maxDailyLossPct: account.maxDailyLossPct.toString(),
+      maxTotalDrawdownPct: account.maxTotalDrawdownPct.toString(),
+    });
+    setShowAccountSetup(true);
+  }, [account]);
 
   return (
     <div
       className={cn(
-        "min-h-full transition-colors duration-300",
-        isStopTrading && "bg-red-950/20",
+        "dark min-h-screen bg-[#050508] text-foreground transition-colors duration-300",
+        isStopTrading && "bg-[#0A0304]",
       )}
     >
       {isStopTrading && (
@@ -313,7 +307,7 @@ export default function RiskShield() {
             <Shield
               className={cn(
                 "h-8 w-8",
-                isStopTrading ? "text-red-500" : "text-emerald-500",
+                isStopTrading ? "text-red-500" : "text-[#00C896]",
               )}
             />
             <div>
@@ -335,6 +329,7 @@ export default function RiskShield() {
               variant="outline"
               size="sm"
               onClick={openAccountSetup}
+              className="border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
             >
               <Settings className="h-4 w-4 mr-1.5" />
               Account
@@ -343,7 +338,9 @@ export default function RiskShield() {
               variant="outline"
               size="sm"
               onClick={() => setShowFocusMode(true)}
-              className="border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-500"
+              className={cn(
+                "border-[#00C896]/40 text-[#00C896] hover:bg-[#00C896]/10 hover:text-[#00C896]",
+              )}
             >
               <EyeOff className="h-4 w-4 mr-1.5" />
               Focus Mode
@@ -390,7 +387,10 @@ export default function RiskShield() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-6">
             <Card
-              className={cn(isStopTrading && "border-red-500/30 bg-red-500/[0.03]")}
+              className={cn(
+                "border-white/8 bg-white/[0.02]",
+                isStopTrading && "border-red-500/30 bg-red-500/[0.03]",
+              )}
             >
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
@@ -401,22 +401,25 @@ export default function RiskShield() {
                 <div
                   className={cn(
                     "text-4xl font-bold tracking-tight",
-                    isStopTrading ? "text-red-400" : "text-emerald-500",
+                    isStopTrading ? "text-red-400" : "text-[#00C896]",
                   )}
                 >
                   $
-                  {balance.toLocaleString("en-US", {
+                  {account.currentBalance.toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                   })}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Starting: ${startingBalance.toLocaleString()}
+                  Starting: ${account.startingBalance.toLocaleString()}
                 </p>
               </CardContent>
             </Card>
 
             <Card
-              className={cn(isStopTrading && "border-red-500/30 bg-red-500/[0.03]")}
+              className={cn(
+                "border-white/8 bg-white/[0.02]",
+                isStopTrading && "border-red-500/30 bg-red-500/[0.03]",
+              )}
             >
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -428,25 +431,25 @@ export default function RiskShield() {
                 <div className="grid grid-cols-2 gap-4">
                   <DrawdownGauge
                     value={dailyLossPct}
-                    max={maxDailyLoss}
+                    max={account.maxDailyLossPct}
                     label="Daily Drawdown"
                   />
                   <DrawdownGauge
                     value={totalLossPct}
-                    max={maxTotalLoss}
+                    max={account.maxTotalDrawdownPct}
                     label="Total Drawdown"
                   />
                 </div>
                 <div className="mt-6 space-y-4">
                   <GaugeBar
                     value={dailyLossPct}
-                    max={maxDailyLoss}
+                    max={account.maxDailyLossPct}
                     label="Daily Drawdown"
                     isStopTrading={isStopTrading}
                   />
                   <GaugeBar
                     value={totalLossPct}
-                    max={maxTotalLoss}
+                    max={account.maxTotalDrawdownPct}
                     label="Total Drawdown"
                   />
                 </div>
@@ -454,7 +457,7 @@ export default function RiskShield() {
             </Card>
 
             {!isStopTrading && (
-              <Card>
+              <Card className="border-white/8 bg-white/[0.02]">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <TrendingDown className="h-4 w-4 text-red-400" />
@@ -472,15 +475,13 @@ export default function RiskShield() {
                         value={lossInput}
                         onChange={(e) => setLossInput(e.target.value)}
                         placeholder="Amount lost on this trade"
-                        className="pl-7"
-                        onKeyDown={(e) =>
-                          e.key === "Enter" && handleAddLoss()
-                        }
+                        className="pl-7 bg-white/5 border-white/10"
+                        onKeyDown={(e) => e.key === "Enter" && handleAddLoss()}
                       />
                     </div>
                     <Button
                       onClick={handleAddLoss}
-                      className="bg-emerald-500 text-black hover:bg-emerald-500/90 font-bold"
+                      className="bg-[#00C896] text-black hover:bg-[#00C896]/90 font-bold"
                     >
                       Log
                     </Button>
@@ -501,10 +502,10 @@ export default function RiskShield() {
           </div>
 
           <div className="space-y-6">
-            <Card>
+            <Card className="border-white/8 bg-white/[0.02]">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <Calculator className="h-5 w-5 text-emerald-500" />
+                  <Calculator className="h-5 w-5 text-[#00C896]" />
                   <div>
                     <CardTitle className="text-base font-bold">
                       Position Size Calculator
@@ -528,11 +529,9 @@ export default function RiskShield() {
                       <Input
                         type="number"
                         value={customBalance}
-                        onChange={(e) =>
-                          setCustomBalance(e.target.value)
-                        }
-                        placeholder={balance.toFixed(0)}
-                        className="pl-7 text-sm h-9"
+                        onChange={(e) => setCustomBalance(e.target.value)}
+                        placeholder={account.currentBalance.toFixed(0)}
+                        className="pl-7 bg-white/5 border-white/10 text-sm h-9"
                       />
                     </div>
                   </div>
@@ -545,11 +544,9 @@ export default function RiskShield() {
                       <Input
                         type="number"
                         value={pointsAtRisk}
-                        onChange={(e) =>
-                          setPointsAtRisk(e.target.value)
-                        }
+                        onChange={(e) => setPointsAtRisk(e.target.value)}
                         placeholder="e.g. 10"
-                        className="pr-10 text-sm h-9"
+                        className="pr-10 bg-white/5 border-white/10 text-sm h-9"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
                         pts
@@ -558,16 +555,16 @@ export default function RiskShield() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 bg-emerald-500/10 rounded-lg px-3 py-2.5">
-                  <AlertTriangle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  <span className="text-xs text-emerald-500 font-medium">
+                <div className="flex items-center gap-2 bg-[#00C896]/10 rounded-lg px-3 py-2.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-[#00C896] shrink-0" />
+                  <span className="text-xs text-[#00C896] font-medium">
                     Max Risk: ${riskAmount.toFixed(2)} (0.5% of $
                     {calcBalance.toLocaleString()})
                   </span>
                 </div>
 
                 {pts > 0 ? (
-                  <div className="rounded-xl border overflow-hidden">
+                  <div className="rounded-xl border border-white/8 overflow-hidden bg-white/[0.02]">
                     <div className="flex items-center justify-between p-4">
                       <div>
                         <div className="text-sm font-semibold">
@@ -578,7 +575,7 @@ export default function RiskShield() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-3xl font-bold text-emerald-500">
+                        <div className="text-3xl font-bold text-[#00C896]">
                           {nqContracts.toFixed(2)}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -586,7 +583,7 @@ export default function RiskShield() {
                         </div>
                       </div>
                     </div>
-                    <div className="h-px bg-border" />
+                    <div className="h-px bg-white/8" />
                     <div className="flex items-center justify-between p-4">
                       <div>
                         <div className="text-sm font-semibold">
@@ -607,7 +604,7 @@ export default function RiskShield() {
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border p-6 text-center">
+                  <div className="rounded-xl border border-white/8 bg-white/[0.02] p-6 text-center">
                     <CircleDot className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">
                       Enter points at risk to calculate position size
@@ -621,7 +618,7 @@ export default function RiskShield() {
       </div>
 
       <Dialog open={showAccountSetup} onOpenChange={setShowAccountSetup}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="dark bg-[#0A0A0F] border-white/10 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Prop Account Setup</DialogTitle>
             <DialogDescription>
@@ -645,7 +642,7 @@ export default function RiskShield() {
                     }))
                   }
                   placeholder="50000"
-                  className="pl-7"
+                  className="pl-7 bg-white/5 border-white/10"
                 />
               </div>
             </div>
@@ -665,7 +662,7 @@ export default function RiskShield() {
                       }))
                     }
                     placeholder="2"
-                    className="pr-7"
+                    className="pr-7 bg-white/5 border-white/10"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                     %
@@ -687,7 +684,7 @@ export default function RiskShield() {
                       }))
                     }
                     placeholder="10"
-                    className="pr-7"
+                    className="pr-7 bg-white/5 border-white/10"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                     %
@@ -700,12 +697,13 @@ export default function RiskShield() {
             <Button
               variant="outline"
               onClick={() => setShowAccountSetup(false)}
+              className="border-white/10 bg-white/5"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSaveAccount}
-              className="bg-emerald-500 text-black hover:bg-emerald-500/90 font-bold"
+              className="bg-[#00C896] text-black hover:bg-[#00C896]/90 font-bold"
             >
               Save Account
             </Button>
@@ -714,7 +712,7 @@ export default function RiskShield() {
       </Dialog>
 
       <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="dark bg-[#0A0A0F] border-white/10 sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Reset Daily Loss?</DialogTitle>
             <DialogDescription>
@@ -726,12 +724,13 @@ export default function RiskShield() {
             <Button
               variant="outline"
               onClick={() => setShowResetConfirm(false)}
+              className="border-white/10 bg-white/5"
             >
               Cancel
             </Button>
             <Button
               onClick={handleResetDaily}
-              className="bg-emerald-500 text-black hover:bg-emerald-500/90 font-bold"
+              className="bg-[#00C896] text-black hover:bg-[#00C896]/90 font-bold"
             >
               Reset
             </Button>
@@ -740,24 +739,26 @@ export default function RiskShield() {
       </Dialog>
 
       {showFocusMode && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-6">
+        <div className="fixed inset-0 z-50 bg-[#020202] flex flex-col items-center justify-center p-6">
           <div className="max-w-lg w-full space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-bold mb-2">FOCUS MODE</h2>
+              <h2 className="text-3xl font-bold text-white mb-2">
+                FOCUS MODE
+              </h2>
               <p className="text-muted-foreground">
                 P&L hidden — stay disciplined
               </p>
             </div>
 
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6">
-              <h3 className="text-xs font-bold text-emerald-500 tracking-[0.15em] uppercase mb-5">
+            <div className="rounded-2xl border border-[#00C896]/30 bg-[#00C896]/5 p-6">
+              <h3 className="text-xs font-bold text-[#00C896] tracking-[0.15em] uppercase mb-5">
                 EXIT RULES
               </h3>
               <div className="space-y-3.5">
                 {EXIT_RULES.map((rule, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 shrink-0" />
-                    <span className="text-[15px] text-foreground/90 leading-relaxed">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#00C896] mt-2 shrink-0" />
+                    <span className="text-[15px] text-white/90 leading-relaxed">
                       {rule}
                     </span>
                   </div>
@@ -765,19 +766,19 @@ export default function RiskShield() {
               </div>
             </div>
 
-            <div className="rounded-xl border p-5">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
               <h3 className="text-[10px] font-bold text-muted-foreground tracking-[0.15em] uppercase mb-3">
                 MINDSET ANCHOR
               </h3>
               <p className="text-sm text-muted-foreground italic leading-relaxed">
-                "I trade the process, not the P&L. My job is to execute
-                the setup correctly. The outcome takes care of itself."
+                "I trade the process, not the P&L. My job is to execute the
+                setup correctly. The outcome takes care of itself."
               </p>
             </div>
 
             <Button
               onClick={() => setShowFocusMode(false)}
-              className="w-full bg-emerald-500 text-black hover:bg-emerald-500/90 font-bold h-12 text-base rounded-xl"
+              className="w-full bg-[#00C896] text-black hover:bg-[#00C896]/90 font-bold h-12 text-base rounded-xl"
             >
               <Eye className="h-5 w-5 mr-2" />
               Exit Focus Mode
