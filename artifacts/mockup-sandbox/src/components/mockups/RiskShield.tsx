@@ -34,19 +34,19 @@ const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
 
 const STOP_TRADING_RULES = [
-  "Max 2% daily loss reached — you are DONE for today",
-  "Close ALL open positions immediately",
-  "No revenge trading — log what happened",
-  "Walk away and reset mentally",
-  "Come back tomorrow with fresh eyes",
+  "You hit your max daily loss — you are DONE for today",
+  "Close ALL open trades right now",
+  "No revenge trading — write down what happened in your journal",
+  "Step away from the screen and clear your head",
+  "Come back tomorrow with a fresh start",
 ];
 
 const EXIT_RULES = [
-  "Honor your stop loss — no exceptions",
+  "Keep your stop loss where you set it — no exceptions",
   "Don't move your stop to breakeven too early",
-  "Let price reach your target — no early exits",
-  "Exit immediately if market structure breaks against you",
-  "One trade at a time — no adding to losers",
+  "Wait for price to reach your target — don't exit early",
+  "Get out right away if the market turns against you (MSS — Market Structure Shift)",
+  "Only have one trade open at a time — don't add to a losing trade",
 ];
 
 interface AccountState {
@@ -320,7 +320,7 @@ export default function RiskShield() {
                 Risk Shield
               </h1>
               <p className="text-sm text-muted-foreground">
-                Prop account protection & position sizing
+                Keeping your account safe & figuring out trade size
               </p>
             </div>
           </div>
@@ -356,7 +356,7 @@ export default function RiskShield() {
                 STOP TRADING
               </CardTitle>
               <CardDescription className="text-red-300/70">
-                Daily drawdown limit reached. Respect the rules.
+                You lost too much today. Follow the rules below.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -424,7 +424,7 @@ export default function RiskShield() {
               <CardHeader className="pb-4">
                 <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                   <TrendingDown className="h-4 w-4" />
-                  Drawdown Gauges
+                  Drawdown Gauges (How Much You've Lost)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -432,25 +432,25 @@ export default function RiskShield() {
                   <DrawdownGauge
                     value={dailyLossPct}
                     max={account.maxDailyLossPct}
-                    label="Daily Drawdown"
+                    label="Daily Drawdown (Lost Today)"
                   />
                   <DrawdownGauge
                     value={totalLossPct}
                     max={account.maxTotalDrawdownPct}
-                    label="Total Drawdown"
+                    label="Total Drawdown (Lost Overall)"
                   />
                 </div>
                 <div className="mt-6 space-y-4">
                   <GaugeBar
                     value={dailyLossPct}
                     max={account.maxDailyLossPct}
-                    label="Daily Drawdown"
+                    label="Daily Drawdown (Lost Today)"
                     isStopTrading={isStopTrading}
                   />
                   <GaugeBar
                     value={totalLossPct}
                     max={account.maxTotalDrawdownPct}
-                    label="Total Drawdown"
+                    label="Total Drawdown (Lost Overall)"
                   />
                 </div>
               </CardContent>
@@ -511,7 +511,7 @@ export default function RiskShield() {
                       Position Size Calculator
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Risk exactly 0.5% on your next trade
+                      Figure out how many contracts to trade (risking 0.5%)
                     </CardDescription>
                   </div>
                 </div>
@@ -538,7 +538,7 @@ export default function RiskShield() {
 
                   <div className="flex items-center justify-between gap-4">
                     <label className="text-sm text-muted-foreground whitespace-nowrap">
-                      Points at Risk (SL)
+                      Points at Risk (Stop Loss Distance)
                     </label>
                     <div className="relative w-[180px]">
                       <Input
@@ -620,9 +620,9 @@ export default function RiskShield() {
       <Dialog open={showAccountSetup} onOpenChange={setShowAccountSetup}>
         <DialogContent className="dark bg-[#0A0A0F] border-white/10 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Prop Account Setup</DialogTitle>
+            <DialogTitle>Set Up Your Prop Account</DialogTitle>
             <DialogDescription>
-              Configure your starting balance and drawdown limits.
+              Enter how much money you're starting with and how much you're allowed to lose.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -649,7 +649,7 @@ export default function RiskShield() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  Max Daily Loss %
+                  Max Loss Per Day %
                 </label>
                 <div className="relative">
                   <Input
@@ -671,7 +671,7 @@ export default function RiskShield() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  Max Total Drawdown %
+                  Max Total Loss %
                 </label>
                 <div className="relative">
                   <Input
@@ -771,8 +771,8 @@ export default function RiskShield() {
                 MINDSET ANCHOR
               </h3>
               <p className="text-sm text-muted-foreground italic leading-relaxed">
-                "I trade the process, not the P&L. My job is to execute the
-                setup correctly. The outcome takes care of itself."
+                "I follow my plan, not my feelings. My only job is to take the
+                right setup. The results will come."
               </p>
             </div>
 

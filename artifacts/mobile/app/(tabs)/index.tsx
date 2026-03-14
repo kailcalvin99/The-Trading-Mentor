@@ -50,8 +50,8 @@ const SESSIONS: Session[] = [
 const ROUTINE_ITEMS = [
   { key: "water" as const, label: "Water & Physical Reset", icon: "water-outline" as const, desc: "Hydrate, stretch, step outside 2 min" },
   { key: "breathing" as const, label: "5-Min Box Breathing", icon: "wind-outline" as const, desc: "Inhale 4s → Hold 4s → Exhale 4s → Hold 4s" },
-  { key: "news" as const, label: "ForexFactory News Check", icon: "newspaper-outline" as const, desc: "Check for Red folder high-impact events" },
-  { key: "bias" as const, label: "HTF Bias Review", icon: "trending-up-outline" as const, desc: "Daily & 4H chart — Premium or Discount?" },
+  { key: "news" as const, label: "Check for Big News Events", icon: "newspaper-outline" as const, desc: "Are there any big news events today that could move the market?" },
+  { key: "bias" as const, label: "Check the Big Picture Chart", icon: "trending-up-outline" as const, desc: "HTF (Higher Timeframe) — Is the market going up or down today?" },
 ];
 
 export default function PlannerScreen() {
@@ -95,7 +95,7 @@ export default function PlannerScreen() {
             <Ionicons name="warning" size={22} color="#FF4444" />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={styles.redAlertTitle}>🔴 RED FOLDER ACTIVE</Text>
-              <Text style={styles.redAlertText}>You are a SPECTATOR — not a trader. Wait until volatility settles after the event.</Text>
+              <Text style={styles.redAlertText}>You are watching only — do NOT trade. Wait until the big price swings calm down.</Text>
             </View>
           </View>
         )}
@@ -304,22 +304,22 @@ export default function PlannerScreen() {
               {isLive && session.name === "Silver Bullet" && (
                 <View style={[styles.liveNote, { borderColor: session.color }]}>
                   <Ionicons name="flash" size={13} color={session.color} />
-                  <Text style={[styles.liveNoteText, { color: session.color }]}>Prime window — look for FVG entries after liquidity sweep!</Text>
+                  <Text style={[styles.liveNoteText, { color: session.color }]}>Prime window — look for FVG (Fair Value Gap) entries after a liquidity sweep!</Text>
                 </View>
               )}
             </View>
           );
         })}
 
-        {/* Trader's Code */}
-        <Text style={styles.sectionTitle}>Trader's Code</Text>
+        {/* Rules Before I Trade */}
+        <Text style={styles.sectionTitle}>Rules Before I Trade</Text>
         <View style={styles.card}>
           {[
-            "Never risk more than 0.5% per trade on NQ",
-            "No new trades outside the 10–11 AM Silver Bullet window",
-            "Red folder news = you are a spectator, not a trader",
-            "Complete Morning Routine before any trade entry",
-            "Honor your stop loss — no exceptions",
+            "Never risk more than 0.5% of my account on one trade",
+            "Only trade during the 10–11 AM Silver Bullet window",
+            "If there is big Red folder news, I watch — I don't trade",
+            "Finish my Morning Routine before I take any trade",
+            "Always keep my stop loss where I set it — no moving it",
           ].map((rule, i) => (
             <View key={i} style={[styles.ruleRow, i > 0 && styles.ruleRowBorder]}>
               <Text style={styles.ruleNum}>{i + 1}</Text>

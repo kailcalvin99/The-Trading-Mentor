@@ -59,16 +59,16 @@ const SESSIONS: Session[] = [
 const ROUTINE_ITEMS: { key: RoutineKey; label: string; icon: React.ReactNode; desc: string }[] = [
   { key: "water", label: "Water & Physical Reset", icon: <Droplets className="w-[18px] h-[18px]" />, desc: "Hydrate, stretch, step outside 2 min" },
   { key: "breathing", label: "5-Min Box Breathing", icon: <Wind className="w-[18px] h-[18px]" />, desc: "Inhale 4s → Hold 4s → Exhale 4s → Hold 4s" },
-  { key: "news", label: "ForexFactory News Check", icon: <Newspaper className="w-[18px] h-[18px]" />, desc: "Check for Red folder high-impact events" },
-  { key: "bias", label: "HTF Bias Review", icon: <TrendingUp className="w-[18px] h-[18px]" />, desc: "Daily & 4H chart — Premium or Discount?" },
+  { key: "news", label: "Check for Big News Events", icon: <Newspaper className="w-[18px] h-[18px]" />, desc: "Are there any big news events today that could move the market?" },
+  { key: "bias", label: "Check the Big Picture Chart", icon: <TrendingUp className="w-[18px] h-[18px]" />, desc: "HTF (Higher Timeframe) — Is the market going up or down today?" },
 ];
 
 const TRADERS_CODE = [
-  "Never risk more than 0.5% per trade on NQ",
-  "No new trades outside the 10–11 AM Silver Bullet window",
-  "Red folder news = you are a spectator, not a trader",
-  "Complete Morning Routine before any trade entry",
-  "Honor your stop loss — no exceptions",
+  "Never risk more than 0.5% of my account on one trade",
+  "Only trade during the 10–11 AM Silver Bullet window",
+  "If there is big Red folder news, I watch — I don't trade",
+  "Finish my Morning Routine before I take any trade",
+  "Always keep my stop loss where I set it — no moving it",
 ];
 
 function DailyPlannerInner() {
@@ -120,7 +120,7 @@ function DailyPlannerInner() {
             <AlertTriangle className="w-[22px] h-[22px] text-[#FF4444] shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-[13px] font-bold text-[#FF4444] mb-0.5">🔴 RED FOLDER ACTIVE</p>
-              <p className="text-[13px] text-[#FF9999] leading-[18px]">You are a SPECTATOR — not a trader. Wait until volatility settles after the event.</p>
+              <p className="text-[13px] text-[#FF9999] leading-[18px]">You are watching only — do NOT trade. Wait until the big price swings calm down.</p>
             </div>
           </div>
         )}
@@ -376,7 +376,7 @@ function DailyPlannerInner() {
                 >
                   <Zap className="w-[13px] h-[13px]" style={{ color: session.color }} />
                   <p className="text-xs font-medium flex-1" style={{ color: session.color }}>
-                    Prime window — look for FVG entries after liquidity sweep!
+                    Prime window — look for FVG (Fair Value Gap) entries after a liquidity sweep!
                   </p>
                 </div>
               )}
@@ -384,7 +384,7 @@ function DailyPlannerInner() {
           );
         })}
 
-        <p className="text-[11px] font-semibold text-[#8B8BA0] uppercase tracking-[1.2px] mb-2.5 mt-5">Trader's Code</p>
+        <p className="text-[11px] font-semibold text-[#8B8BA0] uppercase tracking-[1.2px] mb-2.5 mt-5">Rules Before I Trade</p>
         <div className="bg-[#12121A] rounded-2xl border border-[#1E1E2E] mb-5 overflow-hidden">
           {TRADERS_CODE.map((rule, i) => (
             <div

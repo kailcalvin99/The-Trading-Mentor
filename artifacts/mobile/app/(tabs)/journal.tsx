@@ -23,33 +23,33 @@ type OutcomeType = "win" | "loss" | "breakeven" | "";
 type EntryMode = "conservative" | "aggressive";
 
 const CONSERVATIVE_CRITERIA = [
-  { key: "bias", label: "Bias Check", desc: "1-Hour chart is clearly Bullish or Bearish" },
-  { key: "sweep", label: "The Sweep", desc: "Price took out a 15-min High or Low" },
-  { key: "shift", label: "The Shift", desc: "5-min MSS with Displacement (fast move)" },
-  { key: "gap", label: "The Gap", desc: "FVG identified on the chart" },
-  { key: "fib", label: "The Fib", desc: "Entry is in Discount (buys) or Premium (sells)" },
-  { key: "trigger", label: "The Trigger", desc: "Limit Order placed at start of FVG" },
+  { key: "bias", label: "Bias Check", desc: "Is the 1-Hour chart clearly going up (Bullish) or down (Bearish)?" },
+  { key: "sweep", label: "The Sweep", desc: "Did price take out a 15-min high or low?" },
+  { key: "shift", label: "The Shift (MSS)", desc: "Is there a 5-min MSS (Market Structure Shift) with a fast move?" },
+  { key: "gap", label: "The Gap (FVG)", desc: "Can you see a FVG (Fair Value Gap) on the chart?" },
+  { key: "fib", label: "The Fib — OTE (Optimal Trade Entry)", desc: "Is your entry in Discount (for buys) or Premium (for sells)?" },
+  { key: "trigger", label: "The Trigger", desc: "Did you place your Limit Order at the start of the FVG?" },
 ];
 
 const AGGRESSIVE_CRITERIA = [
-  { key: "time", label: "Time Check", desc: "Between 10:00 AM and 11:00 AM EST" },
-  { key: "poi", label: "POI Identified", desc: "Price heading toward a clear High or Low" },
-  { key: "fvg1m", label: "1m FVG Entry", desc: "First 1-min FVG after a liquidity grab" },
-  { key: "risk", label: "Risk ≤ 1%", desc: "Max 1% risk on this trade" },
+  { key: "time", label: "Time Check", desc: "Is it between 10:00 AM and 11:00 AM EST?" },
+  { key: "poi", label: "POI Identified", desc: "Is price heading toward a clear high or low?" },
+  { key: "fvg1m", label: "1m FVG Entry", desc: "Is this the first 1-min FVG (Fair Value Gap) after a liquidity grab?" },
+  { key: "risk", label: "Risk ≤ 1%", desc: "Are you risking 1% or less on this trade?" },
 ];
 
-const BEHAVIOR_TAGS: { tag: BehaviorTag; color: string; icon: string }[] = [
-  { tag: "Disciplined", color: "#00C896", icon: "shield-checkmark-outline" },
-  { tag: "FOMO", color: "#F59E0B", icon: "flash-outline" },
-  { tag: "Chased", color: "#818CF8", icon: "trending-up-outline" },
-  { tag: "Greedy", color: "#EF4444", icon: "flame-outline" },
+const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: string }[] = [
+  { tag: "Disciplined", label: "I followed my plan", color: "#00C896", icon: "shield-checkmark-outline" },
+  { tag: "FOMO", label: "I jumped in too fast", color: "#F59E0B", icon: "flash-outline" },
+  { tag: "Chased", label: "I entered late", color: "#818CF8", icon: "trending-up-outline" },
+  { tag: "Greedy", label: "I held too long", color: "#EF4444", icon: "flame-outline" },
 ];
 
 const EXIT_RULES = [
-  "Honor your stop loss — no exceptions",
-  "Don't move stop to breakeven too early",
-  "Let price reach your target",
-  "Exit if market structure breaks against you",
+  "Keep your stop loss where you set it — no exceptions",
+  "Don't move your stop to breakeven too early",
+  "Wait for price to reach your target — don't exit early",
+  "Get out if the market turns against you (MSS — Market Structure Shift)",
 ];
 
 const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
@@ -538,7 +538,7 @@ export default function JournalScreen() {
             {/* Behavioral Tag */}
             <Text style={formStyles.fieldLabel}>Behavioral Tag</Text>
             <View style={formStyles.tagRow}>
-              {BEHAVIOR_TAGS.map(({ tag, color, icon }) => (
+              {BEHAVIOR_TAGS.map(({ tag, label, color, icon }) => (
                 <TouchableOpacity
                   key={tag}
                   style={[formStyles.tagBtn, form.behaviorTag === tag && { backgroundColor: color + "25", borderColor: color }]}
@@ -546,7 +546,7 @@ export default function JournalScreen() {
                   activeOpacity={0.8}
                 >
                   <Ionicons name={icon as any} size={14} color={form.behaviorTag === tag ? color : C.textSecondary} />
-                  <Text style={[formStyles.tagBtnText, form.behaviorTag === tag && { color }]}>{tag}</Text>
+                  <Text style={[formStyles.tagBtnText, form.behaviorTag === tag && { color }]}>{tag} — {label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -576,7 +576,7 @@ export default function JournalScreen() {
       <Modal visible={showMonk} animationType="fade" statusBarTranslucent>
         <View style={monkStyles.overlay}>
           <Text style={monkStyles.title}>⚡ MONK MODE</Text>
-          <Text style={monkStyles.sub}>Stay present. Execute the plan.</Text>
+          <Text style={monkStyles.sub}>Stay focused. Follow your plan.</Text>
           <View style={monkStyles.rulesCard}>
             {EXIT_RULES.map((r, i) => (
               <View key={i} style={monkStyles.ruleRow}>

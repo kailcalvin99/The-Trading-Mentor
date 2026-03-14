@@ -5,10 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const ROUTINE_ITEMS = [
-  { key: "water" as const, label: "Drink Water", desc: "Hydrate before trading", icon: Droplets },
-  { key: "breathing" as const, label: "Breathing Exercise", desc: "5 minutes of focused breathing", icon: Wind },
-  { key: "news" as const, label: "Check News Calendar", desc: "Review economic events for the day", icon: Newspaper },
-  { key: "bias" as const, label: "Set Daily Bias", desc: "Determine bullish/bearish bias from HTF", icon: BarChart3 },
+  { key: "water" as const, label: "Drink Water", desc: "Hydrate before you start trading", icon: Droplets },
+  { key: "breathing" as const, label: "Breathing Exercise", desc: "5 minutes of calm, focused breathing", icon: Wind },
+  { key: "news" as const, label: "Check for Big News Events", desc: "Are there any big news events today that could move the market?", icon: Newspaper },
+  { key: "bias" as const, label: "Check the Big Picture Chart", desc: "HTF (Higher Timeframe) — Is the market going up or down today?", icon: BarChart3 },
 ];
 
 export default function DailyPlanner() {
@@ -22,7 +22,7 @@ export default function DailyPlanner() {
         <h1 className="text-2xl font-bold">Daily Planner</h1>
       </div>
       <p className="text-muted-foreground mb-6">
-        Plan your trading sessions, set daily goals, and track your progress.
+        Get ready for your trading day. Complete each step before you start trading.
       </p>
 
       <Card className={`mb-6 ${isRoutineComplete ? "border-primary/30" : ""}`}>
@@ -39,7 +39,7 @@ export default function DailyPlanner() {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Complete all items to unlock trade logging in the Smart Journal.
+            Finish all steps to unlock trade logging in the Smart Journal.
           </p>
           <div className="space-y-3">
             {ROUTINE_ITEMS.map(({ key, label, desc, icon: Icon }) => (

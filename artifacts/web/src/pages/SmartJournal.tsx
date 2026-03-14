@@ -56,26 +56,26 @@ interface ExtendedCreateTradeBody extends CreateTradeBody {
 }
 
 const CONSERVATIVE_CRITERIA = [
-  { key: "bias", label: "Bias Check", desc: "1-Hour chart is clearly Bullish or Bearish" },
-  { key: "sweep", label: "The Sweep", desc: "Price took out a 15-min High or Low" },
-  { key: "shift", label: "The Shift", desc: "5-min MSS with Displacement (fast move)" },
-  { key: "gap", label: "The Gap", desc: "FVG identified on the chart" },
-  { key: "fib", label: "The Fib", desc: "Entry is in Discount (buys) or Premium (sells)" },
-  { key: "trigger", label: "The Trigger", desc: "Limit Order placed at start of FVG" },
+  { key: "bias", label: "Bias Check", desc: "Is the 1-Hour chart clearly going up (Bullish) or down (Bearish)?" },
+  { key: "sweep", label: "The Sweep", desc: "Did price take out a 15-min high or low?" },
+  { key: "shift", label: "The Shift (MSS)", desc: "Is there a 5-min MSS (Market Structure Shift) with a fast move?" },
+  { key: "gap", label: "The Gap (FVG)", desc: "Can you see a FVG (Fair Value Gap) on the chart?" },
+  { key: "fib", label: "The Fib — OTE (Optimal Trade Entry)", desc: "Is your entry in Discount (for buys) or Premium (for sells)?" },
+  { key: "trigger", label: "The Trigger", desc: "Did you place your Limit Order at the start of the FVG?" },
 ];
 
 const AGGRESSIVE_CRITERIA = [
-  { key: "time", label: "Time Check", desc: "Between 10:00 AM and 11:00 AM EST" },
-  { key: "poi", label: "POI Identified", desc: "Price heading toward a clear High or Low" },
-  { key: "fvg1m", label: "1m FVG Entry", desc: "First 1-min FVG after a liquidity grab" },
-  { key: "risk", label: "Risk <= 1%", desc: "Max 1% risk on this trade" },
+  { key: "time", label: "Time Check", desc: "Is it between 10:00 AM and 11:00 AM EST?" },
+  { key: "poi", label: "POI Identified", desc: "Is price heading toward a clear high or low?" },
+  { key: "fvg1m", label: "1m FVG Entry", desc: "Is this the first 1-min FVG (Fair Value Gap) after a liquidity grab?" },
+  { key: "risk", label: "Risk ≤ 1%", desc: "Are you risking 1% or less on this trade?" },
 ];
 
-const BEHAVIOR_TAGS: { tag: BehaviorTag; color: string; icon: typeof Zap }[] = [
-  { tag: "Disciplined", color: "text-emerald-400", icon: Shield },
-  { tag: "FOMO", color: "text-amber-400", icon: Zap },
-  { tag: "Chased", color: "text-indigo-400", icon: TrendingUp },
-  { tag: "Greedy", color: "text-red-400", icon: Flame },
+const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: typeof Zap }[] = [
+  { tag: "Disciplined", label: "I followed my plan", color: "text-emerald-400", icon: Shield },
+  { tag: "FOMO", label: "I jumped in too fast", color: "text-amber-400", icon: Zap },
+  { tag: "Chased", label: "I entered late", color: "text-indigo-400", icon: TrendingUp },
+  { tag: "Greedy", label: "I held too long", color: "text-red-400", icon: Flame },
 ];
 
 const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
@@ -520,7 +520,7 @@ export default function SmartJournal() {
                 <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
                   <div>
                     <div className="text-sm font-medium">Liquidity Sweep</div>
-                    <div className="text-xs text-muted-foreground">Price swept a swing high/low before entry</div>
+                    <div className="text-xs text-muted-foreground">Did price take out a swing high or low before your entry?</div>
                   </div>
                   <Switch
                     checked={form.liquiditySweep}
@@ -559,7 +559,7 @@ export default function SmartJournal() {
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Behavior Tag</label>
                   <div className="flex flex-wrap gap-2">
-                    {BEHAVIOR_TAGS.map(({ tag, color, icon: Icon }) => (
+                    {BEHAVIOR_TAGS.map(({ tag, label, color, icon: Icon }) => (
                       <button
                         key={tag}
                         onClick={() => setField("behaviorTag", form.behaviorTag === tag ? "" : tag)}
@@ -570,7 +570,7 @@ export default function SmartJournal() {
                         }`}
                       >
                         <Icon className="h-3.5 w-3.5" />
-                        {tag}
+                        {tag} — {label}
                       </button>
                     ))}
                   </div>

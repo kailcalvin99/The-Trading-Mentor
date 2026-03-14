@@ -384,10 +384,10 @@ export default function Analytics() {
     const timeRuleRate = (timeRuleCount / trades.length) * 100;
 
     return [
-      { metric: "Discipline Rate", value: Math.round(disciplineRate), weight: "30%", fill: "hsl(142, 76%, 36%)" },
-      { metric: "Win Rate", value: Math.round(stats.winRate), weight: "25%", fill: "hsl(217, 91%, 60%)" },
-      { metric: "Risk Adherence", value: Math.round(riskAdherence), weight: "25%", fill: "hsl(280, 67%, 51%)" },
-      { metric: "Time Rule", value: Math.round(timeRuleRate), weight: "20%", fill: "hsl(45, 93%, 47%)" },
+      { metric: "Discipline (Following the Plan)", value: Math.round(disciplineRate), weight: "30%", fill: "hsl(142, 76%, 36%)" },
+      { metric: "Win Rate (How Often You Win)", value: Math.round(stats.winRate), weight: "25%", fill: "hsl(217, 91%, 60%)" },
+      { metric: "Risk Control (Staying Within Limits)", value: Math.round(riskAdherence), weight: "25%", fill: "hsl(280, 67%, 51%)" },
+      { metric: "Time Rule (Trading at the Right Time)", value: Math.round(timeRuleRate), weight: "20%", fill: "hsl(45, 93%, 47%)" },
     ];
   }, [trades, stats.winRate]);
 
@@ -409,7 +409,7 @@ export default function Analytics() {
           <BarChart3 className="h-12 w-12 text-muted-foreground" />
           <h2 className="text-lg font-semibold">No Trade Data Yet</h2>
           <p className="text-sm text-muted-foreground">
-            Log some trades in your Smart Journal to see performance analytics, charts, and your trade grading score.
+            Log some trades in your Smart Journal to see how you're doing — charts, scores, and more will show up here.
           </p>
         </div>
       </div>
@@ -421,13 +421,13 @@ export default function Analytics() {
       <div>
         <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Performance insights from {stats.totalTrades} completed trades
+          See how you are doing across {stats.totalTrades} completed trades
         </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
-          title="Win Rate"
+          title="Win Rate (How Often You Win)"
           value={`${stats.winRate.toFixed(1)}%`}
           subtitle={`${stats.wins}W / ${stats.losses}L / ${stats.breakeven}BE`}
           icon={Trophy}
@@ -436,18 +436,18 @@ export default function Analytics() {
         <StatCard
           title="Total Trades"
           value={stats.totalTrades}
-          subtitle="Completed"
+          subtitle="Completed trades"
           icon={Target}
         />
         <StatCard
-          title="Profit Factor"
+          title="Profit Factor (Win $ ÷ Loss $)"
           value={stats.profitFactor === Infinity ? "∞" : stats.profitFactor.toFixed(2)}
-          subtitle="Win $ / Loss $"
+          subtitle="Above 1.0 = making money"
           icon={stats.profitFactor >= 1 ? TrendingUp : TrendingDown}
           trend={stats.profitFactor >= 1 ? "up" : "down"}
         />
         <StatCard
-          title="Avg Risk"
+          title="Avg Risk (How Much You Risked)"
           value={`${stats.avgRisk.toFixed(2)}%`}
           subtitle="Per trade"
           icon={Activity}
@@ -462,7 +462,7 @@ export default function Analytics() {
               <TrendingUp className="h-4 w-4" />
               Cumulative P&L (Risk Units)
             </CardTitle>
-            <CardDescription>Running profit/loss based on risk percentage per trade</CardDescription>
+            <CardDescription>Your running total of wins and losses (measured in risk %)</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={pnlChartConfig} className="h-[250px] w-full">
@@ -493,9 +493,9 @@ export default function Analytics() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Gauge className="h-4 w-4" />
-              Trade Grade
+              Trade Grade (Your Overall Score)
             </CardTitle>
-            <CardDescription>Overall trading health score</CardDescription>
+            <CardDescription>How well you are following your trading plan</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-3">
             <GradeGauge score={gradeScore} />
@@ -522,7 +522,7 @@ export default function Analytics() {
               <Clock className="h-4 w-4" />
               Performance by Hour
             </CardTitle>
-            <CardDescription>Win rate across trading hours (kill zones)</CardDescription>
+            <CardDescription>Win rate during each hour (your best Kill Zones)</CardDescription>
           </CardHeader>
           <CardContent>
             {hourData.length > 0 ? (
@@ -588,7 +588,7 @@ export default function Analytics() {
               <Target className="h-4 w-4" />
               Setup Analysis
             </CardTitle>
-            <CardDescription>Performance by entry mode</CardDescription>
+            <CardDescription>How well each entry type is working for you</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -652,9 +652,9 @@ export default function Analytics() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Brain className="h-4 w-4" />
-              Behavior Analysis
+              Behavior Analysis (How You Traded)
             </CardTitle>
-            <CardDescription>How your behaviors correlate with outcomes</CardDescription>
+            <CardDescription>See which mindsets lead to wins and which lead to losses</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

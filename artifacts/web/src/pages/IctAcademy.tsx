@@ -38,8 +38,8 @@ const GLOSSARY = [
     color: "#00C896",
     image: "chart-fvg.png",
     definition:
-      "A 3-candle imbalance where the wicks of the 1st and 3rd candle do not overlap. Price typically returns to fill this gap. In ICT, you look for bullish FVGs below price to enter longs, or bearish FVGs above price to enter shorts.",
-    tip: "On NQ, a 15-minute FVG after a liquidity sweep is your highest-probability entry.",
+      "A gap left on the chart when price moves really fast. Picture three candles in a row — if there's a space between candle 1 and candle 3 that doesn't overlap, that's the gap. Price usually comes back to fill it, and that's where you enter your trade.",
+    tip: "On NQ, a 15-minute FVG (Fair Value Gap) after a liquidity sweep is your best entry.",
   },
   {
     term: "MSS",
@@ -47,8 +47,8 @@ const GLOSSARY = [
     color: "#818CF8",
     image: "chart-mss.png",
     definition:
-      "When price breaks a recent swing high/low with a full candle close, signaling that the dominant trend has reversed. A bearish MSS after sweeping buy-side liquidity confirms a short setup.",
-    tip: "Wait for the MSS candle to fully close — don't anticipate it.",
+      "When price breaks past a recent high or low and closes beyond it, telling you the trend just flipped direction. Think of it like a U-turn sign — the market was going one way and now it's going the other.",
+    tip: "Wait for the MSS (Market Structure Shift) candle to fully close — don't jump in early.",
   },
   {
     term: "Liquidity Sweep",
@@ -56,8 +56,8 @@ const GLOSSARY = [
     color: "#F59E0B",
     image: "chart-liquidity-sweep.png",
     definition:
-      "When price briefly pierces beyond a swing high/low to grab the stop-loss orders clustered there, then reverses sharply. This is ICT's 'seek and destroy' concept — smart money hunts liquidity before moving in the opposite direction.",
-    tip: "A sweep of the London Low followed by bullish MSS on NQ = high-probability long setup.",
+      "When price quickly pokes above a high or below a low to grab everyone's stop-loss orders, then snaps back the other way. It's like a broom sweeping up money before the real move starts.",
+    tip: "A sweep of the London session low followed by a bullish MSS (Market Structure Shift) on NQ is a great long setup.",
   },
   {
     term: "OTE",
@@ -65,8 +65,8 @@ const GLOSSARY = [
     color: "#EC4899",
     image: "chart-ote.png",
     definition:
-      "A Fibonacci retracement zone between 62% and 79% of a swing move. After a sweep and MSS, ICT traders look to enter in this zone for the best risk:reward. It aligns with the 'discount' area in a bullish move.",
-    tip: "Combine OTE with a FVG in the same zone for a confluence entry.",
+      "The sweet spot to enter a trade — between 62% and 79% of a price swing. After a sweep and MSS (Market Structure Shift), you want to enter in this zone for the best risk-to-reward. For buys, this lines up with the 'discount' (cheap) area.",
+    tip: "Combine OTE (Optimal Trade Entry) with a FVG (Fair Value Gap) in the same zone for an even stronger entry.",
   },
   {
     term: "Kill Zone",
@@ -74,15 +74,15 @@ const GLOSSARY = [
     color: "#06B6D4",
     image: "chart-killzone.png",
     definition:
-      "Specific time windows when ICT setups are most reliable: London Open (2–5 AM EST), NY Open (7–9:30 AM EST), and Silver Bullet (10–11 AM EST). These windows align with institutional order flow and liquidity events.",
-    tip: "The Silver Bullet (10–11 AM) is the most consistent window for NQ Futures.",
+      "The best times of day to trade, when setups work most often: London Open (2–5 AM EST) and the Silver Bullet window (10–11 AM EST). These are when the big players are most active and the market moves the cleanest.",
+    tip: "The Silver Bullet window (10–11 AM) is the most reliable time for NQ Futures.",
   },
 ];
 
 const QUIZ_BANK: QuizQuestion[] = [
-  { difficulty: "easy", scenario: "What does FVG stand for in ICT trading?", options: ["Fast Volume Gain", "Fair Value Gap", "Forward Volatility Gauge", "Fibonacci Value Grid"], answer: 1, explanation: "FVG = Fair Value Gap. It's a 3-candle imbalance where the wicks of candles 1 and 3 don't overlap. Price tends to come back and fill this gap — that's where you enter!" },
+  { difficulty: "easy", scenario: "What does FVG stand for in ICT trading?", options: ["Fast Volume Gain", "Fair Value Gap", "Forward Volatility Gauge", "Fibonacci Value Grid"], answer: 1, explanation: "FVG = Fair Value Gap. It's a gap left on the chart when price moves too fast. Price usually comes back to fill that gap — and that's where you enter your trade!" },
   { difficulty: "easy", scenario: "What is the Silver Bullet time window in EST?", options: ["8:00–9:00 AM", "10:00–11:00 AM", "2:00–3:00 PM", "12:00–1:00 PM"], answer: 1, explanation: "The Silver Bullet window is 10:00–11:00 AM EST. This is the prime ICT trading window for NQ — most consistent setups happen here!" },
-  { difficulty: "easy", scenario: "What does MSS mean?", options: ["Moving Stop Strategy", "Market Structure Shift", "Margin Safety System", "Multiple Swing Setup"], answer: 1, explanation: "MSS = Market Structure Shift. It's when price breaks a recent swing high/low with a full candle close, signaling a trend reversal." },
+  { difficulty: "easy", scenario: "What does MSS mean?", options: ["Moving Stop Strategy", "Market Structure Shift", "Margin Safety System", "Multiple Swing Setup"], answer: 1, explanation: "MSS = Market Structure Shift. It's when price breaks past a recent high or low, telling you the trend just changed direction — like a U-turn." },
   { difficulty: "easy", scenario: "In ICT, what is 'Premium' vs 'Discount'?", options: ["Price above/below the 50% level of a range", "High/low volume zones", "Pre-market/post-market sessions", "Bid/ask spread zones"], answer: 0, explanation: "Premium = above the 50% level (expensive zone — look to sell). Discount = below 50% (cheap zone — look to buy). Think of it like shopping — you buy on sale and sell when it's overpriced!" },
   { difficulty: "easy", scenario: "What is the max daily loss rule for prop firms in this plan?", options: ["1%", "2%", "5%", "10%"], answer: 1, explanation: "Max daily loss is 2%. If you hit it, the app locks you out for 24 hours. This is how you survive prop firm evaluations — protect your capital!" },
   { difficulty: "medium", scenario: "NQ sweeps the 9:00 AM candle low, then immediately breaks back above the 9:00 AM high with a full candle close. What should you do next?", options: ["Enter long immediately at market price", "Wait for a 15-minute FVG to form, then buy into the gap", "Short because the low was already swept", "Skip — no valid setup here"], answer: 1, explanation: "The market faked everyone out by going down first (sweep), then slammed back up (MSS). Now you wait for it to come back down a little to a 'price gap' (FVG) and that's your entry! Entering at market after MSS gives bad risk:reward." },
@@ -108,19 +108,19 @@ const PLAN_SECTIONS: {
     title: "The Tools",
     color: "#00C896",
     items: [
-      { label: "MSS", desc: "Market Structure Shift — our signal that the trend has changed." },
-      { label: "FVG", desc: "Fair Value Gap — our entry zone." },
-      { label: "Liquidity", desc: "Internal/External — our targets (Old Highs/Lows)." },
-      { label: "Premium vs. Discount", desc: "Fibonacci — we only buy in Discount and sell in Premium." },
-      { label: "Kill Zones", desc: "London (2–5 AM EST) and NY Silver Bullet (10–11 AM EST)." },
+      { label: "MSS (Market Structure Shift)", desc: "Our signal that the trend has changed direction." },
+      { label: "FVG (Fair Value Gap)", desc: "A price gap on the chart — this is where we enter trades." },
+      { label: "Liquidity", desc: "Old highs and lows where stop losses are sitting — our targets." },
+      { label: "Premium vs. Discount", desc: "Is price expensive (Premium = sell) or cheap (Discount = buy)?" },
+      { label: "Kill Zones", desc: "The best times to trade: London (2–5 AM EST) and Silver Bullet (10–11 AM EST)." },
     ],
   },
   {
-    title: "Timeframe Alignment",
+    title: "Timeframe Alignment (Matching Big and Small Charts)",
     color: "#818CF8",
     items: [
-      { label: "HTF: Daily & 1-Hour", desc: "Find the Draw on Liquidity — where is price going?" },
-      { label: "LTF: 15-Min & 5-Min", desc: "Find the MSS and the FVG entry." },
+      { label: "HTF (Big Picture): Daily & 1-Hour", desc: "Find where price is heading — which direction is the market going?" },
+      { label: "LTF (Close-Up): 15-Min & 5-Min", desc: "Find the MSS (Market Structure Shift) and the FVG (Fair Value Gap) entry." },
     ],
   },
   {
@@ -128,11 +128,11 @@ const PLAN_SECTIONS: {
     color: "#00C896",
     image: "chart-conservative-entry.png",
     items: [
-      { label: "1. Bias Check", desc: "Is the 1-Hour chart Bullish or Bearish?" },
-      { label: "2. The Sweep", desc: "Wait for price to take out a 15-min High or Low." },
-      { label: "3. The Shift", desc: "Wait for a 5-min MSS with Displacement (a fast move)." },
-      { label: "4. The Gap", desc: "Identify the Fair Value Gap (FVG) left behind." },
-      { label: "5. The Fib", desc: "Ensure entry is in Discount (buys) or Premium (sells)." },
+      { label: "1. Bias Check", desc: "Is the 1-Hour chart going up (Bullish) or down (Bearish)?" },
+      { label: "2. The Sweep", desc: "Wait for price to take out a 15-min high or low." },
+      { label: "3. The Shift (MSS)", desc: "Wait for a 5-min MSS (Market Structure Shift) — a fast, strong move." },
+      { label: "4. The Gap (FVG)", desc: "Find the FVG (Fair Value Gap) that was left behind." },
+      { label: "5. The Fib — OTE (Optimal Trade Entry)", desc: "Make sure your entry is in the sweet spot — Discount (buys) or Premium (sells)." },
       { label: "6. The Trigger", desc: "Place a Limit Order at the start of the FVG." },
     ],
   },
@@ -141,10 +141,10 @@ const PLAN_SECTIONS: {
     color: "#F59E0B",
     image: "chart-silver-bullet.png",
     items: [
-      { label: "Time Check", desc: "Must be between 10:00 AM and 11:00 AM EST." },
-      { label: "Identify POI", desc: "Price must be heading toward a clear High or Low." },
-      { label: "The Gap", desc: "Enter at the first 1-min FVG after a liquidity grab." },
-      { label: "Risk", desc: "Max 1% risk per trade." },
+      { label: "Time Check", desc: "It must be between 10:00 AM and 11:00 AM EST." },
+      { label: "Identify POI", desc: "Price must be heading toward a clear high or low." },
+      { label: "The Gap (FVG)", desc: "Enter at the first 1-min FVG (Fair Value Gap) after a liquidity grab." },
+      { label: "Risk", desc: "Don't risk more than 1% on this trade." },
     ],
   },
   {
@@ -152,28 +152,28 @@ const PLAN_SECTIONS: {
     color: "#06B6D4",
     image: "chart-exit-criteria.png",
     items: [
-      { label: "Stop Loss", desc: "Placed at the high/low of the candle that created the MSS." },
-      { label: "TP1", desc: "Next Internal High or Low (1:1 or 1:2 ratio)." },
-      { label: "TP2", desc: "External Liquidity — the main target." },
-      { label: "Trailing", desc: "Move SL to Breakeven once TP1 is hit." },
+      { label: "Stop Loss", desc: "Place it at the high/low of the candle that created the MSS (Market Structure Shift)." },
+      { label: "TP1 (First Target)", desc: "The next nearby high or low (1:1 or 1:2 reward ratio)." },
+      { label: "TP2 (Main Target)", desc: "External Liquidity — the big target where the move should end." },
+      { label: "Trailing", desc: "Move your stop loss to breakeven once TP1 is hit — now it's a free trade!" },
     ],
   },
   {
     title: "Prop Firm Survival Rules",
     color: "#EF4444",
     items: [
-      { label: "Max Daily Loss", desc: "2% — if hit, app locks for 24 hours." },
-      { label: "Max Weekly Loss", desc: "4%." },
-      { label: "News Rule", desc: "No trading 5 min before or after Red Folder news." },
+      { label: "Max Daily Loss", desc: "2% — if you lose this much, the app stops you for 24 hours." },
+      { label: "Max Weekly Loss", desc: "4% — your weekly safety limit." },
+      { label: "News Rule", desc: "Don't trade within 5 minutes before or after Red Folder news events." },
     ],
   },
   {
     title: "Key Takeaways",
     color: "#EC4899",
     items: [
-      { label: "Top-Down", desc: "Always start with Daily. If Daily is going down, don't buy on 1-min." },
-      { label: "Patience", desc: "If the market doesn't hit your FVG, there is no trade." },
-      { label: "Discipline", desc: "Following this plan is how you get funded. Breaking it is how you stay a student." },
+      { label: "Top-Down", desc: "Always start with the big chart (Daily). If it's going down, don't try to buy on the small chart." },
+      { label: "Patience", desc: "If price doesn't come to your FVG (Fair Value Gap), there is no trade. Wait." },
+      { label: "Discipline", desc: "Following this plan is how you get funded. Breaking it keeps you stuck." },
     ],
   },
 ];

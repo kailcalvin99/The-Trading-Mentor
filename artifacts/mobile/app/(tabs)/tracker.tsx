@@ -28,19 +28,19 @@ const MNQ_POINT_VALUE = 2;
 const WIDE_BREAKPOINT = 768;
 
 const STOP_TRADING_RULES = [
-  "Max daily loss reached — you are DONE for today",
-  "Close ALL open positions immediately",
-  "No revenge trading — log what happened",
-  "Walk away and reset mentally",
-  "Come back tomorrow with fresh eyes",
+  "You hit your max daily loss — you are DONE for today",
+  "Close ALL open trades right now",
+  "No revenge trading — write down what happened in your journal",
+  "Step away from the screen and clear your head",
+  "Come back tomorrow with a fresh start",
 ];
 
 const EXIT_RULES = [
-  "Honor your stop loss — no exceptions",
+  "Keep your stop loss where you set it — no exceptions",
   "Don't move your stop to breakeven too early",
-  "Let price reach your target — no early exits",
-  "Exit immediately if market structure breaks against you",
-  "One trade at a time — no adding to losers",
+  "Wait for price to reach your target — don't exit early",
+  "Get out right away if the market turns against you (MSS — Market Structure Shift)",
+  "Only have one trade open at a time — don't add to a losing trade",
 ];
 
 function GaugeMeter({
@@ -143,7 +143,7 @@ export default function RiskShieldScreen() {
   const handleReset = useCallback(async () => {
     Alert.alert(
       "Reset Daily Loss?",
-      "This will reset today's loss counter to zero.",
+      "This will set today's loss back to zero. Your total losses will stay the same.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -206,14 +206,14 @@ export default function RiskShieldScreen() {
         <GaugeMeter
           value={dailyLossPct}
           max={maxDailyLoss}
-          label="Daily Drawdown"
+          label="Daily Drawdown (Lost Today)"
           color={dailyGaugeColor}
         />
         <View style={styles.divider} />
         <GaugeMeter
           value={totalLossPct}
           max={maxTotalLoss}
-          label="Total Drawdown"
+          label="Total Drawdown (Lost Overall)"
           color={totalGaugeColor}
         />
       </View>
@@ -253,7 +253,7 @@ export default function RiskShieldScreen() {
       <Text style={styles.sectionTitle2}>Position Size Calculator</Text>
       <View style={styles.card}>
         <Text style={styles.calcSubtitle}>
-          Risk exactly 0.5% on your next trade
+          Figure out how many contracts to trade so you only risk 0.5%
         </Text>
 
         <View style={styles.calcRow}>
@@ -272,7 +272,7 @@ export default function RiskShieldScreen() {
         </View>
 
         <View style={styles.calcRow}>
-          <Text style={styles.calcLabel}>Points at Risk (SL distance)</Text>
+          <Text style={styles.calcLabel}>Points at Risk (Stop Loss Distance)</Text>
           <View style={styles.calcInputWrap}>
             <TextInput
               style={styles.calcInput}
@@ -397,7 +397,7 @@ export default function RiskShieldScreen() {
           <View style={styles.stopCard}>
             <Text style={styles.stopCardTitle}>STOP TRADING</Text>
             <Text style={styles.stopCardSub}>
-              Daily drawdown limit reached. Respect the rules.
+              You lost the most you're allowed to lose today. Follow the rules below.
             </Text>
             {STOP_TRADING_RULES.map((rule, i) => (
               <View key={i} style={styles.stopRule}>
@@ -439,9 +439,9 @@ export default function RiskShieldScreen() {
       >
         <View style={setupStyles.overlay}>
           <View style={setupStyles.card}>
-            <Text style={setupStyles.title}>Prop Account Setup</Text>
+            <Text style={setupStyles.title}>Prop Firm Account Setup (Your Funded Account)</Text>
             <Text style={setupStyles.subtitle}>
-              Configure your starting balance and drawdown limits.
+              Set up your starting balance and the most you're allowed to lose.
             </Text>
 
             <Text style={setupStyles.label}>Starting Balance</Text>
@@ -459,7 +459,7 @@ export default function RiskShieldScreen() {
 
             <View style={setupStyles.row}>
               <View style={{ flex: 1 }}>
-                <Text style={setupStyles.label}>Max Daily Loss %</Text>
+                <Text style={setupStyles.label}>Max Daily Loss % (Most you can lose in a day)</Text>
                 <View style={setupStyles.inputWrap}>
                   <TextInput
                     style={setupStyles.input}
@@ -474,7 +474,7 @@ export default function RiskShieldScreen() {
               </View>
               <View style={{ width: 12 }} />
               <View style={{ flex: 1 }}>
-                <Text style={setupStyles.label}>Max Total Drawdown %</Text>
+                <Text style={setupStyles.label}>Max Total Drawdown % (Most you can lose overall)</Text>
                 <View style={setupStyles.inputWrap}>
                   <TextInput
                     style={setupStyles.input}
@@ -512,7 +512,7 @@ export default function RiskShieldScreen() {
           <View style={monkStyles.header}>
             <Text style={monkStyles.title}>FOCUS MODE</Text>
             <Text style={monkStyles.subtitle}>
-              P&L hidden — stay disciplined
+              Your profit and loss is hidden — stay focused on the process
             </Text>
           </View>
 
@@ -529,8 +529,8 @@ export default function RiskShieldScreen() {
           <View style={monkStyles.mindsetCard}>
             <Text style={monkStyles.mindsetTitle}>MINDSET ANCHOR</Text>
             <Text style={monkStyles.mindsetText}>
-              "I trade the process, not the P&L. My job is to execute the
-              setup correctly. The outcome takes care of itself."
+              "I follow my plan, not my emotions. My job is to take the
+              right setup. If I do that, the results will come."
             </Text>
           </View>
 
