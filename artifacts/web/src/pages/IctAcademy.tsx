@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   GraduationCap,
   ChevronDown,
@@ -12,6 +12,14 @@ import {
   CheckCircle2,
   Circle,
   Lock,
+  Flame,
+  Zap,
+  Trophy,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Sparkles,
+  Play,
 } from "lucide-react";
 import {
   COURSE_CHAPTERS,
@@ -64,10 +72,441 @@ function getApiUrl(): string {
   return "/api/";
 }
 
-function LearnView() {
-  const [expandedChapter, setExpandedChapter] = useState<string | null>("ch1");
-  const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
+const STREAK_KEY = "ict-learn-streak";
+const XP_KEY = "ict-learn-xp";
+const LAST_DATE_KEY = "ict-learn-last-date";
+
+function getStreak(): number {
+  try { return parseInt(localStorage.getItem(STREAK_KEY) || "0", 10); } catch { return 0; }
+}
+function getXP(): number {
+  try { return parseInt(localStorage.getItem(XP_KEY) || "0", 10); } catch { return 0; }
+}
+function getLastDate(): string {
+  try { return localStorage.getItem(LAST_DATE_KEY) || ""; } catch { return ""; }
+}
+
+function getAllCards(): { lesson: Lesson; chapter: Chapter; globalIdx: number }[] {
+  const cards: { lesson: Lesson; chapter: Chapter; globalIdx: number }[] = [];
+  let idx = 0;
+  for (const ch of COURSE_CHAPTERS) {
+    for (const l of ch.lessons) {
+      cards.push({ lesson: l, chapter: ch, globalIdx: idx++ });
+    }
+  }
+  return cards;
+}
+
+function ConfettiBurst({ onDone }: { onDone: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    const colors = ["#00C896", "#818CF8", "#FFD700", "#EF4444", "#06B6D4", "#F59E0B"];
+    const particles: { x: number; y: number; vx: number; vy: number; r: number; color: string; life: number }[] = [];
+
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        vx: (Math.random() - 0.5) * 16,
+        vy: (Math.random() - 0.5) * 16 - 4,
+        r: Math.random() * 5 + 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        life: 1,
+      });
+    }
+
+    let frame = 0;
+    const maxFrames = 50;
+
+    function animate() {
+      if (!ctx || !canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.3;
+        p.life -= 1 / maxFrames;
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      frame++;
+      if (frame < maxFrames) requestAnimationFrame(animate);
+      else onDone();
+    }
+    animate();
+  }, [onDone]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none z-50"
+      style={{ width: "100%", height: "100%" }}
+    />
+  );
+}
+
+function SwipeLearnView({ onExit }: { onExit: () => void }) {
+  const allCards = getAllCards();
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
+  const [cardStep, setCardStep] = useState(0);
+  const [swipeX, setSwipeX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [xp, setXp] = useState(getXP);
+  const [streak, setStreak] = useState(getStreak);
+  const [justCompleted, setJustCompleted] = useState(false);
+  const [xpPop, setXpPop] = useState(0);
+  const dragStart = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const card = allCards[currentIdx];
+  const lesson = card.lesson;
+  const chapter = card.chapter;
+  const isDone = completed.has(lesson.id);
+  const totalCards = allCards.length;
+  const completedCount = allCards.filter((c) => completed.has(c.lesson.id)).length;
+
+  const totalSteps = lesson.paragraphs.length + (lesson.chartImage ? 1 : 0) + 1;
+
+  function markComplete() {
+    if (completed.has(lesson.id)) return;
+    const next = new Set(completed);
+    next.add(lesson.id);
+    setCompleted(next);
+    setProgress(next);
+
+    const today = new Date().toDateString();
+    const lastDate = getLastDate();
+    let newStreak = streak;
+    if (lastDate !== today) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      newStreak = lastDate === yesterday.toDateString() ? streak + 1 : 1;
+      localStorage.setItem(STREAK_KEY, String(newStreak));
+      localStorage.setItem(LAST_DATE_KEY, today);
+      setStreak(newStreak);
+    }
+
+    const earnedXp = 25 * Math.max(1, newStreak);
+    const newXp = xp + earnedXp;
+    localStorage.setItem(XP_KEY, String(newXp));
+    setXp(newXp);
+    setXpPop(earnedXp);
+    setShowConfetti(true);
+    setJustCompleted(true);
+    setTimeout(() => { setXpPop(0); setJustCompleted(false); }, 1800);
+  }
+
+  function goNext() {
+    if (cardStep < totalSteps - 1) {
+      setCardStep(cardStep + 1);
+    } else {
+      if (!isDone && !completed.has(lesson.id)) markComplete();
+      if (currentIdx < totalCards - 1) {
+        setCurrentIdx(currentIdx + 1);
+        setCardStep(0);
+        setSwipeX(0);
+      }
+    }
+  }
+
+  function goPrev() {
+    if (cardStep > 0) {
+      setCardStep(cardStep - 1);
+    } else if (currentIdx > 0) {
+      setCurrentIdx(currentIdx - 1);
+      setCardStep(0);
+      setSwipeX(0);
+    }
+  }
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    dragStart.current = e.clientX;
+    setIsDragging(true);
+    setSwipeX(0);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging) return;
+    setSwipeX(e.clientX - dragStart.current);
+  }, [isDragging]);
+
+  const handlePointerUp = useCallback(() => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (swipeX > 100) {
+      if (!isDone) markComplete();
+      setSwipeX(0);
+    } else if (swipeX < -100) {
+      goPrev();
+      setSwipeX(0);
+    } else {
+      setSwipeX(0);
+    }
+  }, [isDragging, swipeX, isDone, currentIdx]);
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goNext(); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+      if (e.key === "ArrowUp") { e.preventDefault(); goPrev(); }
+      if (e.key === "ArrowDown") { e.preventDefault(); goNext(); }
+      if (e.key === "Escape") onExit();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  });
+
+  const stepContent = (() => {
+    const paraCount = lesson.paragraphs.length;
+    if (cardStep < paraCount) {
+      return { type: "paragraph" as const, text: lesson.paragraphs[cardStep], stepLabel: `${cardStep + 1} of ${totalSteps}` };
+    }
+    if (lesson.chartImage && cardStep === paraCount) {
+      return { type: "chart" as const, stepLabel: `${cardStep + 1} of ${totalSteps}` };
+    }
+    return { type: "takeaway" as const, stepLabel: `${cardStep + 1} of ${totalSteps}` };
+  })();
+
+  const swipeOpacity = Math.min(1, Math.abs(swipeX) / 150);
+  const swipeRotation = swipeX * 0.05;
+
+  return (
+    <div className="fixed inset-0 bg-background z-50 flex flex-col" ref={containerRef}>
+      {showConfetti && <ConfettiBurst onDone={() => setShowConfetti(false)} />}
+
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+        <button
+          onClick={onExit}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <X className="h-5 w-5" />
+          <span className="hidden sm:inline">Exit</span>
+        </button>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <Flame className="h-4 w-4 text-orange-500" />
+            <span className="text-sm font-bold text-orange-500">{streak}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Zap className="h-4 w-4 text-yellow-500" />
+            <span className="text-sm font-bold text-yellow-500">{xp} XP</span>
+          </div>
+        </div>
+
+        <div className="text-xs text-muted-foreground font-medium">
+          {completedCount}/{totalCards}
+        </div>
+      </div>
+
+      <div className="flex gap-0.5 px-4 pt-3">
+        {allCards.map((_, i) => (
+          <div
+            key={i}
+            className="h-1 flex-1 rounded-full transition-all duration-300"
+            style={{
+              backgroundColor:
+                i < currentIdx || completed.has(allCards[i].lesson.id)
+                  ? "#00C896"
+                  : i === currentIdx
+                  ? "#00C896"
+                  : "hsl(var(--border))",
+              opacity: i === currentIdx ? 1 : i < currentIdx || completed.has(allCards[i].lesson.id) ? 0.5 : 0.2,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+        <div
+          className="relative w-full max-w-lg select-none"
+          style={{
+            transform: `translateX(${swipeX}px) rotate(${swipeRotation}deg)`,
+            transition: isDragging ? "none" : "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+        >
+          {swipeX > 20 && (
+            <div
+              className="absolute -top-2 -right-2 bg-green-500 text-white px-4 py-1.5 rounded-full font-bold text-sm z-10 shadow-lg"
+              style={{ opacity: swipeOpacity }}
+            >
+              GOT IT
+            </div>
+          )}
+
+          <div
+            className="rounded-2xl border-2 overflow-hidden bg-card shadow-2xl"
+            style={{ borderColor: justCompleted ? "#00C896" : chapter.color + "40" }}
+          >
+            <div
+              className="px-5 py-4 flex items-center gap-3"
+              style={{ background: `linear-gradient(135deg, ${chapter.color}15, ${chapter.color}05)` }}
+            >
+              <span className="text-2xl">{chapter.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: chapter.color }}>
+                  {chapter.title}
+                </div>
+                <div className="text-lg font-bold text-foreground truncate">{lesson.title}</div>
+              </div>
+              {isDone && (
+                <div className="shrink-0 bg-primary/20 rounded-full p-1.5">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-6 min-h-[280px] flex flex-col justify-center">
+              {stepContent.type === "paragraph" && (
+                <p className="text-base leading-relaxed text-foreground/90 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  {stepContent.text}
+                </p>
+              )}
+
+              {stepContent.type === "chart" && lesson.chartImage && (
+                <div className="animate-in fade-in zoom-in-95 duration-300">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                    See it on the chart
+                  </p>
+                  <img
+                    src={getImageUrl(lesson.chartImage)}
+                    alt={`${lesson.title} chart`}
+                    className="w-full h-52 object-cover rounded-xl border"
+                  />
+                </div>
+              )}
+
+              {stepContent.type === "takeaway" && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div
+                    className="rounded-xl p-5 border-l-[4px]"
+                    style={{ borderLeftColor: chapter.color, backgroundColor: chapter.color + "12" }}
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="h-4 w-4" style={{ color: chapter.color }} />
+                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: chapter.color }}>
+                        Key Takeaway
+                      </p>
+                    </div>
+                    <p className="text-base leading-relaxed font-semibold text-foreground">
+                      {lesson.takeaway}
+                    </p>
+                  </div>
+
+                  {!isDone && (
+                    <p className="text-center text-xs text-muted-foreground mt-4 animate-pulse">
+                      Swipe right or tap below to complete
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 px-5 pb-2">
+              {Array.from({ length: totalSteps }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-1.5 flex-1 rounded-full transition-all duration-300 cursor-pointer"
+                  onClick={() => setCardStep(i)}
+                  style={{
+                    backgroundColor: i <= cardStep ? chapter.color : "hsl(var(--border))",
+                    opacity: i <= cardStep ? 1 : 0.3,
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between px-5 py-4 border-t border-border">
+              <button
+                onClick={goPrev}
+                disabled={currentIdx === 0 && cardStep === 0}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
+
+              <span className="text-xs text-muted-foreground">{stepContent.stepLabel}</span>
+
+              {stepContent.type === "takeaway" && !isDone ? (
+                <button
+                  onClick={markComplete}
+                  className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Got it!
+                </button>
+              ) : (
+                <button
+                  onClick={goNext}
+                  disabled={currentIdx === totalCards - 1 && cardStep === totalSteps - 1}
+                  className="flex items-center gap-1 text-sm text-primary font-semibold hover:opacity-80 disabled:opacity-30 transition-opacity"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {xpPop > 0 && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-50">
+              <div className="animate-bounce text-center">
+                <div className="text-3xl font-black text-yellow-400 drop-shadow-lg">
+                  +{xpPop} XP
+                </div>
+                {streak > 1 && (
+                  <div className="text-sm font-bold text-orange-400 mt-1">
+                    {streak}x streak bonus!
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="text-center py-3 text-xs text-muted-foreground/50 shrink-0">
+        Use arrow keys, swipe, or tap to navigate
+      </div>
+    </div>
+  );
+}
+
+function LearnView() {
+  const [swipeMode, setSwipeMode] = useState(false);
+  const [completed, setCompleted] = useState<Set<string>>(getProgress);
+
+  useEffect(() => {
+    const interval = setInterval(() => setCompleted(getProgress()), 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
+  const completedCount = COURSE_CHAPTERS.reduce(
+    (sum, ch) => sum + ch.lessons.filter((l) => completed.has(l.id)).length,
+    0
+  );
+  const streak = getStreak();
+  const xp = getXP();
 
   function toggleComplete(lessonId: string) {
     const next = new Set(completed);
@@ -77,15 +516,13 @@ function LearnView() {
     setProgress(next);
   }
 
-  const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
-  const completedCount = COURSE_CHAPTERS.reduce(
-    (sum, ch) => sum + ch.lessons.filter((l) => completed.has(l.id)).length,
-    0
-  );
+  if (swipeMode) {
+    return <SwipeLearnView onExit={() => { setSwipeMode(false); setCompleted(getProgress()); }} />;
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold mb-1">ICT Trading Course</h2>
           <p className="text-sm text-muted-foreground">
@@ -98,6 +535,26 @@ function LearnView() {
         </div>
       </div>
 
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-1.5 bg-orange-500/10 rounded-lg px-3 py-1.5">
+          <Flame className="h-4 w-4 text-orange-500" />
+          <span className="text-sm font-bold text-orange-500">{streak} day streak</span>
+        </div>
+        <div className="flex items-center gap-1.5 bg-yellow-500/10 rounded-lg px-3 py-1.5">
+          <Zap className="h-4 w-4 text-yellow-500" />
+          <span className="text-sm font-bold text-yellow-500">{xp} XP</span>
+        </div>
+      </div>
+
+      <button
+        onClick={() => setSwipeMode(true)}
+        className="w-full mb-8 flex items-center justify-center gap-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-2xl py-4 px-6 font-bold text-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
+      >
+        <Play className="h-6 w-6" />
+        Start Swipe Mode
+        <span className="text-sm font-medium opacity-80 ml-1">TikTok-style</span>
+      </button>
+
       <div className="h-2 bg-border rounded-full mb-8 overflow-hidden">
         <div
           className="h-2 bg-primary rounded-full transition-all duration-500"
@@ -107,132 +564,145 @@ function LearnView() {
 
       <div className="space-y-4">
         {COURSE_CHAPTERS.map((chapter, chIdx) => {
-          const isOpen = expandedChapter === chapter.id;
           const chCompleted = chapter.lessons.filter((l) => completed.has(l.id)).length;
           const chTotal = chapter.lessons.length;
           const chDone = chCompleted === chTotal && chTotal > 0;
 
           return (
-            <div key={chapter.id} className="rounded-xl border overflow-hidden bg-card">
-              <button
-                className="w-full flex items-center gap-3 p-4 text-left hover:bg-secondary/50 transition-colors"
-                onClick={() => setExpandedChapter(isOpen ? null : chapter.id)}
-              >
-                <span className="text-2xl">{chapter.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold">Chapter {chIdx + 1}</span>
-                    {chDone && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                  </div>
-                  <div className="text-base font-semibold mt-0.5">{chapter.title}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{chapter.description}</div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-sm font-semibold" style={{ color: chapter.color }}>
-                    {chCompleted}/{chTotal}
-                  </div>
-                  {isOpen ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground mt-1" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground mt-1" />
-                  )}
-                </div>
-              </button>
-
-              {isOpen && (
-                <div className="border-t">
-                  {chapter.lessons.map((lesson, lIdx) => {
-                    const isLessonOpen = expandedLesson === lesson.id;
-                    const isDone = completed.has(lesson.id);
-
-                    return (
-                      <div key={lesson.id} className="border-b last:border-b-0">
-                        <div
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/30 transition-colors cursor-pointer"
-                          onClick={() => setExpandedLesson(isLessonOpen ? null : lesson.id)}
-                        >
-                          <div
-                            className="shrink-0 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleComplete(lesson.id);
-                            }}
-                          >
-                            {isDone ? (
-                              <CheckCircle2 className="h-5 w-5 text-primary" />
-                            ) : (
-                              <Circle className="h-5 w-5 text-muted-foreground/40" />
-                            )}
-                          </div>
-                          <span className="text-sm text-muted-foreground font-mono w-6">
-                            {lIdx + 1}.
-                          </span>
-                          <span className={`flex-1 text-sm font-medium ${isDone ? "text-muted-foreground line-through" : ""}`}>
-                            {lesson.title}
-                          </span>
-                          {isLessonOpen ? (
-                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-
-                        {isLessonOpen && (
-                          <div className="px-4 pb-5 pt-2 ml-14">
-                            <div className="space-y-3">
-                              {lesson.paragraphs.map((p, pIdx) => (
-                                <p key={pIdx} className="text-sm leading-relaxed text-foreground/90">
-                                  {p}
-                                </p>
-                              ))}
-                            </div>
-
-                            {lesson.chartImage && (
-                              <div className="mt-4">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                  See it on the chart
-                                </p>
-                                <img
-                                  src={getImageUrl(lesson.chartImage)}
-                                  alt={`${lesson.title} chart example`}
-                                  className="w-full h-48 object-cover rounded-lg border"
-                                />
-                              </div>
-                            )}
-
-                            <div
-                              className="mt-4 rounded-lg p-4 border-l-[3px]"
-                              style={{
-                                borderLeftColor: chapter.color,
-                                backgroundColor: chapter.color + "10",
-                              }}
-                            >
-                              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: chapter.color }}>
-                                Key Takeaway
-                              </p>
-                              <p className="text-sm leading-relaxed font-medium">{lesson.takeaway}</p>
-                            </div>
-
-                            {!isDone && (
-                              <button
-                                className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-                                onClick={() => toggleComplete(lesson.id)}
-                              >
-                                <CheckCircle2 className="h-4 w-4" />
-                                Mark as Complete
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <ChapterAccordion
+              key={chapter.id}
+              chapter={chapter}
+              chIdx={chIdx}
+              chCompleted={chCompleted}
+              chTotal={chTotal}
+              chDone={chDone}
+              completed={completed}
+              toggleComplete={toggleComplete}
+              defaultOpen={chIdx === 0}
+            />
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function ChapterAccordion({
+  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen,
+}: {
+  chapter: Chapter; chIdx: number; chCompleted: number; chTotal: number; chDone: boolean;
+  completed: Set<string>; toggleComplete: (id: string) => void; defaultOpen: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
+
+  return (
+    <div className="rounded-xl border overflow-hidden bg-card">
+      <button
+        className="w-full flex items-center gap-3 p-4 text-left hover:bg-secondary/50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="text-2xl">{chapter.icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold">Chapter {chIdx + 1}</span>
+            {chDone && <CheckCircle2 className="h-4 w-4 text-primary" />}
+          </div>
+          <div className="text-base font-semibold mt-0.5">{chapter.title}</div>
+          <div className="text-xs text-muted-foreground mt-1">{chapter.description}</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-sm font-semibold" style={{ color: chapter.color }}>
+            {chCompleted}/{chTotal}
+          </div>
+          {isOpen ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground mt-1" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground mt-1" />
+          )}
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="border-t">
+          {chapter.lessons.map((lesson, lIdx) => {
+            const isLessonOpen = expandedLesson === lesson.id;
+            const isDone = completed.has(lesson.id);
+
+            return (
+              <div key={lesson.id} className="border-b last:border-b-0">
+                <div
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/30 transition-colors cursor-pointer"
+                  onClick={() => setExpandedLesson(isLessonOpen ? null : lesson.id)}
+                >
+                  <div
+                    className="shrink-0 cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); toggleComplete(lesson.id); }}
+                  >
+                    {isDone ? (
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground/40" />
+                    )}
+                  </div>
+                  <span className="text-sm text-muted-foreground font-mono w-6">{lIdx + 1}.</span>
+                  <span className={`flex-1 text-sm font-medium ${isDone ? "text-muted-foreground line-through" : ""}`}>
+                    {lesson.title}
+                  </span>
+                  {isLessonOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+
+                {isLessonOpen && (
+                  <div className="px-4 pb-5 pt-2 ml-14">
+                    <div className="space-y-3">
+                      {lesson.paragraphs.map((p, pIdx) => (
+                        <p key={pIdx} className="text-sm leading-relaxed text-foreground/90">{p}</p>
+                      ))}
+                    </div>
+
+                    {lesson.chartImage && (
+                      <div className="mt-4">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                          See it on the chart
+                        </p>
+                        <img
+                          src={getImageUrl(lesson.chartImage)}
+                          alt={`${lesson.title} chart example`}
+                          className="w-full h-48 object-cover rounded-lg border"
+                        />
+                      </div>
+                    )}
+
+                    <div
+                      className="mt-4 rounded-lg p-4 border-l-[3px]"
+                      style={{ borderLeftColor: chapter.color, backgroundColor: chapter.color + "10" }}
+                    >
+                      <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: chapter.color }}>
+                        Key Takeaway
+                      </p>
+                      <p className="text-sm leading-relaxed font-medium">{lesson.takeaway}</p>
+                    </div>
+
+                    {!isDone && (
+                      <button
+                        className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                        onClick={() => toggleComplete(lesson.id)}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Mark as Complete
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
