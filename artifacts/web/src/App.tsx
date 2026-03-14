@@ -21,6 +21,12 @@ const queryClient = new QueryClient({
   },
 });
 
+function ResetApp() {
+  localStorage.clear();
+  window.location.href = import.meta.env.BASE_URL + "welcome";
+  return null;
+}
+
 function IndexRedirect() {
   const seen = localStorage.getItem("ict-welcome-seen");
   if (!seen) return <Navigate to="/welcome" replace />;
@@ -35,6 +41,7 @@ function App() {
           <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Routes>
               <Route path="welcome" element={<Welcome />} />
+              <Route path="reset" element={<ResetApp />} />
               <Route element={<Layout />}>
                 <Route index element={<IndexRedirect />} />
                 <Route path="planner" element={<DailyPlanner />} />
