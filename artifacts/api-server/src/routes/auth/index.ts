@@ -37,10 +37,12 @@ router.post("/register", async (req, res) => {
     const founderLimitSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_limit"));
     const founderLimit = founderLimitSetting.length > 0 ? parseInt(founderLimitSetting[0].value) : 20;
 
+    const [founderCountResult] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.isFounder, true));
+    const currentFounderCount = founderCountResult.count;
     const [userCountResult] = await db.select({ count: count() }).from(usersTable);
     const currentUserCount = userCountResult.count;
-    const isFounder = currentUserCount < founderLimit;
-    const founderNumber = isFounder ? currentUserCount + 1 : null;
+    const isFounder = currentFounderCount < founderLimit;
+    const founderNumber = isFounder ? currentFounderCount + 1 : null;
 
     const [user] = await db.insert(usersTable).values({
       email: email.toLowerCase().trim(),
