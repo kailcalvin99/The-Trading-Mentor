@@ -35,7 +35,7 @@ const TUTORIAL_STEPS = [
     title: "Daily Planner",
     color: "#00C896",
     heading: "Start Every Day Right",
-    locked: true,
+    locked: false,
     bullets: [
       "Complete a 4-step morning routine before you can trade — drink water, breathe, check the news, and set your market direction.",
       "Add your own personal routine items like exercise, review notes, or anything that helps you prepare.",
