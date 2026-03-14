@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import GraduationCelebration, { useGraduationCheck } from "@/components/GraduationCelebration";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   GraduationCap,
   ChevronDown,
@@ -1454,6 +1456,8 @@ function checkAndUnlock() {
 
 export default function IctAcademy() {
   const [tab, setTab] = useState<Tab>("learn");
+  const { user } = useAuth();
+  const { showCelebration, closeCelebration } = useGraduationCheck();
 
   useEffect(() => {
     const interval = setInterval(checkAndUnlock, 2000);
@@ -1462,6 +1466,12 @@ export default function IctAcademy() {
 
   return (
     <div className="flex flex-col h-full">
+      {showCelebration && (
+        <GraduationCelebration
+          userName={user?.name || "Graduate"}
+          onClose={closeCelebration}
+        />
+      )}
       <header className="sticky top-0 z-30 bg-background px-6 pt-5 pb-3 border-b">
         <div className="flex items-center gap-3 mb-4">
           <GraduationCap className="h-6 w-6 text-primary" />
