@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  type DimensionValue,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -452,7 +453,10 @@ function MentorView() {
     try {
       const res = await getGeminiConversation(id);
       if (res) {
-        setMessages((res as any).messages.map((m: any) => ({ role: m.role, content: m.content })));
+        const data = res as { messages?: Array<{ role: string; content: string }> };
+        if (data.messages) {
+          setMessages(data.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })));
+        }
       }
     } catch {}
   }
@@ -577,7 +581,9 @@ const PLAN_IMAGES: Record<string, number> = {
   "Exit Criteria": require("@/assets/images/chart-exit-criteria.png"),
 };
 
-const PLAN_ICONS: Record<string, string> = {
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
+const PLAN_ICONS: Record<string, IoniconsName> = {
   "The Tools": "construct-outline",
   "Timeframe Alignment (Matching Big and Small Charts)": "layers-outline",
   "Conservative Entry": "shield-checkmark-outline",
@@ -587,6 +593,8 @@ const PLAN_ICONS: Record<string, string> = {
   "Key Takeaways": "bulb-outline",
 };
 
+const DEFAULT_PLAN_ICON: IoniconsName = "document-outline";
+
 function PlanView() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
@@ -595,7 +603,7 @@ function PlanView() {
       {PLAN_DATA.map((section) => (
         <View key={section.title} style={planStyles.card}>
           <View style={[planStyles.cardHeaderBar, { backgroundColor: section.color + "15" }]}>
-            <Ionicons name={(PLAN_ICONS[section.title] || "document-outline") as any} size={16} color={section.color} />
+            <Ionicons name={PLAN_ICONS[section.title] || DEFAULT_PLAN_ICON} size={16} color={section.color} />
             <Text style={[planStyles.cardTitle, { color: section.color }]}>{section.title}</Text>
           </View>
           {section.items.map((item, idx) => (
@@ -691,7 +699,7 @@ const learnStyles = StyleSheet.create({
   lessonContent: { paddingHorizontal: 14, paddingBottom: 16, marginLeft: 44 },
   paragraph: { fontSize: 14, color: C.text, lineHeight: 22, marginBottom: 10, opacity: 0.9 },
   chartLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
-  chartImage: { width: "100%" as any, height: 180, borderRadius: 10 },
+  chartImage: { width: "100%" as DimensionValue, height: 180, borderRadius: 10 },
   takeawayBox: { borderLeftWidth: 3, borderRadius: 8, padding: 12, marginTop: 12 },
   takeawayLabel: { fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 },
   takeawayText: { fontSize: 13, fontFamily: "Inter_500Medium", color: C.text, lineHeight: 20 },
@@ -709,7 +717,7 @@ const glossStyles = StyleSheet.create({
   fullName: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: C.textSecondary },
   cardBody: { paddingHorizontal: 14, paddingBottom: 14 },
   definition: { fontSize: 14, color: C.text, lineHeight: 22, marginBottom: 12 },
-  chartImage: { width: "100%" as any, height: 200, borderRadius: 10, marginBottom: 12 },
+  chartImage: { width: "100%" as DimensionValue, height: 200, borderRadius: 10, marginBottom: 12 },
   tipBox: { borderLeftWidth: 3, paddingLeft: 12, paddingVertical: 4 },
   tipLabel: { fontSize: 11, fontFamily: "Inter_700Bold", marginBottom: 4 },
   tipText: { fontSize: 13, color: C.textSecondary, lineHeight: 20 },
@@ -737,7 +745,7 @@ const quizStyles = StyleSheet.create({
   feedbackText: { fontSize: 13, color: C.text, lineHeight: 21, marginBottom: 16 },
   nextBtn: { borderRadius: 10, padding: 14, alignItems: "center" },
   nextBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
-  resultCard: { backgroundColor: C.backgroundSecondary, borderRadius: 20, padding: 30, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder, width: "100%" as any, marginTop: 20 },
+  resultCard: { backgroundColor: C.backgroundSecondary, borderRadius: 20, padding: 30, alignItems: "center" as const, borderWidth: 1, borderColor: C.cardBorder, width: "100%" as DimensionValue, marginTop: 20 },
   resultEmoji: { fontSize: 48, marginBottom: 16 },
   resultScore: { fontSize: 48, fontFamily: "Inter_700Bold", color: C.text },
   resultPct: { fontSize: 22, fontFamily: "Inter_600SemiBold", color: C.accent, marginBottom: 12 },
@@ -762,7 +770,7 @@ const mentorStyles = StyleSheet.create({
   userBubble: { justifyContent: "flex-end" },
   aiBubble: { justifyContent: "flex-start", gap: 8 },
   aiAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.accent + "33", alignItems: "center", justifyContent: "center", marginBottom: 2 },
-  bubbleContent: { maxWidth: "80%" as any, borderRadius: 16, padding: 12 },
+  bubbleContent: { maxWidth: "80%" as DimensionValue, borderRadius: 16, padding: 12 },
   userContent: { backgroundColor: C.accent, borderBottomRightRadius: 4 },
   aiContent: { backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder, borderBottomLeftRadius: 4 },
   bubbleText: { fontSize: 14, color: C.text, lineHeight: 21 },
@@ -777,7 +785,7 @@ const planStyles = StyleSheet.create({
   card: { backgroundColor: C.backgroundSecondary, borderRadius: 14, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 12, overflow: "hidden" },
   cardHeaderBar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
   cardTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  chartImage: { width: "100%" as any, height: 180, marginBottom: 4 },
+  chartImage: { width: "100%" as DimensionValue, height: 180, marginBottom: 4 },
   itemRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   itemDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
   itemLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 2 },
