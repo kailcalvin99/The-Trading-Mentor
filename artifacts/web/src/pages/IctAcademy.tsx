@@ -529,7 +529,6 @@ function SwipeLearnView({ onExit }: { onExit: () => void }) {
 }
 
 function LearnView() {
-  const [swipeMode, setSwipeMode] = useState(false);
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
 
   useEffect(() => {
@@ -551,10 +550,6 @@ function LearnView() {
     else next.add(lessonId);
     setCompleted(next);
     setProgress(next);
-  }
-
-  if (swipeMode) {
-    return <SwipeLearnView onExit={() => { setSwipeMode(false); setCompleted(getProgress()); }} />;
   }
 
   const isAllDone = completedCount >= totalLessons;
@@ -610,15 +605,6 @@ function LearnView() {
           </div>
         </div>
       )}
-
-      <button
-        onClick={() => setSwipeMode(true)}
-        className="w-full mb-8 flex items-center justify-center gap-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-2xl py-4 px-6 font-bold text-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
-      >
-        <Play className="h-6 w-6" />
-        Start Swipe Mode
-        <span className="text-sm font-medium opacity-80 ml-1">TikTok-style</span>
-      </button>
 
       <div className="h-2 bg-border rounded-full mb-8 overflow-hidden">
         <div
