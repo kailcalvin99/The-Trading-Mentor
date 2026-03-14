@@ -36,7 +36,7 @@ export default function Login() {
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-primary/3 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-lg">
-          <Logo size={440} className="mb-6" />
+          <Logo size={660} className="mb-6" />
           <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 mb-6">
             <BrainCircuit className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-semibold text-primary tracking-wide uppercase">AI-Powered Trading Intelligence</span>
