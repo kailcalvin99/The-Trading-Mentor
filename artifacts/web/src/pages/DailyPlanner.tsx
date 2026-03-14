@@ -235,7 +235,7 @@ export default function DailyPlanner() {
   const totalTasks = dayData.tasks.length;
 
   return (
-    <DisciplineGate>
+    <>
     <CoolDownOverlay />
     <div className="p-6 max-w-3xl mx-auto pb-20">
       <div className="flex items-center justify-between mb-6">
@@ -551,6 +551,6 @@ export default function DailyPlanner() {
         </CardContent>
       </Card>
     </div>
-    </DisciplineGate>
+    </>
   );
 }
