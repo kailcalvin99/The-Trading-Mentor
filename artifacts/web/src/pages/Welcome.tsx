@@ -11,15 +11,31 @@ import {
   Rocket,
   CheckCircle2,
   ArrowRight,
+  Lock,
+  Play,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 
 const TUTORIAL_STEPS = [
   {
+    icon: GraduationCap,
+    title: "ICT Academy",
+    color: "#818CF8",
+    heading: "Learn Trading from Zero",
+    bullets: [
+      "This is where your journey begins. A full 7-chapter course with 39 lessons takes you from the very basics (what is trading?) all the way to psychology and discipline.",
+      "A glossary with 16 terms explained in plain, simple language so you always know what a word means.",
+      "An adaptive quiz with 30 questions that gets harder as you answer correctly and easier when you miss.",
+      "An AI mentor you can ask any question — like having a private tutor available 24/7.",
+      "Complete all lessons and pass the quiz to unlock the rest of the app's powerful tools.",
+    ],
+  },
+  {
     icon: Calendar,
     title: "Daily Planner",
     color: "#00C896",
     heading: "Start Every Day Right",
+    locked: true,
     bullets: [
       "Complete a 4-step morning routine before you can trade — drink water, breathe, check the news, and set your market direction.",
       "Add your own personal routine items like exercise, review notes, or anything that helps you prepare.",
@@ -28,23 +44,11 @@ const TUTORIAL_STEPS = [
     ],
   },
   {
-    icon: GraduationCap,
-    title: "ICT Academy",
-    color: "#818CF8",
-    heading: "Learn Trading from Zero",
-    bullets: [
-      "A full 7-chapter course with 39 lessons — from the very basics (what is trading?) all the way to psychology and discipline.",
-      "A glossary with 16 terms explained in plain, simple language so you always know what a word means.",
-      "An adaptive quiz with 30 questions that gets harder as you answer correctly and easier when you miss.",
-      "An AI mentor you can ask any question — like having a private tutor available 24/7.",
-      "A complete trading plan you can reference any time you need a reminder of the rules.",
-    ],
-  },
-  {
     icon: Shield,
     title: "Risk Shield",
     color: "#EF4444",
     heading: "Protect Your Money",
+    locked: true,
     bullets: [
       "Track your prop firm account — see your balance, daily loss, and weekly loss at a glance.",
       "A built-in calculator tells you exactly how many contracts to trade based on your risk rules.",
@@ -57,6 +61,7 @@ const TUTORIAL_STEPS = [
     title: "Smart Journal",
     color: "#F59E0B",
     heading: "Track Every Trade",
+    locked: true,
     bullets: [
       "Log every trade with the exact entry criteria — the app makes sure you checked all the boxes before entering.",
       "Tag your behavior on each trade: Were you disciplined? Did you chase? Was it FOMO?",
@@ -69,6 +74,7 @@ const TUTORIAL_STEPS = [
     title: "Analytics Dashboard",
     color: "#06B6D4",
     heading: "See Your Progress",
+    locked: true,
     bullets: [
       "Charts show your profit and loss over time — are you improving week by week?",
       "See your win rate, average win, average loss, and profit factor at a glance.",
@@ -87,6 +93,11 @@ export default function Welcome() {
     navigate("/");
   }
 
+  function handleSetupPlanner() {
+    localStorage.setItem("ict-welcome-seen", "true");
+    navigate("/");
+  }
+
   if (step === -1) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
@@ -96,17 +107,20 @@ export default function Welcome() {
           <h1 className="text-4xl font-bold text-foreground mb-3">
             Welcome to ICT Trading Mentor
           </h1>
-          <p className="text-lg text-muted-foreground mb-8 leading-relaxed max-w-lg mx-auto">
-            Your personal guide to learning NQ Futures trading from scratch. 
+          <p className="text-lg text-muted-foreground mb-2 leading-relaxed max-w-lg mx-auto">
+            Your personal guide to learning NQ Futures trading from scratch.
             No experience needed — we'll teach you everything step by step.
+          </p>
+          <p className="text-sm text-muted-foreground/70 mb-8 max-w-md mx-auto">
+            Built on the ICT methodology created by Michael J. Huddleston — the original Inner Circle Trader who pioneered Smart Money Concepts and changed how retail traders understand the markets.
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2 text-left mb-10">
             {[
-              { icon: "📚", text: "A full trading course with 39 lessons" },
-              { icon: "🛡️", text: "Risk management tools to protect your account" },
-              { icon: "📝", text: "A smart journal to track every trade" },
-              { icon: "🤖", text: "An AI mentor to answer your questions" },
+              { icon: "\uD83D\uDCDA", text: "A full trading course with 39 lessons" },
+              { icon: "\uD83D\uDEE1\uFE0F", text: "Risk management tools to protect your account" },
+              { icon: "\uD83D\uDCDD", text: "A smart journal to track every trade" },
+              { icon: "\uD83E\uDD16", text: "An AI mentor to answer your questions" },
             ].map((item) => (
               <div
                 key={item.text}
@@ -138,6 +152,84 @@ export default function Welcome() {
     );
   }
 
+  const isSetupStep = step === TUTORIAL_STEPS.length;
+
+  if (isSetupStep) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Logo size={32} />
+            <span className="text-sm font-semibold text-foreground">Almost There!</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {[...TUTORIAL_STEPS, null].map((_, i) => (
+              <div
+                key={i}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  i === step ? "w-8 bg-primary" : i < step ? "w-2 bg-primary/50" : "w-2 bg-muted"
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-xs text-muted-foreground">Ready!</span>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-xl w-full text-center">
+            <div className="h-20 w-20 rounded-2xl bg-primary/20 flex items-center justify-center mb-6 mx-auto">
+              <Rocket className="h-10 w-10 text-primary" />
+            </div>
+
+            <h2 className="text-3xl font-bold text-foreground mb-3">You're All Set!</h2>
+            <p className="text-muted-foreground mb-8 leading-relaxed max-w-md mx-auto">
+              Start with the ICT Academy to learn the fundamentals. Once you complete all 39 lessons and pass the quiz, you'll unlock the Daily Planner, Risk Shield, Smart Journal, and Analytics.
+            </p>
+
+            <div className="bg-card border border-border rounded-2xl p-6 mb-8 text-left max-w-md mx-auto">
+              <p className="text-sm font-bold text-foreground mb-4">Your learning path:</p>
+              <div className="space-y-3">
+                {[
+                  { num: "1", text: "Complete all 39 Academy lessons", color: "#818CF8" },
+                  { num: "2", text: "Pass the adaptive quiz (70%+)", color: "#00C896" },
+                  { num: "3", text: "Unlock all trading tools", color: "#F59E0B" },
+                  { num: "4", text: "Start trading with confidence", color: "#06B6D4" },
+                ].map((item) => (
+                  <div key={item.num} className="flex items-center gap-3">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                      style={{ backgroundColor: item.color }}
+                    >
+                      {item.num}
+                    </div>
+                    <p className="text-sm text-foreground/80">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity text-base"
+                onClick={handleSetupPlanner}
+              >
+                <GraduationCap className="h-5 w-5" />
+                Start Learning
+              </button>
+              <button
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setStep(step - 1)}
+              >
+                <ChevronLeft className="h-4 w-4 inline mr-1" />
+                Back to Tour
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const current = TUTORIAL_STEPS[step];
   const Icon = current.icon;
   const isLast = step === TUTORIAL_STEPS.length - 1;
@@ -150,7 +242,7 @@ export default function Welcome() {
           <span className="text-sm font-semibold text-foreground">App Tour</span>
         </div>
         <div className="flex items-center gap-2">
-          {TUTORIAL_STEPS.map((_, i) => (
+          {[...TUTORIAL_STEPS, null].map((_, i) => (
             <div
               key={i}
               className={`h-2 rounded-full transition-all duration-300 ${
@@ -166,11 +258,19 @@ export default function Welcome() {
 
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="max-w-xl w-full">
-          <div
-            className="h-16 w-16 rounded-2xl flex items-center justify-center mb-6"
-            style={{ backgroundColor: current.color + "20" }}
-          >
-            <Icon className="h-8 w-8" style={{ color: current.color }} />
+          <div className="flex items-center gap-3 mb-6">
+            <div
+              className="h-16 w-16 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: current.color + "20" }}
+            >
+              <Icon className="h-8 w-8" style={{ color: current.color }} />
+            </div>
+            {current.locked && (
+              <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1.5">
+                <Lock className="h-3.5 w-3.5 text-amber-500" />
+                <span className="text-xs font-semibold text-amber-500">Unlocked after Academy</span>
+              </div>
+            )}
           </div>
 
           <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: current.color }}>
@@ -200,23 +300,13 @@ export default function Welcome() {
               Back
             </button>
 
-            {isLast ? (
-              <button
-                className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                onClick={handleGetStarted}
-              >
-                <Rocket className="h-5 w-5" />
-                Start Trading
-              </button>
-            ) : (
-              <button
-                className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                onClick={() => setStep(step + 1)}
-              >
-                Next
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            )}
+            <button
+              className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
+              onClick={() => setStep(step + 1)}
+            >
+              {isLast ? "Almost Done" : "Next"}
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>

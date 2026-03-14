@@ -24,7 +24,7 @@ const queryClient = new QueryClient({
 function IndexRedirect() {
   const seen = localStorage.getItem("ict-welcome-seen");
   if (!seen) return <Navigate to="/welcome" replace />;
-  return <DailyPlanner />;
+  return <IctAcademy />;
 }
 
 function App() {
@@ -37,7 +37,7 @@ function App() {
               <Route path="welcome" element={<Welcome />} />
               <Route element={<Layout />}>
                 <Route index element={<IndexRedirect />} />
-                <Route path="academy" element={<IctAcademy />} />
+                <Route path="planner" element={<DailyPlanner />} />
                 <Route path="risk-shield" element={<RiskShield />} />
                 <Route path="journal" element={<SmartJournal />} />
                 <Route path="analytics" element={<Analytics />} />

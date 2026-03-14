@@ -1,16 +1,58 @@
-import { NavLink, Outlet, Link } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock } from "lucide-react";
 import Logo from "@/components/Logo";
 
+const UNLOCK_KEY = "ict-academy-unlocked";
+
+function isUnlocked(): boolean {
+  try {
+    return localStorage.getItem(UNLOCK_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 const navItems = [
-  { to: "/", label: "Daily Planner", icon: Calendar },
-  { to: "/academy", label: "ICT Academy", icon: GraduationCap },
-  { to: "/risk-shield", label: "Risk Shield", icon: Shield },
-  { to: "/journal", label: "Smart Journal", icon: BookOpen },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/", label: "ICT Academy", icon: GraduationCap, locked: false },
+  { to: "/planner", label: "Daily Planner", icon: Calendar, locked: true },
+  { to: "/risk-shield", label: "Risk Shield", icon: Shield, locked: true },
+  { to: "/journal", label: "Smart Journal", icon: BookOpen, locked: true },
+  { to: "/analytics", label: "Analytics", icon: BarChart3, locked: true },
 ];
 
-function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: React.ComponentType<{ className?: string }> }) {
+function NavItem({
+  to,
+  label,
+  icon: Icon,
+  locked,
+  unlocked,
+  onLockedClick,
+}: {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  locked: boolean;
+  unlocked: boolean;
+  onLockedClick: () => void;
+}) {
+  const isLocked = locked && !unlocked;
+
+  if (isLocked) {
+    return (
+      <button
+        onClick={onLockedClick}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground/40 cursor-not-allowed w-full text-left group relative"
+      >
+        <div className="relative">
+          <Icon className="h-5 w-5 shrink-0 opacity-40" />
+          <Lock className="h-3 w-3 absolute -bottom-1 -right-1 text-muted-foreground/60" />
+        </div>
+        <span className="hidden lg:inline opacity-40">{label}</span>
+      </button>
+    );
+  }
+
   return (
     <NavLink
       to={to}
@@ -29,16 +71,45 @@ function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: R
   );
 }
 
-function MobileNavItem({ to, label, icon: Icon }: { to: string; label: string; icon: React.ComponentType<{ className?: string }> }) {
+function MobileNavItem({
+  to,
+  label,
+  icon: Icon,
+  locked,
+  unlocked,
+  onLockedClick,
+}: {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  locked: boolean;
+  unlocked: boolean;
+  onLockedClick: () => void;
+}) {
+  const isLocked = locked && !unlocked;
+
+  if (isLocked) {
+    return (
+      <button
+        onClick={onLockedClick}
+        className="flex flex-col items-center gap-1 px-2 py-2 text-xs font-medium text-muted-foreground/30 cursor-not-allowed relative"
+      >
+        <div className="relative">
+          <Icon className="h-5 w-5 opacity-40" />
+          <Lock className="h-2.5 w-2.5 absolute -bottom-0.5 -right-0.5 text-muted-foreground/50" />
+        </div>
+        <span className="truncate max-w-[72px] opacity-40">{label}</span>
+      </button>
+    );
+  }
+
   return (
     <NavLink
       to={to}
       end={to === "/"}
       className={({ isActive }) =>
         `flex flex-col items-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
-          isActive
-            ? "text-primary"
-            : "text-muted-foreground"
+          isActive ? "text-primary" : "text-muted-foreground"
         }`
       }
     >
@@ -49,6 +120,33 @@ function MobileNavItem({ to, label, icon: Icon }: { to: string; label: string; i
 }
 
 export default function Layout() {
+  const [unlocked, setUnlocked] = useState(isUnlocked);
+  const [showLockToast, setShowLockToast] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const current = isUnlocked();
+      if (current !== unlocked) setUnlocked(current);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [unlocked]);
+
+  useEffect(() => {
+    if (!unlocked) {
+      const lockedPaths = ["/planner", "/risk-shield", "/journal", "/analytics"];
+      if (lockedPaths.some((p) => location.pathname.startsWith(p))) {
+        navigate("/", { replace: true });
+      }
+    }
+  }, [location.pathname, unlocked, navigate]);
+
+  function handleLockedClick() {
+    setShowLockToast(true);
+    setTimeout(() => setShowLockToast(false), 3000);
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <aside className="hidden md:flex flex-col w-16 lg:w-56 border-r border-sidebar-border bg-sidebar shrink-0">
@@ -61,7 +159,12 @@ export default function Layout() {
 
         <nav className="flex flex-col gap-1 p-2 flex-1">
           {navItems.map((item) => (
-            <NavItem key={item.to} {...item} />
+            <NavItem
+              key={item.to}
+              {...item}
+              unlocked={unlocked}
+              onLockedClick={handleLockedClick}
+            />
           ))}
         </nav>
 
@@ -83,10 +186,29 @@ export default function Layout() {
 
         <nav className="md:hidden flex items-center justify-around border-t border-border bg-sidebar h-16 shrink-0">
           {navItems.map((item) => (
-            <MobileNavItem key={item.to} {...item} />
+            <MobileNavItem
+              key={item.to}
+              {...item}
+              unlocked={unlocked}
+              onLockedClick={handleLockedClick}
+            />
           ))}
         </nav>
       </div>
+
+      {showLockToast && (
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-card border border-border rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
+            <Lock className="h-5 w-5 text-amber-500 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Complete the Academy First</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Finish all 39 lessons and pass the quiz to unlock this feature.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -543,14 +543,43 @@ function LearnView() {
     return <SwipeLearnView onExit={() => { setSwipeMode(false); setCompleted(getProgress()); }} />;
   }
 
+  const isAllDone = completedCount >= totalLessons;
+  const quizPassed = (() => { try { return localStorage.getItem("ict-quiz-passed") === "true"; } catch { return false; } })();
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-xl font-bold mb-1">ICT Trading Course</h2>
-          <p className="text-sm text-muted-foreground">
-            Learn everything from zero — no trading experience needed
+      <div className="rounded-2xl overflow-hidden border mb-6 bg-card">
+        <video
+          src={getImageUrl("video-academy-intro.mp4")}
+          className="w-full h-48 sm:h-56 object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+        <div className="p-5">
+          <h2 className="text-xl font-bold mb-2">ICT Trading Course</h2>
+          <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+            Learn NQ Futures trading from scratch using the ICT methodology — a proven approach to understanding how markets really move.
           </p>
+          <div className="bg-secondary/50 rounded-xl p-3 border border-border">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              <span className="font-semibold text-foreground/80">Created with respect for Michael J. Huddleston</span> — the original Inner Circle Trader (ICT) who pioneered Smart Money Concepts, market structure analysis, and institutional order flow theory. His decades of teaching have transformed how traders worldwide understand price action. This course distills his core concepts into beginner-friendly lessons.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 bg-orange-500/10 rounded-lg px-3 py-1.5">
+            <Flame className="h-4 w-4 text-orange-500" />
+            <span className="text-sm font-bold text-orange-500">{streak} day streak</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-yellow-500/10 rounded-lg px-3 py-1.5">
+            <Zap className="h-4 w-4 text-yellow-500" />
+            <span className="text-sm font-bold text-yellow-500">{xp} XP</span>
+          </div>
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-primary">{completedCount}/{totalLessons}</div>
@@ -558,16 +587,15 @@ function LearnView() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mb-6">
-        <div className="flex items-center gap-1.5 bg-orange-500/10 rounded-lg px-3 py-1.5">
-          <Flame className="h-4 w-4 text-orange-500" />
-          <span className="text-sm font-bold text-orange-500">{streak} day streak</span>
+      {isAllDone && !quizPassed && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 flex items-center gap-3">
+          <Trophy className="h-6 w-6 text-amber-500 shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-amber-500">All Lessons Complete!</p>
+            <p className="text-xs text-muted-foreground">Now pass the Quiz tab with 70%+ to unlock all app features.</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 bg-yellow-500/10 rounded-lg px-3 py-1.5">
-          <Zap className="h-4 w-4 text-yellow-500" />
-          <span className="text-sm font-bold text-yellow-500">{xp} XP</span>
-        </div>
-      </div>
+      )}
 
       <button
         onClick={() => setSwipeMode(true)}
@@ -846,6 +874,13 @@ function QuizView() {
 
     if (answered + 1 >= TOTAL_QUIZ_QUESTIONS) {
       setDone(true);
+      const finalScore = isCorrect ? score + diffPoints(activeQuestion.q.difficulty) : score;
+      const finalMax = maxScore + diffPoints(activeQuestion.q.difficulty);
+      const finalPct = finalMax > 0 ? Math.round((finalScore / finalMax) * 100) : 0;
+      if (finalPct >= 70) {
+        localStorage.setItem("ict-quiz-passed", "true");
+        checkAndUnlock();
+      }
       return;
     }
     let nextDiff = difficulty;
@@ -891,6 +926,14 @@ function QuizView() {
           <p className="text-sm text-muted-foreground leading-relaxed mb-2">
             {pct >= 70 ? "ICT Concept Master! You dominated the adaptive quiz." : pct >= 40 ? "Good progress \u2014 the quiz adjusted to your level. Review and retry!" : "Keep studying \u2014 review the glossary and plan, then try again!"}
           </p>
+          {pct >= 70 && localStorage.getItem("ict-academy-unlocked") === "true" && (
+            <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 mb-4 mt-3">
+              <p className="text-sm font-bold text-primary mb-1">All Features Unlocked!</p>
+              <p className="text-xs text-muted-foreground">
+                You've completed all lessons and passed the quiz. Daily Planner, Risk Shield, Smart Journal, and Analytics are now available in the sidebar.
+              </p>
+            </div>
+          )}
           <p className="text-xs text-muted-foreground/60 mb-6">Scoring: Easy = 1pt, Medium = 2pts, Hard = 3pts</p>
           <button
             className="bg-primary text-primary-foreground font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
@@ -1335,12 +1378,36 @@ const TAB_CONFIG: { key: Tab; label: string }[] = [
   { key: "plan", label: "Plan" },
 ];
 
+const UNLOCK_KEY = "ict-academy-unlocked";
+const QUIZ_PASSED_KEY = "ict-quiz-passed";
+
+function checkAndUnlock() {
+  try {
+    const progress = getProgress();
+    const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
+    const allDone = progress.size >= totalLessons;
+    const quizPassed = localStorage.getItem(QUIZ_PASSED_KEY) === "true";
+    if (allDone && quizPassed) {
+      localStorage.setItem(UNLOCK_KEY, "true");
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export default function IctAcademy() {
   const [tab, setTab] = useState<Tab>("learn");
 
+  useEffect(() => {
+    const interval = setInterval(checkAndUnlock, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
-      <header className="px-6 pt-5 pb-3 border-b">
+      <header className="sticky top-0 z-30 bg-background px-6 pt-5 pb-3 border-b">
         <div className="flex items-center gap-3 mb-4">
           <GraduationCap className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">ICT Academy</h1>

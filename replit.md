@@ -93,18 +93,18 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 
 ### `artifacts/web` (`@workspace/web`)
 
-React + Vite web application. Dark-themed layout shell with sidebar navigation (desktop) / bottom nav (mobile). Uses react-router-dom for routing with 5 main sections: Daily Planner, ICT Academy, Risk Shield, Smart Journal, Analytics. Connected to the existing API server via `@workspace/api-client-react` TanStack Query hooks.
+React + Vite web application. Dark-themed layout shell with sidebar navigation (desktop) / bottom nav (mobile). Academy-first architecture: ICT Academy is the default/index route; other tabs (Daily Planner, Risk Shield, Smart Journal, Analytics) are visible but locked until all 39 lessons are completed AND the quiz is passed with 70%+. Connected to the existing API server via `@workspace/api-client-react` TanStack Query hooks.
 
 - Entry: `src/main.tsx`
-- App: `src/App.tsx` — BrowserRouter + QueryClientProvider + routes; first-visit redirects to `/welcome`
-- Layout: `src/components/Layout.tsx` — sidebar + bottom nav responsive shell; "Help & Tour" link at sidebar bottom
-- Pages: `src/pages/Welcome.tsx` (welcome page + 5-step interactive app tour), `DailyPlanner.tsx`, `IctAcademy.tsx`, `RiskShield.tsx`, `SmartJournal.tsx`, `Analytics.tsx`
+- App: `src/App.tsx` — BrowserRouter + QueryClientProvider + routes; first-visit redirects to `/welcome`; index route shows Academy
+- Layout: `src/components/Layout.tsx` — sidebar + bottom nav responsive shell with tab locking system (localStorage key `ict-academy-unlocked`); "Help & Tour" link at sidebar bottom; locked tabs show lock icon + toast notification
+- Pages: `src/pages/Welcome.tsx` (welcome page + 6-step tour: Academy first, then locked tabs with badges, ends with "Start Learning" setup step), `DailyPlanner.tsx` (at `/planner`), `IctAcademy.tsx` (at `/` index), `RiskShield.tsx`, `SmartJournal.tsx`, `Analytics.tsx`
 - Data: `src/data/academy-data.ts` — shared course content (7 chapters / 39 lessons, 16 glossary terms, 30 quiz questions, trading plan)
-- Assets: `public/images/` — 31 AI-generated lesson chart images + 4 educational videos (candlestick, FVG, liquidity sweep, kill zone)
+- Assets: `public/images/` — 31 AI-generated lesson chart images + 5 educational videos (candlestick, FVG, liquidity sweep, kill zone, academy intro)
 - Theme: Dark-only (#0A0A0F background, #00C896 green accent) in `src/index.css`
 - Preview path: `/web/`
 
-ICT Academy has 5 tabs: Learn (full course with progress tracking via localStorage, chart images & embedded videos per lesson), Glossary (16 ICT terms), Quiz (adaptive 15-question sessions from 30-question bank), Mentor (Gemini AI), Plan (trading plan reference). Swipe Mode (TikTok-style) supports paragraph steps → chart image → video → key takeaway flow with XP/streak system.
+ICT Academy has sticky sub-tabs (Learn, Glossary, Quiz, Mentor, Plan) that stay at top when scrolling. Learn tab features: intro video + ICT homage to Michael J. Huddleston at top, full course with progress tracking, chart images & embedded videos per lesson, Swipe Mode (TikTok-style) with paragraph → chart → video → takeaway flow and XP/streak system. Quiz tab auto-saves passing (70%+) to localStorage and triggers unlock check.
 
 ### `artifacts/mobile` (`@workspace/mobile`)
 
