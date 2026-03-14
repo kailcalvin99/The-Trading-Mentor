@@ -179,7 +179,7 @@ function SwipeLearnView({ onExit }: { onExit: () => void }) {
   const totalCards = allCards.length;
   const completedCount = allCards.filter((c) => completed.has(c.lesson.id)).length;
 
-  const totalSteps = lesson.paragraphs.length + (lesson.chartImage ? 1 : 0) + 1;
+  const totalSteps = lesson.paragraphs.length + (lesson.chartImage ? 1 : 0) + (lesson.videoFile ? 1 : 0) + 1;
 
   function markComplete() {
     if (completed.has(lesson.id)) return;
@@ -272,11 +272,17 @@ function SwipeLearnView({ onExit }: { onExit: () => void }) {
 
   const stepContent = (() => {
     const paraCount = lesson.paragraphs.length;
-    if (cardStep < paraCount) {
-      return { type: "paragraph" as const, text: lesson.paragraphs[cardStep], stepLabel: `${cardStep + 1} of ${totalSteps}` };
+    let step = cardStep;
+    if (step < paraCount) {
+      return { type: "paragraph" as const, text: lesson.paragraphs[step], stepLabel: `${cardStep + 1} of ${totalSteps}` };
     }
-    if (lesson.chartImage && cardStep === paraCount) {
+    step -= paraCount;
+    if (lesson.chartImage && step === 0) {
       return { type: "chart" as const, stepLabel: `${cardStep + 1} of ${totalSteps}` };
+    }
+    if (lesson.chartImage) step--;
+    if (lesson.videoFile && step === 0) {
+      return { type: "video" as const, stepLabel: `${cardStep + 1} of ${totalSteps}` };
     }
     return { type: "takeaway" as const, stepLabel: `${cardStep + 1} of ${totalSteps}` };
   })();
@@ -390,6 +396,23 @@ function SwipeLearnView({ onExit }: { onExit: () => void }) {
                     src={getImageUrl(lesson.chartImage)}
                     alt={`${lesson.title} chart`}
                     className="w-full h-52 object-cover rounded-xl border"
+                  />
+                </div>
+              )}
+
+              {stepContent.type === "video" && lesson.videoFile && (
+                <div className="animate-in fade-in zoom-in-95 duration-300">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Play className="h-3.5 w-3.5" />
+                    Watch it in action
+                  </p>
+                  <video
+                    src={getImageUrl(lesson.videoFile)}
+                    className="w-full h-52 object-cover rounded-xl border"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
                   />
                 </div>
               )}
@@ -673,6 +696,22 @@ function ChapterAccordion({
                           src={getImageUrl(lesson.chartImage)}
                           alt={`${lesson.title} chart example`}
                           className="w-full h-48 object-cover rounded-lg border"
+                        />
+                      </div>
+                    )}
+
+                    {lesson.videoFile && (
+                      <div className="mt-4">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                          <Play className="h-3.5 w-3.5" />
+                          Watch it in action
+                        </p>
+                        <video
+                          src={getImageUrl(lesson.videoFile)}
+                          className="w-full h-48 object-cover rounded-lg border"
+                          controls
+                          muted
+                          playsInline
                         />
                       </div>
                     )}

@@ -23,6 +23,7 @@ export interface Lesson {
   paragraphs: string[];
   takeaway: string;
   chartImage?: string;
+  videoFile?: string;
 }
 
 export interface Chapter {
@@ -45,6 +46,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-1",
         title: "What is Trading?",
+        chartImage: "lesson-what-is-trading.png",
         paragraphs: [
           "Trading is simply buying and selling things to make money from price changes. Imagine you buy a pair of sneakers for $100. A week later, they're selling for $150. If you sell them, you just made $50. That's trading!",
           "In the stock market, instead of sneakers, people buy and sell stocks (tiny pieces of companies), currencies (like dollars and euros), and futures contracts (agreements to buy/sell something at a future date). The goal is the same — buy low, sell high.",
@@ -56,6 +58,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-2",
         title: "What are Futures? What is NQ?",
+        chartImage: "lesson-futures-nq.png",
         paragraphs: [
           "A futures contract is an agreement to buy or sell something at a set price on a future date. Think of it like pre-ordering a video game — you agree to pay a price now, and you get the game when it comes out. If the game's price goes up before release, your pre-order was a great deal!",
           "NQ stands for the Nasdaq-100 E-mini Futures. The Nasdaq-100 is a list of the 100 biggest tech companies — Apple, Google, Amazon, Microsoft, and more. When you trade NQ, you're trading the combined value of all these companies. One point of movement in NQ = $20 in your account.",
@@ -67,6 +70,8 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-3",
         title: "What is a Candlestick Chart?",
+        chartImage: "lesson-candlestick.png",
+        videoFile: "video-candlestick.mp4",
         paragraphs: [
           "A candlestick chart is the most common way traders look at price movements. Each 'candlestick' on the chart represents a specific time period — it could show 1 minute, 5 minutes, 1 hour, or even a whole day of price action.",
           "Every candle has 4 parts: the Open (where price started), the Close (where price ended), the High (the highest price reached), and the Low (the lowest price reached). The thick body of the candle shows the range between Open and Close. The thin lines above and below (called 'wicks') show the High and Low.",
@@ -78,6 +83,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-4",
         title: "What are Timeframes?",
+        chartImage: "lesson-timeframes.png",
         paragraphs: [
           "A timeframe is how much time each candle on your chart represents. A 1-minute chart means each candle shows 1 minute of price action. A 1-hour chart means each candle shows 1 hour. A daily chart means each candle shows a full day.",
           "Different timeframes show different pictures of the same market. The daily chart shows the BIG picture — where price has been going over weeks and months. The 1-hour chart shows the MEDIUM picture. The 5-minute and 1-minute charts show the CLOSE-UP — every tiny move.",
@@ -89,6 +95,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-5",
         title: "What is a Broker and Trading Platform?",
+        chartImage: "lesson-broker-platform.png",
         paragraphs: [
           "A broker is the company that connects you to the market. You can't just walk up to the stock exchange and start trading — you need a broker to place your trades for you. Think of a broker like a phone company — you need them to make calls, and they charge you for the service.",
           "A trading platform is the app or software you use to see charts, place trades, and manage your money. Popular platforms for NQ Futures include NinjaTrader, TradingView, and Tradovate. These platforms show you live price charts and let you click buttons to buy or sell.",
@@ -100,6 +107,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-6",
         title: "What is a Prop Firm?",
+        chartImage: "lesson-prop-firm.png",
         paragraphs: [
           "A prop firm (short for 'proprietary trading firm') is a company that gives you THEIR money to trade with. Instead of risking your own savings, you trade with the prop firm's capital. If you make profits, you keep a percentage (usually 80-90%). If you lose, the firm takes the hit.",
           "To get funded by a prop firm, you first need to pass an 'evaluation.' This is like a test where you trade on a simulated account and prove you can follow the rules and make money. The rules usually include: don't lose more than 2% in a day, don't lose more than 5-10% total, and reach a profit target.",
@@ -120,6 +128,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-1",
         title: "Who Moves the Market?",
+        chartImage: "lesson-who-moves-market.png",
         paragraphs: [
           "Here's a secret most beginners don't know: the market is NOT moved by regular people like you and me. It's moved by huge banks, hedge funds, and institutions — we call them 'Smart Money.' These players control billions of dollars and can push prices wherever they want.",
           "Regular traders (called 'retail traders') only make up about 10-15% of the market. We're the small fish. The banks are the whales. When a whale wants to buy, they need to find enough sellers. When they want to sell, they need buyers. The problem? There aren't always enough people on the other side of the trade.",
@@ -131,6 +140,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-2",
         title: "What is Liquidity?",
+        chartImage: "lesson-liquidity.png",
         paragraphs: [
           "Liquidity is one of the MOST important concepts in ICT trading. In simple terms, liquidity is where people's stop-loss orders are sitting. A stop-loss is an automatic order that closes your trade to limit your losses — like an emergency exit.",
           "Here's where it gets interesting: the big players NEED these stop-loss orders to fill their own trades. When a bank wants to buy a massive amount of NQ, they need a lot of sellers. Where are the sellers? Right where everyone's stop-losses are! When those stops get hit, they create a flood of sell orders — exactly what the bank needed.",
@@ -142,6 +152,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-3",
         title: "Buy-Side vs Sell-Side Liquidity",
+        chartImage: "lesson-buyside-sellside.png",
         paragraphs: [
           "Now that you know what liquidity is, let's learn where it sits. There are two types: Buy-Side Liquidity (BSL) and Sell-Side Liquidity (SSL).",
           "Buy-Side Liquidity sits ABOVE recent highs. When price makes a high, traders who are short (betting price will drop) place their stop-losses just above that high. There are also traders waiting to buy a breakout above the high. All those orders sitting above = Buy-Side Liquidity.",
@@ -153,6 +164,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-4",
         title: "What is Smart Money?",
+        chartImage: "lesson-smart-money.png",
         paragraphs: [
           "Smart Money refers to the big institutional players — JP Morgan, Goldman Sachs, Citadel, and other major banks and hedge funds. They have access to more information, faster technology, and way more money than retail traders. They're called 'smart' because they consistently make money while most retail traders lose.",
           "The ICT method is all about learning to read what Smart Money is doing by looking at the clues they leave on the chart. These clues include: liquidity sweeps (fake-out moves), displacement candles (big, fast candles that show real intent), and fair value gaps (price gaps they create).",
@@ -164,6 +176,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-5",
         title: "Internal vs External Liquidity",
+        chartImage: "lesson-internal-external.png",
         paragraphs: [
           "Once you understand liquidity, you need to know about two types of targets: Internal Liquidity and External Liquidity. These are used to set your profit targets (where to exit your trade).",
           "External Liquidity is the BIG target — it's an old high or low that hasn't been taken out yet. If price is going up, your external target might be a previous swing high or the high of the previous day. These are the 'end of the move' targets.",
@@ -184,6 +197,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch3-1",
         title: "Market Structure — Highs, Lows, Trends",
+        chartImage: "lesson-market-structure.png",
         paragraphs: [
           "Market structure is the foundation of everything. It simply means: is price making higher highs and higher lows (uptrend), or lower highs and lower lows (downtrend)?",
           "In an uptrend, price goes up, pulls back a little, then goes up even higher. Each pullback low is higher than the last, and each push up is higher than the last. Think of it like climbing stairs — each step is higher than the one before.",
@@ -208,6 +222,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
         id: "ch3-3",
         title: "Fair Value Gap (FVG)",
         chartImage: "chart-fvg.png",
+        videoFile: "video-fvg.mp4",
         paragraphs: [
           "A Fair Value Gap (FVG) is a gap left on the chart when price moves too fast. It's where you actually enter your trades. Think of it as a 'price hole' that the market usually comes back to fill.",
           "To spot an FVG, look at three consecutive candles. The gap between the wick of candle 1 and the wick of candle 3 (the part that doesn't overlap) is the FVG. It means price moved so aggressively that it left an 'unfair' gap — and the market likes to come back and 'fill' it.",
@@ -220,6 +235,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
         id: "ch3-4",
         title: "Liquidity Sweep — The Fake-Out",
         chartImage: "chart-liquidity-sweep.png",
+        videoFile: "video-liquidity-sweep.mp4",
         paragraphs: [
           "A liquidity sweep is when price quickly pokes above a high or below a low to grab everyone's stop-loss orders, then snaps back the other way. It's the fake-out before the real move. Think of it like a broom sweeping up money.",
           "When price sweeps BELOW a low, it triggers all the stop-losses sitting there. This creates a flood of sell orders that the Smart Money uses to fill their buy orders. Then price shoots back up. The sweep was the trick — the real move was UP.",
@@ -243,6 +259,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch3-6",
         title: "Premium vs Discount",
+        chartImage: "lesson-premium-discount.png",
         paragraphs: [
           "Premium and Discount tell you whether price is 'expensive' or 'cheap' relative to a range. It's like shopping — you want to buy when things are on sale (Discount) and sell when they're overpriced (Premium).",
           "To find Premium and Discount, take any price range (like the current day's range) and find the 50% level (the midpoint). Everything ABOVE the 50% level is Premium (expensive). Everything BELOW is Discount (cheap).",
@@ -254,6 +271,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch3-7",
         title: "Displacement — The Power Candle",
+        chartImage: "lesson-displacement.png",
         paragraphs: [
           "Displacement is a big, aggressive candle (or group of candles) that shows real intent from Smart Money. It's a fast, powerful move that creates Fair Value Gaps and tells you the big players are involved.",
           "You can recognize displacement by its characteristics: large candle bodies with very small wicks (or no wicks at all), multiple candles in the same direction closing near their highs or lows, and volume behind the move. It looks 'violent' compared to the choppy candles before it.",
@@ -274,6 +292,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch4-1",
         title: "Why Time Matters in Trading",
+        chartImage: "lesson-time-matters.png",
         paragraphs: [
           "Not all hours of the day are equal for trading. The market has rhythms — certain times when setups work reliably, and other times when the market is choppy and unpredictable. Trading at the wrong time is like fishing in an empty pond.",
           "Big institutions (the Smart Money) are most active during specific sessions. When they're trading, the market moves with purpose and creates the patterns we're looking for (sweeps, MSS, FVGs). When they're not active, price chops around randomly.",
@@ -286,6 +305,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
         id: "ch4-2",
         title: "London Kill Zone (2-5 AM EST)",
         chartImage: "chart-killzone.png",
+        videoFile: "video-killzone.mp4",
         paragraphs: [
           "The London Kill Zone runs from 2:00 AM to 5:00 AM Eastern Time. This is when European banks and institutions start their trading day. The London session is the first major session to open and often sets the tone for the rest of the day.",
           "During London, you'll often see the first liquidity sweep of the day. Price might sweep the Asian session high or low, then reverse. This sweep + reversal pattern is the classic London Kill Zone setup.",
@@ -297,6 +317,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch4-3",
         title: "NY Open Kill Zone (9:30-10 AM EST)",
+        chartImage: "lesson-ny-open.png",
         paragraphs: [
           "The New York Open Kill Zone runs from about 9:30 AM to 10:00 AM Eastern Time. This is when the U.S. stock market opens and American institutions enter the scene. Volume spikes dramatically.",
           "The NY Open is known for volatile, fast moves. Price often makes a fake move in one direction right at 9:30 AM, then reverses sharply. This is because institutions are completing their orders from the London session.",
@@ -319,6 +340,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch4-5",
         title: "When NOT to Trade",
+        chartImage: "lesson-when-not-trade.png",
         paragraphs: [
           "Knowing when NOT to trade is just as important as knowing when to trade. Some days and times are simply too dangerous or unreliable. Staying out of the market during these times will save you a lot of money.",
           "Red Folder News: These are high-impact economic events listed on ForexFactory.com (marked with a red folder icon). Events like NFP (Non-Farm Payrolls), CPI (inflation data), and FOMC (Federal Reserve meetings) cause wild, unpredictable price swings. Don't trade within 5 minutes before or after these events.",
@@ -339,6 +361,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-1",
         title: "The Top-Down Approach",
+        chartImage: "lesson-top-down.png",
         paragraphs: [
           "The Top-Down Approach means you always start your analysis on the big charts and work your way down to the small charts. Never start on the 5-minute chart! Always start on the Daily, then 1-Hour, then 15-minute, then 5-minute.",
           "On the Daily chart, you're asking: 'What's the overall trend? Is the market bullish (going up) or bearish (going down)?' This gives you your BIAS — the direction you want to trade.",
@@ -374,6 +397,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-4",
         title: "Where to Put Your Stop Loss",
+        chartImage: "lesson-stop-loss.png",
         paragraphs: [
           "A stop loss is your emergency exit — it automatically closes your trade if price goes against you past a certain point. EVERY trade must have a stop loss. No exceptions. Trading without a stop loss is like driving without a seatbelt.",
           "For our setups, the stop loss goes at the high or low of the candle that created the MSS. This is the logical place because if price goes back beyond the MSS candle, the setup has failed — the shift wasn't real.",
@@ -385,6 +409,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-5",
         title: "Setting Targets — TP1 and TP2",
+        chartImage: "lesson-targets.png",
         paragraphs: [
           "TP stands for 'Take Profit' — the price level where you exit the trade with a profit. We use two targets: TP1 (first target) and TP2 (main target).",
           "TP1 is your first target. It's usually the nearest high or low — what we call 'Internal Liquidity.' For a buy trade, TP1 might be the nearest swing high above your entry. The goal is a 1:1 or 1:2 reward-to-risk ratio. Meaning if you're risking 10 points, your TP1 is 10-20 points of profit.",
@@ -396,6 +421,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-6",
         title: "Moving Stop to Breakeven",
+        chartImage: "lesson-breakeven.png",
         paragraphs: [
           "Moving your stop to breakeven (BE) is one of the most important risk management techniques. It means moving your stop loss to your entry price after TP1 is hit. If price comes back to your entry, you get stopped out at zero loss instead of a full loss.",
           "Here's the process: You enter a buy trade at 18,500 with a stop loss at 18,480 (20 points of risk). TP1 is 18,520 (20 points of profit). When price hits 18,520, you move your stop from 18,480 to 18,500 (your entry price). Now you can't lose money on this trade.",
@@ -416,6 +442,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-1",
         title: "Why Risk Management is More Important Than Entries",
+        chartImage: "lesson-risk-importance.png",
         paragraphs: [
           "Here's a truth that shocks most beginners: your ENTRIES are not what make you profitable. Your RISK MANAGEMENT is. You could have a strategy that's right only 40% of the time and still make money — if your winners are bigger than your losers.",
           "Think of it like baseball. A great hitter gets a hit 3 out of 10 times (a .300 batting average) and is considered elite. Trading is similar. You don't need to be right all the time. You need to win BIG when you're right and lose SMALL when you're wrong.",
@@ -427,6 +454,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-2",
         title: "The Risk-Per-Trade Rule",
+        chartImage: "lesson-risk-per-trade.png",
         paragraphs: [
           "The core rule: never risk more than 0.5-1% of your account on a single trade. For a $100,000 prop firm account, that means risking a maximum of $500-$1,000 per trade.",
           "Why so small? Because losing streaks happen to EVERYONE. Even the best traders have 3, 4, or 5 losses in a row. If you risk 5% per trade and lose 4 times in a row, you've lost 20% of your account. But if you risk 0.5%, four losses is only 2%. You're still in the game.",
@@ -438,6 +466,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-3",
         title: "Position Sizing — How Many Contracts",
+        chartImage: "lesson-position-sizing.png",
         paragraphs: [
           "Position sizing means figuring out how many contracts to trade based on your risk rule. It's simple math, but it's the most important calculation you'll make before every trade.",
           "The formula: Contracts = Risk Amount ÷ (Stop Loss Points × Point Value). For NQ: each point = $20. For MNQ: each point = $2. If your account is $100,000, your max risk is $500 (at 0.5%), and your stop is 25 points: $500 ÷ (25 × $20) = 1 NQ contract, or $500 ÷ (25 × $2) = 10 MNQ contracts.",
@@ -449,6 +478,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-4",
         title: "Daily and Weekly Loss Limits",
+        chartImage: "lesson-loss-limits.png",
         paragraphs: [
           "Beyond individual trade risk, you need hard daily and weekly loss limits. These are the circuit breakers that prevent a bad day from becoming a catastrophe.",
           "Max Daily Loss: 2%. If you lose 2% of your account in a single day, you're DONE for the day. Close your platform, walk away, and come back tomorrow. Our app enforces this automatically — it locks you out for 24 hours. This prevents 'revenge trading' (trying to win back losses by taking bad trades).",
@@ -460,6 +490,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-5",
         title: "What Happens When You Break the Rules",
+        chartImage: "lesson-breaking-rules.png",
         paragraphs: [
           "Breaking the risk rules has consequences — both in the app and in real trading. Understanding these consequences will motivate you to stay disciplined.",
           "If you hit the 2% daily loss limit, the app stops you from logging new trades for 24 hours. This forced break gives you time to cool down, review what went wrong, and come back with a clear head. On a prop firm, hitting the daily loss limit could mean failing the evaluation — months of effort gone in one bad day.",
@@ -480,6 +511,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-1",
         title: "Why Most Traders Lose",
+        chartImage: "lesson-why-lose.png",
         paragraphs: [
           "About 90% of retail traders lose money. That sounds scary, but here's the thing — they don't lose because trading is impossible. They lose because they can't control their emotions. Strategy is only 20% of the game. Psychology is the other 80%.",
           "The market is designed to trigger your emotions. When price goes up fast, you feel FOMO (fear of missing out) and jump in without a setup. When you lose, you feel angry and take revenge trades. When you're winning, you feel invincible and take too much risk.",
@@ -491,6 +523,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-2",
         title: "FOMO — Fear of Missing Out",
+        chartImage: "lesson-fomo.png",
         paragraphs: [
           "FOMO is the feeling of 'I NEED to get in NOW or I'll miss the move!' It happens when you see price moving fast without you and you jump in without your setup being complete. It's one of the most common and destructive emotions in trading.",
           "Here's the truth about FOMO: the market gives you opportunities EVERY DAY. If you miss one move, there will be another one tomorrow. And the next day. And the next. There is no 'last train.' The trades that feel most urgent (like you HAVE to take them) are usually the worst trades.",
@@ -502,6 +535,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-3",
         title: "Revenge Trading — The #1 Account Killer",
+        chartImage: "lesson-revenge-trading.png",
         paragraphs: [
           "Revenge trading is when you take another trade immediately after a loss, trying to 'win back' the money. It's driven by anger and frustration, not strategy. It is the single fastest way to destroy a trading account.",
           "Here's what typically happens: You take a trade, it hits your stop loss, you lose $200. Instead of walking away and reviewing what happened, you feel angry and jump right back in. 'I'll get it back.' You take a worse setup because you're emotional. You lose again. Now you're down $400 and even more emotional. The spiral continues until you've blown your daily limit or worse.",
@@ -513,6 +547,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-4",
         title: "The Morning Routine — Preparation Beats Prediction",
+        chartImage: "lesson-morning-routine.png",
         paragraphs: [
           "Our app requires you to complete a morning routine before you can log any trades. This isn't just a gimmick — it's one of the most powerful tools for consistent trading. Preparation beats prediction every single time.",
           "The routine is simple: Drink water (hydration helps your brain think clearly), do a 2-minute breathing exercise (calms your nervous system), check the news calendar (so you know when to avoid trading), and set your daily bias (so you know which direction to trade).",
@@ -524,6 +559,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-5",
         title: "Building a Trading Journal Habit",
+        chartImage: "lesson-journal-habit.png",
         paragraphs: [
           "A trading journal is your most powerful learning tool. After every trade — win or loss — you write down what happened, why you took the trade, and how you felt. Over time, patterns emerge that you can't see in the moment.",
           "Our Smart Journal makes this easy. For every trade, you record: the entry criteria (was your checklist fully checked?), the instrument and direction, what happened (did it hit TP1, TP2, or stop loss?), and your emotional state (were you calm, scared, excited?).",

@@ -100,10 +100,11 @@ React + Vite web application. Dark-themed layout shell with sidebar navigation (
 - Layout: `src/components/Layout.tsx` — sidebar + bottom nav responsive shell; "Help & Tour" link at sidebar bottom
 - Pages: `src/pages/Welcome.tsx` (welcome page + 5-step interactive app tour), `DailyPlanner.tsx`, `IctAcademy.tsx`, `RiskShield.tsx`, `SmartJournal.tsx`, `Analytics.tsx`
 - Data: `src/data/academy-data.ts` — shared course content (7 chapters / 39 lessons, 16 glossary terms, 30 quiz questions, trading plan)
+- Assets: `public/images/` — 31 AI-generated lesson chart images + 4 educational videos (candlestick, FVG, liquidity sweep, kill zone)
 - Theme: Dark-only (#0A0A0F background, #00C896 green accent) in `src/index.css`
 - Preview path: `/web/`
 
-ICT Academy has 5 tabs: Learn (full course with progress tracking via localStorage), Glossary (16 ICT terms), Quiz (adaptive 15-question sessions from 30-question bank), Mentor (Gemini AI), Plan (trading plan reference).
+ICT Academy has 5 tabs: Learn (full course with progress tracking via localStorage, chart images & embedded videos per lesson), Glossary (16 ICT terms), Quiz (adaptive 15-question sessions from 30-question bank), Mentor (Gemini AI), Plan (trading plan reference). Swipe Mode (TikTok-style) supports paragraph steps → chart image → video → key takeaway flow with XP/streak system.
 
 ### `artifacts/mobile` (`@workspace/mobile`)
 
