@@ -71,7 +71,7 @@ export default function Login() {
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <Logo size={44} />
-            <span className="font-serif text-xl font-bold text-foreground tracking-tight">ICT Trading Mentor</span>
+            <span className="font-serif text-xl font-bold text-foreground tracking-tight">ICT AI Trading Mentor</span>
           </div>
 
           <div className="bg-card border border-border rounded-2xl p-8">

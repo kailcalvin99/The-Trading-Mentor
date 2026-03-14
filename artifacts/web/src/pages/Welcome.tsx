@@ -105,7 +105,7 @@ export default function Welcome() {
           <Logo size={64} className="mx-auto mb-4 sm:mb-6" />
 
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 sm:mb-3 font-serif">
-            Welcome to ICT Trading Mentor
+            Welcome to ICT AI Trading Mentor
           </h1>
           <p className="text-base sm:text-lg text-muted-foreground mb-1 sm:mb-2 leading-relaxed max-w-lg mx-auto">
             Your AI-powered personal guide to learning NQ Futures trading from scratch.

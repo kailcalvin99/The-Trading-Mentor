@@ -153,11 +153,7 @@ export default function Layout() {
           <Logo size={32} />
           <div className="hidden lg:flex flex-col min-w-0">
             <span className="text-sm font-semibold text-sidebar-foreground truncate font-serif tracking-tight">
-              ICT Trading Mentor
-            </span>
-            <span className="flex items-center gap-1 text-[10px] text-primary font-medium">
-              <BrainCircuit className="h-2.5 w-2.5" />
-              AI-Powered
+              ICT AI Trading Mentor
             </span>
           </div>
         </div>

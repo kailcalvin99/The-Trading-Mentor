@@ -114,7 +114,7 @@ export default function Signup() {
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8 justify-center">
           <Logo size={44} />
-          <span className="font-serif text-xl font-bold text-foreground tracking-tight">ICT Trading Mentor</span>
+          <span className="font-serif text-xl font-bold text-foreground tracking-tight">ICT AI Trading Mentor</span>
         </div>
 
         {founderSpotsLeft !== null && founderSpotsLeft > 0 && (
