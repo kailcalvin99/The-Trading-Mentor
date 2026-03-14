@@ -161,8 +161,12 @@ function ConfettiBurst({ onDone }: { onDone: () => void }) {
 
 function SwipeLearnView({ onExit }: { onExit: () => void }) {
   const allCards = getAllCards();
-  const [currentIdx, setCurrentIdx] = useState(0);
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
+  const [currentIdx, setCurrentIdx] = useState(() => {
+    const prog = getProgress();
+    const firstIncomplete = allCards.findIndex((c) => !prog.has(c.lesson.id));
+    return firstIncomplete >= 0 ? firstIncomplete : 0;
+  });
   const [cardStep, setCardStep] = useState(0);
   const [swipeX, setSwipeX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
