@@ -90,12 +90,12 @@ export default function Welcome() {
 
   function handleGetStarted() {
     localStorage.setItem("ict-welcome-seen", "true");
-    navigate("/");
+    navigate("/planner");
   }
 
   function handleSetupPlanner() {
     localStorage.setItem("ict-welcome-seen", "true");
-    navigate("/");
+    navigate("/planner");
   }
 
   if (step === -1) {
@@ -181,19 +181,19 @@ export default function Welcome() {
               <Rocket className="h-10 w-10 text-primary" />
             </div>
 
-            <h2 className="text-3xl font-bold text-foreground mb-3">You're All Set!</h2>
+            <h2 className="text-3xl font-bold text-foreground mb-3">Let's Set Up Your Planner!</h2>
             <p className="text-muted-foreground mb-8 leading-relaxed max-w-md mx-auto">
-              Start with the ICT Academy to learn the fundamentals. Once you complete all 39 lessons and pass the quiz, you'll unlock the Daily Planner, Risk Shield, Smart Journal, and Analytics.
+              Before diving into the Academy, let's set up your Daily Planner. A solid morning routine is the foundation of disciplined trading.
             </p>
 
             <div className="bg-card border border-border rounded-2xl p-6 mb-8 text-left max-w-md mx-auto">
-              <p className="text-sm font-bold text-foreground mb-4">Your learning path:</p>
+              <p className="text-sm font-bold text-foreground mb-4">Your journey starts here:</p>
               <div className="space-y-3">
                 {[
-                  { num: "1", text: "Complete all 39 Academy lessons", color: "#818CF8" },
-                  { num: "2", text: "Pass the adaptive quiz (70%+)", color: "#00C896" },
-                  { num: "3", text: "Unlock all trading tools", color: "#F59E0B" },
-                  { num: "4", text: "Start trading with confidence", color: "#06B6D4" },
+                  { num: "1", text: "Set up your Daily Planner & morning routine", color: "#00C896" },
+                  { num: "2", text: "Complete all 39 Academy lessons", color: "#818CF8" },
+                  { num: "3", text: "Pass the adaptive quiz (70%+)", color: "#F59E0B" },
+                  { num: "4", text: "Unlock Risk Shield, Journal & Analytics", color: "#06B6D4" },
                 ].map((item) => (
                   <div key={item.num} className="flex items-center gap-3">
                     <div
@@ -213,8 +213,8 @@ export default function Welcome() {
                 className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity text-base"
                 onClick={handleSetupPlanner}
               >
-                <GraduationCap className="h-5 w-5" />
-                Start Learning
+                <Calendar className="h-5 w-5" />
+                Set Up My Planner
               </button>
               <button
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"

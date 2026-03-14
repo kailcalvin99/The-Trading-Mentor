@@ -15,7 +15,7 @@ function isUnlocked(): boolean {
 
 const navItems = [
   { to: "/", label: "ICT Academy", icon: GraduationCap, locked: false },
-  { to: "/planner", label: "Daily Planner", icon: Calendar, locked: true },
+  { to: "/planner", label: "Daily Planner", icon: Calendar, locked: false },
   { to: "/risk-shield", label: "Risk Shield", icon: Shield, locked: true },
   { to: "/journal", label: "Smart Journal", icon: BookOpen, locked: true },
   { to: "/analytics", label: "Analytics", icon: BarChart3, locked: true },
@@ -135,7 +135,7 @@ export default function Layout() {
 
   useEffect(() => {
     if (!unlocked) {
-      const lockedPaths = ["/planner", "/risk-shield", "/journal", "/analytics"];
+      const lockedPaths = ["/risk-shield", "/journal", "/analytics"];
       if (lockedPaths.some((p) => location.pathname.startsWith(p))) {
         navigate("/", { replace: true });
       }

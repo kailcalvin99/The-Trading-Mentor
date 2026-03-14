@@ -395,8 +395,20 @@ function SwipeLearnView({ onExit }: { onExit: () => void }) {
                   <img
                     src={getImageUrl(lesson.chartImage)}
                     alt={`${lesson.title} chart`}
-                    className="w-full h-52 object-cover rounded-xl border"
+                    className="w-full rounded-xl border cursor-zoom-in"
+                    style={{ maxHeight: "400px", objectFit: "contain" }}
+                    onClick={(e) => {
+                      const el = e.currentTarget;
+                      if (el.style.maxHeight === "none") {
+                        el.style.maxHeight = "400px";
+                        el.style.objectFit = "contain";
+                      } else {
+                        el.style.maxHeight = "none";
+                        el.style.objectFit = "contain";
+                      }
+                    }}
                   />
+                  <p className="text-[10px] text-muted-foreground/50 text-center mt-1">Tap image to enlarge</p>
                 </div>
               )}
 
@@ -408,11 +420,13 @@ function SwipeLearnView({ onExit }: { onExit: () => void }) {
                   </p>
                   <video
                     src={getImageUrl(lesson.videoFile)}
-                    className="w-full h-52 object-cover rounded-xl border"
+                    className="w-full rounded-xl border"
+                    style={{ maxHeight: "400px", objectFit: "contain" }}
                     autoPlay
                     loop
                     muted
                     playsInline
+                    controls
                   />
                 </div>
               )}
@@ -551,7 +565,7 @@ function LearnView() {
       <div className="rounded-2xl overflow-hidden border mb-6 bg-card">
         <video
           src={getImageUrl("video-academy-intro.mp4")}
-          className="w-full h-48 sm:h-56 object-cover"
+          className="w-full h-56 sm:h-72 object-cover"
           autoPlay
           loop
           muted
@@ -723,8 +737,18 @@ function ChapterAccordion({
                         <img
                           src={getImageUrl(lesson.chartImage)}
                           alt={`${lesson.title} chart example`}
-                          className="w-full h-48 object-cover rounded-lg border"
+                          className="w-full rounded-lg border cursor-zoom-in"
+                          style={{ maxHeight: "360px", objectFit: "contain" }}
+                          onClick={(e) => {
+                            const el = e.currentTarget;
+                            if (el.style.maxHeight === "none") {
+                              el.style.maxHeight = "360px";
+                            } else {
+                              el.style.maxHeight = "none";
+                            }
+                          }}
                         />
+                        <p className="text-[10px] text-muted-foreground/50 text-center mt-1">Tap image to enlarge</p>
                       </div>
                     )}
 
@@ -736,7 +760,8 @@ function ChapterAccordion({
                         </p>
                         <video
                           src={getImageUrl(lesson.videoFile)}
-                          className="w-full h-48 object-cover rounded-lg border"
+                          className="w-full rounded-lg border"
+                          style={{ maxHeight: "360px", objectFit: "contain" }}
                           controls
                           muted
                           playsInline
@@ -812,7 +837,8 @@ function GlossaryView() {
                     <img
                       src={getImageUrl(item.image)}
                       alt={`${item.term} chart`}
-                      className="w-full h-48 object-cover rounded-lg"
+                      className="w-full rounded-lg"
+                      style={{ maxHeight: "320px", objectFit: "contain" }}
                     />
                   )}
                   <div
@@ -1360,7 +1386,8 @@ function PlanView() {
               <img
                 src={getImageUrl(section.image)}
                 alt={`${section.title} chart`}
-                className="w-full h-44 object-cover"
+                className="w-full"
+                style={{ maxHeight: "320px", objectFit: "contain" }}
               />
             )}
           </div>

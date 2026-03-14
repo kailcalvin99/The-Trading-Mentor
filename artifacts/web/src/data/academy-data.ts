@@ -329,6 +329,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch4-4",
         title: "Silver Bullet Window (10-11 AM EST)",
+        chartImage: "lesson-silver-bullet-window.png",
         paragraphs: [
           "The Silver Bullet Window is 10:00 AM to 11:00 AM Eastern Time. This is the BEST and most reliable time to trade NQ Futures. If you only trade during one window all day, make it this one.",
           "By 10 AM, the chaos of the NY Open has settled. The Smart Money has shown their hand during London and the NY Open. Now they often make one more push — this is the Silver Bullet. It's cleaner, calmer, and more predictable than the earlier sessions.",
