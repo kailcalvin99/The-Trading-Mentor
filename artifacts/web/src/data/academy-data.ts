@@ -15,6 +15,10 @@ export interface GlossaryItem {
   image?: string;
   definition: string;
   tip: string;
+  advancedTerm?: string;
+  advancedDefinition?: string;
+  advancedTip?: string;
+  requiredLessons?: string[];
 }
 
 export interface Lesson {
@@ -601,7 +605,11 @@ export const GLOSSARY: GlossaryItem[] = [
     color: "#00C896",
     image: "chart-fvg.png",
     definition: "A gap left on the chart when price moves really fast. Picture three candles in a row — if there's a space between candle 1 and candle 3 that doesn't overlap, that's the gap. Price usually comes back to fill it, and that's where you enter your trade.",
-    tip: "On NQ, a 15-minute FVG (Fair Value Gap) after a liquidity sweep is your best entry."
+    tip: "On NQ, a 15-minute FVG (Fair Value Gap) after a liquidity sweep is your best entry.",
+    advancedTerm: "Inversion FVG / Consequent Encroachment",
+    advancedDefinition: "When a FVG gets filled and price passes through it, the gap 'inverts' — it flips from support to resistance (or vice versa). This is called an Inversion FVG. Consequent Encroachment is when price fills exactly 50% of the gap — this midpoint often acts as a precise entry level. Smart Money uses these as re-entry points after the initial fill.",
+    advancedTip: "Look for price to fill 50% of a FVG (Consequent Encroachment) and reverse. If it fills completely and breaks through, watch for the Inversion FVG on the retrace back.",
+    requiredLessons: ["ch3-1", "ch3-2", "ch3-3"]
   },
   {
     term: "MSS",
@@ -609,7 +617,11 @@ export const GLOSSARY: GlossaryItem[] = [
     color: "#818CF8",
     image: "chart-mss.png",
     definition: "When price breaks past a recent high or low and closes beyond it, telling you the trend just flipped direction. Think of it like a U-turn sign — the market was going one way and now it's going the other.",
-    tip: "Wait for the MSS (Market Structure Shift) candle to fully close — don't jump in early."
+    tip: "Wait for the MSS (Market Structure Shift) candle to fully close — don't jump in early.",
+    advancedTerm: "BOS vs MSS / Internal vs External Structure",
+    advancedDefinition: "BOS (Break of Structure) confirms the current trend is continuing, while MSS signals a reversal. Internal structure refers to minor swings within a larger move — they help time entries. External structure refers to the major swing highs/lows that define the trend. A true MSS on the higher timeframe trumps any internal BOS on a lower timeframe.",
+    advancedTip: "Use internal structure BOS on the 5m chart to time entries WITHIN a higher timeframe MSS direction. Never trade against an HTF MSS.",
+    requiredLessons: ["ch2-1", "ch2-2", "ch2-3"]
   },
   {
     term: "Liquidity Sweep",
@@ -617,7 +629,11 @@ export const GLOSSARY: GlossaryItem[] = [
     color: "#F59E0B",
     image: "chart-liquidity-sweep.png",
     definition: "When price quickly pokes above a high or below a low to grab everyone's stop-loss orders, then snaps back the other way. It's like a broom sweeping up money before the real move starts.",
-    tip: "A sweep of the London session low followed by a bullish MSS (Market Structure Shift) on NQ is a great long setup."
+    tip: "A sweep of the London session low followed by a bullish MSS (Market Structure Shift) on NQ is a great long setup.",
+    advancedTerm: "Engineered Liquidity / Judas Swing",
+    advancedDefinition: "Engineered Liquidity is when Smart Money deliberately drives price into obvious liquidity pools (equal highs/lows, trendline touches) to fill large institutional orders. The Judas Swing is the fake opening move in a Kill Zone — price moves opposite to the intended direction to sweep liquidity before the real move begins. Recognizing these patterns lets you trade WITH the manipulation instead of being its victim.",
+    advancedTip: "In the Silver Bullet window, if price spikes sharply in one direction first, that's often the Judas Swing. Wait for the reversal — the real move is coming.",
+    requiredLessons: ["ch3-4", "ch3-5", "ch3-6"]
   },
   {
     term: "OTE",
@@ -625,7 +641,11 @@ export const GLOSSARY: GlossaryItem[] = [
     color: "#EC4899",
     image: "chart-ote.png",
     definition: "The sweet spot to enter a trade — between 62% and 79% of a price swing. After a sweep and MSS (Market Structure Shift), you want to enter in this zone for the best risk-to-reward. For buys, this lines up with the 'discount' (cheap) area.",
-    tip: "Combine OTE (Optimal Trade Entry) with a FVG (Fair Value Gap) in the same zone for an even stronger entry."
+    tip: "Combine OTE (Optimal Trade Entry) with a FVG (Fair Value Gap) in the same zone for an even stronger entry.",
+    advancedTerm: "Fibonacci Confluence / Institutional Order Flow Entry",
+    advancedDefinition: "The OTE zone becomes exponentially more powerful when it aligns with multiple confluences: a FVG, an Order Block, and the 0.705 Fibonacci level. Institutional traders stack orders at these confluences. When you see 3+ factors aligning in the OTE zone, you have what's called 'Institutional Order Flow Entry' — the highest probability trade setup in ICT methodology.",
+    advancedTip: "Mark the OTE zone, then check if a FVG AND an Order Block overlap within it. If all three align, you have a 'triple confluence' — enter with confidence and tight stops.",
+    requiredLessons: ["ch4-1", "ch4-2", "ch4-3"]
   },
   {
     term: "Kill Zone",
@@ -633,7 +653,11 @@ export const GLOSSARY: GlossaryItem[] = [
     color: "#06B6D4",
     image: "chart-killzone.png",
     definition: "The best times of day to trade, when setups work most often: London Open (2-5 AM EST) and the Silver Bullet window (10-11 AM EST). These are when the big players are most active and the market moves the cleanest.",
-    tip: "The Silver Bullet window (10-11 AM) is the most reliable time for NQ Futures."
+    tip: "The Silver Bullet window (10-11 AM) is the most reliable time for NQ Futures.",
+    advancedTerm: "Macro Time / Power of Three",
+    advancedDefinition: "Within each Kill Zone, there are specific 'Macro' windows (XX:33-XX:00 of each hour) where algorithmic price delivery is most likely. The 'Power of Three' pattern describes how each session plays out: Accumulation (range/consolidation), Manipulation (the Judas Swing/fake move), and Distribution (the real move/trend). Understanding this 3-phase structure lets you anticipate the session's entire price delivery.",
+    advancedTip: "During the Silver Bullet, watch the first 20 minutes for the Manipulation (Judas Swing), then position for the Distribution phase. The Macro at XX:33 often triggers the reversal.",
+    requiredLessons: ["ch5-1", "ch5-2", "ch5-3"]
   },
   {
     term: "Stop Loss",

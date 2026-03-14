@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 
 import type { Trade, CreateTradeBody } from "@workspace/api-client-react";
+import { recordTradeResult } from "@/components/CoolDownOverlay";
 
 type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
@@ -249,6 +250,9 @@ export default function SmartJournal() {
       await createTradeMut({ data: payload as CreateTradeBody });
       if (editingDraftId) {
         await deleteTradeMut({ id: editingDraftId });
+      }
+      if (form.outcome === "win" || form.outcome === "loss") {
+        recordTradeResult(form.outcome === "win");
       }
       qc.invalidateQueries({ queryKey: getListTradesQueryKey() });
       setShowForm(false);

@@ -89,6 +89,14 @@ artifacts-monorepo/
 - Sidebar shows user profile, subscription status, founder badge
 - Feature locking based on subscription tier
 
+### Discipline & Psychology Features
+- **Discipline Gate** (`DisciplineGate.tsx`): Daily 3-question quiz (narrative/math/awareness) before accessing trading tools. 3/3 required, 1-hour lockout on failure. Stored per day in localStorage (`ict-discipline-gate`, `ict-discipline-lockout`).
+- **Adaptive Glossary**: Glossary terms have basic + advanced tiers. Advanced unlocks when user completes related lessons (`requiredLessons` field). Terms with advanced tiers: FVG, MSS, Liquidity Sweep, OTE, Kill Zone.
+- **Win-Rate Estimator**: Shows projected win-rate in Trade Plan section based on API trade history. Filters by bias and session focus, compares matched trades vs overall rate.
+- **Cool Down Timers** (`CoolDownOverlay.tsx`): Tracks consecutive losses via `recordTradeResult()` (wired into SmartJournal). After 2 consecutive losses: 4-hour lockout overlay. Failure Analysis warning shown after 1+ losses.
+- **Hall of Fame** (`HallOfFame.tsx`): Discipline streak tracking (current/best/total). 7 achievements (First Step → ICT Elite). Recorded when morning routine is completed. Data in localStorage (`ict-discipline-streak`, `ict-discipline-best-streak`, etc.).
+- **Graduation Celebration** (`GraduationCelebration.tsx`): Full-screen confetti + diploma animation when all lessons + quiz completed.
+
 ## TypeScript & Composite Projects
 
 Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references.

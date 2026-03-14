@@ -20,10 +20,17 @@ import {
   RotateCcw,
   ArrowLeft,
   ArrowRight,
+  Trophy,
+  AlertTriangle,
+  Activity,
 } from "lucide-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import DisciplineGate from "@/components/DisciplineGate";
+import CoolDownOverlay, { FailureAnalysis } from "@/components/CoolDownOverlay";
+import HallOfFame, { recordDisciplinedDay, getDisciplineStats } from "@/components/HallOfFame";
+import { useListTrades } from "@workspace/api-client-react";
 
 const ROUTINE_ITEMS = [
   { key: "water" as const, label: "Drink Water", desc: "Hydrate before you start trading", icon: Droplets },
@@ -92,6 +99,55 @@ function saveDayData(date: Date, data: DayData) {
   localStorage.setItem(getDayKey(date), JSON.stringify(data));
 }
 
+interface TradeRecord {
+  outcome?: string | null;
+  notes?: string | null;
+  pair?: string | null;
+  entryTime?: string | null;
+  isDraft?: boolean | null;
+}
+
+function computeWinRate(trades: TradeRecord[], bias: string, sessionFocus: string): { winRate: number; trades: number; message: string } | null {
+  const completed = trades.filter((t) => !t.isDraft && (t.outcome === "win" || t.outcome === "loss"));
+  if (completed.length < 3) return null;
+
+  const totalWins = completed.filter((t) => t.outcome === "win").length;
+  const overallRate = Math.round((totalWins / completed.length) * 100);
+
+  const hasFilter = !!(bias || sessionFocus);
+  if (!hasFilter) {
+    return { winRate: overallRate, trades: completed.length, message: `Overall win rate: ${overallRate}% across ${completed.length} trades` };
+  }
+
+  const matched = completed.filter((t) => {
+    const notes = (t.notes || "").toLowerCase();
+    if (bias && sessionFocus) {
+      const biasMatch = notes.includes(bias.toLowerCase());
+      const sessionMatch = sessionFocus === "london" ? notes.includes("london") || (t.entryTime || "").match(/^0[2-5]:/) : sessionFocus === "new-york" ? notes.includes("new york") || notes.includes("silver bullet") : notes.includes(sessionFocus.replace("-", " "));
+      return biasMatch && sessionMatch;
+    }
+    if (bias) return notes.includes(bias.toLowerCase());
+    if (sessionFocus) {
+      return sessionFocus === "london" ? notes.includes("london") : sessionFocus === "new-york" ? notes.includes("new york") || notes.includes("silver bullet") : notes.includes(sessionFocus.replace("-", " "));
+    }
+    return false;
+  });
+
+  if (matched.length >= 2) {
+    const matchedWins = matched.filter((t) => t.outcome === "win").length;
+    const matchedRate = Math.round((matchedWins / matched.length) * 100);
+    const diff = matchedRate - overallRate;
+    const arrow = diff > 0 ? "+" : "";
+    return {
+      winRate: matchedRate,
+      trades: matched.length,
+      message: `${matchedRate}% win rate on ${matched.length} similar trades (${arrow}${diff}% vs overall ${overallRate}%)`,
+    };
+  }
+
+  return { winRate: overallRate, trades: completed.length, message: `Overall win rate: ${overallRate}% across ${completed.length} trades` };
+}
+
 export default function DailyPlanner() {
   const { routineItems, isRoutineComplete, toggleItem } = usePlanner();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -103,10 +159,22 @@ export default function DailyPlanner() {
   const [tasksOpen, setTasksOpen] = useState(true);
   const [tradePlanOpen, setTradePlanOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
+  const [hallOfFameOpen, setHallOfFameOpen] = useState(false);
   const taskInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
+  const { data: apiTrades } = useListTrades();
+  const trades = (apiTrades || []) as TradeRecord[];
+
   const isToday = selectedDate.toISOString().split("T")[0] === new Date().toISOString().split("T")[0];
+
+  const winRateEstimate = computeWinRate(trades, dayData.tradePlan.bias, dayData.tradePlan.sessionFocus);
+
+  useEffect(() => {
+    if (isRoutineComplete) {
+      recordDisciplinedDay();
+    }
+  }, [isRoutineComplete]);
 
   useEffect(() => {
     setDayData(loadDayData(selectedDate));
@@ -167,6 +235,8 @@ export default function DailyPlanner() {
   const totalTasks = dayData.tasks.length;
 
   return (
+    <DisciplineGate>
+    <CoolDownOverlay />
     <div className="p-6 max-w-3xl mx-auto pb-20">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -407,6 +477,27 @@ export default function DailyPlanner() {
                   />
                 </div>
               </div>
+
+              {winRateEstimate && (
+                <div className="mt-3 bg-primary/5 border border-primary/20 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Activity className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-bold text-primary">Win Rate Estimator</span>
+                  </div>
+                  <p className="text-sm">{winRateEstimate.message}</p>
+                  <div className="mt-2 h-2 bg-border rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${winRateEstimate.winRate}%`,
+                        backgroundColor: winRateEstimate.winRate >= 50 ? "hsl(165 100% 39.2%)" : winRateEstimate.winRate >= 35 ? "#F59E0B" : "#EF4444",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <FailureAnalysis />
             </div>
           )}
         </CardContent>
@@ -437,6 +528,29 @@ export default function DailyPlanner() {
           )}
         </CardContent>
       </Card>
+
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <button onClick={() => setHallOfFameOpen(!hallOfFameOpen)} className="flex items-center justify-between w-full">
+            <h2 className="font-semibold text-sm flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-amber-400" />
+              Hall of Fame
+              {getDisciplineStats().currentStreak > 0 && (
+                <span className="text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">
+                  {getDisciplineStats().currentStreak} day streak
+                </span>
+              )}
+            </h2>
+            {hallOfFameOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {hallOfFameOpen && (
+            <div className="mt-3">
+              <HallOfFame />
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
+    </DisciplineGate>
   );
 }

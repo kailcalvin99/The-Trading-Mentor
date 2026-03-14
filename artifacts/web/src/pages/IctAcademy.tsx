@@ -831,14 +831,22 @@ function ChapterAccordion({
 
 function GlossaryView() {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [completed] = useState<Set<string>>(getProgress);
+
+  function hasUnlockedAdvanced(item: typeof GLOSSARY[0]): boolean {
+    if (!item.requiredLessons || item.requiredLessons.length === 0) return false;
+    return item.requiredLessons.every((id) => completed.has(id));
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h2 className="text-xl font-bold mb-1">ICT Concepts</h2>
-      <p className="text-sm text-muted-foreground mb-6">Click any term for the full definition + trader tip</p>
+      <p className="text-sm text-muted-foreground mb-6">Click any term for the full definition + trader tip. Complete lessons to unlock advanced tiers.</p>
       <div className="grid gap-3">
         {GLOSSARY.map((item) => {
           const isOpen = expanded === item.term;
+          const advancedUnlocked = hasUnlockedAdvanced(item);
+          const hasAdvanced = !!item.advancedTerm;
           return (
             <div
               key={item.term}
@@ -854,6 +862,11 @@ function GlossaryView() {
                   {item.term}
                 </span>
                 <span className="flex-1 text-sm text-muted-foreground font-medium">{item.full}</span>
+                {hasAdvanced && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${advancedUnlocked ? "bg-amber-500/20 text-amber-500" : "bg-secondary text-muted-foreground"}`}>
+                    {advancedUnlocked ? "ADV" : <Lock className="h-3 w-3 inline" />}
+                  </span>
+                )}
                 {isOpen ? (
                   <ChevronUp className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -878,6 +891,32 @@ function GlossaryView() {
                     <p className="text-xs font-bold mb-1" style={{ color: item.color }}>NQ Tip</p>
                     <p className="text-sm text-muted-foreground leading-relaxed">{item.tip}</p>
                   </div>
+                  {hasAdvanced && (
+                    <div className={`mt-3 rounded-xl border p-4 ${advancedUnlocked ? "border-amber-500/30 bg-amber-500/5" : "border-border bg-secondary/30"}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className={`h-4 w-4 ${advancedUnlocked ? "text-amber-500" : "text-muted-foreground"}`} />
+                        <span className={`text-xs font-bold ${advancedUnlocked ? "text-amber-500" : "text-muted-foreground"}`}>
+                          Advanced: {item.advancedTerm}
+                        </span>
+                      </div>
+                      {advancedUnlocked ? (
+                        <>
+                          <p className="text-sm leading-relaxed mb-2">{item.advancedDefinition}</p>
+                          <div className="border-l-[3px] border-amber-500 pl-3 py-1">
+                            <p className="text-xs font-bold mb-1 text-amber-500">Pro Tip</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{item.advancedTip}</p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">
+                            Complete related lessons to unlock this advanced concept.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
