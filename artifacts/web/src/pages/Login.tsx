@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles } from "lucide-react";
+import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -10,8 +12,16 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch(`${API_BASE}/auth/setup-status`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => setNeedsSetup(data.needsSetup === true))
+      .catch(() => setNeedsSetup(false));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,6 +36,60 @@ export default function Login() {
     } else {
       setError(result.error || "Login failed");
     }
+  }
+
+  if (needsSetup === true) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-lg text-center">
+          <img
+            src={`${import.meta.env.BASE_URL}logo.png`}
+            alt="ICT AI Trading Mentor"
+            className="w-40 h-40 object-contain mx-auto mb-6 drop-shadow-2xl"
+          />
+          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-4">
+            <Rocket className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-primary tracking-wide uppercase">First Time Setup</span>
+          </div>
+          <h1 className="text-3xl font-bold text-foreground mb-3">Welcome to ICT AI Trading Mentor</h1>
+          <p className="text-muted-foreground mb-8">
+            No accounts exist yet. Create the first account to become the Admin and set up your trading platform.
+          </p>
+
+          <div className="bg-card border border-border rounded-2xl p-6 text-left space-y-4 mb-6">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+              <div>
+                <p className="text-sm font-semibold">Create your admin account</p>
+                <p className="text-xs text-muted-foreground">The first account automatically becomes the admin with full control.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+              <div>
+                <p className="text-sm font-semibold">Customize your platform</p>
+                <p className="text-xs text-muted-foreground">Set pricing, founder spots, discounts, and features in the Admin Dashboard.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+              <div>
+                <p className="text-sm font-semibold">Invite your community</p>
+                <p className="text-xs text-muted-foreground">Share the link — the first 20 users get Founder status with exclusive discounts.</p>
+              </div>
+            </div>
+          </div>
+
+          <Link
+            to="/signup"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-bold px-8 py-3.5 rounded-xl hover:brightness-110 transition-all text-lg"
+          >
+            <Rocket className="h-5 w-5" />
+            Set Up Your Platform
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (

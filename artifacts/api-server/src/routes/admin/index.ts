@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, tradesTable, conversations, messages, propAccountTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 import { authRequired, adminRequired } from "../../middleware/auth";
+import { seedDefaults } from "../../seed";
 
 const router = Router();
 
@@ -131,6 +132,33 @@ router.put("/settings", async (req, res) => {
   } catch (err) {
     console.error("Update settings error:", err);
     res.status(500).json({ error: "Failed to update settings" });
+  }
+});
+
+router.post("/reset", async (req, res) => {
+  try {
+    const { confirmCode } = req.body;
+    if (confirmCode !== "RESET-EVERYTHING") {
+      res.status(400).json({ error: "Invalid confirmation code" });
+      return;
+    }
+
+    await db.delete(messages);
+    await db.delete(conversations);
+    await db.delete(tradesTable);
+    await db.delete(propAccountTable);
+    await db.delete(userSubscriptionsTable);
+    await db.delete(adminSettingsTable);
+    await db.delete(subscriptionTiersTable);
+    await db.delete(usersTable);
+
+    await seedDefaults();
+
+    res.clearCookie("token");
+    res.json({ success: true, message: "Full reset complete. All data has been wiped." });
+  } catch (err) {
+    console.error("Hard reset error:", err);
+    res.status(500).json({ error: "Failed to perform reset" });
   }
 });
 

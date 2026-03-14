@@ -27,7 +27,7 @@ import {
 import { usePlanner } from "@/contexts/PlannerContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import DisciplineGate from "@/components/DisciplineGate";
+
 import CoolDownOverlay, { FailureAnalysis } from "@/components/CoolDownOverlay";
 import HallOfFame, { recordDisciplinedDay, getDisciplineStats } from "@/components/HallOfFame";
 import { useListTrades } from "@workspace/api-client-react";

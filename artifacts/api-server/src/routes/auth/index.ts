@@ -6,6 +6,17 @@ import { signToken, authRequired, setAuthCookie } from "../../middleware/auth";
 
 const router = Router();
 
+router.get("/setup-status", async (_req, res) => {
+  try {
+    const result = await db.select({ total: count() }).from(usersTable);
+    const totalUsers = result[0]?.total ?? 0;
+    res.json({ needsSetup: totalUsers === 0 });
+  } catch (err) {
+    console.error("Setup status error:", err);
+    res.json({ needsSetup: false });
+  }
+});
+
 router.post("/register", async (req, res) => {
   try {
     const { email, password, name } = req.body;

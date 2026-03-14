@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Crown, Users, Settings, DollarSign, Save, Edit2, X, Check } from "lucide-react";
+import { Crown, Users, Settings, DollarSign, Save, Edit2, X, Check, AlertTriangle, RotateCcw } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -43,6 +43,9 @@ export default function Admin() {
   const [editingTier, setEditingTier] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [resetStep, setResetStep] = useState(0);
+  const [resetCode, setResetCode] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   const fetchOpts: RequestInit = { credentials: "include" };
   const headers = { "Content-Type": "application/json" };
@@ -109,6 +112,29 @@ export default function Admin() {
       body: JSON.stringify({ settings }),
     });
     setSaving(false);
+  }
+
+  async function handleReset() {
+    if (resetCode !== "RESET-EVERYTHING") return;
+    setResetting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/reset`, {
+        method: "POST",
+        ...fetchOpts,
+        headers,
+        body: JSON.stringify({ confirmCode: resetCode }),
+      });
+      if (res.ok) {
+        localStorage.clear();
+        window.location.href = import.meta.env.BASE_URL || "/web/";
+      } else {
+        const data = await res.json();
+        alert(data.error || "Reset failed");
+      }
+    } catch {
+      alert("Reset failed");
+    }
+    setResetting(false);
   }
 
   if (user?.role !== "admin") {
@@ -393,6 +419,61 @@ export default function Admin() {
             <Save className="h-4 w-4" />
             {saving ? "Saving..." : "Save Settings"}
           </button>
+
+          <div className="mt-10 border-t border-destructive/20 pt-6">
+            <h3 className="text-lg font-bold text-destructive flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-5 w-5" />
+              Danger Zone
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Hard reset will permanently delete ALL data — every user account, trade, conversation, and subscription. The site will return to its fresh setup state where the first person to register becomes admin.
+            </p>
+
+            {resetStep === 0 && (
+              <button
+                onClick={() => setResetStep(1)}
+                className="bg-destructive/10 border border-destructive/30 text-destructive font-bold px-6 py-2.5 rounded-xl hover:bg-destructive/20 flex items-center gap-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Hard Reset Everything
+              </button>
+            )}
+
+            {resetStep === 1 && (
+              <div className="bg-destructive/5 border border-destructive/30 rounded-xl p-4 space-y-3">
+                <p className="text-sm font-bold text-destructive">Are you absolutely sure?</p>
+                <p className="text-xs text-muted-foreground">
+                  This will delete ALL users, trades, journals, conversations, and subscriptions. Everyone (including you) will need to create a new account. This cannot be undone.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Type <strong className="text-destructive">RESET-EVERYTHING</strong> to confirm:
+                </p>
+                <input
+                  type="text"
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value)}
+                  placeholder="Type RESET-EVERYTHING"
+                  className="w-full bg-background border border-destructive/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-destructive/50"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleReset}
+                    disabled={resetCode !== "RESET-EVERYTHING" || resetting}
+                    className="bg-destructive text-white font-bold px-6 py-2.5 rounded-xl hover:opacity-90 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    {resetting ? "Resetting..." : "Confirm Hard Reset"}
+                  </button>
+                  <button
+                    onClick={() => { setResetStep(0); setResetCode(""); }}
+                    className="px-4 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground border border-border"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
