@@ -8,6 +8,7 @@ import DailyPlanner from "@/pages/DailyPlanner";
 import IctAcademy from "@/pages/IctAcademy";
 import RiskShield from "@/pages/RiskShield";
 import SmartJournal from "@/pages/SmartJournal";
+import Analytics from "@/pages/Analytics";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ function App() {
                 <Route path="academy" element={<IctAcademy />} />
                 <Route path="risk-shield" element={<RiskShield />} />
                 <Route path="journal" element={<SmartJournal />} />
+                <Route path="analytics" element={<Analytics />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

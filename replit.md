@@ -93,12 +93,12 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 
 ### `artifacts/web` (`@workspace/web`)
 
-React + Vite web application. Dark-themed layout shell with sidebar navigation (desktop) / bottom nav (mobile). Uses react-router-dom for routing with 4 main sections: Daily Planner, ICT Academy, Risk Shield, Smart Journal. Connected to the existing API server via `@workspace/api-client-react` TanStack Query hooks.
+React + Vite web application. Dark-themed layout shell with sidebar navigation (desktop) / bottom nav (mobile). Uses react-router-dom for routing with 5 main sections: Daily Planner, ICT Academy, Risk Shield, Smart Journal, Analytics. Connected to the existing API server via `@workspace/api-client-react` TanStack Query hooks.
 
 - Entry: `src/main.tsx`
 - App: `src/App.tsx` — BrowserRouter + QueryClientProvider + routes
 - Layout: `src/components/Layout.tsx` — sidebar + bottom nav responsive shell
-- Pages: `src/pages/DailyPlanner.tsx`, `IctAcademy.tsx`, `RiskShield.tsx`, `SmartJournal.tsx`
+- Pages: `src/pages/DailyPlanner.tsx`, `IctAcademy.tsx`, `RiskShield.tsx`, `SmartJournal.tsx`, `Analytics.tsx`
 - Theme: Dark-only (#0A0A0F background, #00C896 green accent) in `src/index.css`
 - Preview path: `/web/`
 

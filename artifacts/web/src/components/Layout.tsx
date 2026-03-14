@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3 } from "lucide-react";
 
 const navItems = [
   { to: "/", label: "Daily Planner", icon: Calendar },
   { to: "/academy", label: "ICT Academy", icon: GraduationCap },
   { to: "/risk-shield", label: "Risk Shield", icon: Shield },
   { to: "/journal", label: "Smart Journal", icon: BookOpen },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: React.ComponentType<{ className?: string }> }) {
