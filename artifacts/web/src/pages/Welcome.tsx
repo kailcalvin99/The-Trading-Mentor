@@ -104,12 +104,12 @@ export default function Welcome() {
         <div className="max-w-2xl w-full text-center py-6">
           <Logo size={64} className="mx-auto mb-4 sm:mb-6" />
 
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 sm:mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 sm:mb-3 font-serif">
             Welcome to ICT Trading Mentor
           </h1>
           <p className="text-base sm:text-lg text-muted-foreground mb-1 sm:mb-2 leading-relaxed max-w-lg mx-auto">
-            Your personal guide to learning NQ Futures trading from scratch.
-            No experience needed — we'll teach you everything step by step.
+            Your AI-powered personal guide to learning NQ Futures trading from scratch.
+            No experience needed — our AI mentor teaches you everything step by step.
           </p>
           <p className="text-xs sm:text-sm text-muted-foreground/70 mb-5 sm:mb-8 max-w-md mx-auto">
             Built on the ICT methodology created by Michael J. Huddleston — the original Inner Circle Trader who pioneered Smart Money Concepts and changed how retail traders understand the markets.
@@ -117,10 +117,10 @@ export default function Welcome() {
 
           <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 text-left mb-6 sm:mb-10">
             {[
-              { icon: "\uD83D\uDCDA", text: "A full trading course with 39 lessons" },
-              { icon: "\uD83D\uDEE1\uFE0F", text: "Risk management tools to protect your account" },
-              { icon: "\uD83D\uDCDD", text: "A smart journal to track every trade" },
-              { icon: "\uD83E\uDD16", text: "An AI mentor to answer your questions" },
+              { icon: "\uD83E\uDD16", text: "AI mentor available 24/7 to guide your trades" },
+              { icon: "\uD83D\uDCDA", text: "39 AI-curated lessons on ICT methodology" },
+              { icon: "\uD83D\uDEE1\uFE0F", text: "AI-assisted risk management tools" },
+              { icon: "\uD83D\uDCDD", text: "Smart journal with AI trade analysis" },
             ].map((item) => (
               <div
                 key={item.text}

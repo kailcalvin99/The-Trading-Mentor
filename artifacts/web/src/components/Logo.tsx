@@ -19,24 +19,31 @@ export default function Logo({ size = 32, className = "" }: LogoProps) {
         <rect width="64" height="64" rx="14" fill="#0C0C14" />
         <rect x="1" y="1" width="62" height="62" rx="13" stroke="url(#goldGrad)" strokeWidth="1.5" fill="none" />
 
-        <path d="M16 44 L24 28 L32 36 L40 20 L48 32" stroke="url(#goldGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <path d="M14 40 L22 28 L30 33 L38 18 L46 26" stroke="url(#goldGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
 
-        <circle cx="16" cy="44" r="2.5" fill="#C5A44E" />
-        <circle cx="24" cy="28" r="2.5" fill="#D4AF37" />
-        <circle cx="32" cy="36" r="2.5" fill="#D4AF37" />
-        <circle cx="40" cy="20" r="2.5" fill="#E8C547" />
-        <circle cx="48" cy="32" r="2.5" fill="#D4AF37" />
+        <circle cx="14" cy="40" r="2" fill="#C5A44E" />
+        <circle cx="22" cy="28" r="2" fill="#D4AF37" />
+        <circle cx="30" cy="33" r="2" fill="#D4AF37" />
+        <circle cx="38" cy="18" r="2.5" fill="#E8C547" />
+        <circle cx="46" cy="26" r="2" fill="#D4AF37" />
+
+        <circle cx="38" cy="18" r="5" fill="none" stroke="#E8C547" strokeWidth="0.8" opacity="0.4">
+          <animate attributeName="r" values="5;8;5" dur="2.5s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.4;0.1;0.4" dur="2.5s" repeatCount="indefinite" />
+        </circle>
+
+        <path d="M50 40 L50 50 M45 45 L55 45" stroke="url(#goldGrad)" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
 
         <text
           x="32"
-          y="57"
+          y="58"
           fontFamily="'Playfair Display', Georgia, serif"
           fontWeight="700"
-          fontSize="11"
+          fontSize="10"
           fill="url(#goldGrad)"
           textAnchor="middle"
-          letterSpacing="3"
-        >ICT</text>
+          letterSpacing="2"
+        >ICT AI</text>
 
         <defs>
           <linearGradient id="goldGrad" x1="0" y1="0" x2="64" y2="64">

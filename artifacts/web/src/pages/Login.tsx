@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy } from "lucide-react";
+import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Sparkles, Bot } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -37,6 +37,10 @@ export default function Login() {
 
         <div className="relative z-10 max-w-lg">
           <Logo size={56} className="mb-8" />
+          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 mb-6">
+            <BrainCircuit className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-primary tracking-wide uppercase">AI-Powered Trading Intelligence</span>
+          </div>
           <h1 className="font-serif text-5xl font-bold text-foreground mb-2 leading-tight tracking-tight">
             Trade with
           </h1>
@@ -44,14 +48,15 @@ export default function Login() {
             Precision.
           </h1>
           <p className="text-muted-foreground text-lg mb-10 leading-relaxed">
-            The institutional-grade trading platform built on ICT methodology.
+            AI-driven institutional trading platform built on ICT methodology. Your personal AI mentor analyzes, teaches, and guides every trade.
           </p>
 
           <div className="space-y-3">
             {[
-              { icon: TrendingUp, text: "39 expert lessons on institutional trading" },
-              { icon: Zap, text: "AI-powered mentor for real-time guidance" },
-              { icon: Trophy, text: "Professional-grade analytics and journaling" },
+              { icon: Bot, text: "24/7 AI mentor that adapts to your skill level" },
+              { icon: BrainCircuit, text: "AI-powered trade analysis and smart journaling" },
+              { icon: Sparkles, text: "Adaptive AI quizzes that evolve as you learn" },
+              { icon: TrendingUp, text: "39 expert lessons with AI-guided progression" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3 border border-border/50 rounded-lg p-3">
                 <item.icon className="h-4 w-4 text-primary" />

@@ -1401,7 +1401,7 @@ const TAB_CONFIG: { key: Tab; label: string }[] = [
   { key: "learn", label: "Learn" },
   { key: "glossary", label: "Glossary" },
   { key: "quiz", label: "Quiz" },
-  { key: "mentor", label: "Mentor" },
+  { key: "mentor", label: "AI Mentor" },
   { key: "plan", label: "Plan" },
 ];
 
@@ -1437,7 +1437,11 @@ export default function IctAcademy() {
       <header className="sticky top-0 z-30 bg-background px-6 pt-5 pb-3 border-b">
         <div className="flex items-center gap-3 mb-4">
           <GraduationCap className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">ICT Academy</h1>
+          <h1 className="text-2xl font-bold font-serif">ICT Academy</h1>
+          <span className="inline-flex items-center gap-1 bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary">
+            <Sparkles className="h-2.5 w-2.5" />
+            AI
+          </span>
         </div>
         <div className="flex bg-secondary rounded-xl p-1 max-w-lg">
           {TAB_CONFIG.map((t) => (

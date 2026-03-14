@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, UserPlus, Crown, Sparkles, PartyPopper } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Crown, Sparkles, PartyPopper, BrainCircuit } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -132,7 +132,10 @@ export default function Signup() {
 
         <div className="bg-card border border-border rounded-2xl p-8">
           <h2 className="font-serif text-2xl font-bold text-foreground mb-1">Create your account</h2>
-          <p className="text-sm text-muted-foreground mb-6">Begin your institutional trading journey</p>
+          <div className="flex items-center gap-2 mb-6">
+            <BrainCircuit className="h-3.5 w-3.5 text-primary" />
+            <p className="text-sm text-muted-foreground">Begin your AI-powered trading journey</p>
+          </div>
 
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg p-3 mb-4 text-sm">
