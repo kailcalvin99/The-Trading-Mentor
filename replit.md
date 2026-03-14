@@ -118,6 +118,13 @@ Key features:
 - Entry mode stored in trade notes as [Conservative] or [Silver Bullet] tag
 - Gemini AI mentor via Replit AI Integrations proxy (streaming SSE)
 
+### `artifacts/mockup-sandbox` (`@workspace/mockup-sandbox`)
+
+Vite + React component preview server with Tailwind CSS and Radix UI. Used for rendering web mockup components.
+
+Key mockup components:
+- **DailyPlanner** — Web version of the mobile Daily Planner page at `/__mockup/preview/DailyPlanner`. Features: morning routine checklist (4 core ICT items gate trading), custom "My Routine" items with add/snooze/delete, kill zone countdown timers (London, NY Open, Silver Bullet), live EST clock, red news warning banner, Trader's Code discipline rules. Uses localStorage for persistence via `src/contexts/PlannerContext.tsx`.
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
