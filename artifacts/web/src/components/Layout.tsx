@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, BrainCircuit } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { FreeSidebar, LockedFeatureOverlay } from "@/components/CasinoElements";
@@ -151,11 +151,9 @@ export default function Layout() {
       <aside className="hidden md:flex flex-col w-16 lg:w-56 border-r border-sidebar-border bg-sidebar shrink-0">
         <div className="flex items-center gap-2 px-3 h-14 border-b border-sidebar-border">
           <Logo size={32} />
-          <div className="hidden lg:flex flex-col min-w-0">
-            <span className="text-sm font-semibold text-sidebar-foreground truncate font-serif tracking-tight">
-              ICT AI Trading Mentor
-            </span>
-          </div>
+          <span className="hidden lg:block text-sm font-semibold text-sidebar-foreground truncate">
+            ICT AI Trading Mentor
+          </span>
         </div>
 
         <nav className="flex flex-col gap-1 p-2 flex-1">

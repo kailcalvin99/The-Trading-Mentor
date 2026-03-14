@@ -19,7 +19,7 @@ export default function DailyPlanner() {
     <div className="p-6 max-w-2xl">
       <div className="flex items-center gap-3 mb-6">
         <Calendar className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold font-serif">Daily Planner</h1>
+        <h1 className="text-2xl font-bold">Daily Planner</h1>
       </div>
       <p className="text-muted-foreground mb-6">
         Get ready for your trading day. Complete each step before you start trading.

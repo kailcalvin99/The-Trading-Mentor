@@ -75,7 +75,7 @@ export default function Pricing() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <Logo size={32} />
-          <span className="text-lg font-bold text-foreground font-serif">Choose Your Plan</span>
+          <span className="text-lg font-bold text-foreground">Choose Your Plan</span>
         </div>
 
         {user?.isFounder && (

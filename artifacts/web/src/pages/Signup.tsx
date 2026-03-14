@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, UserPlus, Crown, Sparkles, PartyPopper, BrainCircuit } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Crown, Sparkles, PartyPopper } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -114,7 +114,7 @@ export default function Signup() {
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8 justify-center">
           <Logo size={44} />
-          <span className="font-serif text-xl font-bold text-foreground tracking-tight">ICT AI Trading Mentor</span>
+          <span className="text-xl font-bold text-foreground">ICT AI Trading Mentor</span>
         </div>
 
         {founderSpotsLeft !== null && founderSpotsLeft > 0 && (
@@ -131,11 +131,8 @@ export default function Signup() {
         )}
 
         <div className="bg-card border border-border rounded-2xl p-8">
-          <h2 className="font-serif text-2xl font-bold text-foreground mb-1">Create your account</h2>
-          <div className="flex items-center gap-2 mb-6">
-            <BrainCircuit className="h-3.5 w-3.5 text-primary" />
-            <p className="text-sm text-muted-foreground">Begin your AI-powered trading journey</p>
-          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-1">Create your account</h2>
+          <p className="text-sm text-muted-foreground mb-6">Begin your AI-powered trading journey</p>
 
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg p-3 mb-4 text-sm">

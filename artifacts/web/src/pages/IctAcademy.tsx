@@ -337,7 +337,35 @@ function SwipeLearnView({ onExit }: { onExit: () => void }) {
         ))}
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden relative">
+        <button
+          onClick={goPrev}
+          disabled={currentIdx === 0 && cardStep === 0}
+          className="absolute left-0 top-0 bottom-0 w-16 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:hidden"
+          aria-label="Previous"
+        >
+          <div className="bg-card/80 backdrop-blur border border-border rounded-full p-2">
+            <ChevronLeft className="h-5 w-5 text-foreground" />
+          </div>
+        </button>
+
+        <button
+          onClick={() => {
+            if (stepContent.type === "takeaway" && !isDone) {
+              markComplete();
+            } else {
+              goNext();
+            }
+          }}
+          disabled={currentIdx === totalCards - 1 && cardStep === totalSteps - 1}
+          className="absolute right-0 top-0 bottom-0 w-16 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:hidden"
+          aria-label="Next"
+        >
+          <div className="bg-card/80 backdrop-blur border border-border rounded-full p-2">
+            <ChevronRight className="h-5 w-5 text-foreground" />
+          </div>
+        </button>
+
         <div
           className="relative w-full max-w-lg select-none"
           style={{
@@ -522,13 +550,14 @@ function SwipeLearnView({ onExit }: { onExit: () => void }) {
       </div>
 
       <div className="text-center py-3 text-xs text-muted-foreground/50 shrink-0">
-        Use arrow keys, swipe, or tap to navigate
+        Use arrow keys, swipe, click edges, or use the buttons to navigate
       </div>
     </div>
   );
 }
 
 function LearnView() {
+  const [swipeMode, setSwipeMode] = useState(false);
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
 
   useEffect(() => {
@@ -550,6 +579,10 @@ function LearnView() {
     else next.add(lessonId);
     setCompleted(next);
     setProgress(next);
+  }
+
+  if (swipeMode) {
+    return <SwipeLearnView onExit={() => { setSwipeMode(false); setCompleted(getProgress()); }} />;
   }
 
   const isAllDone = completedCount >= totalLessons;
@@ -605,6 +638,15 @@ function LearnView() {
           </div>
         </div>
       )}
+
+      <button
+        onClick={() => setSwipeMode(true)}
+        className="w-full mb-8 flex items-center justify-center gap-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-2xl py-4 px-6 font-bold text-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
+      >
+        <Play className="h-6 w-6" />
+        Start Swipe Mode
+        <span className="text-sm font-medium opacity-80 ml-1">TikTok-style</span>
+      </button>
 
       <div className="h-2 bg-border rounded-full mb-8 overflow-hidden">
         <div
@@ -1423,7 +1465,7 @@ export default function IctAcademy() {
       <header className="sticky top-0 z-30 bg-background px-6 pt-5 pb-3 border-b">
         <div className="flex items-center gap-3 mb-4">
           <GraduationCap className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold font-serif">ICT Academy</h1>
+          <h1 className="text-2xl font-bold">ICT Academy</h1>
           <span className="inline-flex items-center gap-1 bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary">
             <Sparkles className="h-2.5 w-2.5" />
             AI

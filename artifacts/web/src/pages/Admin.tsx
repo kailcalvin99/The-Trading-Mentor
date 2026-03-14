@@ -121,7 +121,7 @@ export default function Admin() {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2 font-serif">
+      <h1 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
         <Settings className="h-6 w-6 text-primary" />
         Admin Dashboard
       </h1>

@@ -33,7 +33,7 @@ const TUTORIAL_STEPS = [
   {
     icon: Calendar,
     title: "Daily Planner",
-    color: "#D4AF37",
+    color: "#00C896",
     heading: "Start Every Day Right",
     locked: false,
     bullets: [
@@ -104,7 +104,7 @@ export default function Welcome() {
         <div className="max-w-2xl w-full text-center py-6">
           <Logo size={64} className="mx-auto mb-4 sm:mb-6" />
 
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 sm:mb-3 font-serif">
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 sm:mb-3">
             Welcome to ICT AI Trading Mentor
           </h1>
           <p className="text-base sm:text-lg text-muted-foreground mb-1 sm:mb-2 leading-relaxed max-w-lg mx-auto">
@@ -190,7 +190,7 @@ export default function Welcome() {
               <p className="text-sm font-bold text-foreground mb-4">Your journey starts here:</p>
               <div className="space-y-3">
                 {[
-                  { num: "1", text: "Set up your Daily Planner & morning routine", color: "#D4AF37" },
+                  { num: "1", text: "Set up your Daily Planner & morning routine", color: "#00C896" },
                   { num: "2", text: "Complete all 39 Academy lessons", color: "#818CF8" },
                   { num: "3", text: "Pass the adaptive quiz (70%+)", color: "#F59E0B" },
                   { num: "4", text: "Unlock Risk Shield, Journal & Analytics", color: "#06B6D4" },

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Sparkles, Bot } from "lucide-react";
+import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -36,16 +36,13 @@ export default function Login() {
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-primary/3 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-lg">
-          <Logo size={56} className="mb-8" />
+          <Logo size={120} className="mb-8" />
           <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 mb-6">
             <BrainCircuit className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-semibold text-primary tracking-wide uppercase">AI-Powered Trading Intelligence</span>
           </div>
-          <h1 className="font-serif text-5xl font-bold text-foreground mb-2 leading-tight tracking-tight">
-            Trade with
-          </h1>
-          <h1 className="font-serif text-5xl font-bold text-primary mb-6 leading-tight tracking-tight">
-            Precision.
+          <h1 className="text-4xl font-bold text-foreground mb-2 leading-tight">
+            ICT AI Trading Mentor
           </h1>
           <p className="text-muted-foreground text-lg mb-10 leading-relaxed">
             AI-driven institutional trading platform built on ICT methodology. Your personal AI mentor analyzes, teaches, and guides every trade.
@@ -70,12 +67,12 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <Logo size={44} />
-            <span className="font-serif text-xl font-bold text-foreground tracking-tight">ICT AI Trading Mentor</span>
+            <Logo size={56} />
+            <span className="text-xl font-bold text-foreground">ICT AI Trading Mentor</span>
           </div>
 
           <div className="bg-card border border-border rounded-2xl p-8">
-            <h2 className="font-serif text-2xl font-bold text-foreground mb-1">Welcome back</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-1">Welcome back</h2>
             <p className="text-sm text-muted-foreground mb-6">Sign in to your trading dashboard</p>
 
             {error && (
