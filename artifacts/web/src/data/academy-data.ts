@@ -832,6 +832,127 @@ export const PLAN_SECTIONS: {
   },
 ];
 
+export interface IndicatorItem {
+  name: string;
+  category: "core" | "supporting" | "optional";
+  tradingViewSearch: string;
+  description: string;
+  ictConcept: string;
+  setup: string;
+  color: string;
+}
+
+export const RECOMMENDED_INDICATORS: IndicatorItem[] = [
+  {
+    name: "Smart Money Concepts (LuxAlgo)",
+    category: "core",
+    tradingViewSearch: "Smart Money Concepts [LuxAlgo]",
+    description: "The all-in-one ICT indicator. Automatically detects Fair Value Gaps, Order Blocks, Break of Structure (BOS), Change of Character (CHoCH), and liquidity sweeps.",
+    ictConcept: "FVG, Order Blocks, Market Structure Shift, Liquidity",
+    setup: "Add to chart → Enable FVG, Order Blocks, and BOS/CHoCH labels. Disable any features you don't need to keep the chart clean.",
+    color: "#00C896",
+  },
+  {
+    name: "Fair Value Gap (FVG)",
+    category: "core",
+    tradingViewSearch: "FVG [LuxAlgo]",
+    description: "Highlights imbalances in price action — three-candle patterns where the middle candle's body creates a gap. These gaps act as magnets where price often returns to fill.",
+    ictConcept: "Fair Value Gaps / Imbalances",
+    setup: "Add to chart → Adjust timeframe sensitivity. Use on 15m and 1H charts for NQ entries.",
+    color: "#3B82F6",
+  },
+  {
+    name: "ICT Kill Zones",
+    category: "core",
+    tradingViewSearch: "ICT Kill Zones",
+    description: "Marks the key institutional trading sessions directly on your chart: Asian (8PM-12AM ET), London (2-5AM ET), New York AM (9:30-12PM ET), and NY PM (1:30-4PM ET).",
+    ictConcept: "Kill Zones / Session Times",
+    setup: "Add to chart → Verify times are set to ET (Eastern Time). Most entries should happen during NY AM Kill Zone for NQ.",
+    color: "#F59E0B",
+  },
+  {
+    name: "Buyside & Sellside Liquidity",
+    category: "core",
+    tradingViewSearch: "Buyside & Sellside Liquidity [LuxAlgo]",
+    description: "Identifies clusters of equal highs (buyside liquidity) and equal lows (sellside liquidity) where stop losses accumulate. Smart money hunts these levels before reversing.",
+    ictConcept: "Liquidity Pools / Stop Hunts",
+    setup: "Add to chart → Watch for price sweeping these levels then reversing. This is the classic ICT liquidity sweep setup.",
+    color: "#EF4444",
+  },
+  {
+    name: "Fibonacci Retracement (Built-in)",
+    category: "core",
+    tradingViewSearch: "Built-in drawing tool (left toolbar)",
+    description: "Essential for marking the Optimal Trade Entry (OTE) zone. ICT uses the 62%-79% retracement zone (specifically 0.62, 0.705, 0.79 levels) as the sweet spot for entries.",
+    ictConcept: "Optimal Trade Entry (OTE)",
+    setup: "Select from drawing tools → Set custom levels: 0, 0.5, 0.62, 0.705, 0.79, 1.0. Highlight the 0.62-0.79 zone — that's your OTE.",
+    color: "#8B5CF6",
+  },
+  {
+    name: "Sessions Highlighter",
+    category: "supporting",
+    tradingViewSearch: "ICT Sessions",
+    description: "Visually shades trading sessions on the chart so you can see Asian range, London, and New York sessions at a glance. Helps identify session highs/lows for bias.",
+    ictConcept: "Session Analysis / Asian Range",
+    setup: "Add to chart → Customize colors for each session. Use Asian session range as reference for London and NY direction.",
+    color: "#06B6D4",
+  },
+  {
+    name: "Previous Day / Week High & Low",
+    category: "supporting",
+    tradingViewSearch: "Previous Day High Low",
+    description: "Plots the previous day's and week's high and low as horizontal lines. These are key liquidity reference levels where institutional orders often sit.",
+    ictConcept: "Daily/Weekly Levels / Liquidity Reference",
+    setup: "Add to chart → Enable both daily and weekly levels. These act as draw-on-liquidity targets for your trades.",
+    color: "#EC4899",
+  },
+  {
+    name: "Volume Profile (Fixed Range)",
+    category: "supporting",
+    tradingViewSearch: "Volume Profile Fixed Range (built-in)",
+    description: "Shows the volume distribution at each price level. High-volume nodes indicate institutional accumulation zones; low-volume nodes are areas price moves through quickly.",
+    ictConcept: "Institutional Order Flow",
+    setup: "Select from toolbar → Draw over recent price action. Look for high-volume nodes near your FVG and Order Block levels for confluence.",
+    color: "#10B981",
+  },
+  {
+    name: "NWOG / NDOG (Opening Gaps)",
+    category: "supporting",
+    tradingViewSearch: "NWOG NDOG ICT",
+    description: "Marks the New Week Opening Gap (NWOG) and New Day Opening Gap (NDOG) — the gap between the previous session's close and the new session's open. ICT uses these as equilibrium reference points.",
+    ictConcept: "New Week/Day Opening Gaps",
+    setup: "Add to chart → These gaps often act as fair value areas where price gravitates during the week. Use as confluence with other levels.",
+    color: "#F97316",
+  },
+  {
+    name: "ICT Silver Bullet",
+    category: "optional",
+    tradingViewSearch: "ICT Silver Bullet",
+    description: "Highlights the Silver Bullet time windows: 10:00-11:00 AM ET and 2:00-3:00 PM ET. These are specific windows where ICT identifies high-probability FVG entries.",
+    ictConcept: "Silver Bullet Model",
+    setup: "Add to chart → During these windows, look for FVGs forming on the 1-5 minute chart. Enter at the FVG with a tight stop.",
+    color: "#A855F7",
+  },
+  {
+    name: "Displacement Candle Detector",
+    category: "optional",
+    tradingViewSearch: "Displacement Detector",
+    description: "Identifies large-body candles with minimal wicks that signal aggressive institutional moves. Displacement often precedes Fair Value Gaps and confirms directional bias.",
+    ictConcept: "Displacement / Institutional Candles",
+    setup: "Add to chart → When you see displacement followed by a FVG in your Kill Zone, that's a high-probability ICT setup.",
+    color: "#64748B",
+  },
+  {
+    name: "Order Block Detector",
+    category: "optional",
+    tradingViewSearch: "Order Blocks [LuxAlgo]",
+    description: "Auto-detects bullish and bearish order blocks — the last opposing candle before a strong move. These zones are where institutions placed their orders and price often revisits them.",
+    ictConcept: "Order Blocks",
+    setup: "Add to chart → Look for order blocks that overlap with FVGs in Kill Zones for the highest-probability setups.",
+    color: "#0EA5E9",
+  },
+];
+
 export const DIFFICULTY_COLORS: Record<Difficulty, string> = { easy: "#00C896", medium: "#F59E0B", hard: "#EF4444" };
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
 export const DIFFICULTY_ICONS: Record<Difficulty, string> = { easy: "\u{1F331}", medium: "\u26A1", hard: "\u{1F480}" };

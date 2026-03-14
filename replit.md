@@ -96,6 +96,7 @@ artifacts-monorepo/
 - **Cool Down Timers** (`CoolDownOverlay.tsx`): Tracks consecutive losses via `recordTradeResult()` (wired into SmartJournal). After 2 consecutive losses: 4-hour lockout overlay. Failure Analysis warning shown after 1+ losses.
 - **Hall of Fame** (`HallOfFame.tsx`): Discipline streak tracking (current/best/total). 7 achievements (First Step → ICT Elite). Recorded when morning routine is completed. Data in localStorage (`ict-discipline-streak`, `ict-discipline-best-streak`, etc.).
 - **Graduation Celebration** (`GraduationCelebration.tsx`): Full-screen confetti + diploma animation when all lessons + quiz completed.
+- **TradingView Indicators** (Tools tab in Academy): 12 recommended indicators organized by category (Core/Supporting/Optional). Each card expands to show description, ICT concept mapping, setup instructions, and TradingView search term. Includes "Recommended Starter Setup" section. Data in `RECOMMENDED_INDICATORS` array in `academy-data.ts`.
 
 ## TypeScript & Composite Projects
 
