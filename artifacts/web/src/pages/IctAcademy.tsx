@@ -8,18 +8,28 @@ import {
   ArrowLeft,
   MessageSquare,
   Loader2,
+  BookOpen,
+  CheckCircle2,
+  Circle,
+  Lock,
 } from "lucide-react";
+import {
+  COURSE_CHAPTERS,
+  GLOSSARY,
+  QUIZ_BANK,
+  PLAN_SECTIONS,
+  DIFFICULTY_COLORS,
+  DIFFICULTY_LABELS,
+  DIFFICULTY_ICONS,
+  TOTAL_QUIZ_QUESTIONS,
+  pickQuestion,
+  type Difficulty,
+  type QuizQuestion,
+  type Chapter,
+  type Lesson,
+} from "../data/academy-data";
 
-type Tab = "glossary" | "quiz" | "mentor" | "plan";
-type Difficulty = "easy" | "medium" | "hard";
-
-interface QuizQuestion {
-  difficulty: Difficulty;
-  scenario: string;
-  options: string[];
-  answer: number;
-  explanation: string;
-}
+type Tab = "learn" | "glossary" | "quiz" | "mentor" | "plan";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -31,158 +41,19 @@ interface Conversation {
   title: string;
 }
 
-const GLOSSARY = [
-  {
-    term: "FVG",
-    full: "Fair Value Gap",
-    color: "#00C896",
-    image: "chart-fvg.png",
-    definition:
-      "A gap left on the chart when price moves really fast. Picture three candles in a row — if there's a space between candle 1 and candle 3 that doesn't overlap, that's the gap. Price usually comes back to fill it, and that's where you enter your trade.",
-    tip: "On NQ, a 15-minute FVG (Fair Value Gap) after a liquidity sweep is your best entry.",
-  },
-  {
-    term: "MSS",
-    full: "Market Structure Shift",
-    color: "#818CF8",
-    image: "chart-mss.png",
-    definition:
-      "When price breaks past a recent high or low and closes beyond it, telling you the trend just flipped direction. Think of it like a U-turn sign — the market was going one way and now it's going the other.",
-    tip: "Wait for the MSS (Market Structure Shift) candle to fully close — don't jump in early.",
-  },
-  {
-    term: "Liquidity Sweep",
-    full: "Stop Hunt / Liquidity Grab",
-    color: "#F59E0B",
-    image: "chart-liquidity-sweep.png",
-    definition:
-      "When price quickly pokes above a high or below a low to grab everyone's stop-loss orders, then snaps back the other way. It's like a broom sweeping up money before the real move starts.",
-    tip: "A sweep of the London session low followed by a bullish MSS (Market Structure Shift) on NQ is a great long setup.",
-  },
-  {
-    term: "OTE",
-    full: "Optimal Trade Entry",
-    color: "#EC4899",
-    image: "chart-ote.png",
-    definition:
-      "The sweet spot to enter a trade — between 62% and 79% of a price swing. After a sweep and MSS (Market Structure Shift), you want to enter in this zone for the best risk-to-reward. For buys, this lines up with the 'discount' (cheap) area.",
-    tip: "Combine OTE (Optimal Trade Entry) with a FVG (Fair Value Gap) in the same zone for an even stronger entry.",
-  },
-  {
-    term: "Kill Zone",
-    full: "High-Probability Trading Session",
-    color: "#06B6D4",
-    image: "chart-killzone.png",
-    definition:
-      "The best times of day to trade, when setups work most often: London Open (2–5 AM EST) and the Silver Bullet window (10–11 AM EST). These are when the big players are most active and the market moves the cleanest.",
-    tip: "The Silver Bullet window (10–11 AM) is the most reliable time for NQ Futures.",
-  },
-];
+const PROGRESS_KEY = "ict-academy-progress";
 
-const QUIZ_BANK: QuizQuestion[] = [
-  { difficulty: "easy", scenario: "What does FVG stand for in ICT trading?", options: ["Fast Volume Gain", "Fair Value Gap", "Forward Volatility Gauge", "Fibonacci Value Grid"], answer: 1, explanation: "FVG = Fair Value Gap. It's a gap left on the chart when price moves too fast. Price usually comes back to fill that gap — and that's where you enter your trade!" },
-  { difficulty: "easy", scenario: "What is the Silver Bullet time window in EST?", options: ["8:00–9:00 AM", "10:00–11:00 AM", "2:00–3:00 PM", "12:00–1:00 PM"], answer: 1, explanation: "The Silver Bullet window is 10:00–11:00 AM EST. This is the prime ICT trading window for NQ — most consistent setups happen here!" },
-  { difficulty: "easy", scenario: "What does MSS mean?", options: ["Moving Stop Strategy", "Market Structure Shift", "Margin Safety System", "Multiple Swing Setup"], answer: 1, explanation: "MSS = Market Structure Shift. It's when price breaks past a recent high or low, telling you the trend just changed direction — like a U-turn." },
-  { difficulty: "easy", scenario: "In ICT, what is 'Premium' vs 'Discount'?", options: ["Price above/below the 50% level of a range", "High/low volume zones", "Pre-market/post-market sessions", "Bid/ask spread zones"], answer: 0, explanation: "Premium = above the 50% level (expensive zone — look to sell). Discount = below 50% (cheap zone — look to buy). Think of it like shopping — you buy on sale and sell when it's overpriced!" },
-  { difficulty: "easy", scenario: "What is the max daily loss rule for prop firms in this plan?", options: ["1%", "2%", "5%", "10%"], answer: 1, explanation: "Max daily loss is 2%. If you hit it, the app locks you out for 24 hours. This is how you survive prop firm evaluations — protect your capital!" },
-  { difficulty: "medium", scenario: "NQ sweeps the 9:00 AM candle low, then immediately breaks back above the 9:00 AM high with a full candle close. What should you do next?", options: ["Enter long immediately at market price", "Wait for a 15-minute FVG to form, then buy into the gap", "Short because the low was already swept", "Skip — no valid setup here"], answer: 1, explanation: "The market faked everyone out by going down first (sweep), then slammed back up (MSS). Now you wait for it to come back down a little to a 'price gap' (FVG) and that's your entry! Entering at market after MSS gives bad risk:reward." },
-  { difficulty: "medium", scenario: "NQ is clearly above the daily 50% level — it's in Premium. Price creates a bearish FVG on the 15-minute chart. What do you do?", options: ["Buy — the FVG is bullish", "Wait for price to fill the FVG from below, then look for a short", "Ignore FVGs in premium — they don't matter", "Only trade if it's a Monday"], answer: 1, explanation: "When prices are expensive (Premium), you want to SELL, not buy. The FVG is like a ceiling — when price comes back up to touch it, that's your chance to short." },
-  { difficulty: "medium", scenario: "ForexFactory shows NFP (Non-Farm Payrolls) news at 8:30 AM with a red folder icon. When should you trade NQ today?", options: ["Right at 8:30 AM — biggest moves happen then", "At 9:00 AM before the NY open", "Wait until 10:00 AM after volatility settles", "Don't trade at all — red folder = no trading ever"], answer: 2, explanation: "Red folder news is like a tornado warning — you don't go outside! Wait until the storm passes. By 10 AM, the dust has settled and you can see the real direction." },
-  { difficulty: "medium", scenario: "NQ is in a clear downtrend. Price sweeps above yesterday's high, then breaks a recent swing low. Where's your entry?", options: ["Short as soon as the high is swept", "Short after the swing low break, ideally inside the bearish FVG", "Long because price went up first", "Wait for 3 more confirmations"], answer: 1, explanation: "The market tricked the buyers (swept their stops above the high), then showed it really wants to go DOWN (MSS). Short inside the FVG it left behind." },
-  { difficulty: "medium", scenario: "You enter a long trade on NQ and TP1 is hit. What should you do with your stop loss?", options: ["Keep it where it is", "Move it to breakeven", "Remove it entirely", "Widen it by 50%"], answer: 1, explanation: "Once TP1 is hit, you move your stop loss to breakeven. This way you're in a risk-free trade while letting the remaining position run to TP2 (external liquidity)." },
-  { difficulty: "medium", scenario: "You're about to enter a trade. Your Entry Criteria checklist shows 4/6 items checked. Can you log this trade?", options: ["Yes — 4 out of 6 is good enough", "No — all 6 criteria must be checked", "Only if it's during the Silver Bullet window", "Yes, but only as a draft"], answer: 1, explanation: "ALL entry criteria must be checked before logging a trade. The app enforces this to keep your trading mechanical and disciplined. No shortcuts!" },
-  { difficulty: "hard", scenario: "It's 10:22 AM EST. NQ sweeps above the 9:30 AM opening high, then drops back through it and forms a bearish FVG on the 1-minute chart. What setup is this?", options: ["A failed breakout — avoid trading", "A perfect Silver Bullet short setup", "A buy signal because price went up first", "Too late in the day to trade"], answer: 1, explanation: "It's the Silver Bullet window (10–11 AM)! NQ went up to steal the stops above the opening high (sweep), then came back down (MSS) and left a 1-minute FVG. This is the aggressive Silver Bullet short entry!" },
-  { difficulty: "hard", scenario: "NQ shows a bullish MSS on the 5-minute chart, but the 1-Hour is in a bearish trend. The Fibonacci shows the entry is at the 55% retracement level. Should you take this trade?", options: ["Yes — the 5-minute MSS is enough confirmation", "No — the entry is NOT in the OTE zone (62%–79%)", "Yes — but only with half size", "No — because 5-minute and 1-hour disagree, AND it's not at OTE"], answer: 3, explanation: "Two problems here: 1) The 5-minute is bullish but 1-Hour is bearish — timeframes disagree (Top-Down rule violated). 2) The 55% level is NOT in the OTE zone (62%–79%). Both conditions fail." },
-  { difficulty: "hard", scenario: "NQ sweeps sell-side liquidity at 10:05 AM, creates a bullish MSS on the 5-minute with displacement, and leaves a FVG. The FVG is at the 71% Fibonacci retracement. The 1-Hour shows a bullish bias. How many Conservative Entry criteria does this meet?", options: ["3 out of 6", "4 out of 6", "5 out of 6", "All 6 — it's a textbook setup"], answer: 2, explanation: "Let's check: 1) Bias Check ✓ (1H bullish). 2) The Sweep ✓ (sell-side liquidity swept). 3) The Shift ✓ (5-min MSS with displacement). 4) The Gap ✓ (FVG identified). 5) The Fib ✓ (71% is in the OTE zone). That's 5/6 — you still need to place the limit order at the FVG (The Trigger)." },
-  { difficulty: "hard", scenario: "You're in a long trade on NQ. Price hits TP1 (internal liquidity) at a 1:2 ratio. You move SL to breakeven. Price then pulls back, touches your breakeven SL, and reverses to hit TP2. What happened?", options: ["You were stopped out at breakeven — no loss but missed TP2", "You still got TP2 because the SL is only mental", "You lost money because the pullback went below entry", "The trailing stop automatically moved to TP1"], answer: 0, explanation: "Once the SL is at breakeven and price touches it, you're out — zero loss, but you missed the run to TP2. This is why trailing stops are a double-edged sword. The plan says to move to BE after TP1, and sometimes the market shakes you out." },
-  { difficulty: "hard", scenario: "NQ is in a clear downtrend on the Daily. Price retraces to the 75% Fibonacci level and creates a bearish FVG on the 15-minute chart during the London Kill Zone (3:00 AM EST). The 5-minute shows a bearish MSS. Is this a valid Conservative short entry?", options: ["No — London Kill Zone doesn't count for NQ", "No — Conservative entries require the Silver Bullet window", "Yes — all 6 Conservative Entry criteria are met", "Yes — but with only half position size"], answer: 2, explanation: "Let's verify: 1) Bias ✓ (Daily bearish). 2) Sweep — implied by the retrace to 75% (premium). 3) Shift ✓ (5-min bearish MSS). 4) Gap ✓ (15-min bearish FVG). 5) Fib ✓ (75% is in OTE zone, Premium for sells). 6) Trigger = place limit at FVG. London Kill Zone is valid for Conservative entries — the Silver Bullet window is only required for Aggressive entries." },
-];
+function getProgress(): Set<string> {
+  try {
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+}
 
-const PLAN_SECTIONS: {
-  title: string;
-  color: string;
-  image?: string;
-  items: { label: string; desc: string }[];
-}[] = [
-  {
-    title: "The Tools",
-    color: "#00C896",
-    items: [
-      { label: "MSS (Market Structure Shift)", desc: "Our signal that the trend has changed direction." },
-      { label: "FVG (Fair Value Gap)", desc: "A price gap on the chart — this is where we enter trades." },
-      { label: "Liquidity", desc: "Old highs and lows where stop losses are sitting — our targets." },
-      { label: "Premium vs. Discount", desc: "Is price expensive (Premium = sell) or cheap (Discount = buy)?" },
-      { label: "Kill Zones", desc: "The best times to trade: London (2–5 AM EST) and Silver Bullet (10–11 AM EST)." },
-    ],
-  },
-  {
-    title: "Timeframe Alignment (Matching Big and Small Charts)",
-    color: "#818CF8",
-    items: [
-      { label: "HTF (Big Picture): Daily & 1-Hour", desc: "Find where price is heading — which direction is the market going?" },
-      { label: "LTF (Close-Up): 15-Min & 5-Min", desc: "Find the MSS (Market Structure Shift) and the FVG (Fair Value Gap) entry." },
-    ],
-  },
-  {
-    title: "Conservative Entry",
-    color: "#00C896",
-    image: "chart-conservative-entry.png",
-    items: [
-      { label: "1. Bias Check", desc: "Is the 1-Hour chart going up (Bullish) or down (Bearish)?" },
-      { label: "2. The Sweep", desc: "Wait for price to take out a 15-min high or low." },
-      { label: "3. The Shift (MSS)", desc: "Wait for a 5-min MSS (Market Structure Shift) — a fast, strong move." },
-      { label: "4. The Gap (FVG)", desc: "Find the FVG (Fair Value Gap) that was left behind." },
-      { label: "5. The Fib — OTE (Optimal Trade Entry)", desc: "Make sure your entry is in the sweet spot — Discount (buys) or Premium (sells)." },
-      { label: "6. The Trigger", desc: "Place a Limit Order at the start of the FVG." },
-    ],
-  },
-  {
-    title: "Aggressive Entry (Silver Bullet)",
-    color: "#F59E0B",
-    image: "chart-silver-bullet.png",
-    items: [
-      { label: "Time Check", desc: "It must be between 10:00 AM and 11:00 AM EST." },
-      { label: "Identify POI", desc: "Price must be heading toward a clear high or low." },
-      { label: "The Gap (FVG)", desc: "Enter at the first 1-min FVG (Fair Value Gap) after a liquidity grab." },
-      { label: "Risk", desc: "Don't risk more than 1% on this trade." },
-    ],
-  },
-  {
-    title: "Exit Criteria",
-    color: "#06B6D4",
-    image: "chart-exit-criteria.png",
-    items: [
-      { label: "Stop Loss", desc: "Place it at the high/low of the candle that created the MSS (Market Structure Shift)." },
-      { label: "TP1 (First Target)", desc: "The next nearby high or low (1:1 or 1:2 reward ratio)." },
-      { label: "TP2 (Main Target)", desc: "External Liquidity — the big target where the move should end." },
-      { label: "Trailing", desc: "Move your stop loss to breakeven once TP1 is hit — now it's a free trade!" },
-    ],
-  },
-  {
-    title: "Prop Firm Survival Rules",
-    color: "#EF4444",
-    items: [
-      { label: "Max Daily Loss", desc: "2% — if you lose this much, the app stops you for 24 hours." },
-      { label: "Max Weekly Loss", desc: "4% — your weekly safety limit." },
-      { label: "News Rule", desc: "Don't trade within 5 minutes before or after Red Folder news events." },
-    ],
-  },
-  {
-    title: "Key Takeaways",
-    color: "#EC4899",
-    items: [
-      { label: "Top-Down", desc: "Always start with the big chart (Daily). If it's going down, don't try to buy on the small chart." },
-      { label: "Patience", desc: "If price doesn't come to your FVG (Fair Value Gap), there is no trade. Wait." },
-      { label: "Discipline", desc: "Following this plan is how you get funded. Breaking it keeps you stuck." },
-    ],
-  },
-];
-
-const DIFFICULTY_COLORS: Record<Difficulty, string> = { easy: "#00C896", medium: "#F59E0B", hard: "#EF4444" };
-const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
-const DIFFICULTY_ICONS: Record<Difficulty, string> = { easy: "🌱", medium: "⚡", hard: "💀" };
-const TOTAL_QUIZ_QUESTIONS = 10;
-const TIER_ORDER: Difficulty[] = ["easy", "medium", "hard"];
+function setProgress(completed: Set<string>) {
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify([...completed]));
+}
 
 function getImageUrl(filename: string): string {
   const base = import.meta.env.BASE_URL;
@@ -193,100 +64,177 @@ function getApiUrl(): string {
   return "/api/";
 }
 
-function pickQuestion(diff: Difficulty, used: Set<number>): { q: QuizQuestion; idx: number } | null {
-  const tierQuestions = QUIZ_BANK
-    .map((q, idx) => ({ q, idx }))
-    .filter(({ q, idx }) => q.difficulty === diff && !used.has(idx));
-  if (tierQuestions.length > 0) {
-    return tierQuestions[Math.floor(Math.random() * tierQuestions.length)];
-  }
-  const diffIdx = TIER_ORDER.indexOf(diff);
-  for (let i = diffIdx + 1; i < TIER_ORDER.length; i++) {
-    const harder = QUIZ_BANK
-      .map((q, idx) => ({ q, idx }))
-      .filter(({ q, idx }) => q.difficulty === TIER_ORDER[i] && !used.has(idx));
-    if (harder.length > 0) return harder[Math.floor(Math.random() * harder.length)];
-  }
-  for (let i = diffIdx - 1; i >= 0; i--) {
-    const easier = QUIZ_BANK
-      .map((q, idx) => ({ q, idx }))
-      .filter(({ q, idx }) => q.difficulty === TIER_ORDER[i] && !used.has(idx));
-    if (easier.length > 0) return easier[Math.floor(Math.random() * easier.length)];
-  }
-  return null;
-}
+function LearnView() {
+  const [expandedChapter, setExpandedChapter] = useState<string | null>("ch1");
+  const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
+  const [completed, setCompleted] = useState<Set<string>>(getProgress);
 
-async function streamMessageWeb(
-  conversationId: number,
-  content: string,
-  onChunk: (text: string) => void,
-  onDone: () => void,
-  onError: (err: string) => void
-): Promise<void> {
-  const res = await fetch(
-    `${getApiUrl()}gemini/conversations/${conversationId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "text/event-stream",
-      },
-      body: JSON.stringify({ content }),
-    }
+  function toggleComplete(lessonId: string) {
+    const next = new Set(completed);
+    if (next.has(lessonId)) next.delete(lessonId);
+    else next.add(lessonId);
+    setCompleted(next);
+    setProgress(next);
+  }
+
+  const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
+  const completedCount = COURSE_CHAPTERS.reduce(
+    (sum, ch) => sum + ch.lessons.filter((l) => completed.has(l.id)).length,
+    0
   );
 
-  if (!res.ok) {
-    onError("Failed to get response");
-    return;
-  }
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-bold mb-1">ICT Trading Course</h2>
+          <p className="text-sm text-muted-foreground">
+            Learn everything from zero — no trading experience needed
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-bold text-primary">{completedCount}/{totalLessons}</div>
+          <div className="text-xs text-muted-foreground">lessons done</div>
+        </div>
+      </div>
 
-  const reader = res.body?.getReader();
-  if (!reader) {
-    onError("No response body");
-    return;
-  }
+      <div className="h-2 bg-border rounded-full mb-8 overflow-hidden">
+        <div
+          className="h-2 bg-primary rounded-full transition-all duration-500"
+          style={{ width: `${totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0}%` }}
+        />
+      </div>
 
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let doneSignaled = false;
+      <div className="space-y-4">
+        {COURSE_CHAPTERS.map((chapter, chIdx) => {
+          const isOpen = expandedChapter === chapter.id;
+          const chCompleted = chapter.lessons.filter((l) => completed.has(l.id)).length;
+          const chTotal = chapter.lessons.length;
+          const chDone = chCompleted === chTotal && chTotal > 0;
 
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+          return (
+            <div key={chapter.id} className="rounded-xl border overflow-hidden bg-card">
+              <button
+                className="w-full flex items-center gap-3 p-4 text-left hover:bg-secondary/50 transition-colors"
+                onClick={() => setExpandedChapter(isOpen ? null : chapter.id)}
+              >
+                <span className="text-2xl">{chapter.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold">Chapter {chIdx + 1}</span>
+                    {chDone && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                  </div>
+                  <div className="text-base font-semibold mt-0.5">{chapter.title}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{chapter.description}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-semibold" style={{ color: chapter.color }}>
+                    {chCompleted}/{chTotal}
+                  </div>
+                  {isOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground mt-1" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground mt-1" />
+                  )}
+                </div>
+              </button>
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+              {isOpen && (
+                <div className="border-t">
+                  {chapter.lessons.map((lesson, lIdx) => {
+                    const isLessonOpen = expandedLesson === lesson.id;
+                    const isDone = completed.has(lesson.id);
 
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const data = line.slice(6);
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.content) onChunk(parsed.content);
-          if (parsed.done) { doneSignaled = true; onDone(); }
-          if (parsed.error) onError(parsed.error);
-        } catch {}
-      }
-    }
+                    return (
+                      <div key={lesson.id} className="border-b last:border-b-0">
+                        <div
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/30 transition-colors cursor-pointer"
+                          onClick={() => setExpandedLesson(isLessonOpen ? null : lesson.id)}
+                        >
+                          <div
+                            className="shrink-0 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleComplete(lesson.id);
+                            }}
+                          >
+                            {isDone ? (
+                              <CheckCircle2 className="h-5 w-5 text-primary" />
+                            ) : (
+                              <Circle className="h-5 w-5 text-muted-foreground/40" />
+                            )}
+                          </div>
+                          <span className="text-sm text-muted-foreground font-mono w-6">
+                            {lIdx + 1}.
+                          </span>
+                          <span className={`flex-1 text-sm font-medium ${isDone ? "text-muted-foreground line-through" : ""}`}>
+                            {lesson.title}
+                          </span>
+                          {isLessonOpen ? (
+                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
 
-    if (buffer.trim()) {
-      const remaining = buffer.trim();
-      if (remaining.startsWith("data: ")) {
-        try {
-          const parsed = JSON.parse(remaining.slice(6));
-          if (parsed.content) onChunk(parsed.content);
-          if (parsed.done) { doneSignaled = true; onDone(); }
-          if (parsed.error) onError(parsed.error);
-        } catch {}
-      }
-    }
+                        {isLessonOpen && (
+                          <div className="px-4 pb-5 pt-2 ml-14">
+                            <div className="space-y-3">
+                              {lesson.paragraphs.map((p, pIdx) => (
+                                <p key={pIdx} className="text-sm leading-relaxed text-foreground/90">
+                                  {p}
+                                </p>
+                              ))}
+                            </div>
 
-    if (!doneSignaled) onDone();
-  } catch {
-    onError("Stream interrupted");
-  }
+                            {lesson.chartImage && (
+                              <div className="mt-4">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                  See it on the chart
+                                </p>
+                                <img
+                                  src={getImageUrl(lesson.chartImage)}
+                                  alt={`${lesson.title} chart example`}
+                                  className="w-full h-48 object-cover rounded-lg border"
+                                />
+                              </div>
+                            )}
+
+                            <div
+                              className="mt-4 rounded-lg p-4 border-l-[3px]"
+                              style={{
+                                borderLeftColor: chapter.color,
+                                backgroundColor: chapter.color + "10",
+                              }}
+                            >
+                              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: chapter.color }}>
+                                Key Takeaway
+                              </p>
+                              <p className="text-sm leading-relaxed font-medium">{lesson.takeaway}</p>
+                            </div>
+
+                            {!isDone && (
+                              <button
+                                className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                                onClick={() => toggleComplete(lesson.id)}
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Mark as Complete
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function GlossaryView() {
@@ -323,11 +271,13 @@ function GlossaryView() {
               {isOpen && (
                 <div className="px-4 pb-4 space-y-3">
                   <p className="text-sm leading-relaxed">{item.definition}</p>
-                  <img
-                    src={getImageUrl(item.image)}
-                    alt={`${item.term} chart`}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
+                  {item.image && (
+                    <img
+                      src={getImageUrl(item.image)}
+                      alt={`${item.term} chart`}
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                  )}
                   <div
                     className="border-l-[3px] pl-3 py-1"
                     style={{ borderLeftColor: item.color }}
@@ -426,11 +376,11 @@ function QuizView() {
     return (
       <div className="p-6 max-w-2xl mx-auto flex justify-center">
         <div className="bg-card rounded-2xl border p-8 text-center w-full max-w-md">
-          <div className="text-5xl mb-4">{pct >= 70 ? "🏆" : pct >= 40 ? "📈" : "📚"}</div>
+          <div className="text-5xl mb-4">{pct >= 70 ? "\u{1F3C6}" : pct >= 40 ? "\u{1F4C8}" : "\u{1F4DA}"}</div>
           <div className="text-5xl font-bold">{score}/{maxScore}</div>
           <div className="text-xl font-semibold text-primary mt-1 mb-3">{pct}%</div>
           <p className="text-sm text-muted-foreground leading-relaxed mb-2">
-            {pct >= 70 ? "ICT Concept Master! You dominated the adaptive quiz." : pct >= 40 ? "Good progress — the quiz adjusted to your level. Review and retry!" : "Keep studying — review the glossary and plan, then try again!"}
+            {pct >= 70 ? "ICT Concept Master! You dominated the adaptive quiz." : pct >= 40 ? "Good progress \u2014 the quiz adjusted to your level. Review and retry!" : "Keep studying \u2014 review the glossary and plan, then try again!"}
           </p>
           <p className="text-xs text-muted-foreground/60 mb-6">Scoring: Easy = 1pt, Medium = 2pts, Hard = 3pts</p>
           <button
@@ -523,7 +473,7 @@ function QuizView() {
           style={{ borderColor: isCorrect ? "#00C896" : "#FF4444" }}
         >
           <p className="text-base font-bold mb-2" style={{ color: isCorrect ? "#00C896" : "#FF4444" }}>
-            {isCorrect ? "✓ Correct!" : "✗ Not quite..."}
+            {isCorrect ? "\u2713 Correct!" : "\u2717 Not quite..."}
           </p>
           <p className="text-sm leading-relaxed mb-4">{q.explanation}</p>
           <button
@@ -531,12 +481,85 @@ function QuizView() {
             style={{ backgroundColor: isCorrect ? "#00C896" : "#F59E0B" }}
             onClick={handleNext}
           >
-            {answered + 1 < TOTAL_QUIZ_QUESTIONS ? "Next Question →" : "See Results"}
+            {answered + 1 < TOTAL_QUIZ_QUESTIONS ? "Next Question \u2192" : "See Results"}
           </button>
         </div>
       )}
     </div>
   );
+}
+
+async function streamMessageWeb(
+  conversationId: number,
+  content: string,
+  onChunk: (text: string) => void,
+  onDone: () => void,
+  onError: (err: string) => void
+): Promise<void> {
+  const res = await fetch(
+    `${getApiUrl()}gemini/conversations/${conversationId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({ content }),
+    }
+  );
+
+  if (!res.ok) {
+    onError("Failed to get response");
+    return;
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    onError("No response body");
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let doneSignaled = false;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6);
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.content) onChunk(parsed.content);
+          if (parsed.done) { doneSignaled = true; onDone(); }
+          if (parsed.error) onError(parsed.error);
+        } catch {}
+      }
+    }
+
+    if (buffer.trim()) {
+      const remaining = buffer.trim();
+      if (remaining.startsWith("data: ")) {
+        try {
+          const parsed = JSON.parse(remaining.slice(6));
+          if (parsed.content) onChunk(parsed.content);
+          if (parsed.done) { doneSignaled = true; onDone(); }
+          if (parsed.error) onError(parsed.error);
+        } catch {}
+      }
+    }
+
+    if (!doneSignaled) onDone();
+  } catch {
+    onError("Stream interrupted");
+  }
 }
 
 function MentorView() {
@@ -721,7 +744,7 @@ function MentorView() {
             >
               <p className="text-sm leading-relaxed whitespace-pre-wrap">
                 {msg.content}
-                {isStreaming && i === messages.length - 1 && msg.role === "assistant" ? "▋" : ""}
+                {isStreaming && i === messages.length - 1 && msg.role === "assistant" ? "\u258B" : ""}
               </p>
             </div>
           </div>
@@ -796,6 +819,7 @@ function PlanView() {
 }
 
 const TAB_CONFIG: { key: Tab; label: string }[] = [
+  { key: "learn", label: "Learn" },
   { key: "glossary", label: "Glossary" },
   { key: "quiz", label: "Quiz" },
   { key: "mentor", label: "Mentor" },
@@ -803,7 +827,7 @@ const TAB_CONFIG: { key: Tab; label: string }[] = [
 ];
 
 export default function IctAcademy() {
-  const [tab, setTab] = useState<Tab>("glossary");
+  const [tab, setTab] = useState<Tab>("learn");
 
   return (
     <div className="flex flex-col h-full">
@@ -812,7 +836,7 @@ export default function IctAcademy() {
           <GraduationCap className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">ICT Academy</h1>
         </div>
-        <div className="flex bg-secondary rounded-xl p-1 max-w-md">
+        <div className="flex bg-secondary rounded-xl p-1 max-w-lg">
           {TAB_CONFIG.map((t) => (
             <button
               key={t.key}
@@ -829,6 +853,7 @@ export default function IctAcademy() {
         </div>
       </header>
       <main className="flex-1 overflow-y-auto">
+        {tab === "learn" && <LearnView />}
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
         {tab === "mentor" && <MentorView />}

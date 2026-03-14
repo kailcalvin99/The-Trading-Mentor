@@ -20,10 +20,22 @@ import {
 } from "@workspace/api-client-react";
 import { streamMessage } from "@/lib/api";
 import Colors from "@/constants/colors";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  COURSE_CHAPTERS,
+  GLOSSARY as GLOSSARY_DATA,
+  QUIZ_BANK,
+  PLAN_SECTIONS as PLAN_DATA,
+  DIFFICULTY_COLORS,
+  DIFFICULTY_LABELS,
+  TOTAL_QUIZ_QUESTIONS,
+  TIER_ORDER,
+  pickQuestion,
+  type Difficulty,
+  type QuizQuestion,
+} from "@/data/academy-data";
 
 const C = Colors.dark;
-
-// ─── Glossary Data ───────────────────────────────────────────────────────────
 
 const GLOSSARY_IMAGES: Record<string, number> = {
   FVG: require("@/assets/images/chart-fvg.png"),
@@ -33,97 +45,164 @@ const GLOSSARY_IMAGES: Record<string, number> = {
   "Kill Zone": require("@/assets/images/chart-killzone.png"),
 };
 
-const GLOSSARY = [
-  {
-    term: "FVG",
-    full: "Fair Value Gap",
-    color: "#00C896",
-    icon: "git-merge-outline",
-    definition:
-      "A gap left on the chart when price moves really fast. Picture three candles in a row — if there's a space between candle 1 and candle 3 that doesn't overlap, that's the gap. Price usually comes back to fill it, and that's where you enter your trade.",
-    tip: "On NQ, a 15-minute FVG (Fair Value Gap) after a liquidity sweep is your best entry.",
-  },
-  {
-    term: "MSS",
-    full: "Market Structure Shift",
-    color: "#818CF8",
-    icon: "git-branch-outline",
-    definition:
-      "When price breaks past a recent high or low and closes beyond it, telling you the trend just flipped direction. Think of it like a U-turn sign — the market was going one way and now it's going the other.",
-    tip: "Wait for the MSS (Market Structure Shift) candle to fully close — don't jump in early.",
-  },
-  {
-    term: "Liquidity Sweep",
-    full: "Stop Hunt / Liquidity Grab",
-    color: "#F59E0B",
-    icon: "flash-outline",
-    definition:
-      "When price quickly pokes above a high or below a low to grab everyone's stop-loss orders, then snaps back the other way. It's like a broom sweeping up money before the real move starts.",
-    tip: "A sweep of the London session low followed by a bullish MSS (Market Structure Shift) on NQ is a great long setup.",
-  },
-  {
-    term: "OTE",
-    full: "Optimal Trade Entry",
-    color: "#EC4899",
-    icon: "locate-outline",
-    definition:
-      "The sweet spot to enter a trade — between 62% and 79% of a price swing. After a sweep and MSS (Market Structure Shift), you want to enter in this zone for the best risk-to-reward. For buys, this lines up with the 'discount' (cheap) area.",
-    tip: "Combine OTE (Optimal Trade Entry) with a FVG (Fair Value Gap) in the same zone for an even stronger entry.",
-  },
-  {
-    term: "Kill Zone",
-    full: "High-Probability Trading Session",
-    color: "#06B6D4",
-    icon: "time-outline",
-    definition:
-      "The best times of day to trade, when setups work most often: London Open (2–5 AM EST) and the Silver Bullet window (10–11 AM EST). These are when the big players are most active and the market moves the cleanest.",
-    tip: "The Silver Bullet window (10–11 AM) is the most reliable time for NQ Futures.",
-  },
-];
+const CHART_IMAGES: Record<string, number> = {
+  "chart-fvg.png": require("@/assets/images/chart-fvg.png"),
+  "chart-mss.png": require("@/assets/images/chart-mss.png"),
+  "chart-liquidity-sweep.png": require("@/assets/images/chart-liquidity-sweep.png"),
+  "chart-ote.png": require("@/assets/images/chart-ote.png"),
+  "chart-killzone.png": require("@/assets/images/chart-killzone.png"),
+  "chart-conservative-entry.png": require("@/assets/images/chart-conservative-entry.png"),
+  "chart-silver-bullet.png": require("@/assets/images/chart-silver-bullet.png"),
+  "chart-exit-criteria.png": require("@/assets/images/chart-exit-criteria.png"),
+};
 
-// ─── Adaptive Quiz Data ──────────────────────────────────────────────────────
-
-type Difficulty = "easy" | "medium" | "hard";
-
-interface QuizQuestion {
-  difficulty: Difficulty;
-  scenario: string;
-  options: string[];
-  answer: number;
-  explanation: string;
-}
-
-const QUIZ_BANK: QuizQuestion[] = [
-  { difficulty: "easy", scenario: "What does FVG stand for in ICT trading?", options: ["Fast Volume Gain", "Fair Value Gap", "Forward Volatility Gauge", "Fibonacci Value Grid"], answer: 1, explanation: "FVG = Fair Value Gap. It's a gap left on the chart when price moves too fast. Price usually comes back to fill that gap — and that's where you enter your trade!" },
-  { difficulty: "easy", scenario: "What is the Silver Bullet time window in EST?", options: ["8:00–9:00 AM", "10:00–11:00 AM", "2:00–3:00 PM", "12:00–1:00 PM"], answer: 1, explanation: "The Silver Bullet window is 10:00–11:00 AM EST. This is the prime ICT trading window for NQ — most consistent setups happen here!" },
-  { difficulty: "easy", scenario: "What does MSS mean?", options: ["Moving Stop Strategy", "Market Structure Shift", "Margin Safety System", "Multiple Swing Setup"], answer: 1, explanation: "MSS = Market Structure Shift. It's when price breaks past a recent high or low, telling you the trend just changed direction — like a U-turn." },
-  { difficulty: "easy", scenario: "In ICT, what is 'Premium' vs 'Discount'?", options: ["Price above/below the 50% level of a range", "High/low volume zones", "Pre-market/post-market sessions", "Bid/ask spread zones"], answer: 0, explanation: "Premium = above the 50% level (expensive zone — look to sell). Discount = below 50% (cheap zone — look to buy). Think of it like shopping — you buy on sale and sell when it's overpriced!" },
-  { difficulty: "easy", scenario: "What is the max daily loss rule for prop firms in this plan?", options: ["1%", "2%", "5%", "10%"], answer: 1, explanation: "Max daily loss is 2%. If you hit it, the app locks you out for 24 hours. This is how you survive prop firm evaluations — protect your capital!" },
-
-  { difficulty: "medium", scenario: "NQ sweeps the 9:00 AM candle low, then immediately breaks back above the 9:00 AM high with a full candle close. What should you do next?", options: ["Enter long immediately at market price", "Wait for a 15-minute FVG to form, then buy into the gap", "Short because the low was already swept", "Skip — no valid setup here"], answer: 1, explanation: "The market faked everyone out by going down first (sweep), then slammed back up (MSS). Now you wait for it to come back down a little to a 'price gap' (FVG) and that's your entry! Entering at market after MSS gives bad risk:reward." },
-  { difficulty: "medium", scenario: "NQ is clearly above the daily 50% level — it's in Premium. Price creates a bearish FVG on the 15-minute chart. What do you do?", options: ["Buy — the FVG is bullish", "Wait for price to fill the FVG from below, then look for a short", "Ignore FVGs in premium — they don't matter", "Only trade if it's a Monday"], answer: 1, explanation: "When prices are expensive (Premium), you want to SELL, not buy. The FVG is like a ceiling — when price comes back up to touch it, that's your chance to short." },
-  { difficulty: "medium", scenario: "ForexFactory shows NFP (Non-Farm Payrolls) news at 8:30 AM with a red folder icon. When should you trade NQ today?", options: ["Right at 8:30 AM — biggest moves happen then", "At 9:00 AM before the NY open", "Wait until 10:00 AM after volatility settles", "Don't trade at all — red folder = no trading ever"], answer: 2, explanation: "Red folder news is like a tornado warning — you don't go outside! Wait until the storm passes. By 10 AM, the dust has settled and you can see the real direction." },
-  { difficulty: "medium", scenario: "NQ is in a clear downtrend. Price sweeps above yesterday's high, then breaks a recent swing low. Where's your entry?", options: ["Short as soon as the high is swept", "Short after the swing low break, ideally inside the bearish FVG", "Long because price went up first", "Wait for 3 more confirmations"], answer: 1, explanation: "The market tricked the buyers (swept their stops above the high), then showed it really wants to go DOWN (MSS). Short inside the FVG it left behind." },
-  { difficulty: "medium", scenario: "You enter a long trade on NQ and TP1 is hit. What should you do with your stop loss?", options: ["Keep it where it is", "Move it to breakeven", "Remove it entirely", "Widen it by 50%"], answer: 1, explanation: "Once TP1 is hit, you move your stop loss to breakeven. This way you're in a risk-free trade while letting the remaining position run to TP2 (external liquidity)." },
-  { difficulty: "medium", scenario: "You're about to enter a trade. Your Entry Criteria checklist shows 4/6 items checked. Can you log this trade?", options: ["Yes — 4 out of 6 is good enough", "No — all 6 criteria must be checked", "Only if it's during the Silver Bullet window", "Yes, but only as a draft"], answer: 1, explanation: "ALL entry criteria must be checked before logging a trade. The app enforces this to keep your trading mechanical and disciplined. No shortcuts!" },
-
-  { difficulty: "hard", scenario: "It's 10:22 AM EST. NQ sweeps above the 9:30 AM opening high, then drops back through it and forms a bearish FVG on the 1-minute chart. What setup is this?", options: ["A failed breakout — avoid trading", "A perfect Silver Bullet short setup", "A buy signal because price went up first", "Too late in the day to trade"], answer: 1, explanation: "It's the Silver Bullet window (10–11 AM)! NQ went up to steal the stops above the opening high (sweep), then came back down (MSS) and left a 1-minute FVG. This is the aggressive Silver Bullet short entry!" },
-  { difficulty: "hard", scenario: "NQ shows a bullish MSS on the 5-minute chart, but the 1-Hour is in a bearish trend. The Fibonacci shows the entry is at the 55% retracement level. Should you take this trade?", options: ["Yes — the 5-minute MSS is enough confirmation", "No — the entry is NOT in the OTE zone (62%–79%)", "Yes — but only with half size", "No — because 5-minute and 1-hour disagree, AND it's not at OTE"], answer: 3, explanation: "Two problems here: 1) The 5-minute is bullish but 1-Hour is bearish — timeframes disagree (Top-Down rule violated). 2) The 55% level is NOT in the OTE zone (62%–79%). Both conditions fail." },
-  { difficulty: "hard", scenario: "NQ sweeps sell-side liquidity at 10:05 AM, creates a bullish MSS on the 5-minute with displacement, and leaves a FVG. The FVG is at the 71% Fibonacci retracement. The 1-Hour shows a bullish bias. How many Conservative Entry criteria does this meet?", options: ["3 out of 6", "4 out of 6", "5 out of 6", "All 6 — it's a textbook setup"], answer: 2, explanation: "Let's check: 1) Bias Check ✓ (1H bullish). 2) The Sweep ✓ (sell-side liquidity swept). 3) The Shift ✓ (5-min MSS with displacement). 4) The Gap ✓ (FVG identified). 5) The Fib ✓ (71% is in the OTE zone). That's 5/6 — you still need to place the limit order at the FVG (The Trigger)." },
-  { difficulty: "hard", scenario: "You're in a long trade on NQ. Price hits TP1 (internal liquidity) at a 1:2 ratio. You move SL to breakeven. Price then pulls back, touches your breakeven SL, and reverses to hit TP2. What happened?", options: ["You were stopped out at breakeven — no loss but missed TP2", "You still got TP2 because the SL is only mental", "You lost money because the pullback went below entry", "The trailing stop automatically moved to TP1"], answer: 0, explanation: "Once the SL is at breakeven and price touches it, you're out — zero loss, but you missed the run to TP2. This is why trailing stops are a double-edged sword. The plan says to move to BE after TP1, and sometimes the market shakes you out." },
-  { difficulty: "hard", scenario: "NQ is in a clear downtrend on the Daily. Price retraces to the 75% Fibonacci level and creates a bearish FVG on the 15-minute chart during the London Kill Zone (3:00 AM EST). The 5-minute shows a bearish MSS. Is this a valid Conservative short entry?", options: ["No — London Kill Zone doesn't count for NQ", "No — Conservative entries require the Silver Bullet window", "Yes — all 6 Conservative Entry criteria are met", "Yes — but with only half position size"], answer: 2, explanation: "Let's verify: 1) Bias ✓ (Daily bearish). 2) Sweep — implied by the retrace to 75% (premium). 3) Shift ✓ (5-min bearish MSS). 4) Gap ✓ (15-min bearish FVG). 5) Fib ✓ (75% is in OTE zone, Premium for sells). 6) Trigger = place limit at FVG. London Kill Zone is valid for Conservative entries — the Silver Bullet window is only required for Aggressive entries." },
-];
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type Tab = "glossary" | "quiz" | "mentor" | "plan";
+type Tab = "learn" | "glossary" | "quiz" | "mentor" | "plan";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+const PROGRESS_KEY = "ict-academy-progress";
+
+function LearnView() {
+  const [expandedChapter, setExpandedChapter] = useState<string | null>("ch1");
+  const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    AsyncStorage.getItem(PROGRESS_KEY).then((raw) => {
+      if (raw) {
+        try { setCompleted(new Set(JSON.parse(raw))); } catch {}
+      }
+    });
+  }, []);
+
+  function toggleComplete(lessonId: string) {
+    const next = new Set(completed);
+    if (next.has(lessonId)) next.delete(lessonId);
+    else next.add(lessonId);
+    setCompleted(next);
+    AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify([...next]));
+  }
+
+  const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
+  const completedCount = COURSE_CHAPTERS.reduce(
+    (sum, ch) => sum + ch.lessons.filter((l) => completed.has(l.id)).length,
+    0
+  );
+
+  return (
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+      <View style={learnStyles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={learnStyles.heading}>ICT Trading Course</Text>
+          <Text style={learnStyles.subheading}>Learn everything from zero</Text>
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={learnStyles.progressCount}>{completedCount}/{totalLessons}</Text>
+          <Text style={learnStyles.progressLabel}>lessons done</Text>
+        </View>
+      </View>
+
+      <View style={learnStyles.progressBar}>
+        <View style={[learnStyles.progressFill, { width: `${totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0}%` }]} />
+      </View>
+
+      {COURSE_CHAPTERS.map((chapter, chIdx) => {
+        const isOpen = expandedChapter === chapter.id;
+        const chCompleted = chapter.lessons.filter((l) => completed.has(l.id)).length;
+        const chTotal = chapter.lessons.length;
+        const chDone = chCompleted === chTotal && chTotal > 0;
+
+        return (
+          <View key={chapter.id} style={learnStyles.chapterCard}>
+            <TouchableOpacity
+              style={learnStyles.chapterHeader}
+              onPress={() => setExpandedChapter(isOpen ? null : chapter.id)}
+              activeOpacity={0.7}
+            >
+              <Text style={learnStyles.chapterIcon}>{chapter.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <View style={learnStyles.chapterTitleRow}>
+                  <Text style={learnStyles.chapterNum}>Chapter {chIdx + 1}</Text>
+                  {chDone && <Ionicons name="checkmark-circle" size={16} color={C.accent} />}
+                </View>
+                <Text style={learnStyles.chapterTitle}>{chapter.title}</Text>
+                <Text style={learnStyles.chapterDesc} numberOfLines={2}>{chapter.description}</Text>
+              </View>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={[learnStyles.chapterProgress, { color: chapter.color }]}>
+                  {chCompleted}/{chTotal}
+                </Text>
+                <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={16} color={C.textSecondary} />
+              </View>
+            </TouchableOpacity>
+
+            {isOpen && chapter.lessons.map((lesson, lIdx) => {
+              const isLessonOpen = expandedLesson === lesson.id;
+              const isDone = completed.has(lesson.id);
+
+              return (
+                <View key={lesson.id} style={learnStyles.lessonContainer}>
+                  <TouchableOpacity
+                    style={learnStyles.lessonRow}
+                    onPress={() => setExpandedLesson(isLessonOpen ? null : lesson.id)}
+                    activeOpacity={0.7}
+                  >
+                    <TouchableOpacity onPress={() => toggleComplete(lesson.id)}>
+                      <Ionicons
+                        name={isDone ? "checkmark-circle" : "ellipse-outline"}
+                        size={22}
+                        color={isDone ? C.accent : C.textSecondary + "60"}
+                      />
+                    </TouchableOpacity>
+                    <Text style={learnStyles.lessonNum}>{lIdx + 1}.</Text>
+                    <Text style={[learnStyles.lessonTitle, isDone && learnStyles.lessonDone]} numberOfLines={2}>
+                      {lesson.title}
+                    </Text>
+                    <Ionicons name={isLessonOpen ? "chevron-up" : "chevron-down"} size={14} color={C.textSecondary} />
+                  </TouchableOpacity>
+
+                  {isLessonOpen && (
+                    <View style={learnStyles.lessonContent}>
+                      {lesson.paragraphs.map((p, pIdx) => (
+                        <Text key={pIdx} style={learnStyles.paragraph}>{p}</Text>
+                      ))}
+
+                      {lesson.chartImage && CHART_IMAGES[lesson.chartImage] && (
+                        <View style={{ marginTop: 12 }}>
+                          <Text style={learnStyles.chartLabel}>See it on the chart</Text>
+                          <Image
+                            source={CHART_IMAGES[lesson.chartImage]}
+                            style={learnStyles.chartImage}
+                            contentFit="cover"
+                          />
+                        </View>
+                      )}
+
+                      <View style={[learnStyles.takeawayBox, { borderLeftColor: chapter.color, backgroundColor: chapter.color + "10" }]}>
+                        <Text style={[learnStyles.takeawayLabel, { color: chapter.color }]}>Key Takeaway</Text>
+                        <Text style={learnStyles.takeawayText}>{lesson.takeaway}</Text>
+                      </View>
+
+                      {!isDone && (
+                        <TouchableOpacity style={learnStyles.markBtn} onPress={() => toggleComplete(lesson.id)}>
+                          <Ionicons name="checkmark-circle" size={16} color="#0A0A0F" />
+                          <Text style={learnStyles.markBtnText}>Mark as Complete</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+}
 
 function GlossaryView() {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -131,7 +210,7 @@ function GlossaryView() {
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
       <Text style={glossStyles.heading}>ICT Concepts</Text>
       <Text style={glossStyles.subheading}>Tap any term for the full definition + trader tip</Text>
-      {GLOSSARY.map((item) => {
+      {GLOSSARY_DATA.map((item) => {
         const isOpen = expanded === item.term;
         return (
           <TouchableOpacity
@@ -168,35 +247,6 @@ function GlossaryView() {
       })}
     </ScrollView>
   );
-}
-
-const DIFFICULTY_COLORS: Record<Difficulty, string> = { easy: "#00C896", medium: "#F59E0B", hard: "#EF4444" };
-const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
-const TOTAL_QUIZ_QUESTIONS = 10;
-
-const TIER_ORDER: Difficulty[] = ["easy", "medium", "hard"];
-
-function pickQuestion(diff: Difficulty, used: Set<number>): { q: QuizQuestion; idx: number } | null {
-  const tierQuestions = QUIZ_BANK
-    .map((q, idx) => ({ q, idx }))
-    .filter(({ q, idx }) => q.difficulty === diff && !used.has(idx));
-  if (tierQuestions.length > 0) {
-    return tierQuestions[Math.floor(Math.random() * tierQuestions.length)];
-  }
-  const diffIdx = TIER_ORDER.indexOf(diff);
-  for (let i = diffIdx + 1; i < TIER_ORDER.length; i++) {
-    const harder = QUIZ_BANK
-      .map((q, idx) => ({ q, idx }))
-      .filter(({ q, idx }) => q.difficulty === TIER_ORDER[i] && !used.has(idx));
-    if (harder.length > 0) return harder[Math.floor(Math.random() * harder.length)];
-  }
-  for (let i = diffIdx - 1; i >= 0; i--) {
-    const easier = QUIZ_BANK
-      .map((q, idx) => ({ q, idx }))
-      .filter(({ q, idx }) => q.difficulty === TIER_ORDER[i] && !used.has(idx));
-    if (easier.length > 0) return easier[Math.floor(Math.random() * easier.length)];
-  }
-  return null;
 }
 
 function QuizView() {
@@ -521,102 +571,31 @@ function MentorView() {
   );
 }
 
-// ─── Trading Plan Data ────────────────────────────────────────────────────────
-
 const PLAN_IMAGES: Record<string, number> = {
   "Conservative Entry": require("@/assets/images/chart-conservative-entry.png"),
   "Aggressive Entry (Silver Bullet)": require("@/assets/images/chart-silver-bullet.png"),
   "Exit Criteria": require("@/assets/images/chart-exit-criteria.png"),
 };
 
-const PLAN_SECTIONS = [
-  {
-    title: "The Tools",
-    color: "#00C896",
-    icon: "construct-outline",
-    items: [
-      { label: "MSS (Market Structure Shift)", desc: "Our signal that the trend has changed direction." },
-      { label: "FVG (Fair Value Gap)", desc: "A price gap on the chart — this is where we enter trades." },
-      { label: "Liquidity", desc: "Old highs and lows where stop losses are sitting — our targets." },
-      { label: "Premium vs. Discount", desc: "Is price expensive (Premium = sell) or cheap (Discount = buy)?" },
-      { label: "Kill Zones", desc: "The best times to trade: London (2–5 AM EST) and Silver Bullet (10–11 AM EST)." },
-    ],
-  },
-  {
-    title: "Timeframe Alignment (Matching Big and Small Charts)",
-    color: "#818CF8",
-    icon: "layers-outline",
-    items: [
-      { label: "HTF (Big Picture): Daily & 1-Hour", desc: "Find where price is heading — which direction is the market going?" },
-      { label: "LTF (Close-Up): 15-Min & 5-Min", desc: "Find the MSS (Market Structure Shift) and the FVG (Fair Value Gap) entry." },
-    ],
-  },
-  {
-    title: "Conservative Entry",
-    color: "#00C896",
-    icon: "shield-checkmark-outline",
-    items: [
-      { label: "1. Bias Check", desc: "Is the 1-Hour chart going up (Bullish) or down (Bearish)?" },
-      { label: "2. The Sweep", desc: "Wait for price to take out a 15-min high or low." },
-      { label: "3. The Shift (MSS)", desc: "Wait for a 5-min MSS (Market Structure Shift) — a fast, strong move." },
-      { label: "4. The Gap (FVG)", desc: "Find the FVG (Fair Value Gap) that was left behind." },
-      { label: "5. The Fib — OTE (Optimal Trade Entry)", desc: "Make sure your entry is in the sweet spot — Discount (buys) or Premium (sells)." },
-      { label: "6. The Trigger", desc: "Place a Limit Order at the start of the FVG." },
-    ],
-  },
-  {
-    title: "Aggressive Entry (Silver Bullet)",
-    color: "#F59E0B",
-    icon: "flash-outline",
-    items: [
-      { label: "Time Check", desc: "It must be between 10:00 AM and 11:00 AM EST." },
-      { label: "Identify POI", desc: "Price must be heading toward a clear high or low." },
-      { label: "The Gap (FVG)", desc: "Enter at the first 1-min FVG (Fair Value Gap) after a liquidity grab." },
-      { label: "Risk", desc: "Don't risk more than 1% on this trade." },
-    ],
-  },
-  {
-    title: "Exit Criteria",
-    color: "#06B6D4",
-    icon: "exit-outline",
-    items: [
-      { label: "Stop Loss", desc: "Place it at the high/low of the candle that created the MSS (Market Structure Shift)." },
-      { label: "TP1 (First Target)", desc: "The next nearby high or low (1:1 or 1:2 reward ratio)." },
-      { label: "TP2 (Main Target)", desc: "External Liquidity — the big target where the move should end." },
-      { label: "Trailing", desc: "Move your stop loss to breakeven once TP1 is hit — now it's a free trade!" },
-    ],
-  },
-  {
-    title: "Prop Firm Survival Rules",
-    color: "#EF4444",
-    icon: "warning-outline",
-    items: [
-      { label: "Max Daily Loss", desc: "2% — if you lose this much, the app stops you for 24 hours." },
-      { label: "Max Weekly Loss", desc: "4% — your weekly safety limit." },
-      { label: "News Rule", desc: "Don't trade within 5 minutes before or after Red Folder news events." },
-    ],
-  },
-  {
-    title: "Key Takeaways",
-    color: "#EC4899",
-    icon: "bulb-outline",
-    items: [
-      { label: "Top-Down", desc: "Always start with the big chart (Daily). If it's going down, don't try to buy on the small chart." },
-      { label: "Patience", desc: "If price doesn't come to your FVG (Fair Value Gap), there is no trade. Wait." },
-      { label: "Discipline", desc: "Following this plan is how you get funded. Breaking it keeps you stuck." },
-    ],
-  },
-];
+const PLAN_ICONS: Record<string, string> = {
+  "The Tools": "construct-outline",
+  "Timeframe Alignment (Matching Big and Small Charts)": "layers-outline",
+  "Conservative Entry": "shield-checkmark-outline",
+  "Aggressive Entry (Silver Bullet)": "flash-outline",
+  "Exit Criteria": "exit-outline",
+  "Prop Firm Survival Rules": "warning-outline",
+  "Key Takeaways": "bulb-outline",
+};
 
 function PlanView() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
       <Text style={planStyles.heading}>NQ Futures: ICT Trading Plan</Text>
       <Text style={planStyles.subheading}>Your mechanical, top-down trading framework</Text>
-      {PLAN_SECTIONS.map((section) => (
+      {PLAN_DATA.map((section) => (
         <View key={section.title} style={planStyles.card}>
           <View style={[planStyles.cardHeaderBar, { backgroundColor: section.color + "15" }]}>
-            <Ionicons name={section.icon as any} size={16} color={section.color} />
+            <Ionicons name={(PLAN_ICONS[section.title] || "document-outline") as any} size={16} color={section.color} />
             <Text style={[planStyles.cardTitle, { color: section.color }]}>{section.title}</Text>
           </View>
           {section.items.map((item, idx) => (
@@ -641,9 +620,8 @@ function PlanView() {
   );
 }
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
-
 const TAB_LABELS: Record<Tab, string> = {
+  learn: "Learn",
   glossary: "Glossary",
   quiz: "Quiz",
   mentor: "Mentor",
@@ -651,14 +629,14 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 export default function AcademyScreen() {
-  const [tab, setTab] = useState<Tab>("glossary");
+  const [tab, setTab] = useState<Tab>("learn");
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.title}>ICT Academy</Text>
         <View style={styles.tabBar}>
-          {(["glossary", "quiz", "mentor", "plan"] as Tab[]).map((t) => (
+          {(["learn", "glossary", "quiz", "mentor", "plan"] as Tab[]).map((t) => (
             <TouchableOpacity key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
               <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
                 {TAB_LABELS[t]}
@@ -668,6 +646,7 @@ export default function AcademyScreen() {
         </View>
       </View>
       <View style={{ flex: 1 }}>
+        {tab === "learn" && <LearnView />}
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
         {tab === "mentor" && <MentorView />}
@@ -684,8 +663,40 @@ const styles = StyleSheet.create({
   tabBar: { flexDirection: "row", backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 4 },
   tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center" },
   tabBtnActive: { backgroundColor: C.accent },
-  tabBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: C.textSecondary },
+  tabBtnText: { fontSize: 12, fontFamily: "Inter_500Medium", color: C.textSecondary },
   tabBtnTextActive: { color: "#0A0A0F", fontFamily: "Inter_700Bold" },
+});
+
+const learnStyles = StyleSheet.create({
+  headerRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 12 },
+  heading: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 4 },
+  subheading: { fontSize: 13, color: C.textSecondary },
+  progressCount: { fontSize: 22, fontFamily: "Inter_700Bold", color: C.accent },
+  progressLabel: { fontSize: 11, color: C.textSecondary },
+  progressBar: { height: 6, backgroundColor: C.cardBorder, borderRadius: 3, marginBottom: 20, overflow: "hidden" },
+  progressFill: { height: 6, backgroundColor: C.accent, borderRadius: 3 },
+  chapterCard: { backgroundColor: C.backgroundSecondary, borderRadius: 14, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 12, overflow: "hidden" },
+  chapterHeader: { flexDirection: "row", alignItems: "flex-start", padding: 14, gap: 12 },
+  chapterIcon: { fontSize: 24, marginTop: 2 },
+  chapterTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  chapterNum: { fontSize: 12, fontFamily: "Inter_700Bold", color: C.textSecondary },
+  chapterTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: C.text, marginTop: 2 },
+  chapterDesc: { fontSize: 12, color: C.textSecondary, lineHeight: 18, marginTop: 4 },
+  chapterProgress: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  lessonContainer: { borderTopWidth: 1, borderTopColor: C.cardBorder },
+  lessonRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  lessonNum: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_500Medium", width: 22 },
+  lessonTitle: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: C.text },
+  lessonDone: { textDecorationLine: "line-through", color: C.textSecondary },
+  lessonContent: { paddingHorizontal: 14, paddingBottom: 16, marginLeft: 44 },
+  paragraph: { fontSize: 14, color: C.text, lineHeight: 22, marginBottom: 10, opacity: 0.9 },
+  chartLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+  chartImage: { width: "100%" as any, height: 180, borderRadius: 10 },
+  takeawayBox: { borderLeftWidth: 3, borderRadius: 8, padding: 12, marginTop: 12 },
+  takeawayLabel: { fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 },
+  takeawayText: { fontSize: 13, fontFamily: "Inter_500Medium", color: C.text, lineHeight: 20 },
+  markBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginTop: 12, alignSelf: "flex-start" },
+  markBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 });
 
 const glossStyles = StyleSheet.create({
@@ -698,7 +709,7 @@ const glossStyles = StyleSheet.create({
   fullName: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: C.textSecondary },
   cardBody: { paddingHorizontal: 14, paddingBottom: 14 },
   definition: { fontSize: 14, color: C.text, lineHeight: 22, marginBottom: 12 },
-  chartImage: { width: "100%", height: 200, borderRadius: 10, marginBottom: 12 },
+  chartImage: { width: "100%" as any, height: 200, borderRadius: 10, marginBottom: 12 },
   tipBox: { borderLeftWidth: 3, paddingLeft: 12, paddingVertical: 4 },
   tipLabel: { fontSize: 11, fontFamily: "Inter_700Bold", marginBottom: 4 },
   tipText: { fontSize: 13, color: C.textSecondary, lineHeight: 20 },
@@ -726,7 +737,7 @@ const quizStyles = StyleSheet.create({
   feedbackText: { fontSize: 13, color: C.text, lineHeight: 21, marginBottom: 16 },
   nextBtn: { borderRadius: 10, padding: 14, alignItems: "center" },
   nextBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
-  resultCard: { backgroundColor: C.backgroundSecondary, borderRadius: 20, padding: 30, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder, width: "100%", marginTop: 20 },
+  resultCard: { backgroundColor: C.backgroundSecondary, borderRadius: 20, padding: 30, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder, width: "100%" as any, marginTop: 20 },
   resultEmoji: { fontSize: 48, marginBottom: 16 },
   resultScore: { fontSize: 48, fontFamily: "Inter_700Bold", color: C.text },
   resultPct: { fontSize: 22, fontFamily: "Inter_600SemiBold", color: C.accent, marginBottom: 12 },
@@ -751,7 +762,7 @@ const mentorStyles = StyleSheet.create({
   userBubble: { justifyContent: "flex-end" },
   aiBubble: { justifyContent: "flex-start", gap: 8 },
   aiAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.accent + "33", alignItems: "center", justifyContent: "center", marginBottom: 2 },
-  bubbleContent: { maxWidth: "80%", borderRadius: 16, padding: 12 },
+  bubbleContent: { maxWidth: "80%" as any, borderRadius: 16, padding: 12 },
   userContent: { backgroundColor: C.accent, borderBottomRightRadius: 4 },
   aiContent: { backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder, borderBottomLeftRadius: 4 },
   bubbleText: { fontSize: 14, color: C.text, lineHeight: 21 },
@@ -766,7 +777,7 @@ const planStyles = StyleSheet.create({
   card: { backgroundColor: C.backgroundSecondary, borderRadius: 14, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 12, overflow: "hidden" },
   cardHeaderBar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
   cardTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  chartImage: { width: "100%", height: 180, marginBottom: 4 },
+  chartImage: { width: "100%" as any, height: 180, marginBottom: 4 },
   itemRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   itemDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
   itemLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 2 },
