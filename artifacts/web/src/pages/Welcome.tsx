@@ -100,22 +100,22 @@ export default function Welcome() {
 
   if (step === -1) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <div className="max-w-2xl w-full text-center">
-          <Logo size={80} className="mx-auto mb-6" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-6 overflow-auto">
+        <div className="max-w-2xl w-full text-center py-6">
+          <Logo size={64} className="mx-auto mb-4 sm:mb-6" />
 
-          <h1 className="text-4xl font-bold text-foreground mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 sm:mb-3">
             Welcome to ICT Trading Mentor
           </h1>
-          <p className="text-lg text-muted-foreground mb-2 leading-relaxed max-w-lg mx-auto">
+          <p className="text-base sm:text-lg text-muted-foreground mb-1 sm:mb-2 leading-relaxed max-w-lg mx-auto">
             Your personal guide to learning NQ Futures trading from scratch.
             No experience needed — we'll teach you everything step by step.
           </p>
-          <p className="text-sm text-muted-foreground/70 mb-8 max-w-md mx-auto">
+          <p className="text-xs sm:text-sm text-muted-foreground/70 mb-5 sm:mb-8 max-w-md mx-auto">
             Built on the ICT methodology created by Michael J. Huddleston — the original Inner Circle Trader who pioneered Smart Money Concepts and changed how retail traders understand the markets.
           </p>
 
-          <div className="grid gap-4 sm:grid-cols-2 text-left mb-10">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 text-left mb-6 sm:mb-10">
             {[
               { icon: "\uD83D\uDCDA", text: "A full trading course with 39 lessons" },
               { icon: "\uD83D\uDEE1\uFE0F", text: "Risk management tools to protect your account" },
@@ -124,7 +124,7 @@ export default function Welcome() {
             ].map((item) => (
               <div
                 key={item.text}
-                className="flex items-center gap-3 bg-secondary/50 rounded-xl px-4 py-3 border border-border"
+                className="flex items-center gap-3 bg-secondary/50 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 border border-border"
               >
                 <span className="text-2xl">{item.icon}</span>
                 <span className="text-sm text-foreground font-medium">{item.text}</span>
@@ -157,36 +157,36 @@ export default function Welcome() {
   if (isSetupStep) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
-            <Logo size={32} />
-            <span className="text-sm font-semibold text-foreground">Almost There!</span>
+            <Logo size={28} />
+            <span className="text-xs sm:text-sm font-semibold text-foreground">Almost There!</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {[...TUTORIAL_STEPS, null].map((_, i) => (
               <div
                 key={i}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  i === step ? "w-8 bg-primary" : i < step ? "w-2 bg-primary/50" : "w-2 bg-muted"
+                className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+                  i === step ? "w-6 sm:w-8 bg-primary" : i < step ? "w-1.5 sm:w-2 bg-primary/50" : "w-1.5 sm:w-2 bg-muted"
                 }`}
               />
             ))}
           </div>
-          <span className="text-xs text-muted-foreground">Ready!</span>
+          <span className="text-[10px] sm:text-xs text-muted-foreground">Ready!</span>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="max-w-xl w-full text-center">
-            <div className="h-20 w-20 rounded-2xl bg-primary/20 flex items-center justify-center mb-6 mx-auto">
-              <Rocket className="h-10 w-10 text-primary" />
+        <div className="flex-1 overflow-auto flex items-start sm:items-center justify-center p-4 sm:p-6">
+          <div className="max-w-xl w-full text-center py-4">
+            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-primary/20 flex items-center justify-center mb-4 sm:mb-6 mx-auto">
+              <Rocket className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
             </div>
 
-            <h2 className="text-3xl font-bold text-foreground mb-3">Let's Set Up Your Planner!</h2>
-            <p className="text-muted-foreground mb-8 leading-relaxed max-w-md mx-auto">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2 sm:mb-3">Let's Set Up Your Planner!</h2>
+            <p className="text-sm sm:text-base text-muted-foreground mb-5 sm:mb-8 leading-relaxed max-w-md mx-auto">
               Before diving into the Academy, let's set up your Daily Planner. A solid morning routine is the foundation of disciplined trading.
             </p>
 
-            <div className="bg-card border border-border rounded-2xl p-6 mb-8 text-left max-w-md mx-auto">
+            <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 mb-5 sm:mb-8 text-left max-w-md mx-auto">
               <p className="text-sm font-bold text-foreground mb-4">Your journey starts here:</p>
               <div className="space-y-3">
                 {[
@@ -236,34 +236,34 @@ export default function Welcome() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
-          <Logo size={32} />
-          <span className="text-sm font-semibold text-foreground">App Tour</span>
+          <Logo size={28} />
+          <span className="text-xs sm:text-sm font-semibold text-foreground">App Tour</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {[...TUTORIAL_STEPS, null].map((_, i) => (
             <div
               key={i}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                i === step ? "w-8 bg-primary" : i < step ? "w-2 bg-primary/50" : "w-2 bg-muted"
+              className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+                i === step ? "w-6 sm:w-8 bg-primary" : i < step ? "w-1.5 sm:w-2 bg-primary/50" : "w-1.5 sm:w-2 bg-muted"
               }`}
             />
           ))}
         </div>
-        <span className="text-xs text-muted-foreground">
-          {step + 1} of {TUTORIAL_STEPS.length}
+        <span className="text-[10px] sm:text-xs text-muted-foreground">
+          {step + 1}/{TUTORIAL_STEPS.length}
         </span>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="max-w-xl w-full">
-          <div className="flex items-center gap-3 mb-6">
+      <div className="flex-1 overflow-auto flex items-start sm:items-center justify-center p-4 sm:p-6">
+        <div className="max-w-xl w-full py-4">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
             <div
-              className="h-16 w-16 rounded-2xl flex items-center justify-center"
+              className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center shrink-0"
               style={{ backgroundColor: current.color + "20" }}
             >
-              <Icon className="h-8 w-8" style={{ color: current.color }} />
+              <Icon className="h-6 w-6 sm:h-8 sm:w-8" style={{ color: current.color }} />
             </div>
             {current.locked && (
               <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1.5">
@@ -273,24 +273,24 @@ export default function Welcome() {
             )}
           </div>
 
-          <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: current.color }}>
+          <div className="text-xs font-semibold uppercase tracking-wider mb-1 sm:mb-2" style={{ color: current.color }}>
             {current.title}
           </div>
-          <h2 className="text-3xl font-bold text-foreground mb-6">{current.heading}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4 sm:mb-6">{current.heading}</h2>
 
-          <div className="space-y-4 mb-10">
+          <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-10">
             {current.bullets.map((bullet, i) => (
-              <div key={i} className="flex gap-3">
+              <div key={i} className="flex gap-2.5 sm:gap-3">
                 <CheckCircle2
-                  className="h-5 w-5 shrink-0 mt-0.5"
+                  className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 mt-0.5"
                   style={{ color: current.color }}
                 />
-                <p className="text-sm text-muted-foreground leading-relaxed">{bullet}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{bullet}</p>
               </div>
             ))}
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pb-4">
             <button
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
               disabled={step === 0}
@@ -301,7 +301,7 @@ export default function Welcome() {
             </button>
 
             <button
-              className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl hover:opacity-90 transition-opacity"
               onClick={() => setStep(step + 1)}
             >
               {isLast ? "Almost Done" : "Next"}
