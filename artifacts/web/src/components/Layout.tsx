@@ -1,42 +1,34 @@
 import { useState, useEffect } from "react";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown } from "lucide-react";
 import Logo from "@/components/Logo";
-
-const UNLOCK_KEY = "ict-academy-unlocked";
-
-function isUnlocked(): boolean {
-  try {
-    return localStorage.getItem(UNLOCK_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
+import { useAuth } from "@/contexts/AuthContext";
+import { FreeSidebar, LockedFeatureOverlay } from "@/components/CasinoElements";
 
 const navItems = [
-  { to: "/", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, locked: false },
-  { to: "/planner", label: "Daily Planner", mobileLabel: "Planner", icon: Calendar, locked: false },
-  { to: "/risk-shield", label: "Risk Shield", mobileLabel: "Risk", icon: Shield, locked: true },
-  { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, locked: true },
-  { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, locked: true },
+  { to: "/", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0 },
+  { to: "/planner", label: "Daily Planner", mobileLabel: "Planner", icon: Calendar, requiredTier: 0 },
+  { to: "/risk-shield", label: "Risk Shield", mobileLabel: "Risk", icon: Shield, requiredTier: 1 },
+  { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 2 },
+  { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2 },
 ];
 
 function NavItem({
   to,
   label,
   icon: Icon,
-  locked,
-  unlocked,
+  requiredTier,
+  userTier,
   onLockedClick,
 }: {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  locked: boolean;
-  unlocked: boolean;
+  requiredTier: number;
+  userTier: number;
   onLockedClick: () => void;
 }) {
-  const isLocked = locked && !unlocked;
+  const isLocked = requiredTier > userTier;
 
   if (isLocked) {
     return (
@@ -49,6 +41,7 @@ function NavItem({
           <Lock className="h-3 w-3 absolute -bottom-1 -right-1 text-muted-foreground/60" />
         </div>
         <span className="hidden lg:inline opacity-40">{label}</span>
+        <Crown className="h-3 w-3 text-amber-500 hidden lg:block ml-auto opacity-60" />
       </button>
     );
   }
@@ -75,18 +68,18 @@ function MobileNavItem({
   to,
   mobileLabel,
   icon: Icon,
-  locked,
-  unlocked,
+  requiredTier,
+  userTier,
   onLockedClick,
 }: {
   to: string;
   mobileLabel: string;
   icon: React.ComponentType<{ className?: string }>;
-  locked: boolean;
-  unlocked: boolean;
+  requiredTier: number;
+  userTier: number;
   onLockedClick: () => void;
 }) {
-  const isLocked = locked && !unlocked;
+  const isLocked = requiredTier > userTier;
 
   if (isLocked) {
     return (
@@ -120,31 +113,37 @@ function MobileNavItem({
 }
 
 export default function Layout() {
-  const [unlocked, setUnlocked] = useState(isUnlocked);
+  const { user, subscription, tierLevel, isAdmin, logout } = useAuth();
   const [showLockToast, setShowLockToast] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showCasinoSidebar, setShowCasinoSidebar] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const current = isUnlocked();
-      if (current !== unlocked) setUnlocked(current);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [unlocked]);
+  const isFreeUser = tierLevel === 0;
 
   useEffect(() => {
-    if (!unlocked) {
-      const lockedPaths = ["/risk-shield", "/journal", "/analytics"];
-      if (lockedPaths.some((p) => location.pathname.startsWith(p))) {
+    const lockedPaths: Record<string, number> = {
+      "/risk-shield": 1,
+      "/journal": 2,
+      "/analytics": 2,
+    };
+    for (const [path, required] of Object.entries(lockedPaths)) {
+      if (location.pathname.startsWith(path) && tierLevel < required) {
         navigate("/", { replace: true });
+        break;
       }
     }
-  }, [location.pathname, unlocked, navigate]);
+  }, [location.pathname, tierLevel, navigate]);
 
   function handleLockedClick() {
     setShowLockToast(true);
     setTimeout(() => setShowLockToast(false), 3000);
+  }
+
+  function handleLogout() {
+    logout();
+    navigate("/login");
   }
 
   return (
@@ -162,13 +161,31 @@ export default function Layout() {
             <NavItem
               key={item.to}
               {...item}
-              unlocked={unlocked}
+              userTier={tierLevel}
               onLockedClick={handleLockedClick}
             />
           ))}
         </nav>
 
-        <div className="p-2 border-t border-sidebar-border">
+        <div className="p-2 border-t border-sidebar-border space-y-1">
+          <Link
+            to="/pricing"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <CreditCard className="h-5 w-5 shrink-0" />
+            <span className="hidden lg:inline">Subscription</span>
+          </Link>
+
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              <Settings className="h-5 w-5 shrink-0" />
+              <span className="hidden lg:inline">Admin</span>
+            </Link>
+          )}
+
           <Link
             to="/welcome"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
@@ -176,12 +193,64 @@ export default function Layout() {
             <HelpCircle className="h-5 w-5 shrink-0" />
             <span className="hidden lg:inline">Help & Tour</span>
           </Link>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full text-left"
+            >
+              <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <User className="h-3 w-3 text-primary" />
+              </div>
+              <span className="hidden lg:inline truncate flex-1">{user?.name}</span>
+              {user?.isFounder && <Crown className="h-3 w-3 text-amber-500 hidden lg:block" />}
+              <ChevronDown className="h-3 w-3 hidden lg:block" />
+            </button>
+
+            {showUserMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                <div className="absolute bottom-full left-0 mb-1 w-full bg-card border border-border rounded-lg shadow-xl z-50 py-1">
+                  <div className="px-3 py-2 border-b border-border">
+                    <p className="text-xs font-medium text-foreground">{user?.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{user?.email}</p>
+                    {user?.isFounder && (
+                      <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5 mt-1">
+                        <Crown className="h-2.5 w-2.5 text-amber-500" />
+                        <span className="text-[9px] font-bold text-amber-500">FOUNDER #{user.founderNumber}</span>
+                      </span>
+                    )}
+                    <p className="text-[10px] text-primary mt-1 font-medium">
+                      {subscription?.tierName || "Free"} Plan
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 w-full text-left"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </aside>
 
       <div className="flex flex-col flex-1 min-w-0">
-        <main className="flex-1 overflow-auto">
-          <Outlet />
+        <main className="flex-1 overflow-auto relative">
+          <div className="flex h-full">
+            <div className="flex-1 overflow-auto">
+              <Outlet />
+            </div>
+
+            {isFreeUser && (
+              <div className="hidden xl:block w-72 border-l border-border bg-sidebar overflow-auto shrink-0">
+                <FreeSidebar />
+              </div>
+            )}
+          </div>
         </main>
 
         <nav className="md:hidden flex items-center border-t border-border bg-sidebar shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
@@ -189,7 +258,7 @@ export default function Layout() {
             <MobileNavItem
               key={item.to}
               {...item}
-              unlocked={unlocked}
+              userTier={tierLevel}
               onLockedClick={handleLockedClick}
             />
           ))}
@@ -199,13 +268,19 @@ export default function Layout() {
       {showLockToast && (
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="bg-card border border-border rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
-            <Lock className="h-5 w-5 text-amber-500 shrink-0" />
+            <Crown className="h-5 w-5 text-amber-500 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-foreground">Complete the Academy First</p>
+              <p className="text-sm font-semibold text-foreground">Premium Feature</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Finish all 39 lessons and pass the quiz to unlock this feature.
+                Upgrade your plan to unlock this feature.
               </p>
             </div>
+            <button
+              onClick={() => navigate("/pricing")}
+              className="text-xs text-primary font-bold shrink-0 hover:underline"
+            >
+              Upgrade
+            </button>
           </div>
         </div>
       )}

@@ -1,0 +1,202 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import Logo from "@/components/Logo";
+import { Check, Crown, Sparkles, Zap, Star, ArrowLeft } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+interface Tier {
+  id: number;
+  name: string;
+  level: number;
+  monthlyPrice: string;
+  annualPrice: string;
+  annualDiscountPct: number;
+  features: string[];
+  description: string;
+}
+
+export default function Pricing() {
+  const [tiers, setTiers] = useState<Tier[]>([]);
+  const [annual, setAnnual] = useState(false);
+  const [founderSpotsLeft, setFounderSpotsLeft] = useState(0);
+  const [founderDiscountPct, setFounderDiscountPct] = useState(50);
+  const [subscribing, setSubscribing] = useState<number | null>(null);
+  const { user, subscription, refreshUser } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch(`${API_BASE}/subscriptions/tiers`)
+      .then((r) => r.json())
+      .then((data) => {
+        setTiers(data.tiers);
+        setFounderSpotsLeft(data.founderSpotsLeft);
+        setFounderDiscountPct(data.founderDiscountPct);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleSubscribe(tierId: number) {
+    setSubscribing(tierId);
+    try {
+      const res = await fetch(`${API_BASE}/subscriptions/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ tierId, billingCycle: annual ? "annual" : "monthly" }),
+      });
+      if (res.ok) {
+        await refreshUser();
+        navigate("/");
+      }
+    } catch {}
+    setSubscribing(null);
+  }
+
+  const tierColors = ["text-muted-foreground", "text-primary", "text-amber-500"];
+  const tierBorders = ["border-border", "border-primary/50", "border-amber-500/50"];
+  const tierBgs = ["bg-card", "bg-card", "bg-gradient-to-b from-amber-500/5 to-card"];
+  const tierIcons = [Star, Zap, Crown];
+
+  function getPrice(tier: Tier) {
+    const basePrice = annual ? parseFloat(tier.annualPrice) / 12 : parseFloat(tier.monthlyPrice);
+    if (user?.isFounder && tier.level > 0) {
+      return basePrice * (1 - founderDiscountPct / 100);
+    }
+    return basePrice;
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center gap-3 mb-8">
+          <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <Logo size={32} />
+          <span className="text-lg font-bold text-foreground">Choose Your Plan</span>
+        </div>
+
+        {user?.isFounder && (
+          <div className="bg-gradient-to-r from-amber-500/10 to-primary/10 border border-amber-500/30 rounded-xl p-4 mb-8 flex items-center gap-3">
+            <Crown className="h-6 w-6 text-amber-500 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-amber-500">Founder Member #{user.founderNumber}</p>
+              <p className="text-xs text-muted-foreground">You get {founderDiscountPct}% off any paid plan for 6 months!</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-center gap-4 mb-10">
+          <span className={`text-sm font-medium ${!annual ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
+          <button
+            onClick={() => setAnnual(!annual)}
+            className={`relative w-14 h-7 rounded-full transition-colors ${annual ? "bg-primary" : "bg-muted"}`}
+          >
+            <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full transition-transform shadow ${annual ? "translate-x-7.5" : "translate-x-0.5"}`} />
+          </button>
+          <span className={`text-sm font-medium ${annual ? "text-foreground" : "text-muted-foreground"}`}>
+            Annual
+            <span className="ml-1.5 text-xs text-primary font-bold">Save 17%</span>
+          </span>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {tiers.map((tier, i) => {
+            const Icon = tierIcons[i] || Star;
+            const price = getPrice(tier);
+            const isCurrentTier = subscription?.tierId === tier.id;
+            const originalPrice = annual ? parseFloat(tier.annualPrice) / 12 : parseFloat(tier.monthlyPrice);
+            const hasFounderDiscount = user?.isFounder && tier.level > 0;
+
+            return (
+              <div
+                key={tier.id}
+                className={`relative rounded-2xl border-2 ${tierBorders[i]} ${tierBgs[i]} p-6 flex flex-col ${tier.level === 2 ? "ring-2 ring-amber-500/30" : ""}`}
+              >
+                {tier.level === 2 && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" /> MOST POPULAR
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className={`h-5 w-5 ${tierColors[i]}`} />
+                  <h3 className={`text-lg font-bold ${tierColors[i]}`}>{tier.name}</h3>
+                </div>
+
+                <p className="text-xs text-muted-foreground mb-4">{tier.description}</p>
+
+                <div className="mb-6">
+                  {hasFounderDiscount && (
+                    <div className="text-xs text-muted-foreground line-through mb-1">
+                      ${originalPrice.toFixed(2)}/mo
+                    </div>
+                  )}
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-foreground">${price.toFixed(2)}</span>
+                    <span className="text-sm text-muted-foreground">/mo</span>
+                  </div>
+                  {annual && tier.level > 0 && (
+                    <p className="text-xs text-primary mt-1">
+                      Billed ${(annual ? parseFloat(tier.annualPrice) * (hasFounderDiscount ? 1 - founderDiscountPct / 100 : 1) : 0).toFixed(2)}/year
+                    </p>
+                  )}
+                  {hasFounderDiscount && (
+                    <div className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5 mt-2">
+                      <Crown className="h-3 w-3 text-amber-500" />
+                      <span className="text-[10px] font-bold text-amber-500">{founderDiscountPct}% FOUNDER DISCOUNT</span>
+                    </div>
+                  )}
+                </div>
+
+                <ul className="space-y-2.5 mb-8 flex-1">
+                  {(tier.features as string[]).map((feature, j) => (
+                    <li key={j} className="flex items-start gap-2 text-sm">
+                      <Check className={`h-4 w-4 shrink-0 mt-0.5 ${tierColors[i]}`} />
+                      <span className="text-foreground/80">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => handleSubscribe(tier.id)}
+                  disabled={isCurrentTier || subscribing === tier.id}
+                  className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                    isCurrentTier
+                      ? "bg-muted text-muted-foreground cursor-default"
+                      : tier.level === 2
+                        ? "bg-gradient-to-r from-amber-500 to-primary text-white hover:opacity-90"
+                        : tier.level === 1
+                          ? "bg-primary text-primary-foreground hover:opacity-90"
+                          : "bg-secondary text-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {subscribing === tier.id ? (
+                    <div className="h-5 w-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                  ) : isCurrentTier ? (
+                    "Current Plan"
+                  ) : tier.level === 0 ? (
+                    "Get Started Free"
+                  ) : (
+                    `Upgrade to ${tier.name}`
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {founderSpotsLeft > 0 && !user?.isFounder && (
+          <div className="mt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              <Crown className="h-4 w-4 inline text-amber-500 mr-1" />
+              <span className="text-amber-500 font-bold">{founderSpotsLeft}</span> founder spots remaining - sign up now for 50% off!
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

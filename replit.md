@@ -2,7 +2,7 @@
 
 ## Overview
 
-Full-stack mobile trading app built with Expo React Native + Express API. Dark-themed professional UI with 4 core modules for ICT (Inner Circle Trader) NQ Futures trading.
+Full-stack mobile trading app built with Expo React Native + Express API. Dark-themed professional UI with 4 core modules for ICT (Inner Circle Trader) NQ Futures trading. Includes authentication, subscription management, and admin dashboard.
 
 ## Stack
 
@@ -15,120 +15,113 @@ Full-stack mobile trading app built with Expo React Native + Express API. Dark-t
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
+- **Auth**: JWT (jsonwebtoken) + bcryptjs
 
 ## Structure
 
 ```text
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+│   ├── api-server/         # Express API server
+│   ├── web/                # React + Vite web app
+│   ├── mobile/             # Expo React Native app
+│   └── mockup-sandbox/     # Component preview server
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
 │   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+├── scripts/                # Utility scripts
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+├── tsconfig.json
+└── package.json
 ```
+
+## Authentication & Subscriptions
+
+### Auth System
+- JWT-based authentication with httpOnly cookies + Bearer token
+- First registered user automatically becomes admin
+- First 20 users get "Founder" status with 50% discount for 6 months
+- Password hashing with bcryptjs (12 rounds)
+
+### Database Tables
+- `users` — id, email, password_hash, name, role (user/admin), is_founder, founder_number
+- `subscription_tiers` — id, name, level (0=Free, 1=Standard, 2=Premium), monthly_price, annual_price, features (jsonb)
+- `user_subscriptions` — user_id, tier_id, status, billing_cycle, custom prices, founder discount tracking
+- `admin_settings` — key-value store for global config (founder_limit, founder_discount_pct, annual_discount_pct, etc.)
+
+### Subscription Tiers
+- **Free** (Level 0): Academy (5 lessons), Daily Planner, AI Mentor (3/day), Daily Spin
+- **Standard** (Level 1, $29.99/mo): Full Academy, Risk Shield, unlimited AI Mentor
+- **Premium** (Level 2, $59.99/mo): Everything + Smart Journal, Analytics, Leaderboard, TradingView Webhooks
+
+### API Routes
+- `POST /api/auth/register` — register (auto-founder for first 20)
+- `POST /api/auth/login` — login, returns JWT
+- `GET /api/auth/me` — current user + subscription
+- `POST /api/auth/logout` — clear cookie
+- `GET /api/subscriptions/tiers` — list tiers + founder spots
+- `POST /api/subscriptions/subscribe` — subscribe/upgrade
+- `GET /api/subscriptions/my` — current subscription
+- `GET/PUT /api/admin/users` — manage users
+- `PUT /api/admin/users/:id/subscription` — set custom pricing per user
+- `GET/PUT /api/admin/tiers` — manage tier pricing
+- `GET/PUT /api/admin/settings` — global config
+
+### Frontend Features
+- Login/Signup pages with founder spot counter
+- Founder welcome modal with crown animation
+- Pricing page with monthly/annual toggle and founder discount display
+- Admin dashboard with user management, tier editing, global settings
+- Casino-game elements: daily streak, spin wheel, achievements, premium teasers
+- Sidebar shows user profile, subscription status, founder badge
+- Feature locking based on subscription tier (not just localStorage)
 
 ## TypeScript & Composite Projects
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
-
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references.
 
 ## Root Scripts
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
+- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages
+- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly`
 
 ## Packages
 
 ### `artifacts/api-server` (`@workspace/api-server`)
 
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
+Express 5 API server with auth middleware, subscription management, and admin routes.
 
 - Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
+- App setup: `src/app.ts` — mounts CORS (credentials), cookie-parser, JSON/urlencoded, routes at `/api`, seeds defaults
+- Middleware: `src/middleware/auth.ts` — JWT auth, admin role check
+- Routes: auth, subscriptions, admin, gemini, prop, trades, webhook
+- Seed: `src/seed.ts` — creates default tiers and admin settings on startup
 
 ### `lib/db` (`@workspace/db`)
 
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
+Database layer using Drizzle ORM with PostgreSQL.
 
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
-
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
-
-### `lib/api-spec` (`@workspace/api-spec`)
-
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
-
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
-
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
-
-### `lib/api-zod` (`@workspace/api-zod`)
-
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
+- Schema files: users.ts, subscriptions.ts, admin_settings.ts, conversations.ts, messages.ts, trades.ts, prop_account.ts
+- Production migrations handled by Replit on publish. Dev: `pnpm --filter @workspace/db run push`
 
 ### `artifacts/web` (`@workspace/web`)
 
-React + Vite web application. Dark-themed layout shell with sidebar navigation (desktop) / bottom nav (mobile). Academy-first architecture: ICT Academy is the default/index route; other tabs (Daily Planner, Risk Shield, Smart Journal, Analytics) are visible but locked until all 39 lessons are completed AND the quiz is passed with 70%+. Connected to the existing API server via `@workspace/api-client-react` TanStack Query hooks.
+React + Vite web application with auth-gated access.
 
-- Entry: `src/main.tsx`
-- App: `src/App.tsx` — BrowserRouter + QueryClientProvider + routes; first-visit redirects to `/welcome`; index route shows Academy
-- Layout: `src/components/Layout.tsx` — sidebar + bottom nav responsive shell with tab locking system (localStorage key `ict-academy-unlocked`); "Help & Tour" link at sidebar bottom; locked tabs show lock icon + toast notification
-- Pages: `src/pages/Welcome.tsx` (welcome page + 6-step tour: Academy first, then locked tabs with badges, ends with "Start Learning" setup step), `DailyPlanner.tsx` (at `/planner`), `IctAcademy.tsx` (at `/` index), `RiskShield.tsx`, `SmartJournal.tsx`, `Analytics.tsx`
-- Data: `src/data/academy-data.ts` — shared course content (7 chapters / 39 lessons, 16 glossary terms, 30 quiz questions, trading plan)
-- Assets: `public/images/` — 31 AI-generated lesson chart images + 5 educational videos (candlestick, FVG, liquidity sweep, kill zone, academy intro)
-- Theme: Dark-only (#0A0A0F background, #00C896 green accent) in `src/index.css`
+- Auth: `src/contexts/AuthContext.tsx` — JWT session management, tier checking
+- Pages: Login, Signup (with founder modal), Pricing (with annual toggle), Admin dashboard
+- Casino elements: `src/components/CasinoElements.tsx` — daily streak, spin wheel, achievements, premium teasers
+- Layout: Subscription-aware navigation with user menu, admin link, upgrade prompts
+- Free users see casino sidebar on right with spin wheel, streaks, achievements, and blurred premium content
 - Preview path: `/web/`
-
-ICT Academy has sticky sub-tabs (Learn, Glossary, Quiz, Mentor, Plan) that stay at top when scrolling. Learn tab features: intro video + ICT homage to Michael J. Huddleston at top, full course with progress tracking, chart images & embedded videos per lesson, Swipe Mode (TikTok-style) with paragraph → chart → video → takeaway flow and XP/streak system. Quiz tab auto-saves passing (70%+) to localStorage and triggers unlock check.
 
 ### `artifacts/mobile` (`@workspace/mobile`)
 
-Expo React Native mobile app with 4 tabs:
-
-1. **Daily Planner** — Morning routine checklist (4 core ICT items gate trading lockout) + custom "My Routine" personal items with snooze + kill zone countdown timers + red news lockout
-2. **ICT Academy** — 5 sub-tabs: Learn (full 7-chapter / 39-lesson course with AsyncStorage progress tracking), Glossary (16 ICT concept cards with annotated chart images), Quiz (adaptive 15-question sessions from 30-question bank with 3 difficulty tiers), Mentor (Gemini AI chat), Plan (full ICT Trading Plan reference with chart diagrams for Conservative Entry, Silver Bullet, and Exit Criteria)
-3. **Risk Shield** — Prop firm tracker with RED mode (2% daily loss lockout), NQ/MNQ position size calculator, Focus Mode modal
-4. **Smart Journal** — Trade logging with mandatory Entry Criteria checklist (Conservative: 6 items, Silver Bullet: 4 items), behavioral tagging (FOMO/Disciplined/Chased/Greedy), TradingView webhook drafts, Monk Mode
-
-Key features:
-- Dark theme (#0A0A0F background, #00C896 accent)
-- Two-gate trade logging: Morning Routine must be complete + all Entry Criteria must be checked
-- Entry modes: Conservative (Bias Check, Sweep, Shift, Gap, Fib, Trigger) or Silver Bullet/Aggressive (Time Check, POI, 1m FVG, Risk ≤ 1%)
-- Entry mode stored in trade notes as [Conservative] or [Silver Bullet] tag
-- Gemini AI mentor via Replit AI Integrations proxy (streaming SSE)
+Expo React Native mobile app with 4 tabs (same as before, no auth changes yet).
 
 ### `artifacts/mockup-sandbox` (`@workspace/mockup-sandbox`)
 
-Vite + React component preview server with Tailwind CSS and Radix UI. Used for rendering web mockup components.
-
-Key mockup components:
-- **DailyPlanner** — Web version of the mobile Daily Planner page at `/__mockup/preview/DailyPlanner`. Features: morning routine checklist (4 core ICT items gate trading), custom "My Routine" items with add/snooze/delete, kill zone countdown timers (London, NY Open, Silver Bullet), live EST clock, red news warning banner, Trader's Code discipline rules. Uses localStorage for persistence via `src/contexts/PlannerContext.tsx`.
-
-### `scripts` (`@workspace/scripts`)
-
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+Vite + React component preview server for canvas mockups.

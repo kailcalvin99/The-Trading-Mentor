@@ -3,13 +3,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PlannerProvider } from "@/contexts/PlannerContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import Welcome from "@/pages/Welcome";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
+import Pricing from "@/pages/Pricing";
 import DailyPlanner from "@/pages/DailyPlanner";
 import IctAcademy from "@/pages/IctAcademy";
 import RiskShield from "@/pages/RiskShield";
 import SmartJournal from "@/pages/SmartJournal";
 import Analytics from "@/pages/Analytics";
+import Admin from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -27,6 +32,42 @@ function ResetApp() {
   return null;
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 function IndexRedirect() {
   const seen = localStorage.getItem("ict-welcome-seen");
   if (!seen) return <Navigate to="/welcome" replace />;
@@ -37,23 +78,31 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <PlannerProvider>
-          <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Routes>
-              <Route path="welcome" element={<Welcome />} />
-              <Route path="reset" element={<ResetApp />} />
-              <Route element={<Layout />}>
-                <Route index element={<IndexRedirect />} />
-                <Route path="planner" element={<DailyPlanner />} />
-                <Route path="risk-shield" element={<RiskShield />} />
-                <Route path="journal" element={<SmartJournal />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-          <Toaster />
-        </PlannerProvider>
+        <AuthProvider>
+          <PlannerProvider>
+            <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Routes>
+                <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
+                <Route path="signup" element={<PublicRoute><Signup /></PublicRoute>} />
+
+                <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                  <Route index element={<IndexRedirect />} />
+                  <Route path="welcome" element={<Welcome />} />
+                  <Route path="planner" element={<DailyPlanner />} />
+                  <Route path="risk-shield" element={<RiskShield />} />
+                  <Route path="journal" element={<SmartJournal />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="pricing" element={<Pricing />} />
+                  <Route path="admin" element={<Admin />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+
+                <Route path="reset" element={<ResetApp />} />
+              </Routes>
+            </BrowserRouter>
+            <Toaster />
+          </PlannerProvider>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
