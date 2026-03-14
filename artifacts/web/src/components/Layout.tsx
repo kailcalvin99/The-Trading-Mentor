@@ -1,5 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3 } from "lucide-react";
+import { NavLink, Outlet, Link } from "react-router-dom";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle } from "lucide-react";
 
 const navItems = [
   { to: "/", label: "Daily Planner", icon: Calendar },
@@ -65,6 +65,16 @@ export default function Layout() {
             <NavItem key={item.to} {...item} />
           ))}
         </nav>
+
+        <div className="p-2 border-t border-sidebar-border">
+          <Link
+            to="/welcome"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <HelpCircle className="h-5 w-5 shrink-0" />
+            <span className="hidden lg:inline">Help & Tour</span>
+          </Link>
+        </div>
       </aside>
 
       <div className="flex flex-col flex-1 min-w-0">

@@ -1,9 +1,10 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PlannerProvider } from "@/contexts/PlannerContext";
 import Layout from "@/components/Layout";
+import Welcome from "@/pages/Welcome";
 import DailyPlanner from "@/pages/DailyPlanner";
 import IctAcademy from "@/pages/IctAcademy";
 import RiskShield from "@/pages/RiskShield";
@@ -20,6 +21,12 @@ const queryClient = new QueryClient({
   },
 });
 
+function IndexRedirect() {
+  const seen = localStorage.getItem("ict-welcome-seen");
+  if (!seen) return <Navigate to="/welcome" replace />;
+  return <DailyPlanner />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -27,8 +34,9 @@ function App() {
         <PlannerProvider>
           <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Routes>
+              <Route path="welcome" element={<Welcome />} />
               <Route element={<Layout />}>
-                <Route index element={<DailyPlanner />} />
+                <Route index element={<IndexRedirect />} />
                 <Route path="academy" element={<IctAcademy />} />
                 <Route path="risk-shield" element={<RiskShield />} />
                 <Route path="journal" element={<SmartJournal />} />
