@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Link } from "react-router-dom";
 import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle } from "lucide-react";
+import Logo from "@/components/Logo";
 
 const navItems = [
   { to: "/", label: "Daily Planner", icon: Calendar },
@@ -52,9 +53,7 @@ export default function Layout() {
     <div className="flex h-screen overflow-hidden">
       <aside className="hidden md:flex flex-col w-16 lg:w-56 border-r border-sidebar-border bg-sidebar shrink-0">
         <div className="flex items-center gap-2 px-3 h-14 border-b border-sidebar-border">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <span className="text-primary-foreground font-bold text-sm">ICT</span>
-          </div>
+          <Logo size={32} />
           <span className="hidden lg:block text-sm font-semibold text-sidebar-foreground truncate">
             Trading Mentor
           </span>

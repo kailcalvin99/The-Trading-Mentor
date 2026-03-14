@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ArrowRight,
 } from "lucide-react";
+import Logo from "@/components/Logo";
 
 const TUTORIAL_STEPS = [
   {
@@ -90,9 +91,7 @@ export default function Welcome() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
         <div className="max-w-2xl w-full text-center">
-          <div className="h-20 w-20 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-6">
-            <span className="text-primary-foreground font-bold text-2xl">ICT</span>
-          </div>
+          <Logo size={80} className="mx-auto mb-6" />
 
           <h1 className="text-4xl font-bold text-foreground mb-3">
             Welcome to ICT Trading Mentor
@@ -147,9 +146,7 @@ export default function Welcome() {
     <div className="min-h-screen bg-background flex flex-col">
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">ICT</span>
-          </div>
+          <Logo size={32} />
           <span className="text-sm font-semibold text-foreground">App Tour</span>
         </div>
         <div className="flex items-center gap-2">
