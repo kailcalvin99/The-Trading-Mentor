@@ -30,36 +30,23 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <div className="hidden lg:flex flex-col justify-center flex-1 p-12 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col items-center justify-center flex-1 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
         <div className="absolute top-20 left-20 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-primary/3 rounded-full blur-3xl" />
 
-        <div className="relative z-10 max-w-lg">
-          <Logo size={990} className="mb-6" />
-          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 mb-6">
-            <BrainCircuit className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs font-semibold text-primary tracking-wide uppercase">AI-Powered Trading Intelligence</span>
-          </div>
-          <h1 className="text-4xl font-bold text-foreground mb-2 leading-tight">
-            ICT AI Trading Mentor
-          </h1>
-          <p className="text-muted-foreground text-lg mb-10 leading-relaxed">
-            AI-driven institutional trading platform built on ICT methodology. Your personal AI mentor analyzes, teaches, and guides every trade.
-          </p>
-
-          <div className="space-y-3">
-            {[
-              { icon: Bot, text: "24/7 AI mentor that adapts to your skill level" },
-              { icon: BrainCircuit, text: "AI-powered trade analysis and smart journaling" },
-              { icon: Sparkles, text: "Adaptive AI quizzes that evolve as you learn" },
-              { icon: TrendingUp, text: "39 expert lessons with AI-guided progression" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 border border-border/50 rounded-lg p-3">
-                <item.icon className="h-4 w-4 text-primary" />
-                <span className="text-sm text-foreground/70">{item.text}</span>
-              </div>
-            ))}
+        <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-8">
+          <img
+            src={`${import.meta.env.BASE_URL}logo.png`}
+            alt="ICT AI Trading Mentor"
+            className="max-w-[85%] max-h-[70vh] object-contain drop-shadow-2xl"
+          />
+          <div className="mt-6 text-center">
+            <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-3">
+              <BrainCircuit className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-semibold text-primary tracking-wide uppercase">AI-Powered Trading Intelligence</span>
+            </div>
+            <h1 className="text-3xl font-bold text-foreground">ICT AI Trading Mentor</h1>
           </div>
         </div>
       </div>
