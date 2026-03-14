@@ -1,14 +1,4 @@
-import { useState, useRef, useEffect } from "react";
-import {
-  GraduationCap,
-  ChevronDown,
-  ChevronUp,
-  Send,
-  Plus,
-  ArrowLeft,
-  MessageSquare,
-  Loader2,
-} from "lucide-react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 
 type Tab = "glossary" | "quiz" | "mentor" | "plan";
 type Difficulty = "easy" | "medium" | "hard";
@@ -21,7 +11,7 @@ interface QuizQuestion {
   explanation: string;
 }
 
-interface ChatMessage {
+interface Message {
   role: "user" | "assistant";
   content: string;
 }
@@ -98,15 +88,11 @@ const QUIZ_BANK: QuizQuestion[] = [
   { difficulty: "hard", scenario: "NQ is in a clear downtrend on the Daily. Price retraces to the 75% Fibonacci level and creates a bearish FVG on the 15-minute chart during the London Kill Zone (3:00 AM EST). The 5-minute shows a bearish MSS. Is this a valid Conservative short entry?", options: ["No — London Kill Zone doesn't count for NQ", "No — Conservative entries require the Silver Bullet window", "Yes — all 6 Conservative Entry criteria are met", "Yes — but with only half position size"], answer: 2, explanation: "Let's verify: 1) Bias ✓ (Daily bearish). 2) Sweep — implied by the retrace to 75% (premium). 3) Shift ✓ (5-min bearish MSS). 4) Gap ✓ (15-min bearish FVG). 5) Fib ✓ (75% is in OTE zone, Premium for sells). 6) Trigger = place limit at FVG. London Kill Zone is valid for Conservative entries — the Silver Bullet window is only required for Aggressive entries." },
 ];
 
-const PLAN_SECTIONS: {
-  title: string;
-  color: string;
-  image?: string;
-  items: { label: string; desc: string }[];
-}[] = [
+const PLAN_SECTIONS = [
   {
     title: "The Tools",
     color: "#00C896",
+    icon: "wrench",
     items: [
       { label: "MSS", desc: "Market Structure Shift — our signal that the trend has changed." },
       { label: "FVG", desc: "Fair Value Gap — our entry zone." },
@@ -118,6 +104,7 @@ const PLAN_SECTIONS: {
   {
     title: "Timeframe Alignment",
     color: "#818CF8",
+    icon: "layers",
     items: [
       { label: "HTF: Daily & 1-Hour", desc: "Find the Draw on Liquidity — where is price going?" },
       { label: "LTF: 15-Min & 5-Min", desc: "Find the MSS and the FVG entry." },
@@ -126,6 +113,7 @@ const PLAN_SECTIONS: {
   {
     title: "Conservative Entry",
     color: "#00C896",
+    icon: "shield",
     image: "chart-conservative-entry.png",
     items: [
       { label: "1. Bias Check", desc: "Is the 1-Hour chart Bullish or Bearish?" },
@@ -139,6 +127,7 @@ const PLAN_SECTIONS: {
   {
     title: "Aggressive Entry (Silver Bullet)",
     color: "#F59E0B",
+    icon: "zap",
     image: "chart-silver-bullet.png",
     items: [
       { label: "Time Check", desc: "Must be between 10:00 AM and 11:00 AM EST." },
@@ -150,6 +139,7 @@ const PLAN_SECTIONS: {
   {
     title: "Exit Criteria",
     color: "#06B6D4",
+    icon: "log-out",
     image: "chart-exit-criteria.png",
     items: [
       { label: "Stop Loss", desc: "Placed at the high/low of the candle that created the MSS." },
@@ -161,6 +151,7 @@ const PLAN_SECTIONS: {
   {
     title: "Prop Firm Survival Rules",
     color: "#EF4444",
+    icon: "alert-triangle",
     items: [
       { label: "Max Daily Loss", desc: "2% — if hit, app locks for 24 hours." },
       { label: "Max Weekly Loss", desc: "4%." },
@@ -170,6 +161,7 @@ const PLAN_SECTIONS: {
   {
     title: "Key Takeaways",
     color: "#EC4899",
+    icon: "lightbulb",
     items: [
       { label: "Top-Down", desc: "Always start with Daily. If Daily is going down, don't buy on 1-min." },
       { label: "Patience", desc: "If the market doesn't hit your FVG, there is no trade." },
@@ -216,77 +208,63 @@ function pickQuestion(diff: Difficulty, used: Set<number>): { q: QuizQuestion; i
   return null;
 }
 
-async function streamMessageWeb(
-  conversationId: number,
-  content: string,
-  onChunk: (text: string) => void,
-  onDone: () => void,
-  onError: (err: string) => void
-): Promise<void> {
-  const res = await fetch(
-    `${getApiUrl()}gemini/conversations/${conversationId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "text/event-stream",
-      },
-      body: JSON.stringify({ content }),
-    }
+function ChevronDown({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
   );
+}
 
-  if (!res.ok) {
-    onError("Failed to get response");
-    return;
-  }
+function ChevronUp({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="m18 15-6-6-6 6" />
+    </svg>
+  );
+}
 
-  const reader = res.body?.getReader();
-  if (!reader) {
-    onError("No response body");
-    return;
-  }
+function SendIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+      <path d="m21.854 2.147-10.94 10.939" />
+    </svg>
+  );
+}
 
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let doneSignaled = false;
+function PlusIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
+  );
+}
 
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+function ArrowLeftIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 19-7-7 7-7" />
+      <path d="M19 12H5" />
+    </svg>
+  );
+}
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+function MessageSquareIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
 
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const data = line.slice(6);
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.content) onChunk(parsed.content);
-          if (parsed.done) { doneSignaled = true; onDone(); }
-          if (parsed.error) onError(parsed.error);
-        } catch {}
-      }
-    }
-
-    if (buffer.trim()) {
-      const remaining = buffer.trim();
-      if (remaining.startsWith("data: ")) {
-        try {
-          const parsed = JSON.parse(remaining.slice(6));
-          if (parsed.content) onChunk(parsed.content);
-          if (parsed.done) { doneSignaled = true; onDone(); }
-          if (parsed.error) onError(parsed.error);
-        } catch {}
-      }
-    }
-
-    if (!doneSignaled) onDone();
-  } catch {
-    onError("Stream interrupted");
-  }
+function LoaderIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
 }
 
 function GlossaryView() {
@@ -294,16 +272,19 @@ function GlossaryView() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-xl font-bold mb-1">ICT Concepts</h2>
-      <p className="text-sm text-muted-foreground mb-6">Click any term for the full definition + trader tip</p>
+      <h2 className="text-xl font-bold text-white mb-1">ICT Concepts</h2>
+      <p className="text-sm text-[#8B8BA0] mb-6">Click any term for the full definition + trader tip</p>
       <div className="grid gap-3">
         {GLOSSARY.map((item) => {
           const isOpen = expanded === item.term;
           return (
             <div
               key={item.term}
-              className="rounded-xl border overflow-hidden transition-colors cursor-pointer bg-card"
-              style={{ borderColor: isOpen ? item.color : undefined }}
+              className="rounded-xl border overflow-hidden transition-colors cursor-pointer"
+              style={{
+                backgroundColor: "#12121A",
+                borderColor: isOpen ? item.color : "#1E1E2E",
+              }}
               onClick={() => setExpanded(isOpen ? null : item.term)}
             >
               <div className="flex items-center gap-3 p-4">
@@ -313,27 +294,23 @@ function GlossaryView() {
                 >
                   {item.term}
                 </span>
-                <span className="flex-1 text-sm text-muted-foreground font-medium">{item.full}</span>
-                {isOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
+                <span className="flex-1 text-sm text-[#8B8BA0] font-medium">{item.full}</span>
+                {isOpen ? <ChevronUp className="text-[#8B8BA0]" /> : <ChevronDown className="text-[#8B8BA0]" />}
               </div>
               {isOpen && (
                 <div className="px-4 pb-4 space-y-3">
-                  <p className="text-sm leading-relaxed">{item.definition}</p>
+                  <p className="text-sm text-white leading-relaxed">{item.definition}</p>
                   <img
                     src={getImageUrl(item.image)}
                     alt={`${item.term} chart`}
                     className="w-full h-48 object-cover rounded-lg"
                   />
                   <div
-                    className="border-l-[3px] pl-3 py-1"
+                    className="border-l-3 pl-3 py-1"
                     style={{ borderLeftColor: item.color }}
                   >
                     <p className="text-xs font-bold mb-1" style={{ color: item.color }}>NQ Tip</p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{item.tip}</p>
+                    <p className="text-sm text-[#8B8BA0] leading-relaxed">{item.tip}</p>
                   </div>
                 </div>
               )}
@@ -425,16 +402,16 @@ function QuizView() {
   if (done) {
     return (
       <div className="p-6 max-w-2xl mx-auto flex justify-center">
-        <div className="bg-card rounded-2xl border p-8 text-center w-full max-w-md">
+        <div className="bg-[#12121A] rounded-2xl border border-[#1E1E2E] p-8 text-center w-full max-w-md">
           <div className="text-5xl mb-4">{pct >= 70 ? "🏆" : pct >= 40 ? "📈" : "📚"}</div>
-          <div className="text-5xl font-bold">{score}/{maxScore}</div>
-          <div className="text-xl font-semibold text-primary mt-1 mb-3">{pct}%</div>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+          <div className="text-5xl font-bold text-white">{score}/{maxScore}</div>
+          <div className="text-xl font-semibold text-[#00C896] mt-1 mb-3">{pct}%</div>
+          <p className="text-sm text-[#8B8BA0] leading-relaxed mb-2">
             {pct >= 70 ? "ICT Concept Master! You dominated the adaptive quiz." : pct >= 40 ? "Good progress — the quiz adjusted to your level. Review and retry!" : "Keep studying — review the glossary and plan, then try again!"}
           </p>
-          <p className="text-xs text-muted-foreground/60 mb-6">Scoring: Easy = 1pt, Medium = 2pts, Hard = 3pts</p>
+          <p className="text-xs text-[#55556A] mb-6">Scoring: Easy = 1pt, Medium = 2pts, Hard = 3pts</p>
           <button
-            className="bg-primary text-primary-foreground font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
+            className="bg-[#00C896] text-[#0A0A0F] font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
             onClick={handleReset}
           >
             Try Again
@@ -447,9 +424,9 @@ function QuizView() {
   if (!q) {
     return (
       <div className="p-6 max-w-2xl mx-auto text-center">
-        <p className="mb-4">No more questions available!</p>
+        <p className="text-white mb-4">No more questions available!</p>
         <button
-          className="bg-primary text-primary-foreground font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
+          className="bg-[#00C896] text-[#0A0A0F] font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity"
           onClick={handleReset}
         >
           Start Over
@@ -463,12 +440,12 @@ function QuizView() {
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-sm text-muted-foreground">Question {answered + 1} of {TOTAL_QUIZ_QUESTIONS}</span>
-        <span className="text-sm font-semibold text-primary">Score: {score}</span>
+        <span className="text-sm text-[#8B8BA0]">Question {answered + 1} of {TOTAL_QUIZ_QUESTIONS}</span>
+        <span className="text-sm font-semibold text-[#00C896]">Score: {score}</span>
       </div>
-      <div className="h-1 bg-border rounded-full mb-4 overflow-hidden">
+      <div className="h-1 bg-[#1E1E2E] rounded-full mb-4 overflow-hidden">
         <div
-          className="h-1 bg-primary rounded-full transition-all duration-300"
+          className="h-1 bg-[#00C896] rounded-full transition-all duration-300"
           style={{ width: `${(answered / TOTAL_QUIZ_QUESTIONS) * 100}%` }}
         />
       </div>
@@ -482,18 +459,18 @@ function QuizView() {
         </span>
       </div>
 
-      <div className="bg-card rounded-xl border p-5 mb-4">
+      <div className="bg-[#12121A] rounded-xl border border-[#1E1E2E] p-5 mb-4">
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-semibold text-primary uppercase tracking-wider">NQ Scenario</span>
+          <span className="text-xs font-semibold text-[#00C896] uppercase tracking-wider">NQ Scenario</span>
         </div>
-        <p className="text-[15px] leading-relaxed font-medium">{q.scenario}</p>
+        <p className="text-[15px] text-white leading-relaxed font-medium">{q.scenario}</p>
       </div>
 
       <div className="space-y-2">
         {q.options.map((opt, idx) => {
-          let bg = "hsl(var(--card))";
-          let border = "hsl(var(--border))";
-          let textColor = "hsl(var(--foreground))";
+          let bg = "#12121A";
+          let border = "#1E1E2E";
+          let textColor = "#FFFFFF";
           if (selected !== null) {
             if (idx === q.answer) { bg = "rgba(0,200,150,0.12)"; border = "#00C896"; textColor = "#00C896"; }
             else if (idx === selected && selected !== q.answer) { bg = "rgba(255,68,68,0.1)"; border = "#FF4444"; textColor = "#FF4444"; }
@@ -501,7 +478,7 @@ function QuizView() {
           return (
             <button
               key={idx}
-              className="w-full flex items-center gap-3 p-3.5 rounded-xl border-[1.5px] text-left transition-all"
+              className="w-full flex items-center gap-3 p-3.5 rounded-xl border-[1.5px] text-left transition-all hover:border-[#2E2E3E]"
               style={{ backgroundColor: bg, borderColor: border }}
               onClick={() => handleSelect(idx)}
             >
@@ -525,9 +502,9 @@ function QuizView() {
           <p className="text-base font-bold mb-2" style={{ color: isCorrect ? "#00C896" : "#FF4444" }}>
             {isCorrect ? "✓ Correct!" : "✗ Not quite..."}
           </p>
-          <p className="text-sm leading-relaxed mb-4">{q.explanation}</p>
+          <p className="text-sm text-white leading-relaxed mb-4">{q.explanation}</p>
           <button
-            className="w-full py-3 rounded-xl font-bold text-sm text-primary-foreground hover:opacity-90 transition-opacity"
+            className="w-full py-3 rounded-xl font-bold text-sm text-[#0A0A0F] hover:opacity-90 transition-opacity"
             style={{ backgroundColor: isCorrect ? "#00C896" : "#F59E0B" }}
             onClick={handleNext}
           >
@@ -539,9 +516,82 @@ function QuizView() {
   );
 }
 
+async function streamMessageWeb(
+  conversationId: number,
+  content: string,
+  onChunk: (text: string) => void,
+  onDone: () => void,
+  onError: (err: string) => void
+): Promise<void> {
+  const res = await fetch(
+    `${getApiUrl()}gemini/conversations/${conversationId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({ content }),
+    }
+  );
+
+  if (!res.ok) {
+    onError("Failed to get response");
+    return;
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    onError("No response body");
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let doneSignaled = false;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6);
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.content) onChunk(parsed.content);
+          if (parsed.done) { doneSignaled = true; onDone(); }
+          if (parsed.error) onError(parsed.error);
+        } catch {}
+      }
+    }
+
+    if (buffer.trim()) {
+      const remaining = buffer.trim();
+      if (remaining.startsWith("data: ")) {
+        try {
+          const parsed = JSON.parse(remaining.slice(6));
+          if (parsed.content) onChunk(parsed.content);
+          if (parsed.done) { doneSignaled = true; onDone(); }
+          if (parsed.error) onError(parsed.error);
+        } catch {}
+      }
+    }
+
+    if (!doneSignaled) onDone();
+  } catch {
+    onError("Stream interrupted");
+  }
+}
+
 function MentorView() {
   const [conversationId, setConversationId] = useState<number | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -563,7 +613,7 @@ function MentorView() {
     try {
       const res = await fetch(`${getApiUrl()}gemini/conversations`);
       if (res.ok) {
-        const data: Conversation[] = await res.json();
+        const data = await res.json();
         setConversations(data || []);
       }
     } catch {}
@@ -578,7 +628,7 @@ function MentorView() {
         body: JSON.stringify({ title: "NQ Session" }),
       });
       if (res.ok) {
-        const data: Conversation = await res.json();
+        const data = await res.json();
         setConversationId(data.id);
         setMessages([{ role: "assistant", content: "I'm your ICT Trading Mentor. Ask me about FVGs, Liquidity Sweeps, Silver Bullet setups, or NQ Futures strategy." }]);
         fetchConversations();
@@ -591,13 +641,8 @@ function MentorView() {
     try {
       const res = await fetch(`${getApiUrl()}gemini/conversations/${id}`);
       if (res.ok) {
-        const data: { messages?: { role: string; content: string }[] } = await res.json();
-        setMessages(
-          (data.messages || []).map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content,
-          }))
-        );
+        const data = await res.json();
+        setMessages((data.messages || []).map((m: any) => ({ role: m.role, content: m.content })));
       }
     } catch {}
   }
@@ -655,35 +700,37 @@ function MentorView() {
     return (
       <div className="flex h-full max-w-4xl mx-auto">
         <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <MessageSquare className="h-10 w-10 text-primary" />
-          <h3 className="text-xl font-bold mt-4 mb-2">ICT Mentor AI</h3>
-          <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed mb-6">
+          <div className="text-[#00C896]">
+            <MessageSquareIcon />
+          </div>
+          <h3 className="text-xl font-bold text-white mt-4 mb-2">ICT Mentor AI</h3>
+          <p className="text-sm text-[#8B8BA0] text-center max-w-sm leading-relaxed mb-6">
             Ask anything about ICT concepts, NQ setups, or trading psychology
           </p>
           <button
-            className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 bg-[#00C896] text-[#0A0A0F] font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
             onClick={startConversation}
           >
-            <Plus className="h-4 w-4" />
+            <PlusIcon />
             New Conversation
           </button>
         </div>
-        <div className="w-72 border-l p-4 overflow-y-auto">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Previous Sessions</p>
+        <div className="w-72 border-l border-[#1E1E2E] p-4 overflow-y-auto">
+          <p className="text-xs font-semibold text-[#8B8BA0] uppercase tracking-wider mb-3">Previous Sessions</p>
           {loadingConversations ? (
-            <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+            <div className="flex justify-center py-4"><LoaderIcon /></div>
           ) : conversations.length === 0 ? (
-            <p className="text-xs text-muted-foreground/60">No previous sessions</p>
+            <p className="text-xs text-[#55556A]">No previous sessions</p>
           ) : (
             <div className="space-y-2">
               {[...conversations].reverse().slice(0, 10).map((c) => (
                 <button
                   key={c.id}
-                  className="w-full flex items-center gap-2 bg-card rounded-xl p-3 border text-left hover:bg-secondary transition-colors"
+                  className="w-full flex items-center gap-2 bg-[#12121A] rounded-xl p-3 border border-[#1E1E2E] text-left hover:border-[#2E2E3E] transition-colors"
                   onClick={() => loadConversation(c.id)}
                 >
-                  <span className="flex-1 text-sm truncate">{c.title}</span>
-                  <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 -rotate-90" />
+                  <span className="flex-1 text-sm text-white truncate">{c.title}</span>
+                  <ChevronDown className="text-[#55556A] shrink-0 -rotate-90" />
                 </button>
               ))}
             </div>
@@ -695,12 +742,12 @@ function MentorView() {
 
   return (
     <div className="flex flex-col h-full max-w-4xl mx-auto">
-      <div className="p-3 border-b">
+      <div className="p-3 border-b border-[#1E1E2E]">
         <button
-          className="flex items-center gap-1.5 text-primary text-sm hover:opacity-80 transition-opacity"
+          className="flex items-center gap-1.5 text-[#00C896] text-sm hover:opacity-80 transition-opacity"
           onClick={() => { setConversationId(null); fetchConversations(); }}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeftIcon />
           Sessions
         </button>
       </div>
@@ -708,15 +755,15 @@ function MentorView() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start gap-2"}`}>
             {msg.role === "assistant" && (
-              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-1">
-                <span className="text-[10px] font-bold text-primary">ICT</span>
+              <div className="w-7 h-7 rounded-full bg-[#00C89633] flex items-center justify-center shrink-0 mt-1">
+                <span className="text-[10px] font-bold text-[#00C896]">ICT</span>
               </div>
             )}
             <div
               className={`max-w-[75%] rounded-2xl px-4 py-3 ${
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-br-sm"
-                  : "bg-card border rounded-bl-sm"
+                  ? "bg-[#00C896] text-[#0A0A0F] rounded-br-sm"
+                  : "bg-[#12121A] border border-[#1E1E2E] text-white rounded-bl-sm"
               }`}
             >
               <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -727,9 +774,9 @@ function MentorView() {
           </div>
         ))}
       </div>
-      <div className="p-3 border-t flex items-end gap-2">
+      <div className="p-3 border-t border-[#1E1E2E] flex items-end gap-2">
         <textarea
-          className="flex-1 bg-card border rounded-2xl px-4 py-2.5 text-sm placeholder-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-ring max-h-24"
+          className="flex-1 bg-[#12121A] border border-[#1E1E2E] rounded-2xl px-4 py-2.5 text-sm text-white placeholder-[#8B8BA0] resize-none focus:outline-none focus:border-[#2E2E3E] max-h-24"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -738,11 +785,11 @@ function MentorView() {
           rows={1}
         />
         <button
-          className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40"
+          className="w-10 h-10 rounded-full bg-[#00C896] flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity disabled:opacity-40"
           onClick={sendMessage}
           disabled={!input.trim() || isStreaming}
         >
-          {isStreaming ? <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" /> : <Send className="h-4 w-4 text-primary-foreground" />}
+          {isStreaming ? <LoaderIcon /> : <SendIcon />}
         </button>
       </div>
     </div>
@@ -752,17 +799,17 @@ function MentorView() {
 function PlanView() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-xl font-bold mb-1">NQ Futures: ICT Trading Plan</h2>
-      <p className="text-sm text-muted-foreground mb-6">Your mechanical, top-down trading framework</p>
+      <h2 className="text-xl font-bold text-white mb-1">NQ Futures: ICT Trading Plan</h2>
+      <p className="text-sm text-[#8B8BA0] mb-6">Your mechanical, top-down trading framework</p>
       <div className="grid gap-4 md:grid-cols-2">
         {PLAN_SECTIONS.map((section) => (
           <div
             key={section.title}
-            className="bg-card rounded-xl border overflow-hidden"
+            className="bg-[#12121A] rounded-xl border border-[#1E1E2E] overflow-hidden"
             style={section.title === "Conservative Entry" || section.title === "Prop Firm Survival Rules" ? { gridColumn: "1 / -1" } : undefined}
           >
             <div
-              className="flex items-center gap-2.5 px-4 py-3 border-b"
+              className="flex items-center gap-2.5 px-4 py-3 border-b border-[#1E1E2E]"
               style={{ backgroundColor: section.color + "15" }}
             >
               <span className="text-sm font-bold" style={{ color: section.color }}>{section.title}</span>
@@ -775,13 +822,13 @@ function PlanView() {
                     style={{ backgroundColor: section.color }}
                   />
                   <div>
-                    <span className="text-sm font-semibold">{item.label}</span>
-                    <span className="text-sm text-muted-foreground ml-1.5">{item.desc}</span>
+                    <span className="text-sm font-semibold text-white">{item.label}</span>
+                    <span className="text-sm text-[#8B8BA0] ml-1.5">{item.desc}</span>
                   </div>
                 </div>
               ))}
             </div>
-            {section.image && (
+            {"image" in section && section.image && (
               <img
                 src={getImageUrl(section.image)}
                 alt={`${section.title} chart`}
@@ -806,20 +853,17 @@ export default function IctAcademy() {
   const [tab, setTab] = useState<Tab>("glossary");
 
   return (
-    <div className="flex flex-col h-full">
-      <header className="px-6 pt-5 pb-3 border-b">
-        <div className="flex items-center gap-3 mb-4">
-          <GraduationCap className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">ICT Academy</h1>
-        </div>
-        <div className="flex bg-secondary rounded-xl p-1 max-w-md">
+    <div className="dark min-h-screen bg-[#0A0A0F] flex flex-col">
+      <header className="px-6 pt-5 pb-0">
+        <h1 className="text-2xl font-bold text-white mb-4">ICT Academy</h1>
+        <div className="flex bg-[#12121A] rounded-xl p-1 border border-[#1E1E2E] max-w-md">
           {TAB_CONFIG.map((t) => (
             <button
               key={t.key}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
                 tab === t.key
-                  ? "bg-primary text-primary-foreground font-bold"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-[#00C896] text-[#0A0A0F] font-bold"
+                  : "text-[#8B8BA0] hover:text-white"
               }`}
               onClick={() => setTab(t.key)}
             >
@@ -828,7 +872,7 @@ export default function IctAcademy() {
           ))}
         </div>
       </header>
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto mt-2">
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
         {tab === "mentor" && <MentorView />}
