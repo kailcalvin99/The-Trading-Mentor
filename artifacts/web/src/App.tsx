@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { PlannerProvider } from "@/contexts/PlannerContext";
 import Layout from "@/components/Layout";
 import DailyPlanner from "@/pages/DailyPlanner";
 import IctAcademy from "@/pages/IctAcademy";
@@ -22,18 +23,20 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route index element={<DailyPlanner />} />
-              <Route path="academy" element={<IctAcademy />} />
-              <Route path="risk-shield" element={<RiskShield />} />
-              <Route path="journal" element={<SmartJournal />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-        <Toaster />
+        <PlannerProvider>
+          <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route index element={<DailyPlanner />} />
+                <Route path="academy" element={<IctAcademy />} />
+                <Route path="risk-shield" element={<RiskShield />} />
+                <Route path="journal" element={<SmartJournal />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+          <Toaster />
+        </PlannerProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
