@@ -774,7 +774,7 @@ export const PLAN_SECTIONS: {
 export const DIFFICULTY_COLORS: Record<Difficulty, string> = { easy: "#00C896", medium: "#F59E0B", hard: "#EF4444" };
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
 export const DIFFICULTY_ICONS: Record<Difficulty, string> = { easy: "\u{1F331}", medium: "\u26A1", hard: "\u{1F480}" };
-export const TOTAL_QUIZ_QUESTIONS = 12;
+export const TOTAL_QUIZ_QUESTIONS = 15;
 export const TIER_ORDER: Difficulty[] = ["easy", "medium", "hard"];
 
 export function pickQuestion(diff: Difficulty, used: Set<number>): { q: QuizQuestion; idx: number } | null {

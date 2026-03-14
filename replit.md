@@ -99,15 +99,18 @@ React + Vite web application. Dark-themed layout shell with sidebar navigation (
 - App: `src/App.tsx` — BrowserRouter + QueryClientProvider + routes
 - Layout: `src/components/Layout.tsx` — sidebar + bottom nav responsive shell
 - Pages: `src/pages/DailyPlanner.tsx`, `IctAcademy.tsx`, `RiskShield.tsx`, `SmartJournal.tsx`, `Analytics.tsx`
+- Data: `src/data/academy-data.ts` — shared course content (7 chapters / 39 lessons, 16 glossary terms, 30 quiz questions, trading plan)
 - Theme: Dark-only (#0A0A0F background, #00C896 green accent) in `src/index.css`
 - Preview path: `/web/`
+
+ICT Academy has 5 tabs: Learn (full course with progress tracking via localStorage), Glossary (16 ICT terms), Quiz (adaptive 15-question sessions from 30-question bank), Mentor (Gemini AI), Plan (trading plan reference).
 
 ### `artifacts/mobile` (`@workspace/mobile`)
 
 Expo React Native mobile app with 4 tabs:
 
 1. **Daily Planner** — Morning routine checklist (4 core ICT items gate trading lockout) + custom "My Routine" personal items with snooze + kill zone countdown timers + red news lockout
-2. **ICT Academy** — 4 sub-tabs: Glossary (ICT concept cards with annotated chart images), Quiz (adaptive 10-question quiz with 3 difficulty tiers and weighted scoring), Mentor (Gemini AI chat), Plan (full ICT Trading Plan reference with chart diagrams for Conservative Entry, Silver Bullet, and Exit Criteria)
+2. **ICT Academy** — 5 sub-tabs: Learn (full 7-chapter / 39-lesson course with AsyncStorage progress tracking), Glossary (16 ICT concept cards with annotated chart images), Quiz (adaptive 15-question sessions from 30-question bank with 3 difficulty tiers), Mentor (Gemini AI chat), Plan (full ICT Trading Plan reference with chart diagrams for Conservative Entry, Silver Bullet, and Exit Criteria)
 3. **Risk Shield** — Prop firm tracker with RED mode (2% daily loss lockout), NQ/MNQ position size calculator, Focus Mode modal
 4. **Smart Journal** — Trade logging with mandatory Entry Criteria checklist (Conservative: 6 items, Silver Bullet: 4 items), behavioral tagging (FOMO/Disciplined/Chased/Greedy), TradingView webhook drafts, Monk Mode
 
