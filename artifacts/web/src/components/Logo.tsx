@@ -16,68 +16,35 @@ export default function Logo({ size = 32, className = "" }: LogoProps) {
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <rect width="64" height="64" rx="14" fill="#00C896" />
+        <rect width="64" height="64" rx="14" fill="#0C0C14" />
+        <rect x="1" y="1" width="62" height="62" rx="13" stroke="url(#goldGrad)" strokeWidth="1.5" fill="none" />
 
-        <polygon
-          points="32,3 50,11 14,11"
-          fill="#0A0A0F"
-          opacity="0.9"
-        />
-        <rect x="20" y="11" width="24" height="3" rx="1" fill="#0A0A0F" opacity="0.9" />
-        <rect x="29.5" y="1" width="5" height="4" rx="1.5" fill="#FFD700" />
+        <path d="M16 44 L24 28 L32 36 L40 20 L48 32" stroke="url(#goldGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
 
-        <rect x="7" y="19" width="6" height="24" rx="2" fill="#0A0A0F" opacity="0.85" />
-        <rect x="8.5" y="16" width="3" height="3" rx="1" fill="#0A0A0F" opacity="0.5" />
-        <rect x="8.5" y="43" width="3" height="4" rx="1" fill="#0A0A0F" opacity="0.5" />
-
-        <rect x="17" y="25" width="6" height="18" rx="2" fill="#0A0A0F" opacity="0.65" />
-        <rect x="18.5" y="21" width="3" height="4" rx="1" fill="#0A0A0F" opacity="0.4" />
-        <rect x="18.5" y="43" width="3" height="4" rx="1" fill="#0A0A0F" opacity="0.4" />
+        <circle cx="16" cy="44" r="2.5" fill="#C5A44E" />
+        <circle cx="24" cy="28" r="2.5" fill="#D4AF37" />
+        <circle cx="32" cy="36" r="2.5" fill="#D4AF37" />
+        <circle cx="40" cy="20" r="2.5" fill="#E8C547" />
+        <circle cx="48" cy="32" r="2.5" fill="#D4AF37" />
 
         <text
-          x="10"
+          x="32"
           y="57"
-          fontFamily="Inter, system-ui, Arial, sans-serif"
-          fontWeight="800"
-          fontSize="14"
-          fill="#0A0A0F"
+          fontFamily="'Playfair Display', Georgia, serif"
+          fontWeight="700"
+          fontSize="11"
+          fill="url(#goldGrad)"
           textAnchor="middle"
-          opacity="0.95"
-        >I</text>
+          letterSpacing="3"
+        >ICT</text>
 
-        <rect x="29" y="17" width="6" height="26" rx="2" fill="#0A0A0F" opacity="0.85" />
-        <rect x="30.5" y="14" width="3" height="3" rx="1" fill="#0A0A0F" opacity="0.5" />
-        <rect x="30.5" y="43" width="3" height="4" rx="1" fill="#0A0A0F" opacity="0.5" />
-
-        <rect x="39" y="22" width="6" height="21" rx="2" fill="#0A0A0F" opacity="0.65" />
-        <rect x="40.5" y="18" width="3" height="4" rx="1" fill="#0A0A0F" opacity="0.4" />
-        <rect x="40.5" y="43" width="3" height="4" rx="1" fill="#0A0A0F" opacity="0.4" />
-
-        <text
-          x="36"
-          y="57"
-          fontFamily="Inter, system-ui, Arial, sans-serif"
-          fontWeight="800"
-          fontSize="14"
-          fill="#0A0A0F"
-          textAnchor="middle"
-          opacity="0.95"
-        >C</text>
-
-        <rect x="51" y="19" width="6" height="24" rx="2" fill="#0A0A0F" opacity="0.85" />
-        <rect x="52.5" y="15" width="3" height="4" rx="1" fill="#0A0A0F" opacity="0.5" />
-        <rect x="52.5" y="43" width="3" height="4" rx="1" fill="#0A0A0F" opacity="0.5" />
-
-        <text
-          x="54"
-          y="57"
-          fontFamily="Inter, system-ui, Arial, sans-serif"
-          fontWeight="800"
-          fontSize="14"
-          fill="#0A0A0F"
-          textAnchor="middle"
-          opacity="0.95"
-        >T</text>
+        <defs>
+          <linearGradient id="goldGrad" x1="0" y1="0" x2="64" y2="64">
+            <stop offset="0%" stopColor="#E8C547" />
+            <stop offset="50%" stopColor="#D4AF37" />
+            <stop offset="100%" stopColor="#C5A44E" />
+          </linearGradient>
+        </defs>
       </svg>
     </div>
   );

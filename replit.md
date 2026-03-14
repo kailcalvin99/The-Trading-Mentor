@@ -2,7 +2,7 @@
 
 ## Overview
 
-Full-stack mobile trading app built with Expo React Native + Express API. Dark-themed professional UI with 4 core modules for ICT (Inner Circle Trader) NQ Futures trading. Includes authentication, subscription management, and admin dashboard.
+Full-stack mobile trading app built with Expo React Native + Express API. Gold/black premium dark-themed professional UI with 4 core modules for ICT (Inner Circle Trader) NQ Futures trading. Includes authentication, subscription management, and admin dashboard.
 
 ## Stack
 
@@ -15,7 +15,7 @@ Full-stack mobile trading app built with Expo React Native + Express API. Dark-t
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
-- **Auth**: JWT (jsonwebtoken) + bcryptjs
+- **Auth**: JWT (jsonwebtoken) + bcryptjs, httpOnly cookies only (no localStorage tokens)
 
 ## Structure
 
@@ -38,13 +38,23 @@ artifacts-monorepo/
 └── package.json
 ```
 
+## Design System
+
+- **Primary color**: Gold (`hsl(43 76% 52%)`) — #D4AF37 family
+- **Background**: Deep navy-black (`hsl(240 25% 4%)`)
+- **Fonts**: Playfair Display (serif, headings), Inter (sans-serif, body)
+- **Aesthetic**: Sophisticated, expensive, minimal with gold accents on dark backgrounds
+- **Logo**: SVG chart-line icon with gold gradient and "ICT" text
+
 ## Authentication & Subscriptions
 
 ### Auth System
-- JWT-based authentication with httpOnly cookies + Bearer token
+- JWT-based authentication with httpOnly cookies only (secure + SameSite=None on Replit)
+- CORS restricted to Replit domains, localhost, and configurable ALLOWED_ORIGINS
 - First registered user automatically becomes admin
 - First 20 users get "Founder" status with 50% discount for 6 months
 - Password hashing with bcryptjs (12 rounds)
+- Post-signup redirect goes directly to Daily Planner (skips Welcome)
 
 ### Database Tables
 - `users` — id, email, password_hash, name, role (user/admin), is_founder, founder_number
@@ -59,7 +69,7 @@ artifacts-monorepo/
 
 ### API Routes
 - `POST /api/auth/register` — register (auto-founder for first 20)
-- `POST /api/auth/login` — login, returns JWT
+- `POST /api/auth/login` — login, returns JWT in cookie
 - `GET /api/auth/me` — current user + subscription
 - `POST /api/auth/logout` — clear cookie
 - `GET /api/subscriptions/tiers` — list tiers + founder spots
@@ -71,13 +81,13 @@ artifacts-monorepo/
 - `GET/PUT /api/admin/settings` — global config
 
 ### Frontend Features
-- Login/Signup pages with founder spot counter
+- Login/Signup pages with gold branding and serif headings
 - Founder welcome modal with crown animation
 - Pricing page with monthly/annual toggle and founder discount display
 - Admin dashboard with user management, tier editing, global settings
 - Casino-game elements: daily streak, spin wheel, achievements, premium teasers
 - Sidebar shows user profile, subscription status, founder badge
-- Feature locking based on subscription tier (not just localStorage)
+- Feature locking based on subscription tier
 
 ## TypeScript & Composite Projects
 
@@ -95,8 +105,8 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 Express 5 API server with auth middleware, subscription management, and admin routes.
 
 - Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS (credentials), cookie-parser, JSON/urlencoded, routes at `/api`, seeds defaults
-- Middleware: `src/middleware/auth.ts` — JWT auth, admin role check
+- App setup: `src/app.ts` — mounts CORS (restricted origins), cookie-parser, JSON/urlencoded, routes at `/api`, seeds defaults
+- Middleware: `src/middleware/auth.ts` — JWT auth with httpOnly cookies, secure+SameSite=None on Replit, admin role check
 - Routes: auth, subscriptions, admin, gemini, prop, trades, webhook
 - Seed: `src/seed.ts` — creates default tiers and admin settings on startup
 
@@ -111,7 +121,7 @@ Database layer using Drizzle ORM with PostgreSQL.
 
 React + Vite web application with auth-gated access.
 
-- Auth: `src/contexts/AuthContext.tsx` — JWT session management, tier checking
+- Auth: `src/contexts/AuthContext.tsx` — JWT session management via cookies, tier checking
 - Pages: Login, Signup (with founder modal), Pricing (with annual toggle), Admin dashboard
 - Casino elements: `src/components/CasinoElements.tsx` — daily streak, spin wheel, achievements, premium teasers
 - Layout: Subscription-aware navigation with user menu, admin link, upgrade prompts

@@ -43,7 +43,8 @@ export default function Signup() {
         setFounderNum(result.founderNumber || 0);
         setShowFounderModal(true);
       } else {
-        navigate("/");
+        localStorage.setItem("ict-welcome-seen", "true");
+        navigate("/planner");
       }
     } else {
       setError(result.error || "Registration failed");
@@ -55,48 +56,49 @@ export default function Signup() {
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-lg w-full text-center">
           <div className="relative mb-8">
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-primary/20 to-amber-500/20 rounded-3xl blur-2xl animate-pulse" />
-            <div className="relative bg-card border-2 border-amber-500/50 rounded-3xl p-8 shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 rounded-3xl blur-2xl" />
+            <div className="relative bg-card border border-primary/30 rounded-2xl p-8">
               <div className="flex justify-center mb-4">
                 <div className="relative">
-                  <Crown className="h-16 w-16 text-amber-500 animate-bounce" />
-                  <Sparkles className="h-6 w-6 text-amber-400 absolute -top-1 -right-1 animate-pulse" />
+                  <Crown className="h-14 w-14 text-primary" />
+                  <Sparkles className="h-5 w-5 text-primary/80 absolute -top-1 -right-1 animate-pulse" />
                 </div>
               </div>
 
-              <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-full px-4 py-1.5 mb-4">
-                <PartyPopper className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-bold text-amber-500">FOUNDER #{founderNum}</span>
+              <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-4">
+                <PartyPopper className="h-4 w-4 text-primary" />
+                <span className="text-sm font-bold text-primary">FOUNDER #{founderNum}</span>
               </div>
 
-              <h1 className="text-3xl font-bold text-foreground mb-3">
-                Welcome, Founding Member!
+              <h1 className="font-serif text-3xl font-bold text-foreground mb-3">
+                Welcome, Founding Member
               </h1>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                You're one of our first <span className="text-amber-500 font-bold">20 founding members</span>!
-                As a thank you for believing in us early, you get an exclusive{" "}
-                <span className="text-primary font-bold">50% discount</span> on any paid plan for your first{" "}
-                <span className="text-primary font-bold">6 months</span>.
+                You are one of our first <span className="text-primary font-semibold">20 founding members</span>.
+                As a thank you for your early trust, you receive an exclusive{" "}
+                <span className="text-primary font-semibold">50% discount</span> on any paid plan for{" "}
+                <span className="text-primary font-semibold">6 months</span>.
               </p>
 
-              <div className="bg-background/50 border border-border rounded-xl p-4 mb-6 text-left space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-amber-500">&#9733;</span>
-                  <span className="text-foreground">Permanent Founder badge on your profile</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-amber-500">&#9733;</span>
-                  <span className="text-foreground">50% off any plan for 6 months</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-amber-500">&#9733;</span>
-                  <span className="text-foreground">Early access to all future features</span>
-                </div>
+              <div className="bg-background border border-border rounded-xl p-4 mb-6 text-left space-y-2.5">
+                {[
+                  "Permanent Founder badge on your profile",
+                  "50% off any plan for 6 months",
+                  "Early access to all future features",
+                ].map((text, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-sm">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                    <span className="text-foreground/80">{text}</span>
+                  </div>
+                ))}
               </div>
 
               <button
-                onClick={() => navigate("/")}
-                className="w-full bg-gradient-to-r from-amber-500 to-primary text-white font-bold py-3.5 rounded-xl hover:opacity-90 transition-all text-lg"
+                onClick={() => {
+                  localStorage.setItem("ict-welcome-seen", "true");
+                  navigate("/planner");
+                }}
+                className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-lg hover:brightness-110 transition-all text-lg"
               >
                 Start My Journey
               </button>
@@ -110,27 +112,27 @@ export default function Signup() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="flex items-center gap-2 mb-8 justify-center">
-          <Logo size={40} />
-          <span className="text-lg font-bold text-foreground">ICT Trading Mentor</span>
+        <div className="flex items-center gap-3 mb-8 justify-center">
+          <Logo size={44} />
+          <span className="font-serif text-xl font-bold text-foreground tracking-tight">ICT Trading Mentor</span>
         </div>
 
         {founderSpotsLeft !== null && founderSpotsLeft > 0 && (
-          <div className="bg-gradient-to-r from-amber-500/10 to-primary/10 border border-amber-500/30 rounded-xl p-4 mb-6 text-center">
+          <div className="border border-primary/20 rounded-xl p-4 mb-6 text-center bg-primary/5">
             <div className="flex items-center justify-center gap-2 mb-1">
-              <Crown className="h-5 w-5 text-amber-500" />
-              <span className="text-sm font-bold text-amber-500">FOUNDER SPOTS AVAILABLE</span>
+              <Crown className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-primary tracking-wide">FOUNDER SPOTS AVAILABLE</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Only <span className="text-amber-500 font-bold">{founderSpotsLeft}</span> founder spots left!
+              Only <span className="text-primary font-bold">{founderSpotsLeft}</span> founder spots remaining.
               Get 50% off for 6 months.
             </p>
           </div>
         )}
 
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-2xl font-bold text-foreground mb-1">Create your account</h2>
-          <p className="text-sm text-muted-foreground mb-6">Start your trading journey today</p>
+        <div className="bg-card border border-border rounded-2xl p-8">
+          <h2 className="font-serif text-2xl font-bold text-foreground mb-1">Create your account</h2>
+          <p className="text-sm text-muted-foreground mb-6">Begin your institutional trading journey</p>
 
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg p-3 mb-4 text-sm">
@@ -145,7 +147,7 @@ export default function Signup() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-colors"
                 placeholder="Your name"
                 required
               />
@@ -157,7 +159,7 @@ export default function Signup() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-colors"
                 placeholder="you@example.com"
                 required
               />
@@ -170,7 +172,7 @@ export default function Signup() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary pr-10"
+                  className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 pr-10 transition-colors"
                   placeholder="At least 6 characters"
                   required
                   minLength={6}
@@ -188,7 +190,7 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />

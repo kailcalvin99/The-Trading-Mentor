@@ -151,7 +151,7 @@ export default function Layout() {
       <aside className="hidden md:flex flex-col w-16 lg:w-56 border-r border-sidebar-border bg-sidebar shrink-0">
         <div className="flex items-center gap-2 px-3 h-14 border-b border-sidebar-border">
           <Logo size={32} />
-          <span className="hidden lg:block text-sm font-semibold text-sidebar-foreground truncate">
+          <span className="hidden lg:block text-sm font-semibold text-sidebar-foreground truncate font-serif tracking-tight">
             Trading Mentor
           </span>
         </div>

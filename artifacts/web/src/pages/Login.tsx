@@ -31,29 +31,31 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-background flex">
       <div className="hidden lg:flex flex-col justify-center flex-1 p-12 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-background" />
-        <div className="absolute top-20 left-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
-        
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
+        <div className="absolute top-20 left-20 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-primary/3 rounded-full blur-3xl" />
+
         <div className="relative z-10 max-w-lg">
-          <Logo size={48} className="mb-8" />
-          <h1 className="text-4xl font-bold text-foreground mb-4">
-            Trade Smarter.<br />
-            <span className="text-primary">Win Bigger.</span>
+          <Logo size={56} className="mb-8" />
+          <h1 className="font-serif text-5xl font-bold text-foreground mb-2 leading-tight tracking-tight">
+            Trade with
           </h1>
-          <p className="text-muted-foreground text-lg mb-8">
-            Join the elite traders using ICT methodology to dominate the markets.
+          <h1 className="font-serif text-5xl font-bold text-primary mb-6 leading-tight tracking-tight">
+            Precision.
+          </h1>
+          <p className="text-muted-foreground text-lg mb-10 leading-relaxed">
+            The institutional-grade trading platform built on ICT methodology.
           </p>
-          
-          <div className="space-y-4">
+
+          <div className="space-y-3">
             {[
-              { icon: TrendingUp, text: "Master ICT concepts with 39 expert lessons", color: "text-primary" },
-              { icon: Zap, text: "AI mentor available 24/7 for instant guidance", color: "text-amber-500" },
-              { icon: Trophy, text: "Track, analyze, and level up your trading game", color: "text-cyan-400" },
+              { icon: TrendingUp, text: "39 expert lessons on institutional trading" },
+              { icon: Zap, text: "AI-powered mentor for real-time guidance" },
+              { icon: Trophy, text: "Professional-grade analytics and journaling" },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 bg-card/50 backdrop-blur border border-border/50 rounded-xl p-3">
-                <item.icon className={`h-5 w-5 ${item.color}`} />
-                <span className="text-sm text-foreground/80">{item.text}</span>
+              <div key={i} className="flex items-center gap-3 border border-border/50 rounded-lg p-3">
+                <item.icon className="h-4 w-4 text-primary" />
+                <span className="text-sm text-foreground/70">{item.text}</span>
               </div>
             ))}
           </div>
@@ -62,14 +64,14 @@ export default function Login() {
 
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <Logo size={40} />
-            <span className="text-lg font-bold text-foreground">ICT Trading Mentor</span>
+          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
+            <Logo size={44} />
+            <span className="font-serif text-xl font-bold text-foreground tracking-tight">ICT Trading Mentor</span>
           </div>
 
-          <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-foreground mb-1">Welcome back</h2>
-            <p className="text-sm text-muted-foreground mb-6">Sign in to continue your trading journey</p>
+          <div className="bg-card border border-border rounded-2xl p-8">
+            <h2 className="font-serif text-2xl font-bold text-foreground mb-1">Welcome back</h2>
+            <p className="text-sm text-muted-foreground mb-6">Sign in to your trading dashboard</p>
 
             {error && (
               <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg p-3 mb-4 text-sm">
@@ -84,7 +86,7 @@ export default function Login() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-colors"
                   placeholder="you@example.com"
                   required
                 />
@@ -97,7 +99,7 @@ export default function Login() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary pr-10"
+                    className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 pr-10 transition-colors"
                     placeholder="Enter your password"
                     required
                   />
@@ -114,7 +116,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
@@ -130,7 +132,7 @@ export default function Login() {
             <p className="text-center text-sm text-muted-foreground mt-6">
               Don't have an account?{" "}
               <Link to="/signup" className="text-primary font-medium hover:underline">
-                Sign up free
+                Create account
               </Link>
             </p>
           </div>

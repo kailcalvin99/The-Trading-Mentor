@@ -33,7 +33,7 @@ const TUTORIAL_STEPS = [
   {
     icon: Calendar,
     title: "Daily Planner",
-    color: "#00C896",
+    color: "#D4AF37",
     heading: "Start Every Day Right",
     locked: false,
     bullets: [
@@ -190,7 +190,7 @@ export default function Welcome() {
               <p className="text-sm font-bold text-foreground mb-4">Your journey starts here:</p>
               <div className="space-y-3">
                 {[
-                  { num: "1", text: "Set up your Daily Planner & morning routine", color: "#00C896" },
+                  { num: "1", text: "Set up your Daily Planner & morning routine", color: "#D4AF37" },
                   { num: "2", text: "Complete all 39 Academy lessons", color: "#818CF8" },
                   { num: "3", text: "Pass the adaptive quiz (70%+)", color: "#F59E0B" },
                   { num: "4", text: "Unlock Risk Shield, Journal & Analytics", color: "#06B6D4" },

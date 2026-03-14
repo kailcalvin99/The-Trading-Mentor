@@ -33,10 +33,11 @@ export function verifyToken(token: string): AuthPayload {
 }
 
 export function setAuthCookie(res: Response, token: string): void {
+  const isReplit = !!process.env.REPL_ID;
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isReplit || process.env.NODE_ENV === "production",
+    sameSite: isReplit ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   });
