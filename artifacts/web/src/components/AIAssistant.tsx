@@ -19,7 +19,6 @@ import {
   Navigation,
   BookOpen,
   Sparkles,
-  Lightbulb,
 } from "lucide-react";
 
 const CAPABILITY_TIPS = [
@@ -221,14 +220,18 @@ export default function AIAssistant() {
   useEffect(() => {
     if (isNewUser) return;
     function checkTip() {
-      const lastTip = localStorage.getItem("ict-ai-tip-last");
-      const parsed = lastTip ? parseInt(lastTip, 10) : 0;
-      const ts = Number.isFinite(parsed) ? parsed : 0;
-      const elapsed = Date.now() - ts;
-      if (elapsed >= TIP_INTERVAL_MS) {
-        setTipIndex(Math.floor(Math.random() * CAPABILITY_TIPS.length));
-        setShowTip(true);
-      }
+      setShowTip(prev => {
+        if (prev) return prev;
+        const lastTip = localStorage.getItem("ict-ai-tip-last");
+        const parsed = lastTip ? parseInt(lastTip, 10) : 0;
+        const ts = Number.isFinite(parsed) ? parsed : 0;
+        const elapsed = Date.now() - ts;
+        if (elapsed >= TIP_INTERVAL_MS) {
+          setTipIndex(Math.floor(Math.random() * CAPABILITY_TIPS.length));
+          return true;
+        }
+        return false;
+      });
     }
     checkTip();
     const interval = setInterval(checkTip, 60_000);
@@ -516,7 +519,9 @@ export default function AIAssistant() {
               <X className="h-3.5 w-3.5" />
             </button>
             <div className="flex items-center gap-2 mb-2">
-              <Lightbulb className="h-4 w-4 text-primary" />
+              <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                <Bot className="h-3 w-3 text-primary" />
+              </div>
               <span className="text-xs font-bold text-primary uppercase">Did you know?</span>
             </div>
             <p className="text-sm font-medium text-foreground mb-2">{currentTip.headline}</p>
@@ -537,8 +542,8 @@ export default function AIAssistant() {
           <Bot className="h-5 w-5" />
           {isNewUser && (
             <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-yellow-400" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-primary" />
             </span>
           )}
         </button>
@@ -550,7 +555,9 @@ export default function AIAssistant() {
             <X className="h-3.5 w-3.5" />
           </button>
           <div className="flex items-center gap-2 mb-2">
-            <Lightbulb className="h-4 w-4 text-primary" />
+            <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+              <Bot className="h-3 w-3 text-primary" />
+            </div>
             <span className="text-xs font-bold text-primary uppercase">Did you know?</span>
           </div>
           <p className="text-sm font-medium text-foreground mb-2">{currentTip.headline}</p>
