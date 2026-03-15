@@ -37,7 +37,9 @@ router.post("/register", async (req, res) => {
       return;
     }
 
-    const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existing = await db.select().from(usersTable).where(eq(usersTable.email, normalizedEmail));
     if (existing.length > 0) {
       res.status(409).json({ error: "Email already registered" });
       return;
@@ -55,11 +57,14 @@ router.post("/register", async (req, res) => {
     const isFounder = currentFounderCount < founderLimit;
     const founderNumber = isFounder ? currentFounderCount + 1 : null;
 
+    const ADMIN_EMAIL = "alexcalvin.ac@gmail.com";
+    const isAdmin = currentUserCount === 0 || normalizedEmail === ADMIN_EMAIL;
+
     const [user] = await db.insert(usersTable).values({
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       passwordHash,
       name: name.trim(),
-      role: currentUserCount === 0 ? "admin" : "user",
+      role: isAdmin ? "admin" : "user",
       isFounder,
       founderNumber,
     }).returning();
