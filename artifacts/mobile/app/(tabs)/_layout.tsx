@@ -50,19 +50,18 @@ function ClassicTabLayout() {
         tabBarInactiveTintColor: C.tabIconDefault,
         headerShown: false,
         tabBarStyle: {
-          position: "absolute",
+          ...(isIOS ? { position: "absolute" as const } : {}),
           backgroundColor: isIOS ? "transparent" : C.backgroundSecondary,
           borderTopWidth: 1,
           borderTopColor: C.cardBorder,
           elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          ...(isWeb ? { height: 64 } : {}),
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-          ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: C.backgroundSecondary }]} />
-          ) : null,
+        tabBarBackground: isIOS
+          ? () => (
+              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+            )
+          : undefined,
       }}
     >
       <Tabs.Screen

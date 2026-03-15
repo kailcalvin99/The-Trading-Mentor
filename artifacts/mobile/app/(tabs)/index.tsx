@@ -49,7 +49,7 @@ const SESSIONS: Session[] = [
 
 const ROUTINE_ITEMS = [
   { key: "water" as const, label: "Water & Physical Reset", icon: "water-outline" as const, desc: "Hydrate, stretch, step outside 2 min" },
-  { key: "breathing" as const, label: "5-Min Box Breathing", icon: "wind-outline" as const, desc: "Inhale 4s → Hold 4s → Exhale 4s → Hold 4s" },
+  { key: "breathing" as const, label: "5-Min Box Breathing", icon: "body-outline" as const, desc: "Inhale 4s → Hold 4s → Exhale 4s → Hold 4s" },
   { key: "news" as const, label: "Check for Big News Events", icon: "newspaper-outline" as const, desc: "Are there any big news events today that could move the market?" },
   { key: "bias" as const, label: "Check the Big Picture Chart", icon: "trending-up-outline" as const, desc: "HTF (Higher Timeframe) — Is the market going up or down today?" },
 ];
