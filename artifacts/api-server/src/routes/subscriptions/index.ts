@@ -85,9 +85,6 @@ router.post("/create-checkout-session", authRequired, async (req: Request, res: 
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      subscription_data: existingSub[0]?.stripeSubscriptionId
-        ? undefined
-        : undefined,
       success_url: `https://${process.env.REPLIT_DEV_DOMAIN || req.get("host")}/web/pricing?success=1`,
       cancel_url: `https://${process.env.REPLIT_DEV_DOMAIN || req.get("host")}/web/pricing?canceled=1`,
       metadata: {
@@ -161,12 +158,14 @@ router.post("/subscribe", authRequired, async (req: Request, res: Response) => {
     const existingSub = await db.select().from(userSubscriptionsTable).where(eq(userSubscriptionsTable.userId, req.user!.userId));
 
     if (existingSub[0]?.stripeSubscriptionId) {
+      const stripe = await getStripeClient();
       try {
-        const stripe = await getStripeClient();
         await stripe.subscriptions.cancel(existingSub[0].stripeSubscriptionId);
       } catch (cancelErr: unknown) {
         const msg = cancelErr instanceof Error ? cancelErr.message : "unknown error";
-        console.warn("Could not cancel Stripe subscription:", msg);
+        console.error("Failed to cancel Stripe subscription:", msg);
+        res.status(502).json({ error: "Could not cancel your current subscription with Stripe. Please try again or contact support." });
+        return;
       }
     }
 
