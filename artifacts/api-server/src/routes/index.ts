@@ -8,7 +8,6 @@ import authRouter from "./auth";
 import subscriptionsRouter from "./subscriptions";
 import adminRouter from "./admin";
 import userSettingsRouter from "./user-settings";
-
 const router: IRouter = Router();
 
 router.use(healthRouter);

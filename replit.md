@@ -67,14 +67,31 @@ artifacts-monorepo/
 - **Standard** (Level 1, $29.99/mo): Full Academy, Risk Shield, unlimited AI Mentor
 - **Premium** (Level 2, $59.99/mo): Everything + Smart Journal, Analytics, Leaderboard, TradingView Webhooks
 
+### Stripe Payment Integration
+- **Stripe SDK**: `stripe` + `stripe-replit-sync` installed at workspace root
+- **Stripe Client**: `artifacts/api-server/src/stripe/stripeClient.ts` — fetches key from `STRIPE_SECRET_KEY` env var
+- **Webhook Handler**: `artifacts/api-server/src/stripe/webhookHandlers.ts` — processes webhook via `stripe-replit-sync`
+- **Webhook Route**: Registered in `app.ts` BEFORE `express.json()` at `/api/stripe/webhook` with `express.raw()`
+- **Stripe Init**: `index.ts` runs `runMigrations` → `getStripeSync` → `findOrCreateManagedWebhook` → `syncBackfill` on startup
+- **Seed Script**: `scripts/src/seed-stripe-products.ts` — creates Stripe products/prices and writes Price IDs to `subscription_tiers` table
+  - Run: `STRIPE_SECRET_KEY=<key> pnpm --filter @workspace/scripts run seed-stripe`
+- **Checkout Flow**: `POST /api/subscriptions/create-checkout-session` creates Stripe Checkout session, redirects user to Stripe
+- **Free Downgrade**: `POST /api/subscriptions/subscribe` handles free-tier downgrade (cancels Stripe subscription)
+- **Founder Discount**: Auto-applies coupon (repeating, 6 months) for founder users during checkout
+- **Env Vars**: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` set as shared env vars
+- **DB Columns**: `stripe_price_id_monthly`, `stripe_price_id_annual` on tiers; `stripe_customer_id`, `stripe_subscription_id`, `stripe_checkout_session_id` on user_subscriptions
+
 ### API Routes
 - `POST /api/auth/register` — register (auto-founder for first 20)
 - `POST /api/auth/login` — login, returns JWT in cookie
 - `GET /api/auth/me` — current user + subscription
 - `POST /api/auth/logout` — clear cookie
 - `GET /api/subscriptions/tiers` — list tiers + founder spots
-- `POST /api/subscriptions/subscribe` — subscribe/upgrade
+- `POST /api/subscriptions/subscribe` — subscribe/downgrade to free tier
+- `POST /api/subscriptions/create-checkout-session` — create Stripe Checkout session for paid tiers
 - `GET /api/subscriptions/my` — current subscription
+- `POST /api/stripe/webhook` — Stripe webhook endpoint (raw body, before express.json)
+- `POST /api/stripe/checkout-completed` — internal Stripe event handler
 - `GET/PUT /api/admin/users` — manage users
 - `PUT /api/admin/users/:id/subscription` — set custom pricing per user
 - `GET/PUT /api/admin/tiers` — manage tier pricing

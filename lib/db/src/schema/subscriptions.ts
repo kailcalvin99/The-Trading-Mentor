@@ -11,6 +11,8 @@ export const subscriptionTiersTable = pgTable("subscription_tiers", {
   features: jsonb("features").notNull().default([]),
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
+  stripePriceIdMonthly: text("stripe_price_id_monthly"),
+  stripePriceIdAnnual: text("stripe_price_id_annual"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -24,6 +26,9 @@ export const userSubscriptionsTable = pgTable("user_subscriptions", {
   customAnnualPrice: numeric("custom_annual_price", { precision: 10, scale: 2 }),
   founderDiscount: boolean("founder_discount").notNull().default(false),
   founderDiscountEndsAt: timestamp("founder_discount_ends_at"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeCheckoutSessionId: text("stripe_checkout_session_id"),
   startDate: timestamp("start_date").defaultNow().notNull(),
   endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

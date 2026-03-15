@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import { Check, Crown, Sparkles, Zap, Star, ArrowLeft } from "lucide-react";
+import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -25,6 +25,26 @@ export default function Pricing() {
   const [subscribing, setSubscribing] = useState<number | null>(null);
   const { user, subscription, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const paymentSuccess = searchParams.get("success") === "1";
+  const paymentCanceled = searchParams.get("canceled") === "1";
+
+  useEffect(() => {
+    if (paymentSuccess) {
+      refreshUser();
+      const timer = setTimeout(() => {
+        setSearchParams({}, { replace: true });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+    if (paymentCanceled) {
+      const timer = setTimeout(() => {
+        setSearchParams({}, { replace: true });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentSuccess, paymentCanceled]);
 
   useEffect(() => {
     fetch(`${API_BASE}/subscriptions/tiers`)
@@ -37,20 +57,41 @@ export default function Pricing() {
       .catch(() => {});
   }, []);
 
-  async function handleSubscribe(tierId: number) {
+  async function handleUpgrade(tierId: number, tierLevel: number) {
     setSubscribing(tierId);
     try {
-      const res = await fetch(`${API_BASE}/subscriptions/subscribe`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ tierId, billingCycle: annual ? "annual" : "monthly" }),
-      });
-      if (res.ok) {
-        await refreshUser();
-        navigate("/");
+      if (tierLevel === 0) {
+        const res = await fetch(`${API_BASE}/subscriptions/subscribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ tierId, billingCycle: annual ? "annual" : "monthly" }),
+        });
+        if (res.ok) {
+          await refreshUser();
+          navigate("/");
+        }
+      } else {
+        const res = await fetch(`${API_BASE}/subscriptions/create-checkout-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ tierId, billingCycle: annual ? "annual" : "monthly" }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.url) {
+            window.location.href = data.url;
+            return;
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          console.error("Checkout error:", errData.error);
+        }
       }
-    } catch {}
+    } catch (err) {
+      console.error("Upgrade error:", err);
+    }
     setSubscribing(null);
   }
 
@@ -77,6 +118,26 @@ export default function Pricing() {
           <Logo size={32} />
           <span className="text-lg font-bold text-foreground">Choose Your Plan</span>
         </div>
+
+        {paymentSuccess && (
+          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-8 flex items-center gap-3 animate-in fade-in duration-300">
+            <CheckCircle2 className="h-6 w-6 text-green-500 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-green-500">Payment successful!</p>
+              <p className="text-xs text-muted-foreground">Your plan has been upgraded. Welcome aboard!</p>
+            </div>
+          </div>
+        )}
+
+        {paymentCanceled && (
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-8 flex items-center gap-3 animate-in fade-in duration-300">
+            <XCircle className="h-6 w-6 text-orange-500 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-orange-500">Payment canceled</p>
+              <p className="text-xs text-muted-foreground">No charges were made. You can try again anytime.</p>
+            </div>
+          </div>
+        )}
 
         {user?.isFounder && (
           <div className="bg-gradient-to-r from-amber-500/10 to-primary/10 border border-amber-500/30 rounded-xl p-4 mb-8 flex items-center gap-3">
@@ -161,7 +222,7 @@ export default function Pricing() {
                 </ul>
 
                 <button
-                  onClick={() => handleSubscribe(tier.id)}
+                  onClick={() => handleUpgrade(tier.id, tier.level)}
                   disabled={isCurrentTier || subscribing === tier.id}
                   className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
                     isCurrentTier
@@ -178,7 +239,7 @@ export default function Pricing() {
                   ) : isCurrentTier ? (
                     "Current Plan"
                   ) : tier.level === 0 ? (
-                    "Get Started Free"
+                    "Downgrade to Free"
                   ) : (
                     `Upgrade to ${tier.name}`
                   )}
