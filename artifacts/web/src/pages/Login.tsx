@@ -141,19 +141,17 @@ export default function Login() {
           <div className="absolute top-20 left-20 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-primary/3 rounded-full blur-3xl" />
 
-          <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-8">
-            <img
-              src={`${import.meta.env.BASE_URL}logo.png`}
-              alt={appName}
-              className="w-[420px] h-[420px] max-w-[90%] max-h-[60vh] object-contain drop-shadow-2xl"
-            />
-            <div className="mt-8 text-center">
-              <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-3">
-                <BrainCircuit className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-semibold text-primary tracking-wide uppercase">{appTagline}</span>
-              </div>
-              <h1 className="text-3xl font-bold text-foreground">{appName}</h1>
+          <img
+            src={`${import.meta.env.BASE_URL}logo.png`}
+            alt={appName}
+            className="absolute inset-0 w-full h-full object-contain drop-shadow-2xl z-10"
+          />
+          <div className="absolute bottom-0 left-0 right-0 z-20 text-center pb-8 pt-16 bg-gradient-to-t from-background/90 via-background/50 to-transparent">
+            <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-3">
+              <BrainCircuit className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-semibold text-primary tracking-wide uppercase">{appTagline}</span>
             </div>
+            <h1 className="text-3xl font-bold text-foreground">{appName}</h1>
           </div>
         </div>
 
