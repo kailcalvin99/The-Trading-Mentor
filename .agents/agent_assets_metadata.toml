@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "3b4Tn1SnUM5O0t8h83A7n"
+uri = "file://artifacts/web/public/logo.png"
+type = "image"
+title = "ICT AI Trading Mentor Logo"
