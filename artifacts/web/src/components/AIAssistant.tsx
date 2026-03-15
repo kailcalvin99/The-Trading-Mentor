@@ -231,7 +231,7 @@ export default function AIAssistant() {
       }
     }
     checkTip();
-    const interval = setInterval(checkTip, TIP_INTERVAL_MS);
+    const interval = setInterval(checkTip, 60_000);
     return () => clearInterval(interval);
   }, [isNewUser]);
 
