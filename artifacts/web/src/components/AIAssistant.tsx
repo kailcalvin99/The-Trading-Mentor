@@ -199,6 +199,9 @@ export default function AIAssistant() {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
     }
+    if (isOpen && isNewUser && chatMessages.length === 0 && !conversationId) {
+      startConversation();
+    }
   }, [isOpen]);
 
   const fetchConversations = useCallback(async () => {
@@ -217,15 +220,19 @@ export default function AIAssistant() {
 
   useEffect(() => {
     if (isNewUser) return;
-    const lastTip = localStorage.getItem("ict-ai-tip-last");
-    const parsed = lastTip ? parseInt(lastTip, 10) : 0;
-    const ts = Number.isFinite(parsed) ? parsed : 0;
-    const elapsed = Date.now() - ts;
-    if (elapsed >= TIP_INTERVAL_MS) {
-      setTipIndex(Math.floor(Math.random() * CAPABILITY_TIPS.length));
-      localStorage.setItem("ict-ai-tip-last", String(Date.now()));
-      setShowTip(true);
+    function checkTip() {
+      const lastTip = localStorage.getItem("ict-ai-tip-last");
+      const parsed = lastTip ? parseInt(lastTip, 10) : 0;
+      const ts = Number.isFinite(parsed) ? parsed : 0;
+      const elapsed = Date.now() - ts;
+      if (elapsed >= TIP_INTERVAL_MS) {
+        setTipIndex(Math.floor(Math.random() * CAPABILITY_TIPS.length));
+        setShowTip(true);
+      }
     }
+    checkTip();
+    const interval = setInterval(checkTip, TIP_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, [isNewUser]);
 
   async function startConversation(): Promise<number | null> {
