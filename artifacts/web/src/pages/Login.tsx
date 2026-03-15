@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Home, Star, DollarSign, GraduationCap, Shield, Calendar } from "lucide-react";
+import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Home, Star, GraduationCap, Shield, Calendar } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -119,10 +119,6 @@ export default function Login() {
             <button onClick={() => document.getElementById("features-section")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors">
               <Star className="h-4 w-4" />
               <span className="hidden sm:inline">Features</span>
-            </button>
-            <button onClick={() => navigate("/pricing")} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors">
-              <DollarSign className="h-4 w-4" />
-              <span className="hidden sm:inline">Pricing</span>
             </button>
             <button
               onClick={scrollToSignIn}
