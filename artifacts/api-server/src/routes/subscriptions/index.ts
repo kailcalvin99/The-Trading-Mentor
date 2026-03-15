@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
+import Stripe from "stripe";
 import { db, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, usersTable } from "@workspace/db";
 import { eq, count } from "drizzle-orm";
 import { authRequired } from "../../middleware/auth";
@@ -6,7 +7,7 @@ import { getStripeClient } from "../../stripe/stripeClient";
 
 const router = Router();
 
-router.get("/tiers", async (_req, res) => {
+router.get("/tiers", async (_req: Request, res: Response) => {
   try {
     const tiers = await db.select().from(subscriptionTiersTable).where(eq(subscriptionTiersTable.isActive, true));
     const founderLimitSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_limit"));
@@ -30,9 +31,9 @@ router.get("/tiers", async (_req, res) => {
   }
 });
 
-router.post("/create-checkout-session", authRequired, async (req, res) => {
+router.post("/create-checkout-session", authRequired, async (req: Request, res: Response) => {
   try {
-    const { tierId, billingCycle } = req.body;
+    const { tierId, billingCycle } = req.body as { tierId: number; billingCycle: string };
 
     if (!tierId || !billingCycle) {
       res.status(400).json({ error: "Tier ID and billing cycle are required" });
@@ -76,28 +77,24 @@ router.post("/create-checkout-session", authRequired, async (req, res) => {
       customerId = customer.id;
     }
 
-    if (existingSub[0]?.stripeSubscriptionId) {
-      try {
-        await stripe.subscriptions.cancel(existingSub[0].stripeSubscriptionId);
-      } catch (cancelErr: any) {
-        console.warn("Could not cancel old subscription:", cancelErr.message);
-      }
-    }
-
     const founderDiscountSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_discount_pct"));
     const founderDiscountPct = parseInt(founderDiscountSetting[0]?.value || "50");
 
-    const sessionParams: any = {
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      subscription_data: existingSub[0]?.stripeSubscriptionId
+        ? undefined
+        : undefined,
       success_url: `https://${process.env.REPLIT_DEV_DOMAIN || req.get("host")}/web/pricing?success=1`,
       cancel_url: `https://${process.env.REPLIT_DEV_DOMAIN || req.get("host")}/web/pricing?canceled=1`,
       metadata: {
         userId: String(user.id),
         tierId: String(tierId),
         billingCycle,
+        oldStripeSubscriptionId: existingSub[0]?.stripeSubscriptionId || "",
       },
     };
 
@@ -113,36 +110,37 @@ router.post("/create-checkout-session", authRequired, async (req, res) => {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    const subData: any = {
-      userId: req.user!.userId,
-      stripeCustomerId: customerId,
-      stripeCheckoutSessionId: session.id,
-      billingCycle,
-      status: "pending",
-    };
-
     if (existingSub.length > 0) {
       await db.update(userSubscriptionsTable)
-        .set(subData)
+        .set({
+          stripeCustomerId: customerId,
+          stripeCheckoutSessionId: session.id,
+        })
         .where(eq(userSubscriptionsTable.userId, req.user!.userId));
     } else {
+      const [freeTier] = await db.select().from(subscriptionTiersTable).where(eq(subscriptionTiersTable.level, 0));
       await db.insert(userSubscriptionsTable).values({
-        ...subData,
-        tierId: tier.id,
+        userId: req.user!.userId,
+        tierId: freeTier?.id ?? tier.id,
+        stripeCustomerId: customerId,
+        stripeCheckoutSessionId: session.id,
+        billingCycle,
+        status: "active",
         startDate: new Date(),
       });
     }
 
     res.json({ url: session.url });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to create checkout session";
     console.error("Create checkout session error:", err);
-    res.status(500).json({ error: err.message || "Failed to create checkout session" });
+    res.status(500).json({ error: message });
   }
 });
 
-router.post("/subscribe", authRequired, async (req, res) => {
+router.post("/subscribe", authRequired, async (req: Request, res: Response) => {
   try {
-    const { tierId, billingCycle } = req.body;
+    const { tierId, billingCycle } = req.body as { tierId: number; billingCycle: string };
 
     if (!tierId || !billingCycle) {
       res.status(400).json({ error: "Tier ID and billing cycle are required" });
@@ -166,8 +164,9 @@ router.post("/subscribe", authRequired, async (req, res) => {
       try {
         const stripe = await getStripeClient();
         await stripe.subscriptions.cancel(existingSub[0].stripeSubscriptionId);
-      } catch (cancelErr: any) {
-        console.warn("Could not cancel Stripe subscription:", cancelErr.message);
+      } catch (cancelErr: unknown) {
+        const msg = cancelErr instanceof Error ? cancelErr.message : "unknown error";
+        console.warn("Could not cancel Stripe subscription:", msg);
       }
     }
 
@@ -180,6 +179,7 @@ router.post("/subscribe", authRequired, async (req, res) => {
       founderDiscountEndsAt: null,
       stripeSubscriptionId: null,
       stripeCheckoutSessionId: null,
+      stripeCustomerId: null,
       startDate: new Date(),
     };
 
@@ -198,7 +198,7 @@ router.post("/subscribe", authRequired, async (req, res) => {
   }
 });
 
-router.get("/my", authRequired, async (req, res) => {
+router.get("/my", authRequired, async (req: Request, res: Response) => {
   try {
     const subscription = await db
       .select({
