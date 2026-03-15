@@ -1,13 +1,26 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { propAccountTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
+import { authRequired } from "../../middleware/auth";
 
 const router: IRouter = Router();
 
-router.get("/account", async (_req, res) => {
+function getUserFilter(userId: number | undefined) {
+  if (userId) {
+    return eq(propAccountTable.userId, userId);
+  }
+  return isNull(propAccountTable.userId);
+}
+
+router.get("/account", authRequired, async (req, res) => {
   try {
-    const [account] = await db.select().from(propAccountTable).limit(1);
+    const userId = req.user!.userId;
+    const [account] = await db
+      .select()
+      .from(propAccountTable)
+      .where(getUserFilter(userId))
+      .limit(1);
     if (!account) {
       res.status(404).json({ error: "No account found" });
       return;
@@ -27,15 +40,20 @@ router.get("/account", async (_req, res) => {
   }
 });
 
-router.post("/account", async (req, res) => {
+router.post("/account", authRequired, async (req, res) => {
   try {
+    const userId = req.user!.userId;
     const { startingBalance, maxDailyLossPct = 2, maxTotalDrawdownPct = 5 } = req.body;
     if (!startingBalance || startingBalance <= 0) {
       res.status(400).json({ error: "Invalid balance" });
       return;
     }
 
-    const existing = await db.select().from(propAccountTable).limit(1);
+    const existing = await db
+      .select()
+      .from(propAccountTable)
+      .where(getUserFilter(userId))
+      .limit(1);
 
     let account;
     if (existing.length > 0) {
@@ -57,6 +75,7 @@ router.post("/account", async (req, res) => {
       const [created] = await db
         .insert(propAccountTable)
         .values({
+          userId,
           startingBalance: startingBalance.toString(),
           currentBalance: startingBalance.toString(),
           dailyLoss: "0",
@@ -83,15 +102,20 @@ router.post("/account", async (req, res) => {
   }
 });
 
-router.post("/account/daily-loss", async (req, res) => {
+router.post("/account/daily-loss", authRequired, async (req, res) => {
   try {
+    const userId = req.user!.userId;
     const { amount } = req.body;
     if (amount === undefined) {
       res.status(400).json({ error: "Amount required" });
       return;
     }
 
-    const [existing] = await db.select().from(propAccountTable).limit(1);
+    const [existing] = await db
+      .select()
+      .from(propAccountTable)
+      .where(getUserFilter(userId))
+      .limit(1);
     if (!existing) {
       res.status(404).json({ error: "No account found" });
       return;
@@ -127,9 +151,14 @@ router.post("/account/daily-loss", async (req, res) => {
   }
 });
 
-router.post("/account/reset-daily", async (req, res) => {
+router.post("/account/reset-daily", authRequired, async (req, res) => {
   try {
-    const [existing] = await db.select().from(propAccountTable).limit(1);
+    const userId = req.user!.userId;
+    const [existing] = await db
+      .select()
+      .from(propAccountTable)
+      .where(getUserFilter(userId))
+      .limit(1);
     if (!existing) {
       res.status(404).json({ error: "No account found" });
       return;

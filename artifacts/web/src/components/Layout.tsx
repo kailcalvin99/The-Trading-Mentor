@@ -178,12 +178,20 @@ export default function Layout() {
             <span className="hidden lg:inline">Subscription</span>
           </Link>
 
+          <Link
+            to="/settings"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <Settings className="h-5 w-5 shrink-0" />
+            <span className="hidden lg:inline">Settings</span>
+          </Link>
+
           {isAdmin && (
             <Link
               to="/admin"
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
-              <Settings className="h-5 w-5 shrink-0" />
+              <Lock className="h-5 w-5 shrink-0" />
               <span className="hidden lg:inline">Admin</span>
             </Link>
           )}

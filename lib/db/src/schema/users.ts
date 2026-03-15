@@ -10,6 +10,9 @@ export const usersTable = pgTable("users", {
   role: text("role").notNull().default("user"),
   isFounder: boolean("is_founder").notNull().default(false),
   founderNumber: integer("founder_number"),
+  defaultSession: text("default_session"),
+  preferredEntryStyle: text("preferred_entry_style"),
+  defaultPairs: text("default_pairs"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
