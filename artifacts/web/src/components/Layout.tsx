@@ -5,6 +5,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import { FreeSidebar, LockedFeatureOverlay } from "@/components/CasinoElements";
+import AIAssistant from "@/components/AIAssistant";
 
 const navItems = [
   { to: "/", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0 },
@@ -249,6 +250,10 @@ export default function Layout() {
       </aside>
 
       <div className="flex flex-col flex-1 min-w-0">
+        <div className="hidden md:flex items-center gap-3 px-4 py-2 border-b border-border bg-sidebar shrink-0">
+          <AIAssistant />
+        </div>
+
         <main className="flex-1 overflow-auto relative">
           <div className="flex h-full">
             <div className="flex-1 overflow-auto">
@@ -262,6 +267,10 @@ export default function Layout() {
             )}
           </div>
         </main>
+
+        <div className="md:hidden">
+          <AIAssistant />
+        </div>
 
         <nav className="md:hidden flex items-center border-t border-border bg-sidebar shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           {navItems.map((item) => (

@@ -100,10 +100,21 @@ Seven collapsible sections:
 - Login/Signup pages with gold branding and serif headings
 - Founder welcome modal with crown animation
 - Pricing page with monthly/annual toggle and founder discount display
-- Admin dashboard with user management, tier editing, global settings
+- Admin dashboard with user management, tier editing, global settings, AI Assistant panel
 - Casino-game elements: daily streak, spin wheel, achievements, premium teasers
 - Sidebar shows user profile, subscription status, founder badge
 - Feature locking based on subscription tier
+
+### AI Assistant (Persistent Global Chat)
+- **Web**: Top bar input (desktop) + floating action button (mobile) with slide-out side drawer
+- **Mobile**: Floating action button on all tabs with full-screen modal drawer
+- **Component**: `artifacts/web/src/components/AIAssistant.tsx` (web), `artifacts/mobile/components/AIAssistant.tsx` (mobile)
+- **Backend**: `artifacts/api-server/src/routes/gemini/index.ts` — Gemini function calling with tool declarations
+- **User tools**: navigate, log_trade, get_journal_entries, get_analytics_summary, calculate_position_size, complete_planner_items, get_user_context
+- **Admin tools**: list_users_summary, get_platform_stats, get_inactive_users, suggest_system_prompt
+- **Context injection**: Current page, route, user name, tier level, admin status, routine completion sent with each message
+- **Admin AI panel**: Dedicated AI chat in Admin page with "Generate Platform Summary" and "AI-Draft System Prompt" buttons
+- **Mentor tab removed**: Previously in ICT Academy (web and mobile), now replaced by persistent global AI assistant
 
 ### Discipline & Psychology Features
 - **Discipline Gate** (`DisciplineGate.tsx`): Daily 3-question quiz (narrative/math/awareness) before accessing trading tools. 3/3 required, configurable lockout on failure (default 60 min). Respects `feature_discipline_gate` toggle. Stored per day in localStorage.

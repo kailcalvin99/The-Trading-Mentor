@@ -41,7 +41,7 @@ import {
   type IndicatorItem,
 } from "../data/academy-data";
 
-type Tab = "learn" | "glossary" | "quiz" | "mentor" | "plan" | "tools";
+type Tab = "learn" | "glossary" | "quiz" | "plan" | "tools";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -1604,7 +1604,6 @@ const TAB_CONFIG: { key: Tab; label: string }[] = [
   { key: "learn", label: "Learn" },
   { key: "glossary", label: "Glossary" },
   { key: "quiz", label: "Quiz" },
-  { key: "mentor", label: "AI Mentor" },
   { key: "plan", label: "Plan" },
   { key: "tools", label: "Tools" },
 ];
@@ -1675,7 +1674,6 @@ export default function IctAcademy() {
         {tab === "learn" && <LearnView />}
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
-        {tab === "mentor" && <MentorView />}
         {tab === "plan" && <PlanView />}
         {tab === "tools" && <ToolsView />}
       </main>

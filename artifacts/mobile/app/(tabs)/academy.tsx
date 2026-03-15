@@ -1,25 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   type DimensionValue,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  useListGeminiConversations,
-  createGeminiConversation,
-  getGeminiConversation,
-} from "@workspace/api-client-react";
-import { streamMessage } from "@/lib/api";
 import Colors from "@/constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -57,12 +47,7 @@ const CHART_IMAGES: Record<string, number> = {
   "chart-exit-criteria.png": require("@/assets/images/chart-exit-criteria.png"),
 };
 
-type Tab = "learn" | "glossary" | "quiz" | "mentor" | "plan";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+type Tab = "learn" | "glossary" | "quiz" | "plan";
 
 const PROGRESS_KEY = "ict-academy-progress";
 
@@ -424,156 +409,6 @@ function QuizView() {
   );
 }
 
-function MentorView() {
-  const [conversationId, setConversationId] = useState<number | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
-
-  const { data: conversations, refetch } = useListGeminiConversations();
-
-  useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
-
-  async function startConversation() {
-    try {
-      const res = await createGeminiConversation({ title: "NQ Session" });
-      if (res) {
-        setConversationId(res.id);
-        setMessages([{ role: "assistant", content: "I'm your ICT Trading Mentor. Ask me about FVGs, Liquidity Sweeps, Silver Bullet setups, or NQ Futures strategy." }]);
-        refetch();
-      }
-    } catch {}
-  }
-
-  async function loadConversation(id: number) {
-    setConversationId(id);
-    try {
-      const res = await getGeminiConversation(id);
-      if (res) {
-        const data = res as { messages?: Array<{ role: string; content: string }> };
-        if (data.messages) {
-          setMessages(data.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })));
-        }
-      }
-    } catch {}
-  }
-
-  async function sendMessage() {
-    if (!input.trim() || !conversationId || isStreaming) return;
-    const userMsg = input.trim();
-    setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
-    setIsStreaming(true);
-
-    let assistantMsg = "";
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
-    try {
-      await streamMessage(
-        conversationId,
-        userMsg,
-        (chunk) => {
-          assistantMsg += chunk;
-          setMessages((prev) => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { role: "assistant", content: assistantMsg };
-            return updated;
-          });
-        },
-        () => { setIsStreaming(false); },
-        () => {
-          setMessages((prev) => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { role: "assistant", content: "Connection error. Please try again." };
-            return updated;
-          });
-          setIsStreaming(false);
-        }
-      );
-    } catch {
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = { role: "assistant", content: "Connection error. Please try again." };
-        return updated;
-      });
-      setIsStreaming(false);
-    }
-  }
-
-  if (!conversationId) {
-    return (
-      <View style={mentorStyles.container}>
-        <View style={mentorStyles.newChatBox}>
-          <Ionicons name="chatbubbles-outline" size={40} color={C.accent} />
-          <Text style={mentorStyles.newChatTitle}>ICT Mentor AI</Text>
-          <Text style={mentorStyles.newChatSub}>Ask anything about ICT concepts, NQ setups, or trading psychology</Text>
-          <TouchableOpacity style={mentorStyles.startBtn} onPress={startConversation}>
-            <Ionicons name="add" size={18} color="#0A0A0F" />
-            <Text style={mentorStyles.startBtnText}>New Conversation</Text>
-          </TouchableOpacity>
-        </View>
-        {conversations && conversations.length > 0 && (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-            <Text style={mentorStyles.historyLabel}>Previous Sessions</Text>
-            {[...conversations].reverse().slice(0, 5).map((c: any) => (
-              <TouchableOpacity key={c.id} style={mentorStyles.historyItem} onPress={() => loadConversation(c.id)}>
-                <Ionicons name="chatbubble-ellipses-outline" size={16} color={C.textSecondary} />
-                <Text style={mentorStyles.historyText} numberOfLines={1}>{c.title}</Text>
-                <Ionicons name="chevron-forward" size={14} color={C.textSecondary} />
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
-      </View>
-    );
-  }
-
-  return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={120}>
-      <View style={{ flex: 1 }}>
-        <TouchableOpacity style={mentorStyles.backBtn} onPress={() => setConversationId(null)}>
-          <Ionicons name="arrow-back" size={16} color={C.accent} />
-          <Text style={mentorStyles.backText}>Sessions</Text>
-        </TouchableOpacity>
-        <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 20 }}>
-          {messages.map((msg, i) => (
-            <View key={i} style={[mentorStyles.bubble, msg.role === "user" ? mentorStyles.userBubble : mentorStyles.aiBubble]}>
-              {msg.role === "assistant" && (
-                <View style={mentorStyles.aiAvatar}>
-                  <Text style={{ fontSize: 10 }}>ICT</Text>
-                </View>
-              )}
-              <View style={[mentorStyles.bubbleContent, msg.role === "user" ? mentorStyles.userContent : mentorStyles.aiContent]}>
-                <Text style={[mentorStyles.bubbleText, msg.role === "user" && { color: "#0A0A0F" }]}>
-                  {msg.content}{isStreaming && i === messages.length - 1 && msg.role === "assistant" ? "▋" : ""}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-        <View style={mentorStyles.inputRow}>
-          <TextInput
-            style={mentorStyles.input}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Ask your ICT mentor..."
-            placeholderTextColor={C.textSecondary}
-            onSubmitEditing={sendMessage}
-            returnKeyType="send"
-            editable={!isStreaming}
-            multiline
-          />
-          <TouchableOpacity style={[mentorStyles.sendBtn, (!input.trim() || isStreaming) && { opacity: 0.4 }]} onPress={sendMessage} disabled={!input.trim() || isStreaming}>
-            {isStreaming ? <ActivityIndicator size="small" color="#0A0A0F" /> : <Ionicons name="send" size={16} color="#0A0A0F" />}
-          </TouchableOpacity>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
-  );
-}
 
 const PLAN_IMAGES: Record<string, number> = {
   "Conservative Entry": require("@/assets/images/chart-conservative-entry.png"),
@@ -632,7 +467,6 @@ const TAB_LABELS: Record<Tab, string> = {
   learn: "Learn",
   glossary: "Glossary",
   quiz: "Quiz",
-  mentor: "Mentor",
   plan: "Plan",
 };
 
@@ -644,7 +478,7 @@ export default function AcademyScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>ICT Academy</Text>
         <View style={styles.tabBar}>
-          {(["learn", "glossary", "quiz", "mentor", "plan"] as Tab[]).map((t) => (
+          {(["learn", "glossary", "quiz", "plan"] as Tab[]).map((t) => (
             <TouchableOpacity key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
               <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
                 {TAB_LABELS[t]}
@@ -657,7 +491,6 @@ export default function AcademyScreen() {
         {tab === "learn" && <LearnView />}
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
-        {tab === "mentor" && <MentorView />}
         {tab === "plan" && <PlanView />}
       </View>
     </SafeAreaView>
@@ -754,30 +587,6 @@ const quizStyles = StyleSheet.create({
   retryText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 });
 
-const mentorStyles = StyleSheet.create({
-  container: { flex: 1 },
-  newChatBox: { alignItems: "center", padding: 30, paddingTop: 40 },
-  newChatTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: C.text, marginTop: 14, marginBottom: 8 },
-  newChatSub: { fontSize: 14, color: C.textSecondary, textAlign: "center", lineHeight: 22, marginBottom: 24 },
-  startBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.accent, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 14 },
-  startBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
-  historyLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 },
-  historyItem: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: C.cardBorder },
-  historyText: { flex: 1, fontSize: 14, color: C.text },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 6, padding: 14 },
-  backText: { fontSize: 14, color: C.accent },
-  bubble: { flexDirection: "row", marginBottom: 12, alignItems: "flex-end" },
-  userBubble: { justifyContent: "flex-end" },
-  aiBubble: { justifyContent: "flex-start", gap: 8 },
-  aiAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.accent + "33", alignItems: "center", justifyContent: "center", marginBottom: 2 },
-  bubbleContent: { maxWidth: "80%" as DimensionValue, borderRadius: 16, padding: 12 },
-  userContent: { backgroundColor: C.accent, borderBottomRightRadius: 4 },
-  aiContent: { backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder, borderBottomLeftRadius: 4 },
-  bubbleText: { fontSize: 14, color: C.text, lineHeight: 21 },
-  inputRow: { flexDirection: "row", alignItems: "flex-end", padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: C.cardBorder },
-  input: { flex: 1, backgroundColor: C.backgroundSecondary, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: C.text, borderWidth: 1, borderColor: C.cardBorder, maxHeight: 100 },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.accent, alignItems: "center", justifyContent: "center" },
-});
 
 const planStyles = StyleSheet.create({
   heading: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 4 },

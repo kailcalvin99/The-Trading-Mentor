@@ -29,12 +29,20 @@ export async function apiDelete(path: string): Promise<void> {
   if (!res.ok && res.status !== 204) throw new Error(`API error: ${res.status}`);
 }
 
+export interface ToolCallEvent {
+  name: string;
+  args: Record<string, unknown>;
+  result: Record<string, unknown>;
+}
+
 export async function streamMessage(
   conversationId: number,
   content: string,
   onChunk: (text: string) => void,
   onDone: () => void,
-  onError: (err: string) => void
+  onError: (err: string) => void,
+  pageContext?: Record<string, unknown>,
+  onToolCall?: (toolCall: ToolCallEvent) => void
 ): Promise<void> {
   const res = await fetch(
     `${getApiUrl()}gemini/conversations/${conversationId}/messages`,
@@ -44,7 +52,7 @@ export async function streamMessage(
         "Content-Type": "application/json",
         Accept: "text/event-stream",
       },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, pageContext }),
     }
   );
 
@@ -76,6 +84,7 @@ export async function streamMessage(
       try {
         const parsed = JSON.parse(data);
         if (parsed.content) onChunk(parsed.content);
+        if (parsed.toolCall && onToolCall) onToolCall(parsed.toolCall);
         if (parsed.done) onDone();
         if (parsed.error) onError(parsed.error);
       } catch {}

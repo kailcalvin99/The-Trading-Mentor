@@ -8,17 +8,19 @@ import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 import Colors from "@/constants/colors";
+import AIAssistant from "@/components/AIAssistant";
 
 const C = Colors.dark;
 
 function NativeTabLayout() {
   return (
+    <>
     <NativeTabs>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "checklist", selected: "checklist" }} />
         <Label>Planner</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="chat">
+      <NativeTabs.Trigger name="academy">
         <Icon sf={{ default: "graduationcap", selected: "graduationcap.fill" }} />
         <Label>Academy</Label>
       </NativeTabs.Trigger>
@@ -31,6 +33,8 @@ function NativeTabLayout() {
         <Label>Journal</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
+    <AIAssistant />
+    </>
   );
 }
 
@@ -39,6 +43,7 @@ function ClassicTabLayout() {
   const isWeb = Platform.OS === "web";
 
   return (
+    <>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: C.accent,
@@ -73,7 +78,7 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="academy"
         options={{
           title: "Academy",
           tabBarIcon: ({ color }) =>
@@ -109,6 +114,8 @@ function ClassicTabLayout() {
         }}
       />
     </Tabs>
+    <AIAssistant />
+    </>
   );
 }
 

@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import {
   Crown, Users, Settings, DollarSign, Save, Edit2, X, Check,
   AlertTriangle, RotateCcw, ChevronDown, ChevronRight,
-  Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target
+  Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target,
+  Sparkles, Send, Loader2, BarChart3, FileText,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -108,7 +109,7 @@ function SettingToggle({ label, desc, checked, onChange }: {
 export default function Admin() {
   const { user } = useAuth();
   const { reload: reloadConfig } = useAppConfig();
-  const [tab, setTab] = useState<"users" | "tiers" | "settings">("users");
+  const [tab, setTab] = useState<"users" | "tiers" | "settings" | "ai">("users");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [tiers, setTiers] = useState<AdminTier[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -261,11 +262,12 @@ export default function Admin() {
         Admin Dashboard
       </h1>
 
-      <div className="flex gap-2 mb-6 border-b border-border pb-2">
+      <div className="flex gap-2 mb-6 border-b border-border pb-2 flex-wrap">
         {[
           { key: "users" as const, label: "Users", icon: Users },
           { key: "tiers" as const, label: "Subscription Tiers", icon: DollarSign },
           { key: "settings" as const, label: "Settings", icon: Settings },
+          { key: "ai" as const, label: "AI Assistant", icon: Sparkles },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -672,6 +674,266 @@ export default function Admin() {
           </SettingsSection>
         </div>
       )}
+
+      {tab === "ai" && <AdminAIPanel settings={settings} updateSetting={updateSetting} saveSettings={saveSettings} saving={saving} />}
+    </div>
+  );
+}
+
+function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
+  settings: Record<string, string>;
+  updateSetting: (key: string, value: string) => void;
+  saveSettings: () => Promise<void>;
+  saving: boolean;
+}) {
+  const [adminMessages, setAdminMessages] = useState<{ role: string; content: string }[]>([]);
+  const [adminInput, setAdminInput] = useState("");
+  const [adminStreaming, setAdminStreaming] = useState(false);
+  const [adminConvId, setAdminConvId] = useState<number | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryText, setSummaryText] = useState("");
+  const [draftPromptLoading, setDraftPromptLoading] = useState(false);
+  const [draftPrompt, setDraftPrompt] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fetchOpts: RequestInit = { credentials: "include" };
+  const headers = { "Content-Type": "application/json" };
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [adminMessages]);
+
+  async function ensureConversation(): Promise<number> {
+    if (adminConvId) return adminConvId;
+    const res = await fetch(`${API_BASE}/gemini/conversations`, {
+      method: "POST", ...fetchOpts, headers,
+      body: JSON.stringify({ title: "Admin AI Session" }),
+    });
+    const data = await res.json();
+    setAdminConvId(data.id);
+    return data.id;
+  }
+
+  async function streamAdminMessage(msg: string, convId: number) {
+    const response = await fetch(`${API_BASE}/gemini/conversations/${convId}/messages`, {
+      method: "POST", ...fetchOpts, headers,
+      body: JSON.stringify({
+        content: msg,
+        pageContext: { currentPage: "Admin Dashboard", route: "/admin", isAdmin: true },
+      }),
+    });
+    const reader = response.body?.getReader();
+    if (!reader) return "";
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data: ")) continue;
+        try {
+          const parsed = JSON.parse(trimmed.slice(6));
+          if (parsed.content) {
+            fullText += parsed.content;
+            setAdminMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: "assistant", content: fullText };
+              return updated;
+            });
+          }
+          if (parsed.done) break;
+        } catch {}
+      }
+    }
+    return fullText;
+  }
+
+  async function sendAdminMessage() {
+    if (!adminInput.trim() || adminStreaming) return;
+    const msg = adminInput.trim();
+    setAdminInput("");
+    setAdminMessages(prev => [...prev, { role: "user", content: msg }]);
+    setAdminStreaming(true);
+    setAdminMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+    try {
+      const convId = await ensureConversation();
+      await streamAdminMessage(msg, convId);
+    } catch {
+      setAdminMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: "assistant", content: "Error getting response." };
+        return updated;
+      });
+    }
+    setAdminStreaming(false);
+  }
+
+  async function generateSummary() {
+    setSummaryLoading(true);
+    setSummaryText("");
+    try {
+      const convId = await ensureConversation();
+      setAdminMessages(prev => [...prev,
+        { role: "user", content: "Generate a comprehensive platform health summary. Include user growth, subscription distribution, trading activity, win rates, and any concerns." },
+        { role: "assistant", content: "" },
+      ]);
+      const result = await streamAdminMessage(
+        "Generate a comprehensive platform health summary. Include user growth, subscription distribution, trading activity, win rates, and any concerns. Use the get_platform_stats and list_users_summary tools to gather real data.",
+        convId,
+      );
+      setSummaryText(result);
+    } catch {
+      setSummaryText("Failed to generate summary.");
+    }
+    setSummaryLoading(false);
+  }
+
+  async function generatePromptDraft() {
+    setDraftPromptLoading(true);
+    setDraftPrompt("");
+    try {
+      const convId = await ensureConversation();
+      setAdminMessages(prev => [...prev,
+        { role: "user", content: "Draft an improved AI mentor system prompt based on current platform usage patterns." },
+        { role: "assistant", content: "" },
+      ]);
+      const result = await streamAdminMessage(
+        "Draft an improved AI mentor system prompt for this trading platform. Use the suggest_system_prompt tool to get the current prompt, then create an enhanced version. Output ONLY the new system prompt text, no other commentary.",
+        convId,
+      );
+      setDraftPrompt(result);
+    } catch {
+      setDraftPrompt("Failed to generate prompt draft.");
+    }
+    setDraftPromptLoading(false);
+  }
+
+  function applyDraftPrompt() {
+    if (draftPrompt) {
+      updateSetting("ai_mentor_system_prompt", draftPrompt);
+      saveSettings();
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-bold">Admin AI Chat</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Ask about platform activity, user engagement, or anything else. The AI has access to admin tools.
+        </p>
+
+        <div className="bg-card border border-border rounded-xl overflow-hidden h-[400px] flex flex-col">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">
+            {adminMessages.length === 0 && (
+              <div className="flex items-center justify-center h-full text-center">
+                <div>
+                  <Sparkles className="h-8 w-8 text-primary/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Ask the AI about your platform</p>
+                </div>
+              </div>
+            )}
+            {adminMessages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
+                  msg.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
+                }`}>
+                  <p className="whitespace-pre-wrap">{msg.content}{adminStreaming && i === adminMessages.length - 1 && msg.role === "assistant" ? "\u258B" : ""}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-2 border-t border-border flex gap-2">
+            <input
+              type="text"
+              value={adminInput}
+              onChange={(e) => setAdminInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendAdminMessage()}
+              placeholder="Ask about users, stats, activity..."
+              disabled={adminStreaming}
+              className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              onClick={sendAdminMessage}
+              disabled={!adminInput.trim() || adminStreaming}
+              className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center shrink-0 disabled:opacity-40"
+            >
+              {adminStreaming ? <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" /> : <Send className="h-4 w-4 text-primary-foreground" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="h-5 w-5 text-emerald-500" />
+            <h3 className="text-sm font-bold">Platform Health Summary</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            AI-generated overview of platform usage, user activity, and trading statistics.
+          </p>
+          <button
+            onClick={generateSummary}
+            disabled={summaryLoading}
+            className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-500/20 disabled:opacity-40"
+          >
+            {summaryLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <BarChart3 className="h-4 w-4" />}
+            Generate Summary
+          </button>
+          {summaryText && (
+            <div className="mt-3 bg-muted/50 rounded-lg p-3 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
+              {summaryText}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="h-5 w-5 text-blue-500" />
+            <h3 className="text-sm font-bold">AI-Draft System Prompt</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Generate an improved mentor system prompt. Review before applying.
+          </p>
+          <button
+            onClick={generatePromptDraft}
+            disabled={draftPromptLoading}
+            className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 text-blue-500 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500/20 disabled:opacity-40"
+          >
+            {draftPromptLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            Draft New Prompt
+          </button>
+          {draftPrompt && (
+            <div className="mt-3 space-y-2">
+              <div className="bg-muted/50 rounded-lg p-3 text-xs whitespace-pre-wrap max-h-48 overflow-y-auto font-mono">
+                {draftPrompt}
+              </div>
+              <button
+                onClick={applyDraftPrompt}
+                disabled={saving}
+                className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 disabled:opacity-40"
+              >
+                <Save className="h-4 w-4" />
+                Apply & Save
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
