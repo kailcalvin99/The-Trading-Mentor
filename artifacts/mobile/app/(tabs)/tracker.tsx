@@ -428,7 +428,7 @@ export default function RiskShieldScreen() {
           </>
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
 
       <Modal

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -402,7 +403,7 @@ export default function JournalScreen() {
           </>
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
 
       {/* Trade Form Modal */}

@@ -8,6 +8,7 @@ import {
   Alert,
   Switch,
   TextInput,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -328,7 +329,7 @@ export default function PlannerScreen() {
           ))}
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
     </SafeAreaView>
   );
