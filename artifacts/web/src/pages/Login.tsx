@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Home, Star, DollarSign } from "lucide-react";
+import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Home, Star, DollarSign, GraduationCap, Shield, Calendar } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -104,7 +104,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-y-auto">
       <nav className="w-full bg-card/80 backdrop-blur-md border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
@@ -120,7 +120,7 @@ export default function Login() {
               <Star className="h-4 w-4" />
               <span className="hidden sm:inline">Features</span>
             </button>
-            <button onClick={() => document.getElementById("pricing-section")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors">
+            <button onClick={() => navigate("/pricing")} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors">
               <DollarSign className="h-4 w-4" />
               <span className="hidden sm:inline">Pricing</span>
             </button>
@@ -232,6 +232,51 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      <section id="features-section" className="w-full bg-card/30 border-t border-border py-16 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl font-bold text-foreground mb-2">Everything You Need to Trade Like a Pro</h2>
+            <p className="text-muted-foreground">Built on ICT methodology with AI-powered guidance at every step</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <GraduationCap className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">ICT Academy</h3>
+              <p className="text-sm text-muted-foreground">39 structured lessons covering FVGs, MSS, OTE, Kill Zones, and more — explained simply.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Bot className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">AI Mentor</h3>
+              <p className="text-sm text-muted-foreground">Your personal ICT trading coach — ask questions, log trades, and get real-time feedback.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">Risk Shield</h3>
+              <p className="text-sm text-muted-foreground">Position sizing calculator, drawdown tracking, and automatic cool-down enforcement.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Calendar className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">Daily Planner</h3>
+              <p className="text-sm text-muted-foreground">Morning routine checklists, discipline tracking, and trade preparation workflows.</p>
+            </div>
+          </div>
+          <div className="text-center mt-10">
+            <Link to="/signup" className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-8 py-3 rounded-xl hover:brightness-110 transition-all">
+              <Rocket className="h-5 w-5" />
+              Get Started Free
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
