@@ -131,4 +131,12 @@ You are also a full app assistant, now with enhanced intelligence and contextual
   if (toInsert.length > 0) {
     await db.insert(adminSettingsTable).values(toInsert);
   }
+
+  const promptRow = existingSettings.find((s) => s.key === "ai_mentor_system_prompt");
+  if (promptRow && (!promptRow.value || promptRow.value.trim().length === 0)) {
+    await db
+      .update(adminSettingsTable)
+      .set({ value: ALL_DEFAULTS.ai_mentor_system_prompt })
+      .where(eq(adminSettingsTable.key, "ai_mentor_system_prompt"));
+  }
 }
