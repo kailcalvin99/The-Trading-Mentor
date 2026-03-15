@@ -522,7 +522,7 @@ export default function AIAssistant() {
               <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                 <Bot className="h-3 w-3 text-primary" />
               </div>
-              <span className="text-xs font-bold text-primary uppercase">Did you know?</span>
+              <span className="text-xs font-bold text-primary">💡 Did you know?</span>
             </div>
             <p className="text-sm font-medium text-foreground mb-2">{currentTip.headline}</p>
             <div className="space-y-1 mb-3">
@@ -558,7 +558,7 @@ export default function AIAssistant() {
             <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
               <Bot className="h-3 w-3 text-primary" />
             </div>
-            <span className="text-xs font-bold text-primary uppercase">Did you know?</span>
+            <span className="text-xs font-bold text-primary">💡 Did you know?</span>
           </div>
           <p className="text-sm font-medium text-foreground mb-2">{currentTip.headline}</p>
           <div className="space-y-1 mb-3">
