@@ -19,7 +19,21 @@ import {
   Navigation,
   BookOpen,
   Sparkles,
+  Lightbulb,
 } from "lucide-react";
+
+const CAPABILITY_TIPS = [
+  { headline: "Navigate the app hands-free", examples: ["Take me to the Daily Planner", "Open my Smart Journal"] },
+  { headline: "Log trades with your voice", examples: ["Log a win on NQ with 0.5% risk", "Record a loss on MNQ"] },
+  { headline: "Check your performance instantly", examples: ["What's our win rate?", "Show me the team's recent trades"] },
+  { headline: "Calculate position sizing", examples: ["I have a 12 point stop, how many NQ contracts?"] },
+  { headline: "Learn ICT concepts simply", examples: ["Explain FVG in simple terms", "What is OTE?"] },
+  { headline: "Complete your morning routine", examples: ["Mark my morning routine complete", "What's in my routine?"] },
+  { headline: "Review your trading rules", examples: ["Remind me the 5 rules before I trade"] },
+  { headline: "Get personalized coaching", examples: ["Review my trading discipline", "Am I following the rules?"] },
+];
+
+const TIP_INTERVAL_MS = 2 * 60 * 60 * 1000;
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -162,6 +176,9 @@ export default function AIAssistant() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(() => !localStorage.getItem("ict-ai-welcomed"));
+  const [showTip, setShowTip] = useState(false);
+  const [tipIndex, setTipIndex] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -198,6 +215,19 @@ export default function AIAssistant() {
     if (isOpen) fetchConversations();
   }, [isOpen, fetchConversations]);
 
+  useEffect(() => {
+    if (isNewUser) return;
+    const lastTip = localStorage.getItem("ict-ai-tip-last");
+    const parsed = lastTip ? parseInt(lastTip, 10) : 0;
+    const ts = Number.isFinite(parsed) ? parsed : 0;
+    const elapsed = Date.now() - ts;
+    if (elapsed >= TIP_INTERVAL_MS) {
+      setTipIndex(Math.floor(Math.random() * CAPABILITY_TIPS.length));
+      localStorage.setItem("ict-ai-tip-last", String(Date.now()));
+      setShowTip(true);
+    }
+  }, [isNewUser]);
+
   async function startConversation(): Promise<number | null> {
     try {
       const res = await fetch(`${API_BASE}/gemini/conversations`, {
@@ -209,10 +239,16 @@ export default function AIAssistant() {
       if (res.ok) {
         const data: Conversation = await res.json();
         setConversationId(data.id);
-        setChatMessages([{
-          role: "assistant",
-          content: `Hey ${user?.name || "there"}! I'm your trading assistant. Ask me anything about ICT concepts, or tell me to log a trade, check your analytics, calculate position sizes, or navigate the app. What can I help with?`,
-        }]);
+        const name = user?.name || "there";
+        const welcomeContent = isNewUser
+          ? `Hey ${name}! 👋 I'm your ICT AI Trading Mentor. Here's what I can do for you:\n\n📚 **Teach ICT Concepts** — Ask me about FVGs, OTE, Kill Zones, MSS, liquidity sweeps, and more. I explain everything in simple language.\n\n🗺️ **Navigate the App** — Say "take me to the Daily Planner" or "open my journal" and I'll go there instantly.\n\n📝 **Log Trades** — Tell me "log a win on NQ" and I'll record it in your Smart Journal with all the details.\n\n📊 **Analyze Performance** — Ask "how's the team doing?" or "what's our win rate?" for an instant analytics summary.\n\n📐 **Calculate Position Size** — Say "I have a 10 point stop, how many contracts?" and I'll calculate NQ/MNQ sizing.\n\n✅ **Complete Your Morning Routine** — Tell me "mark my morning routine done" and I'll check off your planner items.\n\n💡 **Coach You on Rules** — I'll remind you of the 5 trading rules whenever relevant and give feedback on discipline.\n\nWhat would you like to start with?`
+          : `Hey ${name}! I'm your trading assistant. Ask me anything about ICT concepts, or tell me to log a trade, check your analytics, calculate position sizes, or navigate the app. What can I help with?`;
+        setChatMessages([{ role: "assistant", content: welcomeContent }]);
+        if (isNewUser) {
+          localStorage.setItem("ict-ai-welcomed", "1");
+          localStorage.setItem("ict-ai-tip-last", String(Date.now()));
+          setIsNewUser(false);
+        }
         setShowHistory(false);
         fetchConversations();
         return data.id;
@@ -436,9 +472,21 @@ export default function AIAssistant() {
     }
   }
 
+  function dismissTip() {
+    setShowTip(false);
+    localStorage.setItem("ict-ai-tip-last", String(Date.now()));
+  }
+
+  function handleTryIt() {
+    dismissTip();
+    setIsOpen(true);
+  }
+
+  const currentTip = CAPABILITY_TIPS[tipIndex];
+
   return (
     <>
-      <div className="hidden md:flex items-center gap-2 h-10 px-3 bg-card/50 border border-border rounded-xl cursor-pointer hover:bg-card transition-colors flex-1 max-w-md"
+      <div className="hidden md:flex items-center gap-2 h-10 px-3 bg-card/50 border border-border rounded-xl cursor-pointer hover:bg-card transition-colors flex-1 max-w-md relative"
         onClick={() => { setIsOpen(true); }}
       >
         <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -446,15 +494,69 @@ export default function AIAssistant() {
         <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground ml-auto shrink-0">
           AI
         </kbd>
+        {isNewUser && (
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
+          </span>
+        )}
       </div>
 
-      <button
-        className="md:hidden fixed bottom-20 right-4 z-50 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center hover:opacity-90 transition-opacity"
-        onClick={() => setIsOpen(true)}
-        style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
-      >
-        <Bot className="h-5 w-5" />
-      </button>
+      <div className="md:hidden fixed bottom-20 right-4 z-50" style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        {showTip && !isOpen && (
+          <div className="absolute bottom-14 right-0 w-64 bg-card border border-border rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <button onClick={dismissTip} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+            <div className="flex items-center gap-2 mb-2">
+              <Lightbulb className="h-4 w-4 text-primary" />
+              <span className="text-xs font-bold text-primary uppercase">Did you know?</span>
+            </div>
+            <p className="text-sm font-medium text-foreground mb-2">{currentTip.headline}</p>
+            <div className="space-y-1 mb-3">
+              {currentTip.examples.map((ex, i) => (
+                <p key={i} className="text-xs text-muted-foreground italic">"{ex}"</p>
+              ))}
+            </div>
+            <button onClick={handleTryIt} className="w-full bg-primary text-primary-foreground text-xs font-bold py-1.5 rounded-lg hover:opacity-90 transition-opacity">
+              Try it
+            </button>
+          </div>
+        )}
+        <button
+          className="w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center hover:opacity-90 transition-opacity relative"
+          onClick={() => setIsOpen(true)}
+        >
+          <Bot className="h-5 w-5" />
+          {isNewUser && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-yellow-400" />
+            </span>
+          )}
+        </button>
+      </div>
+
+      {showTip && !isOpen && (
+        <div className="hidden md:block fixed bottom-4 right-4 z-40 w-72 bg-card border border-border rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <button onClick={dismissTip} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
+          <div className="flex items-center gap-2 mb-2">
+            <Lightbulb className="h-4 w-4 text-primary" />
+            <span className="text-xs font-bold text-primary uppercase">Did you know?</span>
+          </div>
+          <p className="text-sm font-medium text-foreground mb-2">{currentTip.headline}</p>
+          <div className="space-y-1 mb-3">
+            {currentTip.examples.map((ex, i) => (
+              <p key={i} className="text-xs text-muted-foreground italic">"{ex}"</p>
+            ))}
+          </div>
+          <button onClick={handleTryIt} className="w-full bg-primary text-primary-foreground text-xs font-bold py-1.5 rounded-lg hover:opacity-90 transition-opacity">
+            Try it
+          </button>
+        </div>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex">
