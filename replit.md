@@ -78,6 +78,7 @@ artifacts-monorepo/
 - **Checkout Flow**: `POST /api/subscriptions/create-checkout-session` creates Stripe Checkout session, redirects user to Stripe
 - **Free Downgrade**: `POST /api/subscriptions/subscribe` handles free-tier downgrade (cancels Stripe subscription)
 - **Founder Discount**: Auto-applies coupon (repeating, 6 months) for founder users during checkout
+- **Webhook Secret**: Managed by `stripe-replit-sync` via `findOrCreateManagedWebhook()` — no manual `STRIPE_WEBHOOK_SECRET` env var needed
 - **Env Vars**: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` set as shared env vars
 - **DB Columns**: `stripe_price_id_monthly`, `stripe_price_id_annual` on tiers; `stripe_customer_id`, `stripe_subscription_id`, `stripe_checkout_session_id` on user_subscriptions
 
