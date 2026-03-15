@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 import Logo from "@/components/Logo";
 import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket } from "lucide-react";
 
@@ -14,7 +15,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const { login } = useAuth();
+  const { config } = useAppConfig();
   const navigate = useNavigate();
+  const appName = config.app_name || "ICT AI Trading Mentor";
+  const appTagline = config.app_tagline || "AI-Powered Trading Intelligence";
 
   useEffect(() => {
     fetch(`${API_BASE}/auth/setup-status`, { credentials: "include" })
@@ -44,14 +48,14 @@ export default function Login() {
         <div className="w-full max-w-lg text-center">
           <img
             src={`${import.meta.env.BASE_URL}logo.png`}
-            alt="ICT AI Trading Mentor"
+            alt={appName}
             className="w-40 h-40 object-contain mx-auto mb-6 drop-shadow-2xl"
           />
           <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-4">
             <Rocket className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-semibold text-primary tracking-wide uppercase">First Time Setup</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-3">Welcome to ICT AI Trading Mentor</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-3">Welcome to {appName}</h1>
           <p className="text-muted-foreground mb-8">
             No accounts exist yet. Create the first account to become the Admin and set up your trading platform.
           </p>
@@ -102,15 +106,15 @@ export default function Login() {
         <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-8">
           <img
             src={`${import.meta.env.BASE_URL}logo.png`}
-            alt="ICT AI Trading Mentor"
+            alt={appName}
             className="max-w-[85%] max-h-[70vh] object-contain drop-shadow-2xl"
           />
           <div className="mt-6 text-center">
             <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-3">
               <BrainCircuit className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-semibold text-primary tracking-wide uppercase">AI-Powered Trading Intelligence</span>
+              <span className="text-xs font-semibold text-primary tracking-wide uppercase">{appTagline}</span>
             </div>
-            <h1 className="text-3xl font-bold text-foreground">ICT AI Trading Mentor</h1>
+            <h1 className="text-3xl font-bold text-foreground">{appName}</h1>
           </div>
         </div>
       </div>
@@ -119,7 +123,7 @@ export default function Login() {
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <Logo size={56} />
-            <span className="text-xl font-bold text-foreground">ICT AI Trading Mentor</span>
+            <span className="text-xl font-bold text-foreground">{appName}</span>
           </div>
 
           <div className="bg-card border border-border rounded-2xl p-8">

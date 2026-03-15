@@ -7,6 +7,7 @@ import {
   getListTradesQueryKey,
 } from "@workspace/api-client-react";
 import { usePlanner } from "@/contexts/PlannerContext";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -130,6 +131,7 @@ function StressSliderControl({ value, onChange }: { value: number; onChange: (v:
 
 export default function SmartJournal() {
   const { isRoutineComplete } = usePlanner();
+  const { getNumber } = useAppConfig();
   const qc = useQueryClient();
 
   const [showForm, setShowForm] = useState(false);
@@ -252,7 +254,7 @@ export default function SmartJournal() {
         await deleteTradeMut({ id: editingDraftId });
       }
       if (form.outcome === "win" || form.outcome === "loss") {
-        recordTradeResult(form.outcome === "win");
+        recordTradeResult(form.outcome === "win", getNumber("consecutive_loss_threshold", 2));
       }
       qc.invalidateQueries({ queryKey: getListTradesQueryKey() });
       setShowForm(false);

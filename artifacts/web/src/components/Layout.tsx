@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-do
 import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 import { FreeSidebar, LockedFeatureOverlay } from "@/components/CasinoElements";
 
 const navItems = [
@@ -114,6 +115,7 @@ function MobileNavItem({
 
 export default function Layout() {
   const { user, subscription, tierLevel, isAdmin, logout } = useAuth();
+  const { config } = useAppConfig();
   const [showLockToast, setShowLockToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCasinoSidebar, setShowCasinoSidebar] = useState(false);
@@ -152,7 +154,7 @@ export default function Layout() {
         <div className="flex items-center gap-2 px-3 h-14 border-b border-sidebar-border">
           <Logo size={32} />
           <span className="hidden lg:block text-sm font-semibold text-sidebar-foreground truncate">
-            ICT AI Trading Mentor
+            {config.app_name || "ICT AI Trading Mentor"}
           </span>
         </div>
 

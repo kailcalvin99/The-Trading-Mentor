@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Shield, Lock, CheckCircle2, XCircle, Clock, BookOpen, AlertTriangle } from "lucide-react";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 
 const GATE_PASS_KEY = "ict-discipline-gate";
 const GATE_LOCKOUT_KEY = "ict-discipline-lockout";
-const LOCKOUT_DURATION = 60 * 60 * 1000;
+const DEFAULT_LOCKOUT_MINUTES = 60;
 
 interface DisciplineQuestion {
   category: string;
@@ -108,17 +109,18 @@ function hasPassedToday(): boolean {
   } catch { return false; }
 }
 
-function isLockedOut(): { locked: boolean; remainingMs: number } {
+function isLockedOut(lockoutMinutes = DEFAULT_LOCKOUT_MINUTES): { locked: boolean; remainingMs: number } {
   try {
     const data = localStorage.getItem(GATE_LOCKOUT_KEY);
     if (!data) return { locked: false, remainingMs: 0 };
     const parsed = JSON.parse(data);
+    const durationMs = lockoutMinutes * 60 * 1000;
     const elapsed = Date.now() - parsed.timestamp;
-    if (elapsed >= LOCKOUT_DURATION) {
+    if (elapsed >= durationMs) {
       localStorage.removeItem(GATE_LOCKOUT_KEY);
       return { locked: false, remainingMs: 0 };
     }
-    return { locked: true, remainingMs: LOCKOUT_DURATION - elapsed };
+    return { locked: true, remainingMs: durationMs - elapsed };
   } catch { return { locked: false, remainingMs: 0 }; }
 }
 
@@ -145,25 +147,28 @@ interface Props {
 }
 
 export default function DisciplineGate({ children }: Props) {
+  const { getNumber, isFeatureEnabled } = useAppConfig();
+  const lockoutMinutes = getNumber("gate_lockout_minutes", DEFAULT_LOCKOUT_MINUTES);
   const [passed, setPassed] = useState(hasPassedToday);
-  const [lockout, setLockoutState] = useState(isLockedOut);
+  const [lockout, setLockoutState] = useState(() => isLockedOut(lockoutMinutes));
   const [phase, setPhase] = useState<"intro" | "quiz" | "result">("intro");
   const [questions, setQuestions] = useState<DisciplineQuestion[]>([]);
   const [currentQ, setCurrentQ] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [score, setScore] = useState(0);
+  const gateEnabled = isFeatureEnabled("feature_discipline_gate");
 
   useEffect(() => {
     if (lockout.locked) {
       const interval = setInterval(() => {
-        const check = isLockedOut();
+        const check = isLockedOut(lockoutMinutes);
         setLockoutState(check);
         if (!check.locked) clearInterval(interval);
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [lockout.locked]);
+  }, [lockout.locked, lockoutMinutes]);
 
   const startQuiz = useCallback(() => {
     const qs = [
@@ -207,7 +212,7 @@ export default function DisciplineGate({ children }: Props) {
     }
   }
 
-  if (passed) return <>{children}</>;
+  if (!gateEnabled || passed) return <>{children}</>;
 
   if (lockout.locked) {
     return (
@@ -266,7 +271,7 @@ export default function DisciplineGate({ children }: Props) {
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-6">
             <div className="flex items-center gap-2 text-amber-500 text-xs font-medium">
               <AlertTriangle className="h-3.5 w-3.5" />
-              You must get all 3 correct. Failure locks sessions for 1 hour.
+              You must get all 3 correct. Failure locks sessions for {lockoutMinutes >= 60 ? `${Math.round(lockoutMinutes / 60)} hour${lockoutMinutes >= 120 ? "s" : ""}` : `${lockoutMinutes} minutes`}.
             </div>
           </div>
           <button onClick={startQuiz} className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:brightness-110 transition-all">

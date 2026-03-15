@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PlannerProvider } from "@/contexts/PlannerContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AppConfigProvider } from "@/contexts/AppConfigContext";
 import Layout from "@/components/Layout";
 import Welcome from "@/pages/Welcome";
 import Login from "@/pages/Login";
@@ -78,8 +79,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <PlannerProvider>
+        <AppConfigProvider>
+          <AuthProvider>
+            <PlannerProvider>
             <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <Routes>
                 <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -101,8 +103,9 @@ function App() {
               </Routes>
             </BrowserRouter>
             <Toaster />
-          </PlannerProvider>
-        </AuthProvider>
+            </PlannerProvider>
+          </AuthProvider>
+        </AppConfigProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

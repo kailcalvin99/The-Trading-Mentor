@@ -23,8 +23,10 @@ import {
   Trophy,
   AlertTriangle,
   Activity,
+  type LucideIcon,
 } from "lucide-react";
 import { usePlanner } from "@/contexts/PlannerContext";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -32,12 +34,9 @@ import CoolDownOverlay, { FailureAnalysis } from "@/components/CoolDownOverlay";
 import HallOfFame, { recordDisciplinedDay, getDisciplineStats } from "@/components/HallOfFame";
 import { useListTrades } from "@workspace/api-client-react";
 
-const ROUTINE_ITEMS = [
-  { key: "water" as const, label: "Drink Water", desc: "Hydrate before you start trading", icon: Droplets },
-  { key: "breathing" as const, label: "Breathing Exercise", desc: "5 minutes of calm, focused breathing", icon: Wind },
-  { key: "news" as const, label: "Check for Big News Events", desc: "Are there any big news events today that could move the market?", icon: Newspaper },
-  { key: "bias" as const, label: "Check the Big Picture Chart", desc: "HTF (Higher Timeframe) — Is the market going up or down today?", icon: BarChart3 },
-];
+const ICON_MAP: Record<string, LucideIcon> = {
+  Droplets, Wind, Newspaper, BarChart3, CheckCircle2, Target, Clock, Activity, Trophy, AlertTriangle,
+};
 
 interface PersonalTask {
   id: string;
@@ -149,7 +148,8 @@ function computeWinRate(trades: TradeRecord[], bias: string, sessionFocus: strin
 }
 
 export default function DailyPlanner() {
-  const { routineItems, isRoutineComplete, toggleItem } = usePlanner();
+  const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
+  const { isFeatureEnabled } = useAppConfig();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dayData, setDayData] = useState<DayData>(() => loadDayData(new Date()));
   const [newTask, setNewTask] = useState("");
@@ -283,18 +283,21 @@ export default function DailyPlanner() {
                 <p className="text-xs text-muted-foreground mb-2">
                   Finish all steps to unlock trade logging in the Smart Journal.
                 </p>
-                {ROUTINE_ITEMS.map(({ key, label, desc, icon: Icon }) => (
-                  <label key={key} className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                    <Checkbox checked={routineItems[key]} onCheckedChange={() => toggleItem(key)} className="mt-0.5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className={`text-sm font-medium ${routineItems[key] ? "text-primary line-through opacity-70" : ""}`}>{label}</span>
+                {routineConfig.map((item) => {
+                  const Icon = ICON_MAP[item.icon] || CheckCircle2;
+                  return (
+                    <label key={item.key} className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-secondary/50 transition-colors">
+                      <Checkbox checked={routineItems[item.key]} onCheckedChange={() => toggleItem(item.key)} className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className={`text-sm font-medium ${routineItems[item.key] ? "text-primary line-through opacity-70" : ""}`}>{item.label}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{item.desc}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">{desc}</span>
-                    </div>
-                  </label>
-                ))}
+                    </label>
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -478,7 +481,7 @@ export default function DailyPlanner() {
                 </div>
               </div>
 
-              {winRateEstimate && (
+              {isFeatureEnabled("feature_win_rate_estimator") && winRateEstimate && (
                 <div className="mt-3 bg-primary/5 border border-primary/20 rounded-xl p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <Activity className="h-4 w-4 text-primary" />
@@ -529,27 +532,29 @@ export default function DailyPlanner() {
         </CardContent>
       </Card>
 
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <button onClick={() => setHallOfFameOpen(!hallOfFameOpen)} className="flex items-center justify-between w-full">
-            <h2 className="font-semibold text-sm flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-400" />
-              Hall of Fame
-              {getDisciplineStats().currentStreak > 0 && (
-                <span className="text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">
-                  {getDisciplineStats().currentStreak} day streak
-                </span>
-              )}
-            </h2>
-            {hallOfFameOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-          </button>
-          {hallOfFameOpen && (
-            <div className="mt-3">
-              <HallOfFame />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {isFeatureEnabled("feature_hall_of_fame") && (
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <button onClick={() => setHallOfFameOpen(!hallOfFameOpen)} className="flex items-center justify-between w-full">
+              <h2 className="font-semibold text-sm flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-amber-400" />
+                Hall of Fame
+                {getDisciplineStats().currentStreak > 0 && (
+                  <span className="text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">
+                    {getDisciplineStats().currentStreak} day streak
+                  </span>
+                )}
+              </h2>
+              {hallOfFameOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {hallOfFameOpen && (
+              <div className="mt-3">
+                <HallOfFame />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
     </>
   );

@@ -6,6 +6,39 @@ import { seedDefaults } from "../../seed";
 
 const router = Router();
 
+let configCache: Record<string, string> | null = null;
+
+const PRIVATE_KEYS = new Set(["ai_mentor_system_prompt"]);
+
+router.get("/app-config", async (_req, res) => {
+  try {
+    if (configCache) {
+      const publicConfig: Record<string, string> = {};
+      for (const [k, v] of Object.entries(configCache)) {
+        if (!PRIVATE_KEYS.has(k)) publicConfig[k] = v;
+      }
+      res.json(publicConfig);
+      return;
+    }
+    const settings = await db.select().from(adminSettingsTable);
+    const map: Record<string, string> = {};
+    settings.forEach((s) => { map[s.key] = s.value; });
+    configCache = map;
+    const publicConfig: Record<string, string> = {};
+    for (const [k, v] of Object.entries(map)) {
+      if (!PRIVATE_KEYS.has(k)) publicConfig[k] = v;
+    }
+    res.json(publicConfig);
+  } catch (err) {
+    console.error("Get app-config error:", err);
+    res.status(500).json({ error: "Failed to get config" });
+  }
+});
+
+export function invalidateConfigCache() {
+  configCache = null;
+}
+
 router.use(authRequired, adminRequired);
 
 router.get("/users", async (_req, res) => {
@@ -128,6 +161,7 @@ router.put("/settings", async (req, res) => {
         await db.insert(adminSettingsTable).values({ key, value });
       }
     }
+    invalidateConfigCache();
     res.json({ success: true });
   } catch (err) {
     console.error("Update settings error:", err);
@@ -153,6 +187,7 @@ router.post("/reset", async (req, res) => {
     await db.delete(usersTable);
 
     await seedDefaults();
+    invalidateConfigCache();
 
     res.clearCookie("token");
     res.json({ success: true, message: "Full reset complete. All data has been wiped." });

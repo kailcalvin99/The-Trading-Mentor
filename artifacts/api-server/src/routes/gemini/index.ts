@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { conversations, messages } from "@workspace/db";
+import { conversations, messages, adminSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   CreateGeminiConversationBody,
@@ -10,7 +10,7 @@ import { ai } from "@workspace/integrations-gemini-ai";
 
 const router: IRouter = Router();
 
-const ICT_SYSTEM_PROMPT = `You are an expert ICT (Inner Circle Trader) mentor. You teach trading concepts in simple, clear language that a 6th-grader could understand. Always pair ICT acronyms with plain-English labels so the student knows what each term means.
+const DEFAULT_ICT_SYSTEM_PROMPT = `You are an expert ICT (Inner Circle Trader) mentor. You teach trading concepts in simple, clear language that a 6th-grader could understand. Always pair ICT acronyms with plain-English labels so the student knows what each term means.
 
 You specialize in:
 
@@ -33,6 +33,16 @@ Rules Before I Trade (the student's checklist):
 Your personality: Encouraging, patient, and disciplined. You celebrate good risk management as much as good trades. You always remind traders that protecting the account is priority #1.
 
 Ask about the trader's daily goals at the start of a conversation. Review trade ideas critically but kindly. Use simple analogies to explain complex concepts.`;
+
+async function getSystemPrompt(): Promise<string> {
+  try {
+    const [row] = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "ai_mentor_system_prompt"));
+    if (row && row.value && row.value.trim().length > 0) {
+      return row.value;
+    }
+  } catch {}
+  return DEFAULT_ICT_SYSTEM_PROMPT;
+}
 
 router.get("/conversations", async (_req, res) => {
   try {
@@ -156,12 +166,13 @@ router.post("/conversations/:id/messages", async (req, res) => {
 
     let fullResponse = "";
 
+    const systemPrompt = await getSystemPrompt();
     const stream = await ai.models.generateContentStream({
       model: "gemini-2.5-flash",
       contents: chatHistory,
       config: {
         maxOutputTokens: 8192,
-        systemInstruction: ICT_SYSTEM_PROMPT,
+        systemInstruction: systemPrompt,
       },
     });
 

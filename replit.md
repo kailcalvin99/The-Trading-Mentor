@@ -60,7 +60,7 @@ artifacts-monorepo/
 - `users` — id, email, password_hash, name, role (user/admin), is_founder, founder_number
 - `subscription_tiers` — id, name, level (0=Free, 1=Standard, 2=Premium), monthly_price, annual_price, features (jsonb)
 - `user_subscriptions` — user_id, tier_id, status, billing_cycle, custom prices, founder discount tracking
-- `admin_settings` — key-value store for global config (founder_limit, founder_discount_pct, annual_discount_pct, etc.)
+- `admin_settings` — key-value store for global config (branding, founder, discipline, planner, AI mentor, feature toggles)
 
 ### Subscription Tiers
 - **Free** (Level 0): Academy (5 lessons), Daily Planner, AI Mentor (3/day), Daily Spin
@@ -78,7 +78,23 @@ artifacts-monorepo/
 - `GET/PUT /api/admin/users` — manage users
 - `PUT /api/admin/users/:id/subscription` — set custom pricing per user
 - `GET/PUT /api/admin/tiers` — manage tier pricing
-- `GET/PUT /api/admin/settings` — global config
+- `GET/PUT /api/admin/settings` — global config (admin-only)
+- `GET /api/admin/app-config` — public endpoint returning non-sensitive config (branding, toggles, discipline settings, routine items)
+
+### Admin Configuration Panel (Settings Tab)
+Seven collapsible sections:
+1. **Branding**: App name, tagline (drives Login/Layout/Header text)
+2. **Founder Program**: Founder limit, discount %, duration, annual discount
+3. **Discipline & Risk**: Cooldown duration (hours), consecutive loss threshold, gate lockout (minutes), daily/weekly risk limits
+4. **Daily Planner**: Configurable routine checklist items (label, description, icon)
+5. **AI Mentor**: Custom system prompt override (blank = built-in ICT prompt)
+6. **Feature Toggles**: On/off switches for Discipline Gate, Cooldown Timer, Hall of Fame, Win Rate Estimator, Casino Elements, Daily Spin
+7. **Danger Zone**: Hard reset with 2-step confirmation
+
+- `AppConfigContext.tsx` provides `useAppConfig()` hook — fetches `/api/admin/app-config` once, shares config to all components
+- Feature toggles control runtime rendering of features across DailyPlanner, CoolDownOverlay, DisciplineGate
+- Tier features are now editable from the admin Tiers tab (add/remove feature text)
+- AI mentor system prompt is kept server-side only (excluded from public config endpoint)
 
 ### Frontend Features
 - Login/Signup pages with gold branding and serif headings
@@ -90,11 +106,11 @@ artifacts-monorepo/
 - Feature locking based on subscription tier
 
 ### Discipline & Psychology Features
-- **Discipline Gate** (`DisciplineGate.tsx`): Daily 3-question quiz (narrative/math/awareness) before accessing trading tools. 3/3 required, 1-hour lockout on failure. Stored per day in localStorage (`ict-discipline-gate`, `ict-discipline-lockout`).
+- **Discipline Gate** (`DisciplineGate.tsx`): Daily 3-question quiz (narrative/math/awareness) before accessing trading tools. 3/3 required, configurable lockout on failure (default 60 min). Respects `feature_discipline_gate` toggle. Stored per day in localStorage.
 - **Adaptive Glossary**: Glossary terms have basic + advanced tiers. Advanced unlocks when user completes related lessons (`requiredLessons` field). Terms with advanced tiers: FVG, MSS, Liquidity Sweep, OTE, Kill Zone.
-- **Win-Rate Estimator**: Shows projected win-rate in Trade Plan section based on API trade history. Filters by bias and session focus, compares matched trades vs overall rate.
-- **Cool Down Timers** (`CoolDownOverlay.tsx`): Tracks consecutive losses via `recordTradeResult()` (wired into SmartJournal). After 2 consecutive losses: 4-hour lockout overlay. Failure Analysis warning shown after 1+ losses.
-- **Hall of Fame** (`HallOfFame.tsx`): Discipline streak tracking (current/best/total). 7 achievements (First Step → ICT Elite). Recorded when morning routine is completed. Data in localStorage (`ict-discipline-streak`, `ict-discipline-best-streak`, etc.).
+- **Win-Rate Estimator**: Shows projected win-rate in Trade Plan section based on API trade history. Filters by bias and session focus. Respects `feature_win_rate_estimator` toggle.
+- **Cool Down Timers** (`CoolDownOverlay.tsx`): Tracks consecutive losses via `recordTradeResult()` (wired into SmartJournal). Configurable threshold (default 2) and duration (default 4 hours). Duration stored at activation time to survive reloads. Respects `feature_cooldown_timer` toggle.
+- **Hall of Fame** (`HallOfFame.tsx`): Discipline streak tracking (current/best/total). 7 achievements (First Step → ICT Elite). Recorded when morning routine is completed. Respects `feature_hall_of_fame` toggle. Data in localStorage.
 - **Graduation Celebration** (`GraduationCelebration.tsx`): Full-screen confetti + diploma animation when all lessons + quiz completed.
 - **TradingView Indicators** (Tools tab in Academy): 12 recommended indicators organized by category (Core/Supporting/Optional). Each card expands to show description, ICT concept mapping, setup instructions, and TradingView search term. Includes "Recommended Starter Setup" section. Data in `RECOMMENDED_INDICATORS` array in `academy-data.ts`.
 

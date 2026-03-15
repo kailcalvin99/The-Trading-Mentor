@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { Shield, Clock, BookOpen, AlertTriangle, Flame } from "lucide-react";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 
 const COOLDOWN_KEY = "ict-cooldown-timer";
 const CONSECUTIVE_LOSSES_KEY = "ict-consecutive-losses";
-const COOLDOWN_DURATION = 4 * 60 * 60 * 1000;
+const DEFAULT_COOLDOWN_HOURS = 4;
+const DEFAULT_THRESHOLD = 2;
 
 interface CoolDownData {
   timestamp: number;
   reason: string;
+  durationHours?: number;
 }
 
 export function getConsecutiveLosses(): number {
@@ -16,7 +19,7 @@ export function getConsecutiveLosses(): number {
   } catch { return 0; }
 }
 
-export function recordTradeResult(won: boolean) {
+export function recordTradeResult(won: boolean, threshold = DEFAULT_THRESHOLD) {
   if (won) {
     localStorage.setItem(CONSECUTIVE_LOSSES_KEY, "0");
   } else {
@@ -24,29 +27,31 @@ export function recordTradeResult(won: boolean) {
     const newCount = current + 1;
     localStorage.setItem(CONSECUTIVE_LOSSES_KEY, String(newCount));
 
-    if (newCount >= 2) {
-      activateCoolDown("Max Daily Loss reached — 2 consecutive losses. Take a break to prevent revenge trading.");
+    if (newCount >= threshold) {
+      activateCoolDown(`Max Daily Loss reached — ${threshold} consecutive losses. Take a break to prevent revenge trading.`);
       localStorage.setItem(CONSECUTIVE_LOSSES_KEY, "0");
     }
   }
 }
 
-export function activateCoolDown(reason: string) {
-  const data: CoolDownData = { timestamp: Date.now(), reason };
+export function activateCoolDown(reason: string, durationHours = DEFAULT_COOLDOWN_HOURS) {
+  const data: CoolDownData = { timestamp: Date.now(), reason, durationHours };
   localStorage.setItem(COOLDOWN_KEY, JSON.stringify(data));
 }
 
-export function getCoolDownStatus(): { active: boolean; remainingMs: number; reason: string } {
+export function getCoolDownStatus(fallbackDurationHours = DEFAULT_COOLDOWN_HOURS): { active: boolean; remainingMs: number; reason: string } {
   try {
     const raw = localStorage.getItem(COOLDOWN_KEY);
     if (!raw) return { active: false, remainingMs: 0, reason: "" };
     const data: CoolDownData = JSON.parse(raw);
+    const hours = data.durationHours ?? fallbackDurationHours;
+    const durationMs = hours * 60 * 60 * 1000;
     const elapsed = Date.now() - data.timestamp;
-    if (elapsed >= COOLDOWN_DURATION) {
+    if (elapsed >= durationMs) {
       localStorage.removeItem(COOLDOWN_KEY);
       return { active: false, remainingMs: 0, reason: "" };
     }
-    return { active: true, remainingMs: COOLDOWN_DURATION - elapsed, reason: data.reason };
+    return { active: true, remainingMs: durationMs - elapsed, reason: data.reason };
   } catch { return { active: false, remainingMs: 0, reason: "" }; }
 }
 
@@ -58,18 +63,21 @@ function formatTime(ms: number): string {
 }
 
 export default function CoolDownOverlay() {
-  const [status, setStatus] = useState(getCoolDownStatus);
+  const { getNumber, isFeatureEnabled } = useAppConfig();
+  const cooldownHours = getNumber("cooldown_duration_hours", DEFAULT_COOLDOWN_HOURS);
+  const [status, setStatus] = useState(() => getCoolDownStatus(cooldownHours));
 
   useEffect(() => {
     if (!status.active) return;
     const interval = setInterval(() => {
-      const s = getCoolDownStatus();
+      const s = getCoolDownStatus(cooldownHours);
       setStatus(s);
       if (!s.active) clearInterval(interval);
     }, 1000);
     return () => clearInterval(interval);
-  }, [status.active]);
+  }, [status.active, cooldownHours]);
 
+  if (!isFeatureEnabled("feature_cooldown_timer")) return null;
   if (!status.active) return null;
 
   return (
@@ -122,20 +130,26 @@ export default function CoolDownOverlay() {
 }
 
 export function FailureAnalysis() {
+  const { getNumber, isFeatureEnabled } = useAppConfig();
+  const threshold = getNumber("consecutive_loss_threshold", DEFAULT_THRESHOLD);
+  const cooldownHours = getNumber("cooldown_duration_hours", DEFAULT_COOLDOWN_HOURS);
+
+  if (!isFeatureEnabled("feature_cooldown_timer")) return null;
+
   const losses = getConsecutiveLosses();
   if (losses < 1) return null;
 
   return (
-    <div className={`rounded-xl border p-4 mb-4 ${losses >= 2 ? "border-destructive/30 bg-destructive/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+    <div className={`rounded-xl border p-4 mb-4 ${losses >= threshold ? "border-destructive/30 bg-destructive/5" : "border-amber-500/30 bg-amber-500/5"}`}>
       <div className="flex items-center gap-2 mb-2">
-        <Flame className={`h-4 w-4 ${losses >= 2 ? "text-destructive" : "text-amber-500"}`} />
-        <span className={`text-sm font-bold ${losses >= 2 ? "text-destructive" : "text-amber-500"}`}>
-          {losses >= 2 ? "Warning: 2 Consecutive Losses" : `${losses} Loss in a Row`}
+        <Flame className={`h-4 w-4 ${losses >= threshold ? "text-destructive" : "text-amber-500"}`} />
+        <span className={`text-sm font-bold ${losses >= threshold ? "text-destructive" : "text-amber-500"}`}>
+          {losses >= threshold ? `Warning: ${threshold} Consecutive Losses` : `${losses} Loss in a Row`}
         </span>
       </div>
       <p className="text-xs text-muted-foreground">
-        {losses >= 2
-          ? "You've hit your max daily loss limit. A 4-hour cool-down will activate to protect your capital from revenge trading."
+        {losses >= threshold
+          ? `You've hit your max daily loss limit. A ${cooldownHours}-hour cool-down will activate to protect your capital from revenge trading.`
           : "Stay disciplined. Review your last trade before entering another. Does your next setup meet ALL your rules?"
         }
       </p>

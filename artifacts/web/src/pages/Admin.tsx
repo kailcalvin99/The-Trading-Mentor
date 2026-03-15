@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Crown, Users, Settings, DollarSign, Save, Edit2, X, Check, AlertTriangle, RotateCcw } from "lucide-react";
+import { useAppConfig } from "@/contexts/AppConfigContext";
+import {
+  Crown, Users, Settings, DollarSign, Save, Edit2, X, Check,
+  AlertTriangle, RotateCcw, ChevronDown, ChevronRight,
+  Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target
+} from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -33,16 +38,87 @@ interface AdminTier {
   isActive: boolean;
 }
 
+function SettingsSection({ title, icon: Icon, children, defaultOpen = false }: {
+  title: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-border rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-3 px-5 py-4 bg-card hover:bg-muted/30 transition-colors"
+      >
+        <Icon className="h-5 w-5 text-primary shrink-0" />
+        <span className="text-sm font-bold text-foreground flex-1 text-left">{title}</span>
+        {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+      </button>
+      {open && <div className="px-5 py-4 bg-card/50 border-t border-border space-y-4">{children}</div>}
+    </div>
+  );
+}
+
+function SettingInput({ label, desc, value, onChange, type = "text", placeholder }: {
+  label: string;
+  desc?: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium text-foreground mb-1 block">{label}</label>
+      {desc && <p className="text-xs text-muted-foreground mb-1.5">{desc}</p>}
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+      />
+    </div>
+  );
+}
+
+function SettingToggle({ label, desc, checked, onChange }: {
+  label: string;
+  desc?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <button
+        onClick={() => onChange(!checked)}
+        className={`mt-0.5 w-10 h-6 rounded-full transition-colors shrink-0 ${checked ? "bg-primary" : "bg-muted"}`}
+      >
+        <div className={`w-4 h-4 bg-white rounded-full mx-1 transition-transform ${checked ? "translate-x-4" : "translate-x-0"}`} />
+      </button>
+      <div>
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   const { user } = useAuth();
+  const { reload: reloadConfig } = useAppConfig();
   const [tab, setTab] = useState<"users" | "tiers" | "settings">("users");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [tiers, setTiers] = useState<AdminTier[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [editingUser, setEditingUser] = useState<number | null>(null);
   const [editingTier, setEditingTier] = useState<number | null>(null);
+  const [tierFeatureEdit, setTierFeatureEdit] = useState<number | null>(null);
+  const [newFeature, setNewFeature] = useState("");
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
   const [resetStep, setResetStep] = useState(0);
   const [resetCode, setResetCode] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -50,9 +126,7 @@ export default function Admin() {
   const fetchOpts: RequestInit = { credentials: "include" };
   const headers = { "Content-Type": "application/json" };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     try {
@@ -70,9 +144,7 @@ export default function Admin() {
   async function saveUserSub(userId: number) {
     setSaving(true);
     await fetch(`${API_BASE}/admin/users/${userId}/subscription`, {
-      method: "PUT",
-      ...fetchOpts,
-      headers,
+      method: "PUT", ...fetchOpts, headers,
       body: JSON.stringify({
         tierId: editValues.tierId ? parseInt(editValues.tierId) : undefined,
         customMonthlyPrice: editValues.customMonthlyPrice || undefined,
@@ -88,9 +160,7 @@ export default function Admin() {
   async function saveTier(tierId: number) {
     setSaving(true);
     await fetch(`${API_BASE}/admin/tiers/${tierId}`, {
-      method: "PUT",
-      ...fetchOpts,
-      headers,
+      method: "PUT", ...fetchOpts, headers,
       body: JSON.stringify({
         monthlyPrice: editValues.monthlyPrice,
         annualPrice: editValues.annualPrice,
@@ -103,14 +173,38 @@ export default function Admin() {
     loadData();
   }
 
+  async function saveTierFeatures(tierId: number, features: string[]) {
+    setSaving(true);
+    await fetch(`${API_BASE}/admin/tiers/${tierId}`, {
+      method: "PUT", ...fetchOpts, headers,
+      body: JSON.stringify({ features }),
+    });
+    setSaving(false);
+    loadData();
+  }
+
+  function updateSetting(key: string, value: string) {
+    setSettings((s) => ({ ...s, [key]: value }));
+  }
+
+  function toggleSetting(key: string) {
+    setSettings((s) => ({ ...s, [key]: s[key] === "true" ? "false" : "true" }));
+  }
+
   async function saveSettings() {
     setSaving(true);
-    await fetch(`${API_BASE}/admin/settings`, {
-      method: "PUT",
-      ...fetchOpts,
-      headers,
-      body: JSON.stringify({ settings }),
-    });
+    setSaveMsg("");
+    try {
+      await fetch(`${API_BASE}/admin/settings`, {
+        method: "PUT", ...fetchOpts, headers,
+        body: JSON.stringify({ settings }),
+      });
+      await reloadConfig();
+      setSaveMsg("Settings saved successfully!");
+      setTimeout(() => setSaveMsg(""), 3000);
+    } catch {
+      setSaveMsg("Failed to save settings.");
+    }
     setSaving(false);
   }
 
@@ -119,9 +213,7 @@ export default function Admin() {
     setResetting(true);
     try {
       const res = await fetch(`${API_BASE}/admin/reset`, {
-        method: "POST",
-        ...fetchOpts,
-        headers,
+        method: "POST", ...fetchOpts, headers,
         body: JSON.stringify({ confirmCode: resetCode }),
       });
       if (res.ok) {
@@ -131,10 +223,27 @@ export default function Admin() {
         const data = await res.json();
         alert(data.error || "Reset failed");
       }
-    } catch {
-      alert("Reset failed");
-    }
+    } catch { alert("Reset failed"); }
     setResetting(false);
+  }
+
+  let routineItems: { key: string; label: string; desc: string; icon: string }[] = [];
+  try { routineItems = JSON.parse(settings.routine_items || "[]"); } catch {}
+
+  function updateRoutineItem(idx: number, field: string, value: string) {
+    const copy = [...routineItems];
+    (copy[idx] as any)[field] = value;
+    updateSetting("routine_items", JSON.stringify(copy));
+  }
+
+  function addRoutineItem() {
+    const copy = [...routineItems, { key: `item_${Date.now()}`, label: "New Item", desc: "Description", icon: "CheckCircle" }];
+    updateSetting("routine_items", JSON.stringify(copy));
+  }
+
+  function removeRoutineItem(idx: number) {
+    const copy = routineItems.filter((_, i) => i !== idx);
+    updateSetting("routine_items", JSON.stringify(copy));
   }
 
   if (user?.role !== "admin") {
@@ -251,17 +360,10 @@ export default function Admin() {
                     <td className="px-4 py-3">
                       {editingUser === u.id ? (
                         <div className="flex gap-1">
-                          <button
-                            onClick={() => saveUserSub(u.id)}
-                            disabled={saving}
-                            className="p-1.5 bg-primary/10 text-primary rounded hover:bg-primary/20"
-                          >
+                          <button onClick={() => saveUserSub(u.id)} disabled={saving} className="p-1.5 bg-primary/10 text-primary rounded hover:bg-primary/20">
                             <Check className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => setEditingUser(null)}
-                            className="p-1.5 bg-muted text-muted-foreground rounded hover:bg-muted/80"
-                          >
+                          <button onClick={() => setEditingUser(null)} className="p-1.5 bg-muted text-muted-foreground rounded hover:bg-muted/80">
                             <X className="h-4 w-4" />
                           </button>
                         </div>
@@ -329,35 +431,19 @@ export default function Admin() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Monthly Price ($)</label>
-                    <input
-                      value={editValues.monthlyPrice || ""}
-                      onChange={(e) => setEditValues({ ...editValues, monthlyPrice: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                    />
+                    <input value={editValues.monthlyPrice || ""} onChange={(e) => setEditValues({ ...editValues, monthlyPrice: e.target.value })} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Annual Price ($)</label>
-                    <input
-                      value={editValues.annualPrice || ""}
-                      onChange={(e) => setEditValues({ ...editValues, annualPrice: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                    />
+                    <input value={editValues.annualPrice || ""} onChange={(e) => setEditValues({ ...editValues, annualPrice: e.target.value })} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Annual Discount %</label>
-                    <input
-                      value={editValues.annualDiscountPct || ""}
-                      onChange={(e) => setEditValues({ ...editValues, annualDiscountPct: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                    />
+                    <input value={editValues.annualDiscountPct || ""} onChange={(e) => setEditValues({ ...editValues, annualDiscountPct: e.target.value })} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Description</label>
-                    <input
-                      value={editValues.description || ""}
-                      onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                    />
+                    <input value={editValues.description || ""} onChange={(e) => setEditValues({ ...editValues, description: e.target.value })} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm" />
                   </div>
                 </div>
               ) : (
@@ -378,12 +464,60 @@ export default function Admin() {
               )}
 
               <div className="mt-4">
-                <p className="text-xs text-muted-foreground mb-2">Features</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-muted-foreground">Features</p>
+                  <button
+                    onClick={() => setTierFeatureEdit(tierFeatureEdit === tier.id ? null : tier.id)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {tierFeatureEdit === tier.id ? "Done Editing" : "Edit Features"}
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {(tier.features as string[]).map((f, i) => (
-                    <span key={i} className="text-xs bg-muted px-2 py-1 rounded-lg text-foreground/70">{f}</span>
+                    <span key={i} className="text-xs bg-muted px-2 py-1 rounded-lg text-foreground/70 flex items-center gap-1">
+                      {f}
+                      {tierFeatureEdit === tier.id && (
+                        <button
+                          onClick={() => {
+                            const updated = tier.features.filter((_, fi) => fi !== i);
+                            saveTierFeatures(tier.id, updated);
+                          }}
+                          className="text-destructive hover:text-destructive/80 ml-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </span>
                   ))}
                 </div>
+                {tierFeatureEdit === tier.id && (
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      value={newFeature}
+                      onChange={(e) => setNewFeature(e.target.value)}
+                      placeholder="New feature text..."
+                      className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newFeature.trim()) {
+                          saveTierFeatures(tier.id, [...tier.features, newFeature.trim()]);
+                          setNewFeature("");
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        if (newFeature.trim()) {
+                          saveTierFeatures(tier.id, [...tier.features, newFeature.trim()]);
+                          setNewFeature("");
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm hover:bg-primary/20"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -391,42 +525,104 @@ export default function Admin() {
       )}
 
       {tab === "settings" && (
-        <div className="bg-card border border-border rounded-xl p-6 max-w-lg">
-          <h3 className="text-lg font-bold text-foreground mb-4">Global Settings</h3>
-          <div className="space-y-4">
-            {[
-              { key: "founder_limit", label: "Founder Spots Limit", desc: "How many founder spots are available" },
-              { key: "founder_discount_pct", label: "Founder Discount %", desc: "Discount percentage for founders" },
-              { key: "founder_discount_months", label: "Founder Discount Duration (months)", desc: "How long the founder discount lasts" },
-              { key: "annual_discount_pct", label: "Annual Billing Discount %", desc: "Discount for choosing annual billing" },
-            ].map(({ key, label, desc }) => (
-              <div key={key}>
-                <label className="text-sm font-medium text-foreground mb-1 block">{label}</label>
-                <p className="text-xs text-muted-foreground mb-1.5">{desc}</p>
-                <input
-                  value={settings[key] || ""}
-                  onChange={(e) => setSettings({ ...settings, [key]: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={saveSettings}
-            disabled={saving}
-            className="mt-6 bg-primary text-primary-foreground font-bold px-6 py-2.5 rounded-xl hover:opacity-90 flex items-center gap-2"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? "Saving..." : "Save Settings"}
-          </button>
+        <div className="space-y-3 max-w-2xl">
+          <SettingsSection title="Branding" icon={Palette} defaultOpen>
+            <SettingInput label="App Name" desc="The name shown in the header, login page, and browser tab" value={settings.app_name || ""} onChange={(v) => updateSetting("app_name", v)} />
+            <SettingInput label="Tagline" desc="Subtitle shown on the login page" value={settings.app_tagline || ""} onChange={(v) => updateSetting("app_tagline", v)} />
+          </SettingsSection>
 
-          <div className="mt-10 border-t border-destructive/20 pt-6">
-            <h3 className="text-lg font-bold text-destructive flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-5 w-5" />
-              Danger Zone
-            </h3>
+          <SettingsSection title="Founder Program" icon={Rocket}>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <SettingInput label="Founder Spots Limit" desc="Total founder spots available" value={settings.founder_limit || ""} onChange={(v) => updateSetting("founder_limit", v)} type="number" />
+              <SettingInput label="Founder Discount %" desc="Discount percentage for founders" value={settings.founder_discount_pct || ""} onChange={(v) => updateSetting("founder_discount_pct", v)} type="number" />
+              <SettingInput label="Discount Duration (months)" desc="How many months the founder discount lasts" value={settings.founder_discount_months || ""} onChange={(v) => updateSetting("founder_discount_months", v)} type="number" />
+              <SettingInput label="Annual Billing Discount %" desc="Discount for choosing annual billing" value={settings.annual_discount_pct || ""} onChange={(v) => updateSetting("annual_discount_pct", v)} type="number" />
+            </div>
+          </SettingsSection>
+
+          <SettingsSection title="Discipline & Risk" icon={Shield}>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <SettingInput label="Cooldown Duration (hours)" desc="How long a cooldown period lasts after consecutive losses" value={settings.cooldown_duration_hours || ""} onChange={(v) => updateSetting("cooldown_duration_hours", v)} type="number" />
+              <SettingInput label="Consecutive Loss Threshold" desc="Number of consecutive losses that triggers a cooldown" value={settings.consecutive_loss_threshold || ""} onChange={(v) => updateSetting("consecutive_loss_threshold", v)} type="number" />
+              <SettingInput label="Discipline Gate Lockout (minutes)" desc="How long the discipline gate locks you out" value={settings.gate_lockout_minutes || ""} onChange={(v) => updateSetting("gate_lockout_minutes", v)} type="number" />
+              <SettingInput label="Daily Risk Limit %" desc="Maximum percentage of account risked per day" value={settings.risk_daily_limit_pct || ""} onChange={(v) => updateSetting("risk_daily_limit_pct", v)} type="number" />
+              <SettingInput label="Weekly Risk Limit %" desc="Maximum percentage of account risked per week" value={settings.risk_weekly_limit_pct || ""} onChange={(v) => updateSetting("risk_weekly_limit_pct", v)} type="number" />
+            </div>
+          </SettingsSection>
+
+          <SettingsSection title="Daily Planner" icon={ListChecks}>
+            <p className="text-xs text-muted-foreground mb-3">
+              Configure the checklist items that appear in every trader's daily planner before they start trading.
+            </p>
+            <div className="space-y-3">
+              {routineItems.map((item, idx) => (
+                <div key={idx} className="bg-background border border-border rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground font-mono">#{idx + 1}</span>
+                    <button onClick={() => removeRoutineItem(idx)} className="text-destructive/60 hover:text-destructive">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <input value={item.label} onChange={(e) => updateRoutineItem(idx, "label", e.target.value)} placeholder="Label" className="bg-muted/30 border border-border rounded px-2 py-1.5 text-sm" />
+                    <input value={item.icon} onChange={(e) => updateRoutineItem(idx, "icon", e.target.value)} placeholder="Icon name" className="bg-muted/30 border border-border rounded px-2 py-1.5 text-sm" />
+                  </div>
+                  <input value={item.desc} onChange={(e) => updateRoutineItem(idx, "desc", e.target.value)} placeholder="Description" className="w-full bg-muted/30 border border-border rounded px-2 py-1.5 text-sm" />
+                </div>
+              ))}
+              <button onClick={addRoutineItem} className="w-full border border-dashed border-border rounded-lg py-2 text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors">
+                + Add Routine Item
+              </button>
+            </div>
+          </SettingsSection>
+
+          <SettingsSection title="AI Mentor" icon={Brain}>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1 block">Custom System Prompt</label>
+              <p className="text-xs text-muted-foreground mb-2">Override the default ICT mentor personality. Leave blank to use the built-in prompt.</p>
+              <textarea
+                value={settings.ai_mentor_system_prompt || ""}
+                onChange={(e) => updateSetting("ai_mentor_system_prompt", e.target.value)}
+                placeholder="Leave blank for default ICT mentor prompt..."
+                rows={8}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-mono resize-y"
+              />
+            </div>
+          </SettingsSection>
+
+          <SettingsSection title="Feature Toggles" icon={ToggleLeft}>
+            <p className="text-xs text-muted-foreground mb-3">
+              Enable or disable features across the entire platform.
+            </p>
+            <div className="space-y-4">
+              <SettingToggle label="Discipline Gate" desc="Require traders to complete their routine before accessing trading tools" checked={settings.feature_discipline_gate === "true"} onChange={() => toggleSetting("feature_discipline_gate")} />
+              <SettingToggle label="Cooldown Timer" desc="Automatically trigger a cooldown after consecutive losses" checked={settings.feature_cooldown_timer === "true"} onChange={() => toggleSetting("feature_cooldown_timer")} />
+              <SettingToggle label="Hall of Fame" desc="Show the leaderboard / Hall of Fame page" checked={settings.feature_hall_of_fame === "true"} onChange={() => toggleSetting("feature_hall_of_fame")} />
+              <SettingToggle label="Win Rate Estimator" desc="Show the win rate estimation tool" checked={settings.feature_win_rate_estimator === "true"} onChange={() => toggleSetting("feature_win_rate_estimator")} />
+              <SettingToggle label="Casino Elements" desc="Enable gamification features (streaks, XP, achievements)" checked={settings.feature_casino_elements === "true"} onChange={() => toggleSetting("feature_casino_elements")} />
+              <SettingToggle label="Daily Spin" desc="Enable the daily reward spin wheel" checked={settings.feature_daily_spin === "true"} onChange={() => toggleSetting("feature_daily_spin")} />
+            </div>
+          </SettingsSection>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={saveSettings}
+              disabled={saving}
+              className="bg-primary text-primary-foreground font-bold px-6 py-2.5 rounded-xl hover:opacity-90 flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? "Saving..." : "Save All Settings"}
+            </button>
+            {saveMsg && (
+              <span className={`text-sm font-medium ${saveMsg.includes("success") ? "text-primary" : "text-destructive"}`}>
+                {saveMsg}
+              </span>
+            )}
+          </div>
+
+          <SettingsSection title="Danger Zone" icon={AlertTriangle}>
             <p className="text-sm text-muted-foreground mb-4">
-              Hard reset will permanently delete ALL data — every user account, trade, conversation, and subscription. The site will return to its fresh setup state where the first person to register becomes admin.
+              Hard reset will permanently delete ALL data -- every user account, trade, conversation, and subscription. The site will return to its fresh setup state where the first person to register becomes admin.
             </p>
 
             {resetStep === 0 && (
@@ -473,7 +669,7 @@ export default function Admin() {
                 </div>
               </div>
             )}
-          </div>
+          </SettingsSection>
         </div>
       )}
     </div>
