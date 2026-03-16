@@ -128,6 +128,8 @@ router.delete("/users/:id", async (req, res) => {
         await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
       } catch (stripeErr) {
         console.error("Failed to cancel Stripe subscription during user delete:", stripeErr);
+        res.status(502).json({ error: "Could not cancel the user's Stripe subscription. Please cancel it manually in the Stripe dashboard first, then try again." });
+        return;
       }
     }
 
@@ -141,7 +143,6 @@ router.delete("/users/:id", async (req, res) => {
     await db.delete(communityRepliesTable).where(eq(communityRepliesTable.userId, userId));
     await db.delete(communityPostsTable).where(eq(communityPostsTable.userId, userId));
 
-    await db.delete(messages).where(eq(messages.userId, userId));
     await db.delete(conversations).where(eq(conversations.userId, userId));
     await db.delete(tradesTable).where(eq(tradesTable.userId, userId));
     await db.delete(propAccountTable).where(eq(propAccountTable.userId, userId));
