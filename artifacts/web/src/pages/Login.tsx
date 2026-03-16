@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Home, Star, GraduationCap, Shield, Calendar } from "lucide-react";
+import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Home, Star, GraduationCap, Shield, Calendar, DollarSign } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -120,6 +120,10 @@ export default function Login() {
               <Star className="h-4 w-4" />
               <span className="hidden sm:inline">Features</span>
             </button>
+            <Link to="/pricing" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors">
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Pricing</span>
+            </Link>
             <button
               onClick={scrollToSignIn}
               className="flex items-center gap-1.5 ml-2 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all"
@@ -273,6 +277,17 @@ export default function Login() {
           </div>
         </div>
       </section>
+
+      <footer className="w-full border-t border-border bg-card/50 py-6 px-6">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+          <p>© {new Date().getFullYear()} {appName}. For educational purposes only. Not financial advice.</p>
+          <div className="flex items-center gap-4">
+            <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
+            <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
