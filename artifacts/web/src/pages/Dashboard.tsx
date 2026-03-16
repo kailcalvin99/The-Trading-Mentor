@@ -6,7 +6,7 @@ import {
   Calendar, GraduationCap, Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { SpinWheel, DailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
+import { SpinWheel, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
 
 const MASCOT_TIPS = [
   "Always wait for the liquidity sweep before entering!",
@@ -143,10 +143,23 @@ function IctMascot() {
 
 function GamifiedStatusRow() {
   const xp = parseInt(localStorage.getItem("total_xp") || "0");
+  const streak = parseInt(localStorage.getItem("login_streak") || "0");
   const level = Math.floor(xp / 100) + 1;
   const xpInLevel = xp % 100;
   const rankIdx = Math.min(Math.floor((level - 1) / 2), RANKS.length - 1);
   const rank = RANKS[rankIdx];
+
+  const badgeChecks = [
+    true,
+    true,
+    streak >= 3,
+    localStorage.getItem("dashboard-visited") === "true",
+    streak >= 7,
+    localStorage.getItem("ict-academy-unlocked") === "true",
+    false,
+    false,
+  ];
+  const earned = badgeChecks.filter(Boolean).length;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -165,8 +178,31 @@ function GamifiedStatusRow() {
         <p className="text-[10px] text-muted-foreground mt-1">{xpInLevel}/100 XP to next level</p>
       </div>
 
-      <DailyStreak />
-      <AchievementBadges />
+      <div className="bg-card border border-border rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Flame className={`h-5 w-5 ${streak >= 7 ? "text-red-500" : streak >= 3 ? "text-amber-500" : "text-amber-400"}`} />
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Streak</span>
+        </div>
+        <p className="text-lg font-bold text-foreground">{streak} Day{streak !== 1 ? "s" : ""}</p>
+        <div className="flex gap-1 mt-2">
+          {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+            <div key={d} className={`w-4 h-4 rounded-sm ${d <= streak ? "bg-amber-500" : "bg-muted"}`} />
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Trophy className="h-5 w-5 text-amber-500" />
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Badges</span>
+        </div>
+        <p className="text-lg font-bold text-foreground">{earned}/{badgeChecks.length}</p>
+        <div className="flex gap-1 mt-2">
+          {badgeChecks.map((b, i) => (
+            <div key={i} className={`w-4 h-4 rounded-full ${b ? "bg-primary" : "bg-muted"}`} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -223,7 +259,7 @@ function DailySpinSection() {
 }
 
 function SlotMachine() {
-  const [spinning, setSpinning] = useState(true);
+  const [reelsStopped, setReelsStopped] = useState([false, false, false]);
   const [results, setResults] = useState<string[]>(["", "", ""]);
   const seed = dateSeed();
 
@@ -231,12 +267,16 @@ function SlotMachine() {
     const r1 = SLOT_SESSIONS[seed % SLOT_SESSIONS.length];
     const r2 = SLOT_ACTIONS[Math.floor(seed / 7) % SLOT_ACTIONS.length];
     const r3 = SLOT_GOALS[Math.floor(seed / 13) % SLOT_GOALS.length];
+    const finalResults = [r1, r2, r3];
 
-    const timer = setTimeout(() => {
-      setResults([r1, r2, r3]);
-      setSpinning(false);
-    }, 2200);
-    return () => clearTimeout(timer);
+    const delays = [1200, 1800, 2400];
+    const timers = delays.map((delay, i) =>
+      setTimeout(() => {
+        setResults((prev) => { const next = [...prev]; next[i] = finalResults[i]; return next; });
+        setReelsStopped((prev) => { const next = [...prev]; next[i] = true; return next; });
+      }, delay)
+    );
+    return () => timers.forEach(clearTimeout);
   }, [seed]);
 
   return (
@@ -252,8 +292,8 @@ function SlotMachine() {
           <div key={label} className="flex-1 max-w-[140px]">
             <p className="text-[10px] text-muted-foreground text-center mb-1 uppercase tracking-wider">{label}</p>
             <div className="h-16 bg-muted/50 border border-border rounded-xl flex items-center justify-center overflow-hidden relative">
-              {spinning ? (
-                <div className="animate-slot-spin">
+              {!reelsStopped[i] ? (
+                <div className={`animate-slot-spin slot-reel-${i}`}>
                   <div className="text-sm font-bold text-foreground/50 text-center space-y-2">
                     {(i === 0 ? SLOT_SESSIONS : i === 1 ? SLOT_ACTIONS : SLOT_GOALS).map((item, j) => (
                       <p key={j}>{item}</p>
@@ -270,7 +310,7 @@ function SlotMachine() {
         ))}
       </div>
 
-      {!spinning && (
+      {reelsStopped.every(Boolean) && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
           <p className="text-sm font-medium text-foreground">
             <span className="text-amber-500 font-bold">Mission:</span> {results[0]} → {results[1]} → {results[2]}
@@ -283,9 +323,10 @@ function SlotMachine() {
           0% { transform: translateY(0); }
           100% { transform: translateY(-100%); }
         }
-        .animate-slot-spin {
-          animation: slotSpin 0.3s linear infinite;
-        }
+        .animate-slot-spin { animation: slotSpin 0.3s linear infinite; }
+        .slot-reel-0 { animation-duration: 0.2s; }
+        .slot-reel-1 { animation-duration: 0.25s; }
+        .slot-reel-2 { animation-duration: 0.35s; }
       `}</style>
     </div>
   );
@@ -481,10 +522,8 @@ export default function Dashboard() {
       <IctMascot />
       <GamifiedStatusRow />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <DailySpinSection />
-        <SlotMachine />
-      </div>
+      <DailySpinSection />
+      <SlotMachine />
 
       <SessionsLiveBoard />
       <QuickReference />
