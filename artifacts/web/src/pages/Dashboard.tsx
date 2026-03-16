@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Flame, Star, Trophy, Zap, Crown, TrendingUp, Lock, Gift,
@@ -6,7 +6,6 @@ import {
   Calendar, GraduationCap, Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAppConfig } from "@/contexts/AppConfigContext";
 import { SpinWheel, DailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
 
 const MASCOT_TIPS = [
@@ -187,28 +186,28 @@ function DailySpinSection() {
   return (
     <div className="bg-card border border-border rounded-2xl p-6 relative overflow-hidden">
       {showConfetti && (
-        <div className="absolute inset-0 pointer-events-none z-10">
-          {Array.from({ length: 40 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute animate-confetti-fall"
-              style={{
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 0.5}s`,
-                animationDuration: `${1 + Math.random() * 1.5}s`,
-                backgroundColor: ["#00C896", "#FFD700", "#818CF8", "#EF4444", "#06B6D4"][i % 5],
-                width: `${6 + Math.random() * 6}px`,
-                height: `${6 + Math.random() * 6}px`,
-                borderRadius: Math.random() > 0.5 ? "50%" : "2px",
-              }}
-            />
-          ))}
+        <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+          {Array.from({ length: 8 }).map((_, i) => {
+            const angle = (i / 8) * 360;
+            const rad = (angle * Math.PI) / 180;
+            return (
+              <div
+                key={i}
+                className="absolute w-3 h-3 rounded-full animate-burst-dot"
+                style={{
+                  backgroundColor: ["#00C896", "#FFD700", "#818CF8", "#EF4444", "#06B6D4", "#F59E0B", "#A855F7", "#EC4899"][i],
+                  "--dx": `${Math.cos(rad) * 80}px`,
+                  "--dy": `${Math.sin(rad) * 80}px`,
+                } as React.CSSProperties}
+              />
+            );
+          })}
           <style>{`
-            @keyframes confettiFall {
-              0% { top: -10%; opacity: 1; transform: rotate(0deg) scale(1); }
-              100% { top: 110%; opacity: 0; transform: rotate(720deg) scale(0.3); }
+            @keyframes burstDot {
+              0% { transform: translate(0, 0) scale(1); opacity: 1; }
+              100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
             }
-            .animate-confetti-fall { animation: confettiFall 2s ease-out forwards; }
+            .animate-burst-dot { animation: burstDot 0.8s ease-out forwards; }
           `}</style>
         </div>
       )}
@@ -426,29 +425,6 @@ function SessionsLiveBoard() {
   );
 }
 
-function DashboardPremiumTeaser() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 via-primary/5 to-purple-500/10 border border-amber-500/20 rounded-xl p-5">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl" />
-      <div className="flex items-center gap-2 mb-3">
-        <Crown className="h-5 w-5 text-amber-500" />
-        <h3 className="text-sm font-bold text-amber-500">UNLOCK PREMIUM TOOLS</h3>
-      </div>
-      <p className="text-sm text-foreground/80 mb-3">
-        Upgrade to access the <strong>Smart Journal</strong> to log and analyze every trade,
-        plus <strong>Analytics</strong> with performance charts, win-rate tracking, and AI-powered insights.
-      </p>
-      <button
-        onClick={() => navigate("/pricing")}
-        className="px-5 py-2 bg-amber-500 text-black font-bold rounded-lg text-sm hover:bg-amber-400 transition-colors"
-      >
-        See Plans
-      </button>
-    </div>
-  );
-}
 
 function QuickNavCards() {
   const { tierLevel } = useAuth();
@@ -513,7 +489,13 @@ export default function Dashboard() {
       <SessionsLiveBoard />
       <QuickReference />
       <AchievementBadges />
-      {isFreeUser && <DashboardPremiumTeaser />}
+      {isFreeUser && (
+        <PremiumTeaser
+          title="UNLOCK PREMIUM TOOLS"
+          description="Upgrade to access the <strong>Smart Journal</strong> to log and analyze every trade, plus <strong>Analytics</strong> with performance charts, win-rate tracking, and AI-powered insights."
+          buttonText="See Plans"
+        />
+      )}
       <QuickNavCards />
     </div>
   );

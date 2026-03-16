@@ -229,7 +229,7 @@ export function AchievementBadges() {
   );
 }
 
-export function PremiumTeaser() {
+export function PremiumTeaser({ title, description, buttonText }: { title?: string; description?: string; buttonText?: string } = {}) {
   const navigate = useNavigate();
 
   return (
@@ -238,29 +238,33 @@ export function PremiumTeaser() {
 
       <div className="flex items-center gap-2 mb-3">
         <Crown className="h-5 w-5 text-amber-500" />
-        <h3 className="text-sm font-bold text-amber-500">PREMIUM INSIGHTS</h3>
+        <h3 className="text-sm font-bold text-amber-500">{title || "PREMIUM INSIGHTS"}</h3>
       </div>
 
-      <div className="space-y-2 mb-4">
-        {PREMIUM_TIPS.slice(0, 3).map((tip, i) => (
-          <div key={i} className="relative">
-            <p className="text-xs text-foreground/80 select-none" style={{ filter: "blur(4px)" }}>
-              {tip}
-            </p>
-            {i === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Lock className="h-4 w-4 text-amber-500" />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      {description ? (
+        <p className="text-sm text-foreground/80 mb-4" dangerouslySetInnerHTML={{ __html: description }} />
+      ) : (
+        <div className="space-y-2 mb-4">
+          {PREMIUM_TIPS.slice(0, 3).map((tip, i) => (
+            <div key={i} className="relative">
+              <p className="text-xs text-foreground/80 select-none" style={{ filter: "blur(4px)" }}>
+                {tip}
+              </p>
+              {i === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Lock className="h-4 w-4 text-amber-500" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <button
         onClick={() => navigate("/pricing")}
         className="w-full bg-gradient-to-r from-amber-500 to-primary text-white font-bold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all animate-pulse"
       >
-        Unlock Premium Tips
+        {buttonText || "Unlock Premium Tips"}
         <ArrowRight className="h-4 w-4" />
       </button>
     </div>
