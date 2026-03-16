@@ -10,6 +10,9 @@ router.use(authRequired);
 router.get("/posts", async (req, res) => {
   try {
     const category = req.query.category as string | undefined;
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+    const offset = (page - 1) * limit;
 
     let query = db
       .select({
@@ -29,6 +32,8 @@ router.get("/posts", async (req, res) => {
       .from(communityPostsTable)
       .innerJoin(usersTable, eq(communityPostsTable.userId, usersTable.id))
       .orderBy(desc(communityPostsTable.createdAt))
+      .limit(limit)
+      .offset(offset)
       .$dynamic();
 
     if (category && category !== "all") {
@@ -52,7 +57,7 @@ router.get("/posts", async (req, res) => {
       liked: likedPostIds.includes(p.id),
     }));
 
-    res.json(result);
+    res.json({ posts: result, page, limit, hasMore: posts.length === limit });
   } catch (err) {
     console.error("GET /community/posts error:", err);
     res.status(500).json({ error: "Failed to fetch posts" });

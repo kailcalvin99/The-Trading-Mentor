@@ -129,7 +129,8 @@ export default function Community() {
         : `${API_BASE}/community/posts?category=${activeCategory}`;
       const res = await fetch(url, { credentials: "include" });
       if (res.ok) {
-        setPosts(await res.json());
+        const data = await res.json();
+        setPosts(Array.isArray(data) ? data : data.posts || []);
       }
     } catch {
     } finally {

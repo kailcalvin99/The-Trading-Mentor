@@ -114,8 +114,9 @@ export default function CommunityScreen() {
   const fetchPosts = useCallback(async () => {
     try {
       const url = activeCategory === "all" ? "community/posts" : `community/posts?category=${activeCategory}`;
-      const data = await apiGet(url);
-      if (Array.isArray(data)) setPosts(data);
+      const data = await apiGet(url) as any;
+      const postsArr = Array.isArray(data) ? data : data?.posts || [];
+      setPosts(postsArr);
     } catch {} finally {
       setLoading(false);
       setRefreshing(false);

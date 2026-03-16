@@ -57,7 +57,7 @@ const USER_TOOL_DECLARATIONS = [
       properties: {
         page: {
           type: "STRING" as Type,
-          description: "The page to navigate to. Options: academy, planner, risk-shield, journal, analytics, pricing, admin, welcome",
+          description: "The page to navigate to. Options: academy, planner, risk-shield, journal, analytics, pricing, admin, welcome, community, dashboard",
         },
       },
       required: ["page"],
@@ -190,6 +190,8 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
         pricing: "/pricing",
         admin: "/admin",
         welcome: "/welcome",
+        community: "/community",
+        dashboard: "/dashboard",
       };
       const page = args.page as string;
       const path = pageMap[page] || "/";
