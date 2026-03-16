@@ -5,3 +5,4 @@ export * from "./prop_account";
 export * from "./users";
 export * from "./subscriptions";
 export * from "./admin_settings";
+export * from "./community";

@@ -32,6 +32,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "book", selected: "book.fill" }} />
         <Label>Journal</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="community">
+        <Icon sf={{ default: "person.3", selected: "person.3.fill" }} />
+        <Label>Community</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
     <AIAssistant />
     </>
@@ -109,6 +113,18 @@ function ClassicTabLayout() {
               <SymbolView name="book.fill" tintColor={color} size={24} />
             ) : (
               <Ionicons name="book-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "Community",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="person.3.fill" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="people-outline" size={22} color={color} />
             ),
         }}
       />

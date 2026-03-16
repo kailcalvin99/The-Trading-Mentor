@@ -164,14 +164,14 @@ Express 5 API server with auth middleware, subscription management, and admin ro
 - Entry: `src/index.ts` — reads `PORT`, starts Express
 - App setup: `src/app.ts` — mounts CORS (restricted origins), cookie-parser, JSON/urlencoded, routes at `/api`, seeds defaults
 - Middleware: `src/middleware/auth.ts` — JWT auth with httpOnly cookies, secure+SameSite=None on Replit, admin role check
-- Routes: auth, subscriptions, admin, gemini, prop, trades, webhook
+- Routes: auth, subscriptions, admin, gemini, prop, trades, webhook, community
 - Seed: `src/seed.ts` — creates default tiers and admin settings on startup
 
 ### `lib/db` (`@workspace/db`)
 
 Database layer using Drizzle ORM with PostgreSQL.
 
-- Schema files: users.ts, subscriptions.ts, admin_settings.ts, conversations.ts, messages.ts, trades.ts, prop_account.ts
+- Schema files: users.ts, subscriptions.ts, admin_settings.ts, conversations.ts, messages.ts, trades.ts, prop_account.ts, community.ts
 - Production migrations handled by Replit on publish. Dev: `pnpm --filter @workspace/db run push`
 
 ### `artifacts/web` (`@workspace/web`)
@@ -183,11 +183,12 @@ React + Vite web application with auth-gated access.
 - Casino elements: `src/components/CasinoElements.tsx` — daily streak, spin wheel, achievements, premium teasers
 - Layout: Subscription-aware navigation with user menu, admin link, upgrade prompts
 - Free users see casino sidebar on right with spin wheel, streaks, achievements, and blurred premium content
+- **Community Hub** (`/community`): Reddit-style forum with category tabs (Strategy Talk, Trade Reviews, Wins, Questions, General), post creation modal, thread view with replies, like toggle. Available to all tiers (requiredTier: 0)
 - Preview path: `/web/`
 
 ### `artifacts/mobile` (`@workspace/mobile`)
 
-Expo React Native mobile app with 4 tabs (same as before, no auth changes yet).
+Expo React Native mobile app with 5 tabs: Planner, Academy, Risk, Journal, Community.
 
 ### `artifacts/mockup-sandbox` (`@workspace/mockup-sandbox`)
 

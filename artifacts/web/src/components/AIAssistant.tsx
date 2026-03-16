@@ -63,6 +63,8 @@ function getPageName(pathname: string): string {
     "/pricing": "Pricing",
     "/admin": "Admin Dashboard",
     "/welcome": "Welcome",
+    "/dashboard": "Dashboard",
+    "/community": "Community",
   };
   return map[pathname] || "Unknown Page";
 }

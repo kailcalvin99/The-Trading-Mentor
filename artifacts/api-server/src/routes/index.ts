@@ -8,6 +8,7 @@ import authRouter from "./auth";
 import subscriptionsRouter from "./subscriptions";
 import adminRouter from "./admin";
 import userSettingsRouter from "./user-settings";
+import communityRouter from "./community";
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -19,5 +20,6 @@ router.use("/gemini", geminiRouter);
 router.use("/prop", propRouter);
 router.use("/trades", tradesRouter);
 router.use("/webhook", webhookRouter);
+router.use("/community", communityRouter);
 
 export default router;

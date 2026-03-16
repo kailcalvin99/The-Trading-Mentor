@@ -45,6 +45,7 @@ const NAV_MAP: Record<string, string> = {
   academy: "/(tabs)/academy",
   "risk-shield": "/(tabs)/tracker",
   journal: "/(tabs)/journal",
+  community: "/(tabs)/community",
 };
 
 export default function AIAssistant() {

@@ -18,6 +18,7 @@ import Analytics from "@/pages/Analytics";
 import Admin from "@/pages/Admin";
 import Settings from "@/pages/Settings";
 import Dashboard from "@/pages/Dashboard";
+import Community from "@/pages/Community";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -116,6 +117,7 @@ function App() {
                   <Route path="risk-shield" element={<RiskShield />} />
                   <Route path="journal" element={<SmartJournal />} />
                   <Route path="analytics" element={<Analytics />} />
+                  <Route path="community" element={<Community />} />
                   <Route path="admin" element={<Admin />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />
