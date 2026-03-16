@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
-import { Crown, Flame, Star, Trophy, Zap, Gift, Lock, TrendingUp, ArrowRight, X } from "lucide-react";
+import { Crown, Flame, Star, Trophy, Zap, Gift, Lock, TrendingUp, ArrowRight, X, Target } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const DAILY_TIPS = [
@@ -104,7 +104,7 @@ export function DailyStreak() {
   );
 }
 
-export function SpinWheel() {
+export function SpinWheel({ size }: { size?: number } = {}) {
   const { isFeatureEnabled } = useAppConfig();
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -136,6 +136,7 @@ export function SpinWheel() {
       setCanSpin(false);
       localStorage.setItem("last_spin_date", new Date().toDateString());
       localStorage.setItem("spin_result", tip);
+      window.dispatchEvent(new Event("spin-complete"));
     }, 3000);
   }, [canSpin, spinning, rotation]);
 
@@ -150,7 +151,7 @@ export function SpinWheel() {
         <h3 className="text-sm font-bold text-foreground">Daily Trading Tip</h3>
       </div>
 
-      <div className="relative w-32 h-32 mx-auto mb-4">
+      <div className="relative mx-auto mb-4" style={{ width: size || 128, height: size || 128 }}>
         <div
           className="w-full h-full rounded-full border-4 border-primary/30 flex items-center justify-center transition-transform ease-out"
           style={{
@@ -159,7 +160,7 @@ export function SpinWheel() {
             background: "conic-gradient(from 0deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.05), hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.1))",
           }}
         >
-          <Star className={`h-8 w-8 text-primary ${spinning ? "animate-pulse" : ""}`} />
+          <Star className={`text-primary ${spinning ? "animate-pulse" : ""}`} style={{ width: (size || 128) * 0.25, height: (size || 128) * 0.25 }} />
         </div>
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 w-3 h-3 bg-primary rotate-45" />
       </div>
@@ -190,6 +191,8 @@ export function AchievementBadges() {
     { name: "First Login", icon: Star, earned: true, color: "text-amber-500" },
     { name: "Academy Started", icon: Zap, earned: true, color: "text-blue-400" },
     { name: "3-Day Streak", icon: Flame, earned: parseInt(localStorage.getItem("login_streak") || "0") >= 3, color: "text-red-500" },
+    { name: "Dashboard Visitor", icon: Target, earned: localStorage.getItem("dashboard-visited") === "true", color: "text-primary" },
+    { name: "7-Day Streak", icon: Flame, earned: parseInt(localStorage.getItem("login_streak") || "0") >= 7, color: "text-orange-500" },
     { name: "Quiz Master", icon: Trophy, earned: localStorage.getItem("ict-academy-unlocked") === "true", color: "text-purple-400" },
     { name: "Trading Pro", icon: TrendingUp, earned: false, color: "text-primary", locked: true },
     { name: "Legend", icon: Crown, earned: false, color: "text-amber-400", locked: true },
@@ -204,7 +207,7 @@ export function AchievementBadges() {
           {achievements.filter((a) => a.earned).length}/{achievements.length}
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {achievements.map((a) => (
           <div
             key={a.name}

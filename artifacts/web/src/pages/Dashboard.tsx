@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
-import { SpinWheel, PremiumTeaser } from "@/components/CasinoElements";
+import { SpinWheel, DailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
 
 const MASCOT_TIPS = [
   "Always wait for the liquidity sweep before entering!",
@@ -144,29 +144,10 @@ function IctMascot() {
 
 function GamifiedStatusRow() {
   const xp = parseInt(localStorage.getItem("total_xp") || "0");
-  const streak = parseInt(localStorage.getItem("login_streak") || "0");
   const level = Math.floor(xp / 100) + 1;
   const xpInLevel = xp % 100;
   const rankIdx = Math.min(Math.floor((level - 1) / 2), RANKS.length - 1);
   const rank = RANKS[rankIdx];
-
-  const achievements = [
-    { earned: true },
-    { earned: true },
-    { earned: streak >= 3 },
-    { earned: localStorage.getItem("ict-academy-unlocked") === "true" },
-    { earned: streak >= 7 },
-    { earned: localStorage.getItem("dashboard-visited") === "true" },
-    { earned: false },
-    { earned: false },
-  ];
-  const earnedCount = achievements.filter((a) => a.earned).length;
-
-  useEffect(() => {
-    if (!localStorage.getItem("dashboard-visited")) {
-      localStorage.setItem("dashboard-visited", "true");
-    }
-  }, []);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -185,43 +166,59 @@ function GamifiedStatusRow() {
         <p className="text-[10px] text-muted-foreground mt-1">{xpInLevel}/100 XP to next level</p>
       </div>
 
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Flame className={`h-5 w-5 ${streak >= 7 ? "text-red-500" : streak >= 3 ? "text-amber-500" : "text-amber-400"}`} />
-          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Streak</span>
-        </div>
-        <p className="text-lg font-bold text-foreground">{streak} Day{streak !== 1 ? "s" : ""}</p>
-        <div className="flex gap-1 mt-2">
-          {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-            <div key={d} className={`w-4 h-4 rounded-sm ${d <= streak ? "bg-amber-500" : "bg-muted"}`} />
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Trophy className="h-5 w-5 text-amber-500" />
-          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Badges</span>
-        </div>
-        <p className="text-lg font-bold text-foreground">{earnedCount}/{achievements.length}</p>
-        <div className="flex gap-1 mt-2">
-          {achievements.map((a, i) => (
-            <div key={i} className={`w-4 h-4 rounded-full ${a.earned ? "bg-primary" : "bg-muted"}`} />
-          ))}
-        </div>
-      </div>
+      <DailyStreak />
+      <AchievementBadges />
     </div>
   );
 }
 
 function DailySpinSection() {
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  useEffect(() => {
+    const handler = () => {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+    };
+    window.addEventListener("spin-complete", handler);
+    return () => window.removeEventListener("spin-complete", handler);
+  }, []);
+
   return (
-    <div className="bg-card border border-border rounded-2xl p-6">
+    <div className="bg-card border border-border rounded-2xl p-6 relative overflow-hidden">
+      {showConfetti && (
+        <div className="absolute inset-0 pointer-events-none z-10">
+          {Array.from({ length: 40 }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute animate-confetti-fall"
+              style={{
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 0.5}s`,
+                animationDuration: `${1 + Math.random() * 1.5}s`,
+                backgroundColor: ["#00C896", "#FFD700", "#818CF8", "#EF4444", "#06B6D4"][i % 5],
+                width: `${6 + Math.random() * 6}px`,
+                height: `${6 + Math.random() * 6}px`,
+                borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+              }}
+            />
+          ))}
+          <style>{`
+            @keyframes confettiFall {
+              0% { top: -10%; opacity: 1; transform: rotate(0deg) scale(1); }
+              100% { top: 110%; opacity: 0; transform: rotate(720deg) scale(0.3); }
+            }
+            .animate-confetti-fall { animation: confettiFall 2s ease-out forwards; }
+          `}</style>
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-4">
         <Gift className="h-5 w-5 text-primary" />
         <h3 className="text-base font-bold text-foreground">Daily Tip Wheel — Spin for Today's Insight</h3>
       </div>
-      <SpinWheel />
+      <div className="flex justify-center" style={{ minHeight: 220 }}>
+        <SpinWheel size={200} />
+      </div>
     </div>
   );
 }
@@ -343,7 +340,7 @@ function QuickReference() {
         <h3 className="text-base font-bold text-foreground">ICT Quick Reference</h3>
         <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">{QUICK_REF.length} terms</span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {QUICK_REF.map((item) => (
           <FlipCard key={item.term} {...item} />
         ))}
@@ -429,44 +426,26 @@ function SessionsLiveBoard() {
   );
 }
 
-function AchievementsFull() {
-  const streak = parseInt(localStorage.getItem("login_streak") || "0");
-  const achievements = [
-    { name: "First Login", icon: Star, earned: true, color: "text-amber-500" },
-    { name: "Academy Started", icon: Zap, earned: true, color: "text-blue-400" },
-    { name: "3-Day Streak", icon: Flame, earned: streak >= 3, color: "text-red-500" },
-    { name: "Quiz Master", icon: Trophy, earned: localStorage.getItem("ict-academy-unlocked") === "true", color: "text-purple-400" },
-    { name: "7-Day Streak", icon: Flame, earned: streak >= 7, color: "text-orange-500" },
-    { name: "Dashboard Explorer", icon: Sparkles, earned: localStorage.getItem("dashboard-visited") === "true", color: "text-cyan-400" },
-    { name: "Trading Pro", icon: TrendingUp, earned: false, color: "text-primary", locked: true },
-    { name: "Legend", icon: Crown, earned: false, color: "text-amber-400", locked: true },
-  ];
+function DashboardPremiumTeaser() {
+  const navigate = useNavigate();
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Trophy className="h-5 w-5 text-amber-500" />
-        <h3 className="text-base font-bold text-foreground">Achievements</h3>
-        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-          {achievements.filter((a) => a.earned).length}/{achievements.length}
-        </span>
+    <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 via-primary/5 to-purple-500/10 border border-amber-500/20 rounded-xl p-5">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl" />
+      <div className="flex items-center gap-2 mb-3">
+        <Crown className="h-5 w-5 text-amber-500" />
+        <h3 className="text-sm font-bold text-amber-500">UNLOCK PREMIUM TOOLS</h3>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {achievements.map((a) => (
-          <div
-            key={a.name}
-            className={`relative flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
-              a.earned
-                ? "bg-primary/5 border-primary/20"
-                : "bg-muted/30 border-border opacity-50"
-            }`}
-          >
-            <a.icon className={`h-7 w-7 ${a.earned ? a.color : "text-muted-foreground"}`} />
-            <span className="text-xs font-medium text-center text-foreground/70">{a.name}</span>
-            {a.locked && <Lock className="h-3 w-3 absolute top-2 right-2 text-muted-foreground" />}
-          </div>
-        ))}
-      </div>
+      <p className="text-sm text-foreground/80 mb-3">
+        Upgrade to access the <strong>Smart Journal</strong> to log and analyze every trade,
+        plus <strong>Analytics</strong> with performance charts, win-rate tracking, and AI-powered insights.
+      </p>
+      <button
+        onClick={() => navigate("/pricing")}
+        className="px-5 py-2 bg-amber-500 text-black font-bold rounded-lg text-sm hover:bg-amber-400 transition-colors"
+      >
+        See Plans
+      </button>
     </div>
   );
 }
@@ -533,8 +512,8 @@ export default function Dashboard() {
 
       <SessionsLiveBoard />
       <QuickReference />
-      <AchievementsFull />
-      {isFreeUser && <PremiumTeaser />}
+      <AchievementBadges />
+      {isFreeUser && <DashboardPremiumTeaser />}
       <QuickNavCards />
     </div>
   );
