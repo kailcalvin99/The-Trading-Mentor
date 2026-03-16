@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -8,7 +8,8 @@ import { FreeSidebar, LockedFeatureOverlay, SpinWheelFloatingTrigger } from "@/c
 import AIAssistant from "@/components/AIAssistant";
 
 const navItems = [
-  { to: "/", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0 },
+  { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0 },
+  { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0 },
   { to: "/planner", label: "Daily Planner", mobileLabel: "Planner", icon: Calendar, requiredTier: 0 },
   { to: "/risk-shield", label: "Risk Shield", mobileLabel: "Risk", icon: Shield, requiredTier: 1 },
   { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 2 },
@@ -51,7 +52,7 @@ function NavItem({
   return (
     <NavLink
       to={to}
-      end={to === "/"}
+      end
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
           isActive
@@ -101,7 +102,7 @@ function MobileNavItem({
   return (
     <NavLink
       to={to}
-      end={to === "/"}
+      end
       className={({ isActive }) =>
         `flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-2 text-[10px] font-medium transition-colors ${
           isActive ? "text-primary" : "text-muted-foreground"

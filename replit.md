@@ -116,11 +116,14 @@ Seven collapsible sections:
 
 ### Frontend Features
 - Login/Signup pages with gold branding and serif headings
+- **Dashboard** (`/dashboard`): Main hub landing page with ICT mascot, gamified status row (level/rank/streak/badges), daily spin wheel, slot machine daily challenge, ICT quick reference flip-cards (12 terms), live market sessions board, achievements, premium teaser, and quick-nav cards
+- **ICT Academy** now at `/academy` (previously at `/`)
+- **IndexRedirect** (`/`) → redirects to `/dashboard` after welcome tour
 - Founder welcome modal with crown animation
 - Pricing page with monthly/annual toggle and founder discount display
 - Admin dashboard with user management, tier editing, global settings, AI Assistant panel
-- Casino-game elements: daily streak, spin wheel, achievements, premium teasers
-- Sidebar shows user profile, subscription status, founder badge
+- Casino-game elements: daily streak, spin wheel, achievements, premium teasers, slot machine mission generator
+- Sidebar shows user profile, subscription status, founder badge; Dashboard is first nav item
 - Feature locking based on subscription tier
 
 ### AI Assistant (Persistent Global Chat)

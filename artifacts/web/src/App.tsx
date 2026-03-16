@@ -17,6 +17,7 @@ import SmartJournal from "@/pages/SmartJournal";
 import Analytics from "@/pages/Analytics";
 import Admin from "@/pages/Admin";
 import Settings from "@/pages/Settings";
+import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -73,7 +74,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function IndexRedirect() {
   const seen = localStorage.getItem("ict-welcome-seen");
   if (!seen) return <Navigate to="/welcome" replace />;
-  return <IctAcademy />;
+  return <Navigate to="/dashboard" replace />;
 }
 
 function App() {
@@ -90,7 +91,9 @@ function App() {
 
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                   <Route index element={<IndexRedirect />} />
+                  <Route path="dashboard" element={<Dashboard />} />
                   <Route path="welcome" element={<Welcome />} />
+                  <Route path="academy" element={<IctAcademy />} />
                   <Route path="planner" element={<DailyPlanner />} />
                   <Route path="risk-shield" element={<RiskShield />} />
                   <Route path="journal" element={<SmartJournal />} />
