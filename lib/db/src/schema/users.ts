@@ -1,6 +1,7 @@
-import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, integer, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { sql } from "drizzle-orm";
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -13,6 +14,8 @@ export const usersTable = pgTable("users", {
   defaultSession: text("default_session"),
   preferredEntryStyle: text("preferred_entry_style"),
   defaultPairs: text("default_pairs"),
+  lastLoginAt: timestamp("last_login_at"),
+  webhookToken: uuid("webhook_token").default(sql`gen_random_uuid()`),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

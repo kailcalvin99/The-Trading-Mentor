@@ -54,8 +54,11 @@ interface PostDetail extends Post {
 const CATEGORIES = [
   { value: "all", label: "All" },
   { value: "strategy-talk", label: "#Strategy-Talk" },
+  { value: "trade-reviews", label: "#Trade-Reviews" },
   { value: "daily-wins", label: "#Daily-Wins" },
   { value: "indicators", label: "#Indicators" },
+  { value: "questions", label: "#Questions" },
+  { value: "general", label: "#General" },
 ];
 
 function timeAgo(dateStr: string) {

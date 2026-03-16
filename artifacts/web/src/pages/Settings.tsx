@@ -10,6 +10,10 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Copy,
+  Check,
+  Lock,
+  Zap,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -50,7 +54,7 @@ interface RiskRulesData {
 }
 
 export default function Settings() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, tierLevel } = useAuth();
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingTrading, setSavingTrading] = useState(false);
@@ -166,6 +170,8 @@ export default function Settings() {
   function handleSaveRisk() {
     saveSection("riskRules", riskRules, setSavingRisk);
   }
+
+  const isPremium = tierLevel >= 1;
 
   if (loading) {
     return (
@@ -389,6 +395,118 @@ export default function Settings() {
               </button>
             </div>
           </div>
+        </div>
+
+        <TradingViewWebhookCard isPremium={isPremium} />
+      </div>
+    </div>
+  );
+}
+
+function TradingViewWebhookCard({ isPremium }: { isPremium: boolean }) {
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isPremium) {
+      loadWebhookInfo();
+    }
+  }, [isPremium]);
+
+  async function loadWebhookInfo() {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/webhook/tradingview/info`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setWebhookUrl(data.webhookUrl);
+      }
+    } catch {}
+    setLoading(false);
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (!isPremium) {
+    return (
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+          <Zap className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-sm font-bold text-foreground">TradingView Webhook</h2>
+          <span className="ml-auto text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">PREMIUM</span>
+        </div>
+        <div className="px-5 py-8 text-center">
+          <Lock className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm font-medium text-foreground mb-1">Upgrade to Premium</p>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            Connect TradingView alerts to automatically create draft trades. Upgrade your plan to unlock this feature.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+        <Zap className="h-5 w-5 text-primary" />
+        <h2 className="text-sm font-bold text-foreground">TradingView Webhook</h2>
+      </div>
+      <div className="px-5 py-5 space-y-4">
+        <div>
+          <label className="text-sm font-medium text-foreground mb-1.5 block">Your Webhook URL</label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Paste this URL into your TradingView alert to automatically create draft trades.
+          </p>
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading...
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={webhookUrl}
+                className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm font-mono text-muted-foreground select-all focus:outline-none focus:ring-1 focus:ring-primary"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1.5 px-3 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors shrink-0"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <p className="text-sm font-medium text-foreground mb-3">Setup Instructions</p>
+          <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+            <li>Open a chart in <span className="text-foreground font-medium">TradingView</span> and click the <span className="text-foreground font-medium">Alert</span> button (clock icon)</li>
+            <li>Set your alert conditions (price level, indicator signal, etc.)</li>
+            <li>In the <span className="text-foreground font-medium">Notifications</span> tab, enable <span className="text-foreground font-medium">Webhook URL</span></li>
+            <li>Paste your webhook URL from above into the URL field</li>
+            <li>
+              Set the alert message body to JSON:
+              <pre className="mt-1.5 bg-background border border-border rounded-lg p-3 text-xs font-mono overflow-x-auto">
+{`{
+  "ticker": "{{ticker}}",
+  "side": "{{strategy.order.action}}",
+  "price": "{{close}}"
+}`}
+              </pre>
+            </li>
+            <li>Click <span className="text-foreground font-medium">Create</span> — trades will appear as drafts in your journal</li>
+          </ol>
         </div>
       </div>
     </div>

@@ -62,6 +62,7 @@ router.get("/users", async (_req, res) => {
         customAnnualPrice: userSubscriptionsTable.customAnnualPrice,
         tierName: subscriptionTiersTable.name,
         tierLevel: subscriptionTiersTable.level,
+        lastLoginAt: usersTable.lastLoginAt,
       })
       .from(usersTable)
       .leftJoin(userSubscriptionsTable, eq(usersTable.id, userSubscriptionsTable.userId))
@@ -109,11 +110,7 @@ router.put("/users/:id/subscription", async (req, res) => {
 router.delete("/users/:id", async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
-
-    if (userId === req.user!.userId) {
-      res.status(400).json({ error: "You cannot delete your own account" });
-      return;
-    }
+    const isSelfDelete = req.user!.userId === userId;
 
     const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
     if (!targetUser) {
@@ -143,12 +140,19 @@ router.delete("/users/:id", async (req, res) => {
     await db.delete(communityRepliesTable).where(eq(communityRepliesTable.userId, userId));
     await db.delete(communityPostsTable).where(eq(communityPostsTable.userId, userId));
 
+    await db.delete(messages).where(
+      sql`conversation_id IN (SELECT id FROM conversations WHERE user_id = ${userId})`
+    );
     await db.delete(conversations).where(eq(conversations.userId, userId));
     await db.delete(propAccountTable).where(eq(propAccountTable.userId, userId));
     await db.delete(userSubscriptionsTable).where(eq(userSubscriptionsTable.userId, userId));
     await db.delete(usersTable).where(eq(usersTable.id, userId));
 
-    res.json({ success: true, message: `User ${targetUser.email} deleted` });
+    if (isSelfDelete) {
+      res.clearCookie("token", { path: "/" });
+    }
+
+    res.json({ success: true, selfDeleted: isSelfDelete, message: `User ${targetUser.email} deleted` });
   } catch (err) {
     console.error("Delete user error:", err);
     res.status(500).json({ error: "Failed to delete user" });

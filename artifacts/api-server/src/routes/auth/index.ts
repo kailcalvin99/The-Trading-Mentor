@@ -127,6 +127,8 @@ router.post("/login", async (req, res) => {
       return;
     }
 
+    await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
+
     const token = signToken({ userId: user.id, email: user.email });
     setAuthCookie(res, token);
 

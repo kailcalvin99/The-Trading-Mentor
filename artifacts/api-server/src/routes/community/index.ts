@@ -72,8 +72,8 @@ router.post("/posts", async (req, res) => {
       return;
     }
 
-    const validCategories = ["strategy-talk", "daily-wins", "indicators"];
-    const cat = validCategories.includes(category) ? category : "strategy-talk";
+    const validCategories = ["strategy-talk", "daily-wins", "indicators", "trade-reviews", "wins", "questions", "general"];
+    const cat = validCategories.includes(category) ? category : "general";
 
     const [post] = await db
       .insert(communityPostsTable)
@@ -177,7 +177,6 @@ router.post("/posts/:id/replies", async (req, res) => {
       res.status(404).json({ error: "Post not found" });
       return;
     }
-
     const [reply] = await db
       .insert(communityRepliesTable)
       .values({

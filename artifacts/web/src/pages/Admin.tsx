@@ -5,7 +5,7 @@ import {
   Crown, Users, Settings, DollarSign, Save, Edit2, X, Check, Trash2,
   AlertTriangle, RotateCcw, ChevronDown, ChevronRight,
   Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target,
-  Sparkles, Send, Loader2, BarChart3, FileText,
+  Sparkles, Send, Loader2, BarChart3, FileText, Filter,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -25,6 +25,7 @@ interface AdminUser {
   customMonthlyPrice: string | null;
   customAnnualPrice: string | null;
   tierId: number | null;
+  lastLoginAt: string | null;
 }
 
 interface AdminTier {
@@ -123,7 +124,8 @@ export default function Admin() {
   const [resetStep, setResetStep] = useState(0);
   const [resetCode, setResetCode] = useState("");
   const [resetting, setResetting] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [showInactiveOnly, setShowInactiveOnly] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const fetchOpts: RequestInit = { credentials: "include" };
@@ -211,6 +213,52 @@ export default function Admin() {
     setSaving(false);
   }
 
+  function getDaysSinceLogin(lastLoginAt: string | null): number | null {
+    if (!lastLoginAt) return null;
+    const lastLogin = new Date(lastLoginAt);
+    const now = new Date();
+    return Math.floor((now.getTime() - lastLogin.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  function getLastActiveLabel(lastLoginAt: string | null): string {
+    if (!lastLoginAt) return "Never";
+    const days = getDaysSinceLogin(lastLoginAt);
+    if (days === null) return "Never";
+    if (days === 0) return "Today";
+    if (days === 1) return "Yesterday";
+    return `${days}d ago`;
+  }
+
+  async function handleDeleteUser(userId: number) {
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+        method: "DELETE", ...fetchOpts, headers,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.selfDeleted) {
+          window.location.href = import.meta.env.BASE_URL || "/web/";
+        } else {
+          setDeleteConfirmId(null);
+          loadData();
+        }
+      } else {
+        alert(data.error || "Failed to delete user");
+      }
+    } catch {
+      alert("Failed to delete user");
+    }
+    setDeleting(false);
+  }
+
+  const filteredUsers = showInactiveOnly
+    ? users.filter((u) => {
+        const days = getDaysSinceLogin(u.lastLoginAt);
+        return days === null || days >= 30;
+      })
+    : users;
+
   async function handleReset() {
     if (resetCode !== "RESET-EVERYTHING") return;
     setResetting(true);
@@ -228,26 +276,6 @@ export default function Admin() {
       }
     } catch { alert("Reset failed"); }
     setResetting(false);
-  }
-
-  async function handleDeleteUser() {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(`${API_BASE}/admin/users/${deleteTarget.id}`, {
-        method: "DELETE", ...fetchOpts, headers,
-      });
-      if (res.ok) {
-        setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
-      } else {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || "Failed to delete user");
-      }
-    } catch {
-      alert("Failed to delete user");
-    }
-    setDeleting(false);
-    setDeleteTarget(null);
   }
 
   let routineItems: { key: string; label: string; desc: string; icon: string }[] = [];
@@ -305,123 +333,189 @@ export default function Admin() {
       </div>
 
       {tab === "users" && (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">User</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Plan</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Custom Price</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-b border-border/50 hover:bg-muted/10">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <p className="font-medium text-foreground">{u.name}</p>
-                          <p className="text-xs text-muted-foreground">{u.email}</p>
-                        </div>
-                        {u.isFounder && (
-                          <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5">
-                            <Crown className="h-3 w-3 text-amber-500" />
-                            <span className="text-[10px] font-bold text-amber-500">#{u.founderNumber}</span>
-                          </span>
-                        )}
-                        {u.role === "admin" && (
-                          <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">ADMIN</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        u.subStatus === "active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                      }`}>
-                        {u.subStatus || "None"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {editingUser === u.id ? (
-                        <select
-                          value={editValues.tierId || u.tierId || ""}
-                          onChange={(e) => setEditValues({ ...editValues, tierId: e.target.value })}
-                          className="bg-background border border-border rounded px-2 py-1 text-sm"
-                        >
-                          {tiers.map((t) => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-foreground">{u.tierName || "None"}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {editingUser === u.id ? (
-                        <div className="flex gap-2">
-                          <input
-                            placeholder="Monthly $"
-                            value={editValues.customMonthlyPrice || ""}
-                            onChange={(e) => setEditValues({ ...editValues, customMonthlyPrice: e.target.value })}
-                            className="bg-background border border-border rounded px-2 py-1 text-sm w-24"
-                          />
-                          <input
-                            placeholder="Annual $"
-                            value={editValues.customAnnualPrice || ""}
-                            onChange={(e) => setEditValues({ ...editValues, customAnnualPrice: e.target.value })}
-                            className="bg-background border border-border rounded px-2 py-1 text-sm w-24"
-                          />
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">
-                          {u.customMonthlyPrice ? `$${u.customMonthlyPrice}/mo` : "Standard"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {editingUser === u.id ? (
-                        <div className="flex gap-1">
-                          <button onClick={() => saveUserSub(u.id)} disabled={saving} className="p-1.5 bg-primary/10 text-primary rounded hover:bg-primary/20">
-                            <Check className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => setEditingUser(null)} className="p-1.5 bg-muted text-muted-foreground rounded hover:bg-muted/80">
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => {
-                              setEditingUser(u.id);
-                              setEditValues({
-                                tierId: String(u.tierId || ""),
-                                customMonthlyPrice: u.customMonthlyPrice || "",
-                                customAnnualPrice: u.customAnnualPrice || "",
-                              });
-                            }}
-                            className="p-1.5 text-muted-foreground hover:text-foreground"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          {u.id !== user?.id && (
-                            <button
-                              onClick={() => setDeleteTarget(u)}
-                              className="p-1.5 text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowInactiveOnly(!showInactiveOnly)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                showInactiveOnly
+                  ? "bg-amber-500/10 border border-amber-500/30 text-amber-500"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Inactive (30+ days)
+            </button>
+            <span className="text-xs text-muted-foreground">
+              {filteredUsers.length} of {users.length} users
+            </span>
           </div>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">User</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Plan</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Last Active</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Custom Price</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => {
+                    const daysSince = getDaysSinceLogin(u.lastLoginAt);
+                    const isInactive = daysSince === null || daysSince >= 30;
+                    return (
+                      <tr key={u.id} className="border-b border-border/50 hover:bg-muted/10">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <p className="font-medium text-foreground">{u.name}</p>
+                              <p className="text-xs text-muted-foreground">{u.email}</p>
+                            </div>
+                            {u.isFounder && (
+                              <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5">
+                                <Crown className="h-3 w-3 text-amber-500" />
+                                <span className="text-[10px] font-bold text-amber-500">#{u.founderNumber}</span>
+                              </span>
+                            )}
+                            {u.role === "admin" && (
+                              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">ADMIN</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            u.subStatus === "active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                          }`}>
+                            {u.subStatus || "None"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {editingUser === u.id ? (
+                            <select
+                              value={editValues.tierId || u.tierId || ""}
+                              onChange={(e) => setEditValues({ ...editValues, tierId: e.target.value })}
+                              className="bg-background border border-border rounded px-2 py-1 text-sm"
+                            >
+                              {tiers.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-foreground">{u.tierName || "None"}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-medium ${isInactive ? "text-amber-500" : "text-muted-foreground"}`}>
+                            {getLastActiveLabel(u.lastLoginAt)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {editingUser === u.id ? (
+                            <div className="flex gap-2">
+                              <input
+                                placeholder="Monthly $"
+                                value={editValues.customMonthlyPrice || ""}
+                                onChange={(e) => setEditValues({ ...editValues, customMonthlyPrice: e.target.value })}
+                                className="bg-background border border-border rounded px-2 py-1 text-sm w-24"
+                              />
+                              <input
+                                placeholder="Annual $"
+                                value={editValues.customAnnualPrice || ""}
+                                onChange={(e) => setEditValues({ ...editValues, customAnnualPrice: e.target.value })}
+                                className="bg-background border border-border rounded px-2 py-1 text-sm w-24"
+                              />
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              {u.customMonthlyPrice ? `$${u.customMonthlyPrice}/mo` : "Standard"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            {editingUser === u.id ? (
+                              <>
+                                <button onClick={() => saveUserSub(u.id)} disabled={saving} className="p-1.5 bg-primary/10 text-primary rounded hover:bg-primary/20">
+                                  <Check className="h-4 w-4" />
+                                </button>
+                                <button onClick={() => setEditingUser(null)} className="p-1.5 bg-muted text-muted-foreground rounded hover:bg-muted/80">
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setEditingUser(u.id);
+                                    setEditValues({
+                                      tierId: String(u.tierId || ""),
+                                      customMonthlyPrice: u.customMonthlyPrice || "",
+                                      customAnnualPrice: u.customAnnualPrice || "",
+                                    });
+                                  }}
+                                  className="p-1.5 text-muted-foreground hover:text-foreground"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirmId(u.id)}
+                                  className="p-1.5 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {deleteConfirmId !== null && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-destructive/10 rounded-full">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">Delete User</h3>
+                </div>
+                {deleteConfirmId === user?.id ? (
+                  <p className="text-sm text-muted-foreground">
+                    You are about to <span className="text-destructive font-medium">delete your own account</span>. You will be logged out immediately. When you re-register with your admin email, you will automatically receive admin access again.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Are you sure you want to permanently delete <span className="text-foreground font-medium">{users.find((u) => u.id === deleteConfirmId)?.name}</span>? This will remove all their data including conversations, subscriptions, and community posts. This cannot be undone.
+                  </p>
+                )}
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setDeleteConfirmId(null)}
+                    className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground border border-border"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(deleteConfirmId)}
+                    disabled={deleting}
+                    className="px-4 py-2 rounded-lg text-sm font-bold bg-destructive text-white hover:opacity-90 disabled:opacity-40 flex items-center gap-2"
+                  >
+                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    {deleteConfirmId === user?.id ? "Delete My Account" : "Delete User"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -708,42 +802,6 @@ export default function Admin() {
       )}
 
       {tab === "ai" && <AdminAIPanel settings={settings} updateSetting={updateSetting} saveSettings={saveSettings} saving={saving} />}
-
-      {deleteTarget && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
-                <Trash2 className="h-5 w-5 text-destructive" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground">Delete User</h3>
-                <p className="text-xs text-muted-foreground">This action cannot be undone</p>
-              </div>
-            </div>
-            <p className="text-sm text-foreground/80">
-              Are you sure you want to permanently delete <strong>{deleteTarget.name}</strong> ({deleteTarget.email})? All their data including trades, journal entries, conversations, and community posts will be removed.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-muted text-foreground hover:bg-muted/80"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteUser}
-                disabled={deleting}
-                className="px-4 py-2 rounded-lg text-sm font-bold bg-destructive text-white hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
-              >
-                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

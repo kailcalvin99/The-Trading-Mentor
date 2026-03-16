@@ -9,6 +9,7 @@ import {
   X,
   Crown,
   Trophy,
+  HelpCircle,
   BarChart3,
   Zap,
   Users,
@@ -18,9 +19,12 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const CATEGORIES = [
   { value: "all", label: "All Posts", icon: Users },
-  { value: "strategy-talk", label: "#Strategy-Talk", icon: Zap },
-  { value: "daily-wins", label: "#Daily-Wins", icon: Trophy },
-  { value: "indicators", label: "#Indicators", icon: BarChart3 },
+  { value: "strategy-talk", label: "Strategy Talk", icon: Zap },
+  { value: "trade-reviews", label: "Trade Reviews", icon: BarChart3 },
+  { value: "daily-wins", label: "Daily Wins", icon: Trophy },
+  { value: "indicators", label: "Indicators", icon: BarChart3 },
+  { value: "questions", label: "Questions", icon: HelpCircle },
+  { value: "general", label: "General", icon: MessageSquare },
 ];
 
 interface Post {
@@ -94,11 +98,15 @@ function CategoryBadge({ category }: { category: string }) {
   const label = cat?.label || category;
   const colorMap: Record<string, string> = {
     "strategy-talk": "bg-blue-500/10 text-blue-400 border-blue-500/30",
+    "trade-reviews": "bg-purple-500/10 text-purple-400 border-purple-500/30",
     "daily-wins": "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+    "wins": "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
     "indicators": "bg-purple-500/10 text-purple-400 border-purple-500/30",
+    "questions": "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    "general": "bg-muted text-muted-foreground border-border",
   };
   return (
-    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${colorMap[category] || "bg-muted text-muted-foreground border-border"}`}>
+    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${colorMap[category] || colorMap.general || "bg-muted text-muted-foreground border-border"}`}>
       {label}
     </span>
   );
