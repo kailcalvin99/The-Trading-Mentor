@@ -71,6 +71,20 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function OpenRoute({ children }: { children: React.ReactNode }) {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function IndexRedirect() {
   const seen = localStorage.getItem("ict-welcome-seen");
   if (!seen) return <Navigate to="/welcome" replace />;
@@ -89,16 +103,19 @@ function App() {
                 <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
                 <Route path="signup" element={<PublicRoute><Signup /></PublicRoute>} />
 
+                <Route path="welcome" element={<OpenRoute><Welcome /></OpenRoute>} />
+                <Route path="pricing" element={<OpenRoute><Pricing /></OpenRoute>} />
+                <Route path="terms" element={<OpenRoute><NotFound /></OpenRoute>} />
+                <Route path="privacy" element={<OpenRoute><NotFound /></OpenRoute>} />
+
                 <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                   <Route index element={<IndexRedirect />} />
                   <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="welcome" element={<Welcome />} />
                   <Route path="academy" element={<IctAcademy />} />
                   <Route path="planner" element={<DailyPlanner />} />
                   <Route path="risk-shield" element={<RiskShield />} />
                   <Route path="journal" element={<SmartJournal />} />
                   <Route path="analytics" element={<Analytics />} />
-                  <Route path="pricing" element={<Pricing />} />
                   <Route path="admin" element={<Admin />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />

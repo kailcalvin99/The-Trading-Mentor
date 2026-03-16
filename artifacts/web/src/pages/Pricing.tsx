@@ -58,6 +58,10 @@ export default function Pricing() {
   }, []);
 
   async function handleUpgrade(tierId: number, tierLevel: number) {
+    if (!user) {
+      navigate("/signup");
+      return;
+    }
     setSubscribing(tierId);
     try {
       if (tierLevel === 0) {
