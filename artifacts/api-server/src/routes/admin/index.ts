@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, tradesTable, conversations, messages, propAccountTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, tradesTable, conversations, messages, propAccountTable, communityPostsTable, communityRepliesTable, postLikesTable } from "@workspace/db";
+import { eq, sql, inArray } from "drizzle-orm";
 import { authRequired, adminRequired } from "../../middleware/auth";
 import { seedDefaults } from "../../seed";
+import { getStripeClient } from "../../stripe/stripeClient";
 
 const router = Router();
 
@@ -102,6 +103,55 @@ router.put("/users/:id/subscription", async (req, res) => {
   } catch (err) {
     console.error("Update subscription error:", err);
     res.status(500).json({ error: "Failed to update subscription" });
+  }
+});
+
+router.delete("/users/:id", async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    if (userId === req.user!.userId) {
+      res.status(400).json({ error: "You cannot delete your own account" });
+      return;
+    }
+
+    const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+    if (!targetUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const [sub] = await db.select().from(userSubscriptionsTable).where(eq(userSubscriptionsTable.userId, userId));
+    if (sub?.stripeSubscriptionId) {
+      try {
+        const stripe = await getStripeClient();
+        await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
+      } catch (stripeErr) {
+        console.error("Failed to cancel Stripe subscription during user delete:", stripeErr);
+      }
+    }
+
+    const userPosts = await db.select({ id: communityPostsTable.id }).from(communityPostsTable).where(eq(communityPostsTable.userId, userId));
+    if (userPosts.length > 0) {
+      const postIds = userPosts.map(p => p.id);
+      await db.delete(postLikesTable).where(inArray(postLikesTable.postId, postIds));
+      await db.delete(communityRepliesTable).where(inArray(communityRepliesTable.postId, postIds));
+    }
+    await db.delete(postLikesTable).where(eq(postLikesTable.userId, userId));
+    await db.delete(communityRepliesTable).where(eq(communityRepliesTable.userId, userId));
+    await db.delete(communityPostsTable).where(eq(communityPostsTable.userId, userId));
+
+    await db.delete(messages).where(eq(messages.userId, userId));
+    await db.delete(conversations).where(eq(conversations.userId, userId));
+    await db.delete(tradesTable).where(eq(tradesTable.userId, userId));
+    await db.delete(propAccountTable).where(eq(propAccountTable.userId, userId));
+    await db.delete(userSubscriptionsTable).where(eq(userSubscriptionsTable.userId, userId));
+    await db.delete(usersTable).where(eq(usersTable.id, userId));
+
+    res.json({ success: true, message: `User ${targetUser.email} deleted` });
+  } catch (err) {
+    console.error("Delete user error:", err);
+    res.status(500).json({ error: "Failed to delete user" });
   }
 });
 

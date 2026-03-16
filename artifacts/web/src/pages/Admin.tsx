@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import {
-  Crown, Users, Settings, DollarSign, Save, Edit2, X, Check,
+  Crown, Users, Settings, DollarSign, Save, Edit2, X, Check, Trash2,
   AlertTriangle, RotateCcw, ChevronDown, ChevronRight,
   Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target,
   Sparkles, Send, Loader2, BarChart3, FileText,
@@ -123,6 +123,8 @@ export default function Admin() {
   const [resetStep, setResetStep] = useState(0);
   const [resetCode, setResetCode] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchOpts: RequestInit = { credentials: "include" };
   const headers = { "Content-Type": "application/json" };
@@ -226,6 +228,26 @@ export default function Admin() {
       }
     } catch { alert("Reset failed"); }
     setResetting(false);
+  }
+
+  async function handleDeleteUser() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${deleteTarget.id}`, {
+        method: "DELETE", ...fetchOpts, headers,
+      });
+      if (res.ok) {
+        setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to delete user");
+      }
+    } catch {
+      alert("Failed to delete user");
+    }
+    setDeleting(false);
+    setDeleteTarget(null);
   }
 
   let routineItems: { key: string; label: string; desc: string; icon: string }[] = [];
@@ -370,19 +392,29 @@ export default function Admin() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setEditingUser(u.id);
-                            setEditValues({
-                              tierId: String(u.tierId || ""),
-                              customMonthlyPrice: u.customMonthlyPrice || "",
-                              customAnnualPrice: u.customAnnualPrice || "",
-                            });
-                          }}
-                          className="p-1.5 text-muted-foreground hover:text-foreground"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingUser(u.id);
+                              setEditValues({
+                                tierId: String(u.tierId || ""),
+                                customMonthlyPrice: u.customMonthlyPrice || "",
+                                customAnnualPrice: u.customAnnualPrice || "",
+                              });
+                            }}
+                            className="p-1.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          {u.id !== user?.id && (
+                            <button
+                              onClick={() => setDeleteTarget(u)}
+                              className="p-1.5 text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -934,6 +966,42 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
           )}
         </div>
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">Delete User</h3>
+                <p className="text-xs text-muted-foreground">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-foreground/80">
+              Are you sure you want to permanently delete <strong>{deleteTarget.name}</strong> ({deleteTarget.email})? All their data including trades, journal entries, conversations, and community posts will be removed.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-muted text-foreground hover:bg-muted/80"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-destructive text-white hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

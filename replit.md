@@ -94,6 +94,7 @@ artifacts-monorepo/
 - `POST /api/stripe/webhook` — Stripe webhook endpoint (raw body, before express.json)
 - `POST /api/stripe/checkout-completed` — internal Stripe event handler
 - `GET/PUT /api/admin/users` — manage users
+- `DELETE /api/admin/users/:id` — permanently delete a user and all their data (cascades across all related tables, cancels Stripe subscription)
 - `PUT /api/admin/users/:id/subscription` — set custom pricing per user
 - `GET/PUT /api/admin/tiers` — manage tier pricing
 - `GET/PUT /api/admin/settings` — global config (admin-only)
