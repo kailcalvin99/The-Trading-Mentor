@@ -27,10 +27,10 @@ const PREMIUM_TIPS = [
   "Use the NWOG/NDOG for daily bias confirmation.",
 ];
 
-export function DailyStreak() {
-  const [streak, setStreak] = useState(0);
-  const [xp, setXp] = useState(0);
-  const [showXpPopup, setShowXpPopup] = useState(false);
+export function useDailyStreak() {
+  const [streak, setStreak] = useState(parseInt(localStorage.getItem("login_streak") || "0"));
+  const [xp, setXp] = useState(parseInt(localStorage.getItem("total_xp") || "0"));
+  const [xpGained, setXpGained] = useState(0);
 
   useEffect(() => {
     const lastLogin = localStorage.getItem("last_login_date");
@@ -41,23 +41,35 @@ export function DailyStreak() {
     if (lastLogin !== today) {
       const yesterday = new Date(Date.now() - 86400000).toDateString();
       const newStreak = lastLogin === yesterday ? savedStreak + 1 : 1;
-      const xpGain = Math.min(newStreak * 10, 100);
+      const gain = Math.min(newStreak * 10, 100);
 
       setStreak(newStreak);
-      setXp(savedXp + xpGain);
+      setXp(savedXp + gain);
+      setXpGained(gain);
       localStorage.setItem("last_login_date", today);
       localStorage.setItem("login_streak", String(newStreak));
-      localStorage.setItem("total_xp", String(savedXp + xpGain));
-
-      setTimeout(() => {
-        setShowXpPopup(true);
-        setTimeout(() => setShowXpPopup(false), 3000);
-      }, 500);
+      localStorage.setItem("total_xp", String(savedXp + gain));
     } else {
       setStreak(savedStreak);
       setXp(savedXp);
     }
   }, []);
+
+  return { streak, xp, xpGained };
+}
+
+export function DailyStreak() {
+  const { streak, xp, xpGained } = useDailyStreak();
+  const [showXpPopup, setShowXpPopup] = useState(false);
+
+  useEffect(() => {
+    if (xpGained > 0) {
+      setTimeout(() => {
+        setShowXpPopup(true);
+        setTimeout(() => setShowXpPopup(false), 3000);
+      }, 500);
+    }
+  }, [xpGained]);
 
   return (
     <div className="relative">

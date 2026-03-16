@@ -6,7 +6,7 @@ import {
   Calendar, GraduationCap, Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { SpinWheel, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
+import { SpinWheel, useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
 
 const MASCOT_TIPS = [
   "Always wait for the liquidity sweep before entering!",
@@ -52,9 +52,19 @@ const QUICK_REF = [
 ];
 
 function getESTNow(): Date {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  return new Date(utc + -5 * 3600000);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(
+    fmt.formatToParts(new Date()).map((p) => [p.type, p.value])
+  );
+  return new Date(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour), Number(parts.minute), Number(parts.second)
+  );
 }
 
 function formatCountdown(ms: number): string {
@@ -142,8 +152,7 @@ function IctMascot() {
 }
 
 function GamifiedStatusRow() {
-  const xp = parseInt(localStorage.getItem("total_xp") || "0");
-  const streak = parseInt(localStorage.getItem("login_streak") || "0");
+  const { streak, xp } = useDailyStreak();
   const level = Math.floor(xp / 100) + 1;
   const xpInLevel = xp % 100;
   const rankIdx = Math.min(Math.floor((level - 1) / 2), RANKS.length - 1);
@@ -323,10 +332,13 @@ function SlotMachine() {
           0% { transform: translateY(0); }
           100% { transform: translateY(-100%); }
         }
-        .animate-slot-spin { animation: slotSpin 0.3s linear infinite; }
-        .slot-reel-0 { animation-duration: 0.2s; }
-        .slot-reel-1 { animation-duration: 0.25s; }
-        .slot-reel-2 { animation-duration: 0.35s; }
+        .animate-slot-spin {
+          animation: slotSpin 0.15s linear infinite;
+          filter: blur(2px);
+        }
+        .slot-reel-0 { animation-duration: 0.15s; animation-delay: 0s; }
+        .slot-reel-1 { animation-duration: 0.2s; }
+        .slot-reel-2 { animation-duration: 0.3s; filter: blur(3px); }
       `}</style>
     </div>
   );
