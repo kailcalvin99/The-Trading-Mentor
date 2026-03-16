@@ -9,7 +9,6 @@ import {
   X,
   Crown,
   Trophy,
-  HelpCircle,
   BarChart3,
   Zap,
   Users,
@@ -19,11 +18,9 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const CATEGORIES = [
   { value: "all", label: "All Posts", icon: Users },
-  { value: "strategy-talk", label: "Strategy Talk", icon: Zap },
-  { value: "trade-reviews", label: "Trade Reviews", icon: BarChart3 },
-  { value: "wins", label: "Wins", icon: Trophy },
-  { value: "questions", label: "Questions", icon: HelpCircle },
-  { value: "general", label: "General", icon: MessageSquare },
+  { value: "strategy-talk", label: "#Strategy-Talk", icon: Zap },
+  { value: "daily-wins", label: "#Daily-Wins", icon: Trophy },
+  { value: "indicators", label: "#Indicators", icon: BarChart3 },
 ];
 
 interface Post {

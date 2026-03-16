@@ -72,8 +72,8 @@ router.post("/posts", async (req, res) => {
       return;
     }
 
-    const validCategories = ["strategy-talk", "trade-reviews", "wins", "questions", "general"];
-    const cat = validCategories.includes(category) ? category : "general";
+    const validCategories = ["strategy-talk", "daily-wins", "indicators"];
+    const cat = validCategories.includes(category) ? category : "strategy-talk";
 
     const [post] = await db
       .insert(communityPostsTable)
