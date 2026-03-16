@@ -19,9 +19,11 @@ router.get("/tiers", async (_req: Request, res: Response) => {
       .from(usersTable)
       .where(eq(usersTable.isFounder, true));
 
+    const founderLimit = parseInt(founderLimitSetting[0]?.value || "20");
     res.json({
       tiers: tiers.sort((a, b) => a.level - b.level),
-      founderSpotsLeft: Math.max(0, parseInt(founderLimitSetting[0]?.value || "20") - Number(founderCount)),
+      founderSpotsLeft: Math.max(0, founderLimit - Number(founderCount)),
+      founderLimit,
       founderDiscountPct: parseInt(founderDiscountSetting[0]?.value || "50"),
       annualDiscountPct: parseInt(annualDiscountSetting[0]?.value || "17"),
     });

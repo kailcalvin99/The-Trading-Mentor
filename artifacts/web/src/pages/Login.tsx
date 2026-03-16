@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Star, GraduationCap, Shield, Calendar, DollarSign } from "lucide-react";
+import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Star, GraduationCap, Shield, Calendar, DollarSign, Crown } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -14,6 +14,8 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
+  const [founderSpotsLeft, setFounderSpotsLeft] = useState(0);
+  const [founderLimit, setFounderLimit] = useState(20);
   const { login } = useAuth();
   const { config } = useAppConfig();
   const navigate = useNavigate();
@@ -25,6 +27,13 @@ export default function Login() {
       .then((r) => r.json())
       .then((data) => setNeedsSetup(data.needsSetup === true))
       .catch(() => setNeedsSetup(false));
+    fetch(`${API_BASE}/subscriptions/tiers`)
+      .then((r) => r.json())
+      .then((data) => {
+        setFounderSpotsLeft(data.founderSpotsLeft ?? 0);
+        setFounderLimit(data.founderLimit ?? 20);
+      })
+      .catch(() => {});
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -229,6 +238,33 @@ export default function Login() {
         </div>
       </div>
 
+      {founderSpotsLeft > 0 && (
+        <section className="w-full bg-gradient-to-r from-amber-500/5 to-primary/5 border-t border-amber-500/20 py-8 px-6">
+          <div className="max-w-md mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <Crown className="h-5 w-5 text-amber-500" />
+              <span className="text-sm font-bold text-amber-500">Founder Phase 1</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+              <span>{founderLimit - founderSpotsLeft} of {founderLimit} spots claimed</span>
+              <span className="text-amber-500 font-bold">{founderSpotsLeft} left</span>
+            </div>
+            <div className="w-full h-2.5 bg-background/50 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-amber-500 to-primary transition-all duration-700"
+                style={{
+                  width: `${((founderLimit - founderSpotsLeft) / founderLimit) * 100}%`,
+                  boxShadow: "0 0 8px rgba(212, 175, 55, 0.5)",
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-3 italic">
+              Founder pricing ends when all spots are claimed — price locks in for life once you join
+            </p>
+          </div>
+        </section>
+      )}
+
       <section id="features-section" className="w-full bg-card/30 border-t border-border py-16 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
@@ -279,6 +315,7 @@ export default function Login() {
           <p>© {new Date().getFullYear()} {appName}. For educational purposes only. Not financial advice.</p>
           <div className="flex items-center gap-4">
             <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
+            <Link to="/refund" className="hover:text-foreground transition-colors">Refund Policy</Link>
             <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
             <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           </div>

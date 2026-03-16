@@ -87,7 +87,7 @@ artifacts-monorepo/
 - `POST /api/auth/login` — login, returns JWT in cookie
 - `GET /api/auth/me` — current user + subscription
 - `POST /api/auth/logout` — clear cookie
-- `GET /api/subscriptions/tiers` — list tiers + founder spots
+- `GET /api/subscriptions/tiers` — list tiers + founder spots + founderLimit
 - `POST /api/subscriptions/subscribe` — subscribe/downgrade to free tier
 - `POST /api/subscriptions/create-checkout-session` — create Stripe Checkout session for paid tiers
 - `GET /api/subscriptions/my` — current subscription
@@ -120,7 +120,8 @@ Seven collapsible sections:
 - **ICT Academy** now at `/academy` (previously at `/`)
 - **IndexRedirect** (`/`) → redirects to `/dashboard` after welcome tour
 - Founder welcome modal with crown animation
-- Pricing page with monthly/annual toggle and founder discount display
+- Pricing page with monthly/annual toggle, founder discount display, anchor pricing (2x crossed-out original price on paid tiers), Founder Phase 1 progress bar, and 7-Day Money-Back Guarantee link
+- **Refund Policy** page at `/refund` (OpenRoute) — 7-day money-back guarantee details, eligibility, exclusions
 - Admin dashboard with user management, tier editing, global settings, AI Assistant panel
 - Casino-game elements: daily streak, spin wheel, achievements, premium teasers, slot machine mission generator
 - Sidebar shows user profile, subscription status, founder badge; Dashboard is first nav item

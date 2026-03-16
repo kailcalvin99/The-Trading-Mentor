@@ -19,6 +19,7 @@ import Admin from "@/pages/Admin";
 import Settings from "@/pages/Settings";
 import Dashboard from "@/pages/Dashboard";
 import Community from "@/pages/Community";
+import RefundPolicy from "@/pages/RefundPolicy";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -106,6 +107,7 @@ function App() {
 
                 <Route path="welcome" element={<OpenRoute><Welcome /></OpenRoute>} />
                 <Route path="pricing" element={<OpenRoute><Pricing /></OpenRoute>} />
+                <Route path="refund" element={<OpenRoute><RefundPolicy /></OpenRoute>} />
                 <Route path="terms" element={<OpenRoute><NotFound /></OpenRoute>} />
                 <Route path="privacy" element={<OpenRoute><NotFound /></OpenRoute>} />
 

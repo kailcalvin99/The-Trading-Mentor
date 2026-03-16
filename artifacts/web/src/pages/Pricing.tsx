@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
+import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle, Shield } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -21,6 +21,7 @@ export default function Pricing() {
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [annual, setAnnual] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState(0);
+  const [founderLimit, setFounderLimit] = useState(20);
   const [founderDiscountPct, setFounderDiscountPct] = useState(50);
   const [subscribing, setSubscribing] = useState<number | null>(null);
   const { user, subscription, refreshUser } = useAuth();
@@ -52,6 +53,7 @@ export default function Pricing() {
       .then((data) => {
         setTiers(data.tiers);
         setFounderSpotsLeft(data.founderSpotsLeft);
+        setFounderLimit(data.founderLimit || 20);
         setFounderDiscountPct(data.founderDiscountPct);
       })
       .catch(() => {});
@@ -153,6 +155,33 @@ export default function Pricing() {
           </div>
         )}
 
+        {founderSpotsLeft > 0 && !user?.isFounder && (
+          <div className="mb-8 max-w-md mx-auto">
+            <div className="bg-gradient-to-r from-amber-500/10 to-primary/10 border border-amber-500/30 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Crown className="h-5 w-5 text-amber-500" />
+                <span className="text-sm font-bold text-amber-500">Founder Phase 1</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                <span>{founderLimit - founderSpotsLeft} of {founderLimit} spots claimed</span>
+                <span className="text-amber-500 font-bold">{founderSpotsLeft} left</span>
+              </div>
+              <div className="w-full h-2.5 bg-background/50 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-primary transition-all duration-700"
+                  style={{
+                    width: `${((founderLimit - founderSpotsLeft) / founderLimit) * 100}%`,
+                    boxShadow: "0 0 8px rgba(212, 175, 55, 0.5)",
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 italic">
+                Founder pricing ends when all spots are claimed — price locks in for life once you join
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-center gap-4 mb-10">
           <span className={`text-sm font-medium ${!annual ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
           <button
@@ -194,8 +223,13 @@ export default function Pricing() {
                 <p className="text-xs text-muted-foreground mb-4">{tier.description}</p>
 
                 <div className="mb-6">
+                  {tier.level > 0 && (
+                    <div className="text-sm text-muted-foreground line-through mb-0.5">
+                      ${(originalPrice * 2).toFixed(2)}/mo
+                    </div>
+                  )}
                   {hasFounderDiscount && (
-                    <div className="text-xs text-muted-foreground line-through mb-1">
+                    <div className="text-xs text-muted-foreground line-through mb-0.5">
                       ${originalPrice.toFixed(2)}/mo
                     </div>
                   )}
@@ -253,14 +287,12 @@ export default function Pricing() {
           })}
         </div>
 
-        {founderSpotsLeft > 0 && !user?.isFounder && (
-          <div className="mt-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              <Crown className="h-4 w-4 inline text-amber-500 mr-1" />
-              <span className="text-amber-500 font-bold">{founderSpotsLeft}</span> founder spots remaining - sign up now for 50% off!
-            </p>
-          </div>
-        )}
+        <div className="mt-8 text-center">
+          <Link to="/refund" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Shield className="h-4 w-4" />
+            7-Day Money-Back Guarantee
+          </Link>
+        </div>
       </div>
     </div>
   );
