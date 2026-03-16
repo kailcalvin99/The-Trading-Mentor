@@ -144,7 +144,6 @@ router.delete("/users/:id", async (req, res) => {
     await db.delete(communityPostsTable).where(eq(communityPostsTable.userId, userId));
 
     await db.delete(conversations).where(eq(conversations.userId, userId));
-    await db.delete(tradesTable).where(eq(tradesTable.userId, userId));
     await db.delete(propAccountTable).where(eq(propAccountTable.userId, userId));
     await db.delete(userSubscriptionsTable).where(eq(userSubscriptionsTable.userId, userId));
     await db.delete(usersTable).where(eq(usersTable.id, userId));
