@@ -17,6 +17,7 @@ export default function TabLayout() {
         screenOptions={{
           headerShown: false,
           tabBarStyle: { display: "none" },
+          tabBarPosition: "top",
           sceneStyle: { paddingTop: contentPaddingTop },
         }}
       >
