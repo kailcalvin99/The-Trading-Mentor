@@ -77,7 +77,7 @@ export default function AIAssistant() {
           {
             role: "assistant",
             content:
-              "Hey! I'm your trading assistant. I can help with ICT concepts, log trades, calculate position sizes, check your analytics, and more. What can I help with?",
+              "Welcome to the Inner Circle. 🔑 You've just gained access to a private AI mentor built exclusively for ICT traders. Master concepts like FVGs, OTE, Kill Zones, and liquidity sweeps — log trades, size positions, and track your performance like the elite. You're in. What would you like to start with?",
           },
         ]);
         setShowHistory(false);
