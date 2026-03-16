@@ -11,4 +11,10 @@ title = "ICT AI Trading Mentor Logo"
 id = "DV7aSZsgTDIefv3XVdAG-"
 uri = "file://docs/video-scripts/ict-mentor-video-series.md"
 type = "text"
-title = "ICT Mentor Video Script Series (12 videos)"
+title = "ICT Mentor Video Scripts — All 12 Scripts"
+
+[[outputs]]
+id = "UKaxXlWM2k8lOpSKxCx4j"
+uri = "file://docs/video-scripts/ict-mentor-video-scripts.txt"
+type = "text"
+title = "ICT Mentor Video Scripts — All 12 Scripts (Download)"
