@@ -1,23 +1,31 @@
-import { Tabs } from "expo-router";
-import React from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Href, Tabs, usePathname, useRouter } from "expo-router";
+import React, { useCallback } from "react";
+import { View } from "react-native";
 
 import AIAssistant from "@/components/AIAssistant";
 import TopTabBar from "@/components/TopTabBar";
 
 export default function TabLayout() {
-  const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const router = useRouter();
 
-  const contentPaddingTop = insets.top + 52;
+  const handleNavigate = useCallback(
+    (href: Href) => {
+      router.navigate(href);
+    },
+    [router]
+  );
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
+      <TopTabBar
+        pathname={pathname}
+        onNavigate={handleNavigate}
+      />
       <Tabs
-        tabBar={(props) => <TopTabBar {...props} />}
+        tabBar={() => null}
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { display: "none" },
-          sceneStyle: { paddingTop: contentPaddingTop },
         }}
       >
         <Tabs.Screen
@@ -42,6 +50,6 @@ export default function TabLayout() {
         />
       </Tabs>
       <AIAssistant />
-    </>
+    </View>
   );
 }

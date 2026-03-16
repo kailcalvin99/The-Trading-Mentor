@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { Href } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,38 +24,44 @@ const TAB_LABELS: Record<string, string> = {
   community: "Community",
 };
 
-export default function TopTabBar({ state, navigation }: BottomTabBarProps) {
+type TabRoute = "index" | "academy" | "tracker" | "journal" | "community";
+
+const TAB_HREFS: Record<TabRoute, Href> = {
+  index:     "/",
+  academy:   "/academy",
+  tracker:   "/tracker",
+  journal:   "/journal",
+  community: "/community",
+};
+
+const TAB_ROUTES: TabRoute[] = ["index", "academy", "tracker", "journal", "community"];
+
+interface TopTabBarProps {
+  pathname: string;
+  onNavigate: (href: Href) => void;
+}
+
+export default function TopTabBar({ pathname, onNavigate }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
 
-  return (
-    <View
-      style={[
-        styles.container,
-        { paddingTop: insets.top },
-      ]}
-    >
-      <View style={styles.bar}>
-        {state.routes.map((route, index) => {
-          const isFocused = state.index === index;
-          const icons = TAB_ICONS[route.name] ?? { default: "ellipse-outline", selected: "ellipse" };
-          const label = TAB_LABELS[route.name] ?? route.name;
-          const color = isFocused ? C.accent : C.tabIconDefault;
+  const normalizedPath = pathname.replace(/^\/\(tabs\)\/?/, "/");
+  const activeRoute: TabRoute = TAB_ROUTES.find(
+    (route) => normalizedPath === TAB_HREFS[route]
+  ) ?? "index";
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.bar}>
+        {TAB_ROUTES.map((route) => {
+          const isFocused = activeRoute === route;
+          const icons = TAB_ICONS[route];
+          const label = TAB_LABELS[route];
+          const color = isFocused ? C.accent : C.tabIconDefault;
 
           return (
             <Pressable
-              key={route.key}
-              onPress={onPress}
+              key={route}
+              onPress={() => onNavigate(TAB_HREFS[route])}
               style={styles.tab}
               accessibilityRole="tab"
               accessibilityState={{ selected: isFocused }}
@@ -77,11 +83,6 @@ export default function TopTabBar({ state, navigation }: BottomTabBarProps) {
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
     backgroundColor: C.backgroundSecondary,
     borderBottomWidth: 1,
     borderBottomColor: C.cardBorder,
