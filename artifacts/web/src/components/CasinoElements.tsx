@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Crown, Flame, Star, Trophy, Zap, Gift, Lock, TrendingUp, ArrowRight } from "lucide-react";
+import { useAppConfig } from "@/contexts/AppConfigContext";
+import { Crown, Flame, Star, Trophy, Zap, Gift, Lock, TrendingUp, ArrowRight, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const DAILY_TIPS = [
@@ -104,6 +105,7 @@ export function DailyStreak() {
 }
 
 export function SpinWheel() {
+  const { isFeatureEnabled } = useAppConfig();
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [canSpin, setCanSpin] = useState(true);
@@ -136,6 +138,10 @@ export function SpinWheel() {
       localStorage.setItem("spin_result", tip);
     }, 3000);
   }, [canSpin, spinning, rotation]);
+
+  if (!isFeatureEnabled("feature_daily_spin")) {
+    return null;
+  }
 
   return (
     <div className="bg-gradient-to-b from-primary/5 to-card border border-primary/20 rounded-xl p-5 text-center">
@@ -280,6 +286,55 @@ export function LockedFeatureOverlay({ featureName, tierRequired }: { featureNam
         </button>
       </div>
     </div>
+  );
+}
+
+export function SpinWheelFloatingTrigger({ hasSidebar = false }: { hasSidebar?: boolean }) {
+  const { isFeatureEnabled } = useAppConfig();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!hasSidebar || !open) return;
+    const mq = window.matchMedia("(min-width: 1280px)");
+    const handler = (e: MediaQueryListEvent) => {
+      if (e.matches) setOpen(false);
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [hasSidebar, open]);
+
+  if (!isFeatureEnabled("feature_daily_spin")) {
+    return null;
+  }
+
+  const hideClass = hasSidebar ? "xl:hidden" : "";
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className={`${hideClass} fixed bottom-20 md:bottom-6 right-4 z-40 bg-primary text-primary-foreground rounded-full p-3 shadow-lg hover:opacity-90 transition-all animate-pulse`}
+        aria-label="Daily Spin Wheel"
+      >
+        <Gift className="h-5 w-5" />
+      </button>
+
+      {open && (
+        <div className={`${hideClass} fixed inset-0 z-50 flex items-center justify-center`}>
+          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 mx-4 max-w-sm w-full z-10">
+            <button
+              onClick={() => setOpen(false)}
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <SpinWheel />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

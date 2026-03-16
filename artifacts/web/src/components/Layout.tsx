@@ -4,7 +4,7 @@ import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock,
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
-import { FreeSidebar, LockedFeatureOverlay } from "@/components/CasinoElements";
+import { FreeSidebar, LockedFeatureOverlay, SpinWheelFloatingTrigger } from "@/components/CasinoElements";
 import AIAssistant from "@/components/AIAssistant";
 
 const navItems = [
@@ -265,6 +265,7 @@ export default function Layout() {
                 <FreeSidebar />
               </div>
             )}
+            <SpinWheelFloatingTrigger hasSidebar={isFreeUser} />
           </div>
         </main>
 
