@@ -155,10 +155,10 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="hidden md:flex flex-col w-16 lg:w-56 border-r border-sidebar-border bg-sidebar shrink-0">
+      <aside className="hidden md:flex flex-col w-16 lg:w-56 border-r border-sidebar-border bg-sidebar shrink-0 h-screen overflow-y-auto">
         <Link to="/" className="flex items-center justify-center lg:justify-start gap-2 px-2 lg:px-3 h-14 border-b border-sidebar-border hover:bg-secondary/50 transition-colors">
-          <Logo size={40} />
-          <span className="hidden lg:block text-sm font-semibold text-sidebar-foreground truncate">
+          <Logo size={52} />
+          <span className="hidden lg:block text-xs font-semibold text-sidebar-foreground truncate">
             {config.app_name || "ICT AI Trading Mentor"}
           </span>
         </Link>
