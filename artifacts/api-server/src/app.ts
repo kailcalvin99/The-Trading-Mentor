@@ -47,6 +47,14 @@ const generalApiLimiter = rateLimit({
   skip: (req) => req.path.startsWith("/auth"),
 });
 
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: "Too many login attempts. Please wait a minute and try again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
@@ -88,6 +96,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 app.use("/api", generalApiLimiter);
+app.use("/api/auth", authLimiter);
 app.use("/api/gemini", aiLimiter);
 app.use("/api", router);
 
