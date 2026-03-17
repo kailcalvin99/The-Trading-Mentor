@@ -44,6 +44,18 @@ export default function TabLayout() {
           name="community"
           options={{ title: "Community" }}
         />
+        <Tabs.Screen
+          name="analytics"
+          options={{ title: "Analytics" }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{ title: "Settings" }}
+        />
+        <Tabs.Screen
+          name="admin"
+          options={{ title: "Admin", href: null }}
+        />
       </Tabs>
       <BottomTabBar
         pathname={pathname}

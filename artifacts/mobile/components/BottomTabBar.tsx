@@ -14,6 +14,8 @@ const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selec
   tracker:   { default: "shield-outline",    selected: "shield" },
   journal:   { default: "book-outline",      selected: "book" },
   community: { default: "people-outline",    selected: "people" },
+  analytics: { default: "bar-chart-outline", selected: "bar-chart" },
+  settings:  { default: "settings-outline",  selected: "settings" },
 };
 
 const TAB_LABELS: Record<string, string> = {
@@ -21,10 +23,12 @@ const TAB_LABELS: Record<string, string> = {
   academy:   "Academy",
   tracker:   "Risk",
   journal:   "Journal",
-  community: "Community",
+  community: "Social",
+  analytics: "Analytics",
+  settings:  "Settings",
 };
 
-type TabRoute = "index" | "academy" | "tracker" | "journal" | "community";
+type TabRoute = "index" | "academy" | "tracker" | "journal" | "community" | "analytics" | "settings";
 
 const TAB_HREFS: Record<TabRoute, Href> = {
   index:     "/",
@@ -32,9 +36,11 @@ const TAB_HREFS: Record<TabRoute, Href> = {
   tracker:   "/tracker",
   journal:   "/journal",
   community: "/community",
+  analytics: "/analytics",
+  settings:  "/settings",
 };
 
-const TAB_ROUTES: TabRoute[] = ["index", "academy", "tracker", "journal", "community"];
+const TAB_ROUTES: TabRoute[] = ["index", "academy", "tracker", "journal", "community", "analytics", "settings"];
 
 interface BottomTabBarProps {
   pathname: string;
@@ -69,7 +75,7 @@ export default function BottomTabBar({ pathname, onNavigate }: BottomTabBarProps
             >
               <Ionicons
                 name={isFocused ? icons.selected : icons.default}
-                size={22}
+                size={20}
                 color={color}
               />
               <Text style={[styles.label, { color }]}>{label}</Text>
@@ -98,8 +104,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   label: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "600",
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
 });
