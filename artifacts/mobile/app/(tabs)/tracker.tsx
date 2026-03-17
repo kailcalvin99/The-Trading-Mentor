@@ -84,8 +84,10 @@ function getGaugeColor(pct: number) {
   return C.accent;
 }
 
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
 interface MobileInsight {
-  icon: string;
+  icon: IoniconsName;
   headline: string;
   stat: string;
   sentiment: "positive" | "negative" | "neutral";
@@ -574,7 +576,7 @@ export default function RiskShieldScreen() {
               >
                 <View style={insightStyles.cardHeader}>
                   <Ionicons
-                    name={insight.icon as any}
+                    name={insight.icon}
                     size={16}
                     color={insight.sentiment === "positive" ? "#22C55E" : insight.sentiment === "negative" ? "#EF4444" : C.accent}
                   />
