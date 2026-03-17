@@ -57,10 +57,12 @@ export default function TabLayout() {
           options={{ title: "Admin", href: null }}
         />
       </Tabs>
-      <BottomTabBar
-        pathname={pathname}
-        onNavigate={handleNavigate}
-      />
+      {!pathname.endsWith("/admin") && (
+        <BottomTabBar
+          pathname={pathname}
+          onNavigate={handleNavigate}
+        />
+      )}
       <AIAssistant />
     </View>
   );

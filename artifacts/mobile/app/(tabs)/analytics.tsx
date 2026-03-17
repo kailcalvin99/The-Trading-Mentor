@@ -329,11 +329,12 @@ export default function AnalyticsScreen() {
               style={[
                 s.discFill,
                 {
-                  width: `${Math.min(stats.disciplineScore, 100)}%` as any,
+                  flex: Math.min(stats.disciplineScore, 100),
                   backgroundColor: discColor,
                 },
               ]}
             />
+            <View style={{ flex: 100 - Math.min(stats.disciplineScore, 100) }} />
           </View>
           <Text style={s.discSub}>{discLabel}</Text>
         </View>
@@ -448,11 +449,12 @@ const s = StyleSheet.create({
   },
   discScore: { fontSize: 14, fontWeight: "800" },
   discTrack: {
+    flexDirection: "row",
     height: 6,
     backgroundColor: C.backgroundSecondary,
     borderRadius: 3,
     overflow: "hidden",
   },
-  discFill: { height: 6, borderRadius: 3 },
+  discFill: { height: 6 },
   discSub: { fontSize: 12, color: C.textSecondary },
 });
