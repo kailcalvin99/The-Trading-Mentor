@@ -5,11 +5,11 @@ import { like } from "drizzle-orm";
 const DEMO_MARKER = "[DEMO-SEED]";
 
 const PAIR_DISTRIBUTION: [string, number][] = [
-  ["NQ1!", 20],
-  ["ES1!", 12],
-  ["EUR/USD", 12],
-  ["GBP/USD", 8],
-  ["NAS100", 8],
+  ["NQ1!", 334],
+  ["ES1!", 200],
+  ["EUR/USD", 200],
+  ["GBP/USD", 133],
+  ["NAS100", 133],
 ];
 
 const PAIR_WIN_RATES: Record<string, number> = {
@@ -131,11 +131,11 @@ function generateLondonEntryTime(): string {
 
 function generateTrades() {
   const now = new Date();
-  const totalTrades = 60;
+  const totalTrades = 1000;
 
   const weekdays: Date[] = [];
   const startDate = new Date(now);
-  startDate.setDate(startDate.getDate() - 61);
+  startDate.setDate(startDate.getDate() - 730);
   for (let d = new Date(startDate); d < now; d.setDate(d.getDate() + 1)) {
     const dow = d.getDay();
     if (dow !== 0 && dow !== 6) {
@@ -186,7 +186,7 @@ function generateTrades() {
   }
 
   let londonWins = 0;
-  const targetLondonWins = 10;
+  const targetLondonWins = 165;
   for (const spec of specs) {
     if (londonWins >= targetLondonWins) break;
     if (spec.outcome === "win" && spec.isNyAm && Math.random() < 0.35) {
@@ -302,13 +302,14 @@ async function main() {
     await db.delete(tradesTable).where(like(tradesTable.notes, `${DEMO_MARKER}%`));
   }
 
-  console.log("Generating 60 perfect ICT trader demo trades...");
+  console.log("Generating 1000 perfect ICT trader demo trades...");
   const trades = generateTrades();
 
   console.log(`Inserting ${trades.length} trades into the database...`);
 
-  for (const trade of trades) {
-    await db.insert(tradesTable).values(trade);
+  const BATCH_SIZE = 50;
+  for (let i = 0; i < trades.length; i += BATCH_SIZE) {
+    await db.insert(tradesTable).values(trades.slice(i, i + BATCH_SIZE));
   }
 
   console.log(`Successfully inserted ${trades.length} trades.`);
