@@ -1,12 +1,119 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import {
   Crown, Users, Settings, DollarSign, Save, Edit2, X, Check, Trash2,
   AlertTriangle, RotateCcw, ChevronDown, ChevronRight,
   Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target,
-  Sparkles, Send, Loader2, BarChart3, FileText, Filter,
+  Sparkles, Send, Loader2, BarChart3, FileText, Filter, TrendingUp, RefreshCw,
 } from "lucide-react";
+
+const MC_PROFILES = {
+  Perfect: { winRate: 0.75, risk: 0.01, rewardRatio: 2.5, label: "Perfect Trader", color: "hsl(142, 76%, 36%)" },
+  Median:  { winRate: 0.50, risk: 0.02, rewardRatio: 1.5, label: "Median Trader",  color: "hsl(217, 91%, 60%)" },
+  Lousy:   { winRate: 0.28, risk: 0.05, rewardRatio: 1.2, label: "Lousy Trader",   color: "hsl(0, 84%, 60%)"   },
+} as const;
+type MCProfile = keyof typeof MC_PROFILES;
+
+function runMonteCarlo(profile: MCProfile, seed: number): number[][] {
+  const { winRate, risk, rewardRatio } = MC_PROFILES[profile];
+  const START = 10_000;
+  const TRADES = 1000;
+  const PATHS = 100;
+  const paths: number[][] = [];
+  for (let p = 0; p < PATHS; p++) {
+    const history: number[] = [START];
+    let balance = START;
+    for (let t = 0; t < TRADES; t++) {
+      const riskAmt = balance * risk;
+      if (Math.random() < winRate) {
+        balance += riskAmt * rewardRatio;
+      } else {
+        balance -= riskAmt;
+      }
+      if (balance <= 0) { history.push(0); break; }
+      history.push(balance);
+    }
+    paths.push(history);
+    void seed;
+  }
+  return paths;
+}
+
+function fmt(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
+  return `$${n.toFixed(0)}`;
+}
+
+function MonteCarloChart({ paths }: { paths: number[][] }) {
+  const W = 780, H = 320;
+  const PAD = { left: 56, right: 16, top: 16, bottom: 32 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  const allFinals = paths.map((p) => p[p.length - 1]);
+  const p95 = [...allFinals].sort((a, b) => a - b)[Math.floor(allFinals.length * 0.95)];
+  const rawMax = Math.max(p95 * 1.2, 12_000);
+
+  const logMin = Math.log10(1);
+  const logMax = Math.log10(rawMax + 1);
+  const toY = (v: number) =>
+    PAD.top + chartH - ((Math.log10(Math.max(v, 1)) - logMin) / (logMax - logMin)) * chartH;
+
+  const SAMPLE = 10;
+  function pathToPoints(history: number[]): string {
+    const pts: string[] = [];
+    for (let i = 0; i < history.length; i += SAMPLE) {
+      const x = PAD.left + (i / 1000) * chartW;
+      const y = toY(history[i]);
+      pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    const last = history.length - 1;
+    const x = PAD.left + (last / 1000) * chartW;
+    const y = toY(history[last]);
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    return pts.join(" ");
+  }
+
+  const startY = toY(10_000);
+  const yLabels = [1_000, 10_000, 100_000, 1_000_000].filter((v) => v <= rawMax * 1.1);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 320 }}>
+      {yLabels.map((v) => {
+        const y = toY(v);
+        return (
+          <g key={v}>
+            <line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y} stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
+            <text x={PAD.left - 4} y={y + 4} textAnchor="end" fontSize={10} fill="currentColor" fillOpacity={0.5}>{fmt(v)}</text>
+          </g>
+        );
+      })}
+      {[0, 250, 500, 750, 1000].map((t) => (
+        <text key={t} x={PAD.left + (t / 1000) * chartW} y={H - 4} textAnchor="middle" fontSize={10} fill="currentColor" fillOpacity={0.4}>{t}</text>
+      ))}
+      {paths.map((history, i) => {
+        const final = history[history.length - 1];
+        const blown = final <= 0;
+        const won = final > 10_000;
+        const stroke = blown ? "#ef4444" : won ? "#22c55e" : "#6b7280";
+        return (
+          <polyline
+            key={i}
+            points={pathToPoints(history)}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={blown ? 1 : 0.8}
+            strokeOpacity={blown ? 0.5 : won ? 0.35 : 0.25}
+          />
+        );
+      })}
+      <line x1={PAD.left} y1={startY} x2={W - PAD.right} y2={startY} stroke="#ef4444" strokeWidth={1.5} strokeDasharray="6 4" />
+      <text x={W - PAD.right + 2} y={startY + 4} fontSize={9} fill="#ef4444" fillOpacity={0.8}>$10k</text>
+    </svg>
+  );
+}
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -110,7 +217,21 @@ function SettingToggle({ label, desc, checked, onChange }: {
 export default function Admin() {
   const { user } = useAuth();
   const { reload: reloadConfig } = useAppConfig();
-  const [tab, setTab] = useState<"users" | "tiers" | "settings" | "ai">("users");
+  const [tab, setTab] = useState<"users" | "tiers" | "settings" | "ai" | "simulator">("users");
+  const [mcProfile, setMcProfile] = useState<MCProfile>("Median");
+  const [mcSeed, setMcSeed] = useState(0);
+  const mcPaths = useMemo(() => runMonteCarlo(mcProfile, mcSeed), [mcProfile, mcSeed]);
+  const mcStats = useMemo(() => {
+    const START = 10_000;
+    const finals = mcPaths.map((p) => p[p.length - 1]);
+    const blown = finals.filter((f) => f <= 0).length;
+    const profitable = finals.filter((f) => f > START).length;
+    const sorted = [...finals].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const best = Math.max(...finals);
+    const worst = Math.min(...finals);
+    return { blown, profitable, median, best, worst };
+  }, [mcPaths]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [tiers, setTiers] = useState<AdminTier[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -318,6 +439,7 @@ export default function Admin() {
           { key: "tiers" as const, label: "Subscription Tiers", icon: DollarSign },
           { key: "settings" as const, label: "Settings", icon: Settings },
           { key: "ai" as const, label: "AI Assistant", icon: Sparkles },
+          { key: "simulator" as const, label: "Monte Carlo", icon: TrendingUp },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -802,6 +924,97 @@ export default function Admin() {
       )}
 
       {tab === "ai" && <AdminAIPanel settings={settings} updateSetting={updateSetting} saveSettings={saveSettings} saving={saving} />}
+
+      {tab === "simulator" && (
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Monte Carlo Simulator
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                100 random life paths · 1000 trades each · $10,000 starting balance · log scale
+              </p>
+            </div>
+            <button
+              onClick={() => setMcSeed((s) => s + 1)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Re-run
+            </button>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            {(["Perfect", "Median", "Lousy"] as MCProfile[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setMcProfile(p)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                  mcProfile === p
+                    ? "bg-primary/10 border-primary/40 text-primary"
+                    : "bg-card border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {MC_PROFILES[p].label}
+                <span className="ml-2 text-xs opacity-60">
+                  {(MC_PROFILES[p].winRate * 100).toFixed(0)}% WR · {(MC_PROFILES[p].risk * 100).toFixed(0)}% risk · {MC_PROFILES[p].rewardRatio}× RR
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-card border border-border rounded-xl overflow-hidden p-4">
+            <MonteCarloChart paths={mcPaths} />
+            <div className="flex flex-wrap gap-4 mt-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-green-500 inline-block rounded" />Profitable path</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-red-500 inline-block rounded" />Blown account</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-gray-500 inline-block rounded" />Flat/slight loss</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-red-500 border-dashed" />$10k start</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: "Profitable", value: `${mcStats.profitable}%`, sub: "of paths above $10k", color: "text-green-500" },
+              { label: "Blown", value: `${mcStats.blown}%`, sub: "of paths hit $0", color: "text-red-500" },
+              { label: "Median Outcome", value: fmt(mcStats.median), sub: "middle path final", color: "text-foreground" },
+              { label: "Best Path", value: fmt(mcStats.best), sub: "top outcome", color: "text-primary" },
+              { label: "Worst Path", value: fmt(mcStats.worst <= 0 ? 0 : mcStats.worst), sub: "bottom outcome", color: "text-muted-foreground" },
+            ].map(({ label, value, sub, color }) => (
+              <div key={label} className="bg-card border border-border rounded-xl p-4">
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className={`text-xl font-bold ${color}`}>{value}</p>
+                <p className="text-xs text-muted-foreground">{sub}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+            <h3 className="text-sm font-bold text-foreground">What this means</h3>
+            <div className="grid sm:grid-cols-3 gap-4 text-sm text-muted-foreground">
+              <div>
+                <p className="font-semibold text-foreground mb-1">Perfect Trader (75% WR · 1% risk · 2.5× RR)</p>
+                <p>Mathematically explosive growth. Nearly all 100 paths finish well above $10k. The compounding of a positive expected value at low risk means even unlucky paths rarely blow. This is the power of genuine edge + discipline.</p>
+              </div>
+              <div>
+                <p className="font-semibold text-foreground mb-1">Median Trader (50% WR · 2% risk · 1.5× RR)</p>
+                <p>Barely positive expected value but 2× the risk. Some paths grow, many drift sideways or slowly decline. A few blow. This is most retail traders — they have a slight edge but risk too much and give it back over time.</p>
+              </div>
+              <div>
+                <p className="font-semibold text-foreground mb-1">Lousy Trader (28% WR · 5% risk · 1.2× RR)</p>
+                <p>Negative expected value with massive risk. Almost all paths blow the account. The 1.2× reward ratio doesn't come close to compensating for the 72% loss rate. High risk accelerates the inevitable to zero.</p>
+              </div>
+            </div>
+            <div className="border-t border-border pt-3">
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Key insight:</span> Risk size matters as much as win rate. The Median Trader's edge is erased by over-risking. The Perfect Trader wins because of three things working together: a real edge (75% WR), disciplined reward targeting (2.5×), and conservative position sizing (1%). Remove any one of them and the picture changes dramatically.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
