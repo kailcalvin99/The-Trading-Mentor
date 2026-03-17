@@ -14,7 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { usePlanner } from "@/contexts/PlannerContext";
 import Colors from "@/constants/colors";
-import { XPLevelCard, SpinWheelCard, SlotMachineCard } from "@/components/DashboardGamification";
 import OnboardingTour, { useOnboardingTour } from "@/components/OnboardingTour";
 
 const C = Colors.dark;
@@ -127,12 +126,6 @@ export default function PlannerScreen() {
             </View>
           )}
         </View>
-
-        {/* Gamification */}
-        <Text style={styles.sectionTitle}>Your Progress</Text>
-        <XPLevelCard />
-        <SlotMachineCard />
-        <SpinWheelCard />
 
         {/* Morning Routine Checklist */}
         <Text style={styles.sectionTitle}>Morning Routine</Text>

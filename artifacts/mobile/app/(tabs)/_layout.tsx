@@ -36,6 +36,10 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
+          name="dashboard"
+          options={{ title: "Dashboard" }}
+        />
+        <Tabs.Screen
           name="index"
           options={{ title: "Planner" }}
         />

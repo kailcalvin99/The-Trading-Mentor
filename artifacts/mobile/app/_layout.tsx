@@ -34,7 +34,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!user && !inLoginScreen) {
       router.replace("/login");
     } else if (user && inLoginScreen) {
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/dashboard");
     }
   }, [user, loading, segments, router]);
 
