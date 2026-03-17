@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { conversations, messages, adminSettingsTable, tradesTable, usersTable, userSubscriptionsTable, subscriptionTiersTable, propAccountTable } from "@workspace/db";
-import { eq, desc, sql, and, gte, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, gte, inArray, count } from "drizzle-orm";
 import {
   CreateGeminiConversationBody,
   SendGeminiMessageBody,
@@ -242,6 +242,17 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
     }
 
     case "get_analytics_summary": {
+      if (!isAdmin && userId) {
+        const [sub] = await db
+          .select({ level: subscriptionTiersTable.level })
+          .from(userSubscriptionsTable)
+          .leftJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
+          .where(eq(userSubscriptionsTable.userId, userId));
+        const tierLevel = sub?.level ?? 0;
+        if (tierLevel < 2) {
+          return { action: "data", analytics: null, error: "Analytics require a Premium subscription. Please upgrade to access performance insights.", upgradeUrl: "/pricing" };
+        }
+      }
       // Note: tradesTable has no userId column — platform-level shared journal by design
       try {
         const trades = await db.select().from(tradesTable).orderBy(desc(tradesTable.createdAt));
@@ -636,6 +647,43 @@ router.post("/conversations/:id/messages", async (req, res) => {
     const isAdmin = req.user?.role === "admin";
     const userId = req.user?.userId;
 
+    if (!isAdmin && userId) {
+      const [subRow] = await db
+        .select({ tierLevel: subscriptionTiersTable.level })
+        .from(userSubscriptionsTable)
+        .innerJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
+        .where(eq(userSubscriptionsTable.userId, userId));
+
+      const tierLevel = subRow?.tierLevel ?? 0;
+
+      if (tierLevel === 0) {
+        const todayUtc = new Date();
+        todayUtc.setUTCHours(0, 0, 0, 0);
+
+        const [{ msgCount }] = await db
+          .select({ msgCount: count() })
+          .from(messages)
+          .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+          .where(
+            and(
+              eq(messages.role, "user"),
+              eq(conversations.userId, userId),
+              gte(messages.createdAt, todayUtc)
+            )
+          );
+
+        if (msgCount >= 3) {
+          res.status(429).json({
+            error: "Daily AI Mentor limit reached",
+            message: "Free users can send up to 3 AI Mentor messages per day. Upgrade to Standard for unlimited access.",
+            limitReached: true,
+            upgradeUrl: "/pricing",
+          });
+          return;
+        }
+      }
+    }
+
     const [conv] = await db
       .select()
       .from(conversations)
@@ -647,51 +695,6 @@ router.post("/conversations/:id/messages", async (req, res) => {
     if (!isAdmin && conv.userId !== null && conv.userId !== userId) {
       res.status(403).json({ error: "Access denied" });
       return;
-    }
-
-    if (!isAdmin && userId) {
-      const sub = await db
-        .select({ tierLevel: subscriptionTiersTable.level })
-        .from(userSubscriptionsTable)
-        .innerJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
-        .where(eq(userSubscriptionsTable.userId, userId))
-        .limit(1);
-
-      const tierLevel = sub.length ? sub[0].tierLevel : 0;
-
-      if (tierLevel < 1) {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-
-        const userConvIds = await db
-          .select({ id: conversations.id })
-          .from(conversations)
-          .where(eq(conversations.userId, userId));
-
-        if (userConvIds.length > 0) {
-          const convIds = userConvIds.map((c) => c.id);
-          const countResult = await db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(messages)
-            .where(
-              and(
-                inArray(messages.conversationId, convIds),
-                eq(messages.role, "user"),
-                gte(messages.createdAt, startOfDay)
-              )
-            );
-          const msgCount = countResult[0]?.count ?? 0;
-
-          if (msgCount >= FREE_AI_DAILY_LIMIT) {
-            res.status(429).json({
-              error: "Daily limit reached",
-              message: `Free plan allows ${FREE_AI_DAILY_LIMIT} AI Mentor questions per day. Upgrade to Standard or Premium for unlimited access.`,
-              limitReached: true,
-            });
-            return;
-          }
-        }
-      }
     }
 
     const existingMessages = await db

@@ -258,11 +258,13 @@ export default function SmartJournal() {
   const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
   const [coachError, setCoachError] = useState<Record<number, boolean>>({});
+  const [coachUpgrade, setCoachUpgrade] = useState<Record<number, boolean>>({});
 
   async function fetchCoachFeedback(tradeId: number) {
     if (coachFeedback[tradeId] || coachLoading[tradeId]) return;
     setCoachLoading((prev) => ({ ...prev, [tradeId]: true }));
     setCoachError((prev) => ({ ...prev, [tradeId]: false }));
+    setCoachUpgrade((prev) => ({ ...prev, [tradeId]: false }));
     try {
       const res = await fetch(`${API_BASE}/trades/${tradeId}/coach`, {
         method: "POST",
@@ -273,6 +275,8 @@ export default function SmartJournal() {
         if (data.feedback) {
           setCoachFeedback((prev) => ({ ...prev, [tradeId]: data.feedback }));
         }
+      } else if (res.status === 403) {
+        setCoachUpgrade((prev) => ({ ...prev, [tradeId]: true }));
       } else {
         setCoachError((prev) => ({ ...prev, [tradeId]: true }));
       }
@@ -409,8 +413,17 @@ export default function SmartJournal() {
         setExpandedTradeId(result.id);
         fetchCoachFeedback(result.id);
       }
-    } catch {
-      toast({ title: "Error", description: "Could not save trade.", variant: "destructive" });
+    } catch (err: unknown) {
+      const status = (err as { status?: number })?.status;
+      if (status === 403) {
+        toast({
+          title: "Upgrade required",
+          description: "Journal writes require a Standard or Premium plan. Visit the Pricing page to upgrade.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Error", description: "Could not save trade.", variant: "destructive" });
+      }
     }
   }, [form, editingDraftId, entryMode, allCriteriaMet, createTradeMut, deleteTradeMut, qc]);
 
@@ -420,24 +433,45 @@ export default function SmartJournal() {
       qc.invalidateQueries({ queryKey: getListTradesQueryKey() });
       setDeleteConfirmId(null);
       toast({ title: "Trade deleted" });
-    } catch {
-      toast({ title: "Error", description: "Could not delete trade.", variant: "destructive" });
+    } catch (err: unknown) {
+      const status = (err as { status?: number })?.status;
+      if (status === 403) {
+        toast({ title: "Upgrade required", description: "Deleting trades requires a Premium plan.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: "Could not delete trade.", variant: "destructive" });
+      }
     }
   }, [deleteTradeMut, qc]);
 
-  function handleExportCsv() {
+  async function handleExportCsv() {
     const params = new URLSearchParams();
     if (filterDateFrom) params.set("dateFrom", filterDateFrom);
     if (filterDateTo) params.set("dateTo", filterDateTo);
     if (filterOutcome) params.set("outcome", filterOutcome);
     const qs = params.toString();
     const url = `${API_BASE}/trades/export/csv${qs ? `?${qs}` : ""}`;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `trades-${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const res = await fetch(url, { credentials: "include" });
+      if (res.status === 403) {
+        toast({ title: "Upgrade required", description: "CSV export requires a Premium plan. Visit the Pricing page to upgrade.", variant: "destructive" });
+        return;
+      }
+      if (!res.ok) {
+        toast({ title: "Export failed", description: "Could not export trades. Please try again.", variant: "destructive" });
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `trades-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast({ title: "Export failed", description: "Could not export trades. Please try again.", variant: "destructive" });
+    }
   }
 
   const tagInfo = (tag: string | null | undefined) => tag ? BEHAVIOR_TAGS.find((b) => b.tag === tag) : undefined;
@@ -1029,7 +1063,7 @@ export default function SmartJournal() {
                           )}
 
                           {/* Coach Feedback */}
-                          {(coachFeedback[trade.id] || coachLoading[trade.id] || coachError[trade.id] || trade.coachFeedback) && (
+                          {(coachFeedback[trade.id] || coachLoading[trade.id] || coachError[trade.id] || coachUpgrade[trade.id] || trade.coachFeedback) && (
                             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
                               <div className="flex items-center gap-1.5 mb-1.5">
                                 <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -1039,6 +1073,11 @@ export default function SmartJournal() {
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                   Analyzing your trade...
+                                </div>
+                              ) : coachUpgrade[trade.id] ? (
+                                <div className="flex items-center gap-2 text-xs text-yellow-500">
+                                  <span>AI coaching requires a Premium plan.</span>
+                                  <a href="/pricing" className="underline hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>Upgrade</a>
                                 </div>
                               ) : coachError[trade.id] ? (
                                 <div className="flex items-center gap-2 text-xs text-red-400">

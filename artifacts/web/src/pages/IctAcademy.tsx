@@ -163,13 +163,14 @@ function ConfettiBurst({ onDone }: { onDone: () => void }) {
   );
 }
 
-function SwipeLearnView({ onExit, tierLevel }: { onExit: () => void; tierLevel: number }) {
-  const allCardsRaw = getAllCards();
-  const allCards = tierLevel < 1 ? allCardsRaw.slice(0, FREE_LESSON_LIMIT) : allCardsRaw;
+function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boolean }) {
+  const allCards = getAllCards();
+  const availableCards = isFree ? allCards.slice(0, FREE_LESSON_CAP) : allCards;
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
   const [currentIdx, setCurrentIdx] = useState(() => {
     const prog = getProgress();
-    const firstIncomplete = allCards.findIndex((c) => !prog.has(c.lesson.id));
+    const cards = isFree ? allCards.slice(0, FREE_LESSON_CAP) : allCards;
+    const firstIncomplete = cards.findIndex((c) => !prog.has(c.lesson.id));
     return firstIncomplete >= 0 ? firstIncomplete : 0;
   });
   const [cardStep, setCardStep] = useState(0);
@@ -183,12 +184,12 @@ function SwipeLearnView({ onExit, tierLevel }: { onExit: () => void; tierLevel: 
   const dragStart = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const card = allCards[currentIdx];
+  const card = availableCards[currentIdx];
   const lesson = card.lesson;
   const chapter = card.chapter;
   const isDone = completed.has(lesson.id);
-  const totalCards = allCards.length;
-  const completedCount = allCards.filter((c) => completed.has(c.lesson.id)).length;
+  const totalCards = availableCards.length;
+  const completedCount = availableCards.filter((c) => completed.has(c.lesson.id)).length;
 
   const totalSteps = lesson.paragraphs.length + (lesson.chartImage ? 1 : 0) + (lesson.videoFile ? 1 : 0) + 1;
 
@@ -331,18 +332,18 @@ function SwipeLearnView({ onExit, tierLevel }: { onExit: () => void; tierLevel: 
       </div>
 
       <div className="flex gap-0.5 px-4 pt-3">
-        {allCards.map((_, i) => (
+        {availableCards.map((_, i) => (
           <div
             key={i}
             className="h-1 flex-1 rounded-full transition-all duration-300"
             style={{
               backgroundColor:
-                i < currentIdx || completed.has(allCards[i].lesson.id)
+                i < currentIdx || completed.has(availableCards[i].lesson.id)
                   ? "#00C896"
                   : i === currentIdx
                   ? "#00C896"
                   : "hsl(var(--border))",
-              opacity: i === currentIdx ? 1 : i < currentIdx || completed.has(allCards[i].lesson.id) ? 0.5 : 0.2,
+              opacity: i === currentIdx ? 1 : i < currentIdx || completed.has(availableCards[i].lesson.id) ? 0.5 : 0.2,
             }}
           />
         ))}
@@ -567,11 +568,11 @@ function SwipeLearnView({ onExit, tierLevel }: { onExit: () => void; tierLevel: 
   );
 }
 
-const FREE_LESSON_LIMIT = 5;
+const FREE_LESSON_CAP = 5;
 
 function LearnView() {
   const { tierLevel } = useAuth();
-  const isFreeUser = tierLevel < 1;
+  const isFree = tierLevel === 0;
   const [swipeMode, setSwipeMode] = useState(false);
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
 
@@ -588,11 +589,8 @@ function LearnView() {
   const streak = getStreak();
   const xp = getXP();
 
-  const allLessonIds = getAllCards().map((c) => c.lesson.id);
-  const freeLessonIds = new Set(allLessonIds.slice(0, FREE_LESSON_LIMIT));
-
-  function toggleComplete(lessonId: string) {
-    if (isFreeUser && !freeLessonIds.has(lessonId)) return;
+  function toggleComplete(lessonId: string, globalIdx: number) {
+    if (isFree && globalIdx >= FREE_LESSON_CAP) return;
     const next = new Set(completed);
     if (next.has(lessonId)) next.delete(lessonId);
     else next.add(lessonId);
@@ -601,7 +599,7 @@ function LearnView() {
   }
 
   if (swipeMode) {
-    return <SwipeLearnView onExit={() => { setSwipeMode(false); setCompleted(getProgress()); }} tierLevel={tierLevel} />;
+    return <SwipeLearnView onExit={() => { setSwipeMode(false); setCompleted(getProgress()); }} isFree={isFree} />;
   }
 
   const isAllDone = completedCount >= totalLessons;
@@ -674,51 +672,55 @@ function LearnView() {
         />
       </div>
 
-      {isFreeUser && (
-        <div className="mb-6 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
-          <Lock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-bold text-amber-500">Free Plan: 5 Lessons</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              You have access to the first {FREE_LESSON_LIMIT} lessons. <Link to="/pricing" className="text-primary underline font-medium">Upgrade to Standard or Premium</Link> to unlock all 39 lessons.
-            </p>
+      {isFree && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 flex items-center gap-3">
+          <Lock className="h-5 w-5 text-amber-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-amber-500">Free Plan — 5 of {totalLessons} lessons unlocked</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Upgrade to Standard to access all {totalLessons} lessons.</p>
           </div>
+          <Link to="/pricing" className="text-xs font-bold text-primary hover:underline shrink-0">Upgrade</Link>
         </div>
       )}
 
       <div className="space-y-4">
-        {COURSE_CHAPTERS.map((chapter, chIdx) => {
-          const chCompleted = chapter.lessons.filter((l) => completed.has(l.id)).length;
-          const chTotal = chapter.lessons.length;
-          const chDone = chCompleted === chTotal && chTotal > 0;
+        {(() => {
+          let globalIdx = 0;
+          return COURSE_CHAPTERS.map((chapter, chIdx) => {
+            const chStartIdx = globalIdx;
+            globalIdx += chapter.lessons.length;
+            const chCompleted = chapter.lessons.filter((l) => completed.has(l.id)).length;
+            const chTotal = chapter.lessons.length;
+            const chDone = chCompleted === chTotal && chTotal > 0;
 
-          return (
-            <ChapterAccordion
-              key={chapter.id}
-              chapter={chapter}
-              chIdx={chIdx}
-              chCompleted={chCompleted}
-              chTotal={chTotal}
-              chDone={chDone}
-              completed={completed}
-              toggleComplete={toggleComplete}
-              defaultOpen={chIdx === 0}
-              freeLessonIds={freeLessonIds}
-              isFreeUser={isFreeUser}
-            />
-          );
-        })}
+            return (
+              <ChapterAccordion
+                key={chapter.id}
+                chapter={chapter}
+                chIdx={chIdx}
+                chCompleted={chCompleted}
+                chTotal={chTotal}
+                chDone={chDone}
+                completed={completed}
+                toggleComplete={toggleComplete}
+                defaultOpen={chIdx === 0}
+                isFree={isFree}
+                chapterStartIdx={chStartIdx}
+              />
+            );
+          });
+        })()}
       </div>
     </div>
   );
 }
 
 function ChapterAccordion({
-  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, freeLessonIds, isFreeUser,
+  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, isFree, chapterStartIdx,
 }: {
   chapter: Chapter; chIdx: number; chCompleted: number; chTotal: number; chDone: boolean;
-  completed: Set<string>; toggleComplete: (id: string) => void; defaultOpen: boolean;
-  freeLessonIds?: Set<string>; isFreeUser?: boolean;
+  completed: Set<string>; toggleComplete: (id: string, globalIdx: number) => void; defaultOpen: boolean;
+  isFree?: boolean; chapterStartIdx?: number;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
@@ -753,23 +755,41 @@ function ChapterAccordion({
       {isOpen && (
         <div className="border-t">
           {chapter.lessons.map((lesson, lIdx) => {
-            const isLessonOpen = expandedLesson === lesson.id;
+            const globalIdx = (chapterStartIdx ?? 0) + lIdx;
+            const isLocked = isFree && globalIdx >= FREE_LESSON_CAP;
+            const isLessonOpen = !isLocked && expandedLesson === lesson.id;
             const isDone = completed.has(lesson.id);
-            const isLessonLocked = isFreeUser && freeLessonIds && !freeLessonIds.has(lesson.id);
+
+            if (isLocked) {
+              return (
+                <div key={lesson.id} className="border-b last:border-b-0">
+                  <div className="w-full flex items-center gap-3 px-4 py-3 opacity-50">
+                    <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-muted-foreground font-mono w-6">{lIdx + 1}.</span>
+                    <span className="flex-1 text-sm font-medium text-muted-foreground">{lesson.title}</span>
+                    <Link
+                      to="/pricing"
+                      className="text-[11px] font-bold text-amber-500 hover:underline shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Upgrade
+                    </Link>
+                  </div>
+                </div>
+              );
+            }
 
             return (
-              <div key={lesson.id} className={`border-b last:border-b-0 ${isLessonLocked ? "opacity-50" : ""}`}>
+              <div key={lesson.id} className="border-b last:border-b-0">
                 <div
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isLessonLocked ? "cursor-not-allowed" : "hover:bg-secondary/30 cursor-pointer"}`}
-                  onClick={() => !isLessonLocked && setExpandedLesson(isLessonOpen ? null : lesson.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/30 cursor-pointer"
+                  onClick={() => setExpandedLesson(isLessonOpen ? null : lesson.id)}
                 >
                   <div
                     className="shrink-0 cursor-pointer"
-                    onClick={(e) => { e.stopPropagation(); if (!isLessonLocked) toggleComplete(lesson.id); }}
+                    onClick={(e) => { e.stopPropagation(); toggleComplete(lesson.id, globalIdx); }}
                   >
-                    {isLessonLocked ? (
-                      <Lock className="h-5 w-5 text-muted-foreground/40" />
-                    ) : isDone ? (
+                    {isDone ? (
                       <CheckCircle2 className="h-5 w-5 text-primary" />
                     ) : (
                       <Circle className="h-5 w-5 text-muted-foreground/40" />
@@ -779,9 +799,7 @@ function ChapterAccordion({
                   <span className={`flex-1 text-sm font-medium ${isDone ? "text-muted-foreground line-through" : ""}`}>
                     {lesson.title}
                   </span>
-                  {isLessonLocked ? (
-                    <span className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full">PRO</span>
-                  ) : isLessonOpen ? (
+                  {isLessonOpen ? (
                     <ChevronUp className="h-4 w-4 text-muted-foreground" />
                   ) : (
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -849,7 +867,7 @@ function ChapterAccordion({
                     {!isDone && (
                       <button
                         className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-                        onClick={() => toggleComplete(lesson.id)}
+                        onClick={() => toggleComplete(lesson.id, globalIdx)}
                       >
                         <CheckCircle2 className="h-4 w-4" />
                         Mark as Complete

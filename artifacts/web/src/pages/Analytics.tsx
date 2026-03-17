@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { LockedFeatureOverlay } from "@/components/CasinoElements";
 import { ShareButton } from "@/components/ShareButton";
@@ -52,6 +53,7 @@ import {
   Flame,
   DollarSign,
   Layers,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
@@ -402,7 +404,8 @@ function GradeGauge({ score }: { score: number }) {
 }
 
 export default function Analytics() {
-  const { tierLevel } = useAuth();
+  const { tierLevel, isAdmin } = useAuth();
+  const isPremium = isAdmin || (tierLevel ?? 0) >= 2;
   const { data: rawTrades, isLoading: tradesLoading } = useListTrades();
   const { data: propAccount } = useGetPropAccount();
 
@@ -664,6 +667,28 @@ export default function Analytics() {
         <div className="flex flex-col items-center gap-3">
           <Activity className="h-8 w-8 animate-pulse text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isPremium) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+          <div className="rounded-full bg-muted p-4">
+            <Lock className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-lg font-semibold">Premium Feature</h2>
+          <p className="text-sm text-muted-foreground">
+            Analytics are available on the Premium plan. Upgrade to unlock full trade history charts, insights, and performance scores.
+          </p>
+          <Link
+            to="/pricing"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            View Pricing
+          </Link>
         </div>
       </div>
     );

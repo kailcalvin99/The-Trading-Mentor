@@ -235,6 +235,23 @@ export default function PropTracker() {
   const dailyRemaining = Math.max(0, maxDailyLossAmount - dailyLoss);
   const totalRemaining = Math.max(0, maxTotalDrawdownAmount - totalDrawdown);
 
+  function handleUpgradeError(err: unknown, action: string) {
+    const status = (err as { status?: number })?.status;
+    if (status === 403) {
+      toast({
+        title: "Upgrade required",
+        description: `${action} requires a Standard plan or higher. Visit the Pricing page to upgrade.`,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: `Could not ${action.toLowerCase()}. Please try again.`,
+        variant: "destructive",
+      });
+    }
+  }
+
   const handleAddLoss = useCallback(async () => {
     const amount = parseFloat(lossInput);
     if (isNaN(amount) || amount <= 0) return;
@@ -242,12 +259,8 @@ export default function PropTracker() {
       await addLoss({ data: { amount } });
       setLossInput("");
       refetch();
-    } catch {
-      toast({
-        title: "Failed to log loss",
-        description: "Could not save the loss. Please try again.",
-        variant: "destructive",
-      });
+    } catch (err) {
+      handleUpgradeError(err, "Logging losses");
     }
   }, [lossInput, addLoss, refetch, toast]);
 
@@ -255,12 +268,8 @@ export default function PropTracker() {
     try {
       await resetLoss();
       refetch();
-    } catch {
-      toast({
-        title: "Failed to reset daily loss",
-        description: "Could not reset. Please try again.",
-        variant: "destructive",
-      });
+    } catch (err) {
+      handleUpgradeError(err, "Resetting daily loss");
     }
     setShowResetConfirm(false);
   }, [resetLoss, refetch, toast]);
@@ -302,12 +311,8 @@ export default function PropTracker() {
       });
       refetch();
       setShowSetup(false);
-    } catch {
-      toast({
-        title: "Failed to save account",
-        description: "Could not save your account details. Please try again.",
-        variant: "destructive",
-      });
+    } catch (err) {
+      handleUpgradeError(err, "Saving account");
     }
   }, [setupForm, createAccount, refetch, toast]);
 

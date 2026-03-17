@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 import {
   Card,
   CardContent,
@@ -240,6 +241,23 @@ export default function RiskShield() {
   const nqContracts = pts > 0 ? riskAmount / (pts * NQ_POINT_VALUE) : 0;
   const mnqContracts = pts > 0 ? riskAmount / (pts * MNQ_POINT_VALUE) : 0;
 
+  function handleUpgradeError(err: unknown, action: string) {
+    const status = (err as { status?: number })?.status;
+    if (status === 403) {
+      toast({
+        title: "Upgrade required",
+        description: `${action} requires a Standard plan or higher. Visit the Pricing page to upgrade.`,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: `Could not ${action.toLowerCase()}. Please try again.`,
+        variant: "destructive",
+      });
+    }
+  }
+
   const handleAddLoss = useCallback(async () => {
     const amount = parseFloat(lossInput);
     if (isNaN(amount) || amount <= 0) return;
@@ -247,8 +265,8 @@ export default function RiskShield() {
       await addLoss({ data: { amount } });
       setLossInput("");
       refetch();
-    } catch {
-      // error handled silently
+    } catch (err) {
+      handleUpgradeError(err, "Logging losses");
     }
   }, [lossInput, addLoss, refetch]);
 
@@ -256,8 +274,8 @@ export default function RiskShield() {
     try {
       await resetLoss();
       refetch();
-    } catch {
-      // error handled silently
+    } catch (err) {
+      handleUpgradeError(err, "Resetting daily loss");
     }
     setShowResetConfirm(false);
   }, [resetLoss, refetch]);
@@ -286,8 +304,8 @@ export default function RiskShield() {
       });
       refetch();
       setShowAccountSetup(false);
-    } catch {
-      // error handled silently
+    } catch (err) {
+      handleUpgradeError(err, "Saving account settings");
     }
   }, [setupForm, createAccount, refetch]);
 

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, userSubscriptionsTable, subscriptionTiersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 function getJwtSecret(): string {
@@ -90,4 +90,41 @@ export function adminRequired(req: Request, res: Response, next: NextFunction): 
     return;
   }
   next();
+}
+
+export function tierRequired(minLevel: number) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
+    if (req.user.role === "admin") {
+      next();
+      return;
+    }
+
+    try {
+      const [sub] = await db
+        .select({ tierLevel: subscriptionTiersTable.level })
+        .from(userSubscriptionsTable)
+        .innerJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
+        .where(eq(userSubscriptionsTable.userId, req.user.userId));
+
+      const tierLevel = sub?.tierLevel ?? 0;
+
+      if (tierLevel < minLevel) {
+        res.status(403).json({
+          error: "Upgrade required",
+          requiredTier: minLevel,
+          currentTier: tierLevel,
+        });
+        return;
+      }
+
+      next();
+    } catch {
+      res.status(500).json({ error: "Failed to verify subscription tier" });
+    }
+  };
 }

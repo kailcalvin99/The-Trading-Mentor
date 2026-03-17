@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { propAccountTable } from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
-import { authRequired } from "../../middleware/auth";
+import { authRequired, tierRequired } from "../../middleware/auth";
 
 const router: IRouter = Router();
 
@@ -40,7 +40,7 @@ router.get("/account", authRequired, async (req, res) => {
   }
 });
 
-router.post("/account", authRequired, async (req, res) => {
+router.post("/account", authRequired, tierRequired(1), async (req, res) => {
   try {
     const userId = req.user!.userId;
     const { startingBalance, maxDailyLossPct = 2, maxTotalDrawdownPct = 5 } = req.body;
@@ -102,7 +102,7 @@ router.post("/account", authRequired, async (req, res) => {
   }
 });
 
-router.post("/account/daily-loss", authRequired, async (req, res) => {
+router.post("/account/daily-loss", authRequired, tierRequired(1), async (req, res) => {
   try {
     const userId = req.user!.userId;
     const { amount } = req.body;
@@ -156,7 +156,7 @@ router.post("/account/daily-loss", authRequired, async (req, res) => {
   }
 });
 
-router.post("/account/reset-daily", authRequired, async (req, res) => {
+router.post("/account/reset-daily", authRequired, tierRequired(1), async (req, res) => {
   try {
     const userId = req.user!.userId;
     const [existing] = await db
