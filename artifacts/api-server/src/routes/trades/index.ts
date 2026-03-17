@@ -1,9 +1,19 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { tradesTable } from "@workspace/db";
+import { tradesTable, userSubscriptionsTable, subscriptionTiersTable } from "@workspace/db";
 import { eq, desc, gte, lte, and, type SQL } from "drizzle-orm";
 import { authRequired } from "../../middleware/auth";
 import { ai } from "@workspace/integrations-gemini-ai";
+
+async function getUserTierLevel(userId: number): Promise<number> {
+  const sub = await db
+    .select({ tierLevel: subscriptionTiersTable.level })
+    .from(userSubscriptionsTable)
+    .innerJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
+    .where(eq(userSubscriptionsTable.userId, userId))
+    .limit(1);
+  return sub.length > 0 ? sub[0].tierLevel : 0;
+}
 
 const router: IRouter = Router();
 
@@ -111,6 +121,15 @@ router.get("/export/csv", authRequired, async (req, res) => {
 
 router.post("/", authRequired, async (req, res) => {
   try {
+    const userId = req.user!.userId;
+    const isAdmin = req.user?.role === "admin";
+    if (!isAdmin) {
+      const tierLevel = await getUserTierLevel(userId);
+      if (tierLevel < 2) {
+        res.status(403).json({ error: "Premium subscription required to log trades" });
+        return;
+      }
+    }
     const {
       pair,
       entryTime,
@@ -134,7 +153,6 @@ router.post("/", authRequired, async (req, res) => {
       return;
     }
 
-    const userId = req.user!.userId;
     const [trade] = await db
       .insert(tradesTable)
       .values({
@@ -165,6 +183,14 @@ router.post("/", authRequired, async (req, res) => {
 
 router.post("/:id/coach", authRequired, async (req, res) => {
   try {
+    const isAdmin = req.user?.role === "admin";
+    if (!isAdmin) {
+      const tierLevel = await getUserTierLevel(req.user!.userId);
+      if (tierLevel < 2) {
+        res.status(403).json({ error: "Premium subscription required for AI coaching" });
+        return;
+      }
+    }
     const id = parseInt(req.params.id);
     if (isNaN(id) || id <= 0) {
       res.status(400).json({ error: "Invalid trade ID" });
@@ -229,6 +255,14 @@ router.delete("/all", authRequired, async (_req, res) => {
 
 router.delete("/:id", authRequired, async (req, res) => {
   try {
+    const isAdmin = req.user?.role === "admin";
+    if (!isAdmin) {
+      const tierLevel = await getUserTierLevel(req.user!.userId);
+      if (tierLevel < 2) {
+        res.status(403).json({ error: "Premium subscription required to manage trades" });
+        return;
+      }
+    }
     const id = parseInt(req.params.id);
     if (isNaN(id) || id <= 0) {
       res.status(400).json({ error: "Invalid trade ID" });

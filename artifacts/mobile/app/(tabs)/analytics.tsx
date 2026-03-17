@@ -10,9 +10,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useListTrades } from "@workspace/api-client-react";
 import type { Trade } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 
 const C = Colors.dark;
 
@@ -26,6 +28,9 @@ interface StatCard {
 }
 
 export default function AnalyticsScreen() {
+  const { user, subscription } = useAuth();
+  const router = useRouter();
+  const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
   const { data: rawTrades, isLoading } = useListTrades();
 
   const trades = useMemo(() => {
@@ -127,6 +132,26 @@ export default function AnalyticsScreen() {
     try {
       await Share.share({ message: text, title: "My ICT Trading Stats" });
     } catch {}
+  }
+
+  if (tierLevel < 2) {
+    return (
+      <SafeAreaView style={s.safe} edges={["top"]}>
+        <View style={s.header}>
+          <Text style={s.title}>Analytics</Text>
+        </View>
+        <View style={s.center}>
+          <Ionicons name="lock-closed-outline" size={48} color={C.accent} />
+          <Text style={s.emptyText}>Premium Feature</Text>
+          <Text style={s.emptySubtext}>
+            Upgrade to Premium to access analytics, win-rate tracking, and AI-powered performance insights.
+          </Text>
+          <TouchableOpacity style={s.upgradeBtn} onPress={() => router.navigate("/subscription" as never)}>
+            <Text style={s.upgradeBtnText}>View Plans</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   if (isLoading) {
@@ -386,6 +411,18 @@ const s = StyleSheet.create({
     color: C.textSecondary,
     textAlign: "center",
     paddingHorizontal: 32,
+  },
+  upgradeBtn: {
+    marginTop: 16,
+    backgroundColor: C.accent,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  upgradeBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0A0A0F",
   },
   heroCard: {
     backgroundColor: C.card,

@@ -553,7 +553,7 @@ export default function Dashboard() {
 
       <SessionsLiveBoard />
       <QuickReference />
-      <AchievementBadges />
+      {!isFreeUser && <AchievementBadges />}
       {isFreeUser && (
         <PremiumTeaser
           title="UNLOCK PREMIUM TOOLS"

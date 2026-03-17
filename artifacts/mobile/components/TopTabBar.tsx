@@ -6,6 +6,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Colors from "@/constants/colors";
 
+const REQUIRED_TIER: Partial<Record<string, number>> = {
+  journal: 2,
+  analytics: 2,
+};
+
 const C = Colors.dark;
 
 const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selected: keyof typeof Ionicons.glyphMap }> = {
@@ -49,9 +54,10 @@ interface TopTabBarProps {
   pathname: string;
   onNavigate: (href: Href) => void;
   isAdmin?: boolean;
+  tierLevel?: number;
 }
 
-export default function TopTabBar({ pathname, onNavigate, isAdmin = false }: TopTabBarProps) {
+export default function TopTabBar({ pathname, onNavigate, isAdmin = false, tierLevel = 0 }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
 
   const TAB_ROUTES: TabRoute[] = isAdmin
@@ -78,7 +84,9 @@ export default function TopTabBar({ pathname, onNavigate, isAdmin = false }: Top
             const isFocused = activeRoute === route;
             const icons = TAB_ICONS[route];
             const label = TAB_LABELS[route];
-            const color = isFocused ? C.accent : C.tabIconDefault;
+            const requiredTier = REQUIRED_TIER[route] ?? 0;
+            const isLocked = !isAdmin && tierLevel < requiredTier;
+            const color = isLocked ? C.cardBorder : isFocused ? C.accent : C.tabIconDefault;
 
             return (
               <Pressable
@@ -89,11 +97,18 @@ export default function TopTabBar({ pathname, onNavigate, isAdmin = false }: Top
                 accessibilityState={{ selected: isFocused }}
                 accessibilityLabel={label}
               >
-                <Ionicons
-                  name={isFocused ? icons.selected : icons.default}
-                  size={20}
-                  color={color}
-                />
+                <View style={styles.iconWrapper}>
+                  <Ionicons
+                    name={isFocused ? icons.selected : icons.default}
+                    size={20}
+                    color={color}
+                  />
+                  {isLocked && (
+                    <View style={styles.lockBadge}>
+                      <Ionicons name="lock-closed" size={8} color={C.cardBorder} />
+                    </View>
+                  )}
+                </View>
                 <Text style={[styles.label, { color }]}>{label}</Text>
                 {isFocused && <View style={[styles.indicator, { backgroundColor: C.accent }]} />}
               </Pressable>
@@ -144,6 +159,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     gap: 2,
     position: "relative",
+  },
+  iconWrapper: {
+    position: "relative",
+  },
+  lockBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -4,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 6,
+    width: 12,
+    height: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   label: {
     fontSize: 11,

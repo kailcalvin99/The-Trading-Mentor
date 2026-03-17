@@ -200,7 +200,7 @@ export default function Settings() {
     }
   }
 
-  const isPremium = tierLevel >= 1;
+  const isPremium = tierLevel >= 2;
 
   if (loading) {
     return (

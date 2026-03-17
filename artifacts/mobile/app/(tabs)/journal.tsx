@@ -12,12 +12,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useListTrades, useCreateTrade, useDeleteTrade } from "@workspace/api-client-react";
 import type { Trade } from "@workspace/api-client-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import { fireMobileAITrigger } from "@/lib/aiTrigger";
 import Colors from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 
 const C = Colors.dark;
 
@@ -163,6 +165,9 @@ function StressSlider({ value, onChange }: { value: number; onChange: (v: number
 }
 
 export default function JournalScreen() {
+  const { user, subscription } = useAuth();
+  const router = useRouter();
+  const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
   const { isRoutineComplete } = usePlanner();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -371,6 +376,26 @@ export default function JournalScreen() {
   }, [deleteTradeMut, qc]);
 
   const tagInfo = (tag: string) => BEHAVIOR_TAGS.find((b) => b.tag === tag);
+
+  if (tierLevel < 2) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top"]}>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Smart Journal</Text>
+        </View>
+        <View style={styles.lockedCenter}>
+          <Ionicons name="lock-closed-outline" size={48} color={C.accent} />
+          <Text style={styles.lockedTitle}>Premium Feature</Text>
+          <Text style={styles.lockedSubtitle}>
+            Upgrade to Premium to unlock the Smart Journal and log, analyze, and review your trades with AI coaching.
+          </Text>
+          <TouchableOpacity style={styles.lockedBtn} onPress={() => router.navigate("/subscription" as never)}>
+            <Text style={styles.lockedBtnText}>View Plans</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -835,6 +860,11 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
   scroll: { flex: 1 },
   content: { padding: 16 },
+  lockedCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 8 },
+  lockedTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text, marginTop: 8 },
+  lockedSubtitle: { fontSize: 13, color: C.textSecondary, textAlign: "center", lineHeight: 20, paddingHorizontal: 16 },
+  lockedBtn: { marginTop: 12, backgroundColor: C.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
+  lockedBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
   disclaimer: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 16, marginHorizontal: 4, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.cardBorder },
   disclaimerText: { flex: 1, fontSize: 10, color: C.textSecondary, lineHeight: 15, opacity: 0.7 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },

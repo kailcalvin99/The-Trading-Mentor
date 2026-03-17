@@ -3,6 +3,20 @@ import { eq } from "drizzle-orm";
 
 export async function seedDefaults() {
   const existingTiers = await db.select().from(subscriptionTiersTable);
+
+  if (existingTiers.length > 0) {
+    const standardTier = existingTiers.find((t) => t.level === 1);
+    if (standardTier) {
+      const features = standardTier.features as string[];
+      if (!features.includes("Prop Tracker")) {
+        await db
+          .update(subscriptionTiersTable)
+          .set({ features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Prop Tracker", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges"] })
+          .where(eq(subscriptionTiersTable.id, standardTier.id));
+      }
+    }
+  }
+
   if (existingTiers.length === 0) {
     await db.insert(subscriptionTiersTable).values([
       {
@@ -21,7 +35,7 @@ export async function seedDefaults() {
         monthlyPrice: "29.99",
         annualPrice: "299.99",
         annualDiscountPct: 17,
-        features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges"],
+        features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Prop Tracker", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges"],
         description: "Everything you need to start trading seriously",
         isActive: true,
       },

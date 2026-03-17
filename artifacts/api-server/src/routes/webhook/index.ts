@@ -17,7 +17,7 @@ router.get("/tradingview/info", authRequired, async (req, res) => {
         .where(eq(userSubscriptionsTable.userId, req.user!.userId))
         .limit(1);
 
-      if (!sub.length || sub[0].tierLevel < 1) {
+      if (!sub.length || sub[0].tierLevel < 2) {
         res.status(403).json({ error: "Premium subscription required" });
         return;
       }
