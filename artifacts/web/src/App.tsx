@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppConfigProvider } from "@/contexts/AppConfigContext";
 import { TourGuideProvider } from "@/contexts/TourGuideContext";
 import Layout from "@/components/Layout";
+import OnboardingQuiz, { hasCompletedQuiz, hasExistingAcademyProgress } from "@/components/OnboardingQuiz";
 import Welcome from "@/pages/Welcome";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -32,7 +33,6 @@ import RiskDisclosure from "@/pages/RiskDisclosure";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import VideoTourPage from "@/pages/VideoTourPage";
-import OnboardingQuiz, { hasCompletedQuiz, type SkillLevel } from "@/components/OnboardingQuiz";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -50,9 +50,22 @@ function ResetApp() {
   return null;
 }
 
+function QuizGate({ children }: { children: React.ReactNode }) {
+  const [showQuiz, setShowQuiz] = useState(() => {
+    if (hasCompletedQuiz()) return false;
+    if (hasExistingAcademyProgress()) return false;
+    return true;
+  });
+
+  if (showQuiz) {
+    return <OnboardingQuiz onComplete={() => setShowQuiz(false)} />;
+  }
+
+  return <>{children}</>;
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const [quizDone, setQuizDone] = useState(() => hasCompletedQuiz());
 
   if (loading) {
     return (
@@ -66,16 +79,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!quizDone) {
-    return (
-      <>
-        {children}
-        <OnboardingQuiz onComplete={(_level: SkillLevel) => setQuizDone(true)} />
-      </>
-    );
-  }
-
-  return <>{children}</>;
+  return <QuizGate>{children}</QuizGate>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {

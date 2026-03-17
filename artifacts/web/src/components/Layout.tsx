@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -8,30 +9,29 @@ import { FreeSidebar, LockedFeatureOverlay, SpinWheelFloatingTrigger } from "@/c
 import AIAssistant from "@/components/AIAssistant";
 import { TourGuide } from "@/components/TourGuide";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
-import { getSkillLevel } from "@/components/OnboardingQuiz";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 const SIDEBAR_COLLAPSED_KEY = "ict-sidebar-collapsed";
 
-const ALL_NAV_ITEMS = [
-  { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkill: 0 },
-  { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0, minSkill: 0 },
-  { to: "/planner", label: "Daily Planner", mobileLabel: "Planner", icon: Calendar, requiredTier: 0, minSkill: 0 },
-  { to: "/risk-shield", label: "Risk Shield", mobileLabel: "Risk", icon: Shield, requiredTier: 1, minSkill: 0 },
-  { to: "/prop-tracker", label: "Prop Tracker", mobileLabel: "Prop", icon: Trophy, requiredTier: 1, minSkill: 1 },
-  { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 2, minSkill: 1 },
-  { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2, minSkill: 1 },
-  { to: "/leaderboard", label: "Leaderboard", mobileLabel: "Rank", icon: Trophy, requiredTier: 2, minSkill: 2 },
-  { to: "/webhooks", label: "TV Webhooks", mobileLabel: "Webhooks", icon: Webhook, requiredTier: 2, minSkill: 2 },
-  { to: "/community", label: "Community", mobileLabel: "Community", icon: Users, requiredTier: 0, minSkill: 0 },
+const navItems = [
+  { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/planner", label: "Daily Planner", mobileLabel: "Planner", icon: Calendar, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/risk-shield", label: "Risk Shield", mobileLabel: "Risk", icon: Shield, requiredTier: 1, minSkillLevel: 0 },
+  { to: "/prop-tracker", label: "Prop Tracker", mobileLabel: "Prop", icon: Trophy, requiredTier: 1, minSkillLevel: 1 },
+  { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 2, minSkillLevel: 1 },
+  { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2, minSkillLevel: 1 },
+  { to: "/leaderboard", label: "Leaderboard", mobileLabel: "Rank", icon: Trophy, requiredTier: 2, minSkillLevel: 2 },
+  { to: "/webhooks", label: "TV Webhooks", mobileLabel: "Webhooks", icon: Webhook, requiredTier: 2, minSkillLevel: 2 },
+  { to: "/community", label: "Community", mobileLabel: "Community", icon: Users, requiredTier: 0, minSkillLevel: 0 },
 ];
 
-function getSkillNumber(): number {
-  const level = getSkillLevel();
-  if (level === "advanced") return 2;
-  if (level === "intermediate") return 1;
-  return 0;
-}
+const SKILL_LEVEL_NUM: Record<SkillLevel | "none", number> = {
+  none: -1,
+  beginner: 0,
+  intermediate: 1,
+  advanced: 2,
+};
 
 function NavItem({
   to,
@@ -251,9 +251,17 @@ export default function Layout() {
   const location = useLocation();
   const { state: tourState, dispatch: tourDispatch, closeTour } = useTourGuideContext();
 
+  const skillLevelNum = useMemo(() => {
+    const level = getSkillLevel();
+    return level ? SKILL_LEVEL_NUM[level] : SKILL_LEVEL_NUM["none"];
+  }, []);
+
+  const visibleNavItems = useMemo(() => {
+    if (skillLevelNum === SKILL_LEVEL_NUM["none"]) return navItems;
+    return navItems.filter((item) => item.minSkillLevel <= skillLevelNum);
+  }, [skillLevelNum]);
+
   const isFreeUser = tierLevel === 0;
-  const skillNum = getSkillNumber();
-  const navItems = ALL_NAV_ITEMS.filter((item) => item.minSkill <= skillNum);
 
   function toggleSidebar() {
     setSidebarCollapsed((prev) => {
@@ -336,7 +344,7 @@ export default function Layout() {
         </div>
 
         <nav className="flex flex-col gap-1 p-2 flex-1">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavItem
               key={item.to}
               {...item}
@@ -464,7 +472,7 @@ export default function Layout() {
         </div>
 
         <nav className="md:hidden flex items-center border-t border-border bg-sidebar shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <MobileNavItem
               key={item.to}
               {...item}
