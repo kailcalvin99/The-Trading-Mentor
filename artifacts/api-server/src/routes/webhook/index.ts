@@ -49,15 +49,32 @@ router.post("/tradingview/:token", async (req, res) => {
     const { token } = req.params;
     const { ticker, side, price, symbol } = req.body;
 
-    const [user] = await db
-      .select({ id: usersTable.id })
+    const [userRow] = await db
+      .select({ id: usersTable.id, role: usersTable.role })
       .from(usersTable)
       .where(eq(usersTable.webhookToken, token));
 
-    if (!user) {
+    if (!userRow) {
       res.status(401).json({ error: "Invalid webhook token" });
       return;
     }
+
+    const isAdmin = userRow.role === "admin";
+    if (!isAdmin) {
+      const sub = await db
+        .select({ tierLevel: subscriptionTiersTable.level })
+        .from(userSubscriptionsTable)
+        .innerJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
+        .where(eq(userSubscriptionsTable.userId, userRow.id))
+        .limit(1);
+
+      if (!sub.length || sub[0].tierLevel < 2) {
+        res.status(403).json({ error: "Premium subscription required to use webhook alerts" });
+        return;
+      }
+    }
+
+    const user = userRow;
 
     const resolvedTicker = ticker || symbol || "NQ1!";
     const resolvedSide = (side || "BUY").toUpperCase();

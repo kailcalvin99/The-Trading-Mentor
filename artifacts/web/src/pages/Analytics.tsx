@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { LockedFeatureOverlay } from "@/components/CasinoElements";
 import { ShareButton } from "@/components/ShareButton";
 import {
   Card,
@@ -400,6 +402,7 @@ function GradeGauge({ score }: { score: number }) {
 }
 
 export default function Analytics() {
+  const { tierLevel } = useAuth();
   const { data: rawTrades, isLoading: tradesLoading } = useListTrades();
   const { data: propAccount } = useGetPropAccount();
 
@@ -676,6 +679,14 @@ export default function Analytics() {
             Log some trades in your Smart Journal to see how you're doing — charts, scores, and more will show up here.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (tierLevel < 2) {
+    return (
+      <div className="relative min-h-[60vh] flex items-center justify-center">
+        <LockedFeatureOverlay featureName="Analytics Dashboard" tierRequired="Premium" />
       </div>
     );
   }

@@ -22,6 +22,8 @@ import Admin from "@/pages/Admin";
 import Settings from "@/pages/Settings";
 import Dashboard from "@/pages/Dashboard";
 import Community from "@/pages/Community";
+import TradingViewWebhooks from "@/pages/TradingViewWebhooks";
+import Leaderboard from "@/pages/Leaderboard";
 import RefundPolicy from "@/pages/RefundPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -132,6 +134,8 @@ function App() {
                   <Route path="journal" element={<SmartJournal />} />
                   <Route path="analytics" element={<Analytics />} />
                   <Route path="community" element={<Community />} />
+                  <Route path="leaderboard" element={<Leaderboard />} />
+                  <Route path="webhooks" element={<TradingViewWebhooks />} />
                   <Route path="admin" element={<Admin />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import GraduationCelebration, { useGraduationCheck } from "@/components/GraduationCelebration";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -162,8 +163,9 @@ function ConfettiBurst({ onDone }: { onDone: () => void }) {
   );
 }
 
-function SwipeLearnView({ onExit }: { onExit: () => void }) {
-  const allCards = getAllCards();
+function SwipeLearnView({ onExit, tierLevel }: { onExit: () => void; tierLevel: number }) {
+  const allCardsRaw = getAllCards();
+  const allCards = tierLevel < 1 ? allCardsRaw.slice(0, FREE_LESSON_LIMIT) : allCardsRaw;
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
   const [currentIdx, setCurrentIdx] = useState(() => {
     const prog = getProgress();
@@ -565,7 +567,11 @@ function SwipeLearnView({ onExit }: { onExit: () => void }) {
   );
 }
 
+const FREE_LESSON_LIMIT = 5;
+
 function LearnView() {
+  const { tierLevel } = useAuth();
+  const isFreeUser = tierLevel < 1;
   const [swipeMode, setSwipeMode] = useState(false);
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
 
@@ -582,7 +588,11 @@ function LearnView() {
   const streak = getStreak();
   const xp = getXP();
 
+  const allLessonIds = getAllCards().map((c) => c.lesson.id);
+  const freeLessonIds = new Set(allLessonIds.slice(0, FREE_LESSON_LIMIT));
+
   function toggleComplete(lessonId: string) {
+    if (isFreeUser && !freeLessonIds.has(lessonId)) return;
     const next = new Set(completed);
     if (next.has(lessonId)) next.delete(lessonId);
     else next.add(lessonId);
@@ -591,7 +601,7 @@ function LearnView() {
   }
 
   if (swipeMode) {
-    return <SwipeLearnView onExit={() => { setSwipeMode(false); setCompleted(getProgress()); }} />;
+    return <SwipeLearnView onExit={() => { setSwipeMode(false); setCompleted(getProgress()); }} tierLevel={tierLevel} />;
   }
 
   const isAllDone = completedCount >= totalLessons;
@@ -664,6 +674,18 @@ function LearnView() {
         />
       </div>
 
+      {isFreeUser && (
+        <div className="mb-6 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+          <Lock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-amber-500">Free Plan: 5 Lessons</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              You have access to the first {FREE_LESSON_LIMIT} lessons. <Link to="/pricing" className="text-primary underline font-medium">Upgrade to Standard or Premium</Link> to unlock all 39 lessons.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4">
         {COURSE_CHAPTERS.map((chapter, chIdx) => {
           const chCompleted = chapter.lessons.filter((l) => completed.has(l.id)).length;
@@ -681,6 +703,8 @@ function LearnView() {
               completed={completed}
               toggleComplete={toggleComplete}
               defaultOpen={chIdx === 0}
+              freeLessonIds={freeLessonIds}
+              isFreeUser={isFreeUser}
             />
           );
         })}
@@ -690,10 +714,11 @@ function LearnView() {
 }
 
 function ChapterAccordion({
-  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen,
+  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, freeLessonIds, isFreeUser,
 }: {
   chapter: Chapter; chIdx: number; chCompleted: number; chTotal: number; chDone: boolean;
   completed: Set<string>; toggleComplete: (id: string) => void; defaultOpen: boolean;
+  freeLessonIds?: Set<string>; isFreeUser?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
@@ -730,18 +755,21 @@ function ChapterAccordion({
           {chapter.lessons.map((lesson, lIdx) => {
             const isLessonOpen = expandedLesson === lesson.id;
             const isDone = completed.has(lesson.id);
+            const isLessonLocked = isFreeUser && freeLessonIds && !freeLessonIds.has(lesson.id);
 
             return (
-              <div key={lesson.id} className="border-b last:border-b-0">
+              <div key={lesson.id} className={`border-b last:border-b-0 ${isLessonLocked ? "opacity-50" : ""}`}>
                 <div
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/30 transition-colors cursor-pointer"
-                  onClick={() => setExpandedLesson(isLessonOpen ? null : lesson.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isLessonLocked ? "cursor-not-allowed" : "hover:bg-secondary/30 cursor-pointer"}`}
+                  onClick={() => !isLessonLocked && setExpandedLesson(isLessonOpen ? null : lesson.id)}
                 >
                   <div
                     className="shrink-0 cursor-pointer"
-                    onClick={(e) => { e.stopPropagation(); toggleComplete(lesson.id); }}
+                    onClick={(e) => { e.stopPropagation(); if (!isLessonLocked) toggleComplete(lesson.id); }}
                   >
-                    {isDone ? (
+                    {isLessonLocked ? (
+                      <Lock className="h-5 w-5 text-muted-foreground/40" />
+                    ) : isDone ? (
                       <CheckCircle2 className="h-5 w-5 text-primary" />
                     ) : (
                       <Circle className="h-5 w-5 text-muted-foreground/40" />
@@ -751,7 +779,9 @@ function ChapterAccordion({
                   <span className={`flex-1 text-sm font-medium ${isDone ? "text-muted-foreground line-through" : ""}`}>
                     {lesson.title}
                   </span>
-                  {isLessonOpen ? (
+                  {isLessonLocked ? (
+                    <span className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full">PRO</span>
+                  ) : isLessonOpen ? (
                     <ChevronUp className="h-4 w-4 text-muted-foreground" />
                   ) : (
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />

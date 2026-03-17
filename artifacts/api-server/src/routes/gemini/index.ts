@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { conversations, messages, adminSettingsTable, tradesTable, usersTable, userSubscriptionsTable, subscriptionTiersTable, propAccountTable } from "@workspace/db";
-import { eq, desc, sql, and, gte } from "drizzle-orm";
+import { eq, desc, sql, and, gte, inArray } from "drizzle-orm";
 import {
   CreateGeminiConversationBody,
   SendGeminiMessageBody,
@@ -626,6 +626,8 @@ router.get("/conversations/:id/messages", async (req, res) => {
   }
 });
 
+const FREE_AI_DAILY_LIMIT = 3;
+
 router.post("/conversations/:id/messages", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -645,6 +647,51 @@ router.post("/conversations/:id/messages", async (req, res) => {
     if (!isAdmin && conv.userId !== null && conv.userId !== userId) {
       res.status(403).json({ error: "Access denied" });
       return;
+    }
+
+    if (!isAdmin && userId) {
+      const sub = await db
+        .select({ tierLevel: subscriptionTiersTable.level })
+        .from(userSubscriptionsTable)
+        .innerJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
+        .where(eq(userSubscriptionsTable.userId, userId))
+        .limit(1);
+
+      const tierLevel = sub.length ? sub[0].tierLevel : 0;
+
+      if (tierLevel < 1) {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const userConvIds = await db
+          .select({ id: conversations.id })
+          .from(conversations)
+          .where(eq(conversations.userId, userId));
+
+        if (userConvIds.length > 0) {
+          const convIds = userConvIds.map((c) => c.id);
+          const countResult = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(messages)
+            .where(
+              and(
+                inArray(messages.conversationId, convIds),
+                eq(messages.role, "user"),
+                gte(messages.createdAt, startOfDay)
+              )
+            );
+          const msgCount = countResult[0]?.count ?? 0;
+
+          if (msgCount >= FREE_AI_DAILY_LIMIT) {
+            res.status(429).json({
+              error: "Daily limit reached",
+              message: `Free plan allows ${FREE_AI_DAILY_LIMIT} AI Mentor questions per day. Upgrade to Standard or Premium for unlimited access.`,
+              limitReached: true,
+            });
+            return;
+          }
+        }
+      }
     }
 
     const existingMessages = await db

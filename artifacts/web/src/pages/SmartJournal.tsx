@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { LockedFeatureOverlay } from "@/components/CasinoElements";
 import {
   useListTrades,
   useCreateTrade,
@@ -172,6 +174,7 @@ function StressSliderControl({ value, onChange }: { value: number; onChange: (v:
 }
 
 export default function SmartJournal() {
+  const { tierLevel } = useAuth();
   const { isRoutineComplete } = usePlanner();
   const { getNumber } = useAppConfig();
   const qc = useQueryClient();
@@ -450,6 +453,14 @@ export default function SmartJournal() {
     if (!notes) return "";
     return notes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "").trim();
   };
+
+  if (tierLevel < 2) {
+    return (
+      <div className="relative min-h-[60vh] flex items-center justify-center">
+        <LockedFeatureOverlay featureName="Smart Journal" tierRequired="Premium" />
+      </div>
+    );
+  }
 
   return (
     <>

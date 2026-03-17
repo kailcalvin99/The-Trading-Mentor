@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -19,6 +19,8 @@ const navItems = [
   { to: "/prop-tracker", label: "Prop Tracker", mobileLabel: "Prop", icon: Trophy, requiredTier: 1 },
   { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 2 },
   { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2 },
+  { to: "/leaderboard", label: "Leaderboard", mobileLabel: "Rank", icon: Trophy, requiredTier: 2 },
+  { to: "/webhooks", label: "TV Webhooks", mobileLabel: "Webhooks", icon: Webhook, requiredTier: 2 },
   { to: "/community", label: "Community", mobileLabel: "Community", icon: Users, requiredTier: 0 },
 ];
 
@@ -242,6 +244,8 @@ export default function Layout() {
       "/prop-tracker": 1,
       "/journal": 2,
       "/analytics": 2,
+      "/leaderboard": 2,
+      "/webhooks": 2,
     };
     for (const [path, required] of Object.entries(lockedPaths)) {
       if (location.pathname.startsWith(path) && tierLevel < required) {

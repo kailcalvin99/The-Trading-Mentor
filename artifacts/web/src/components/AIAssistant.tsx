@@ -418,8 +418,49 @@ export default function AIAssistant() {
     setIsOpen(false);
   }
 
+  const FREE_DAILY_QUESTION_LIMIT = 3;
+  const AI_MENTOR_USAGE_KEY = "ict-ai-mentor-usage";
+
+  function getDailyUsage(): { date: string; count: number } {
+    try {
+      const raw = localStorage.getItem(AI_MENTOR_USAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { date: "", count: 0 };
+  }
+
+  function incrementDailyUsage(): number {
+    const today = new Date().toDateString();
+    const usage = getDailyUsage();
+    const newCount = usage.date === today ? usage.count + 1 : 1;
+    localStorage.setItem(AI_MENTOR_USAGE_KEY, JSON.stringify({ date: today, count: newCount }));
+    return newCount;
+  }
+
+  function getRemainingQuestions(): number {
+    if (tierLevel >= 1) return Infinity;
+    const today = new Date().toDateString();
+    const usage = getDailyUsage();
+    if (usage.date !== today) return FREE_DAILY_QUESTION_LIMIT;
+    return Math.max(0, FREE_DAILY_QUESTION_LIMIT - usage.count);
+  }
+
   async function sendMessage() {
     if (!input.trim() || isStreaming) return;
+
+    if (tierLevel < 1) {
+      const remaining = getRemainingQuestions();
+      if (remaining <= 0) {
+        setChatMessages(prev => [...prev, {
+          role: "assistant",
+          content: `You've reached your daily limit of ${FREE_DAILY_QUESTION_LIMIT} questions on the free plan. Upgrade to Standard or Premium for unlimited AI Mentor access! [Go to Pricing](/pricing)`,
+          toolCalls: [],
+        }]);
+        return;
+      }
+      incrementDailyUsage();
+    }
+
     const userMsg = input.trim();
     setInput("");
 
@@ -472,6 +513,22 @@ export default function AIAssistant() {
         credentials: "include",
         body: JSON.stringify({ content: userMsg, pageContext }),
       });
+
+      if (response.status === 429) {
+        const errorData = await response.json().catch(() => ({}));
+        const limitMsg = errorData.message || "Daily AI Mentor limit reached. Upgrade to remove limits.";
+        setChatMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: `⚠️ ${limitMsg}`,
+            toolCalls: [],
+          };
+          return updated;
+        });
+        setIsStreaming(false);
+        return;
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No reader");
