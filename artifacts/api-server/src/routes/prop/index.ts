@@ -106,8 +106,13 @@ router.post("/account/daily-loss", authRequired, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const { amount } = req.body;
-    if (amount === undefined) {
+    if (amount === undefined || amount === null) {
       res.status(400).json({ error: "Amount required" });
+      return;
+    }
+    const numericAmount = typeof amount === "number" ? amount : parseFloat(amount);
+    if (!isFinite(numericAmount) || numericAmount <= 0) {
+      res.status(400).json({ error: "Amount must be a positive number" });
       return;
     }
 
@@ -121,8 +126,8 @@ router.post("/account/daily-loss", authRequired, async (req, res) => {
       return;
     }
 
-    const currentDailyLoss = parseFloat(existing.dailyLoss) + amount;
-    const newBalance = parseFloat(existing.currentBalance) - amount;
+    const currentDailyLoss = parseFloat(existing.dailyLoss) + numericAmount;
+    const newBalance = parseFloat(existing.currentBalance) - numericAmount;
     const totalDrawdown = parseFloat(existing.startingBalance) - newBalance;
 
     const [updated] = await db

@@ -265,8 +265,18 @@ export default function RiskShieldScreen() {
       await addLoss({ data: { amount } });
       setLossInput("");
       refetch();
-    } catch {
-      Alert.alert("Error", "Could not log loss");
+    } catch (err: unknown) {
+      const apiMessage =
+        err &&
+        typeof err === "object" &&
+        "data" in err &&
+        err.data &&
+        typeof err.data === "object" &&
+        "error" in err.data &&
+        typeof (err.data as Record<string, unknown>).error === "string"
+          ? (err.data as Record<string, string>).error
+          : null;
+      Alert.alert("Error", apiMessage ?? "Could not log loss");
     }
   }, [lossInput, addLoss, refetch]);
 
