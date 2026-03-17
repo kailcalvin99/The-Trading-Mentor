@@ -272,6 +272,36 @@ const USER_TOOL_DECLARATIONS = [
       properties: {},
     },
   },
+  {
+    name: "get_kill_zone_status",
+    description: "Get the current ICT kill zone status based on real New York time. Use when the user asks 'are we in a kill zone?', 'should I be trading right now?', 'what session is active?', or any timing-related question.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {},
+    },
+  },
+  {
+    name: "get_academy_lesson",
+    description: "Look up academy lesson content by ICT concept keyword. Use when the user asks 'what is X?', 'explain X', 'teach me about X' — for any ICT concept (FVG, OB, OTE, MSS, liquidity, sweep, kill zone, premium, discount, displacement, SMT, IPDA, etc.).",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {
+        concept: {
+          type: "STRING" as Type,
+          description: "The ICT concept or keyword to look up (e.g., 'FVG', 'Order Block', 'OTE', 'liquidity sweep', 'MSS', 'kill zone', 'premium', 'discount')",
+        },
+      },
+      required: ["concept"],
+    },
+  },
+  {
+    name: "get_psychology_report",
+    description: "Get a structured psychology/emotional-leaks report from the trading journal. Use when the user asks 'what are my emotional leaks?', 'how is my discipline?', 'am I trading emotionally?', 'what is my mindset score?', or anything about trading psychology and behaviour patterns.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {},
+    },
+  },
 ];
 
 const ADMIN_TOOL_DECLARATIONS = [
@@ -315,6 +345,85 @@ const ADMIN_TOOL_DECLARATIONS = [
 
 const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
+
+interface AcademyLessonEntry {
+  id: string;
+  title: string;
+  chapter: string;
+  takeaway: string;
+  keywords: string[];
+}
+
+const ACADEMY_LESSON_INDEX: AcademyLessonEntry[] = [
+  { id: "ch1-1", chapter: "Trading Basics", title: "What is Trading?", keywords: ["trading", "buy", "sell", "profit", "short", "shorting", "market"], takeaway: "Trading is buying and selling to profit from price changes. You can make money when prices go up (buying) or down (selling/shorting)." },
+  { id: "ch1-2", chapter: "Trading Basics", title: "What are Futures? What is NQ?", keywords: ["futures", "nq", "mnq", "nasdaq", "contract", "e-mini"], takeaway: "NQ = Nasdaq-100 Futures ($20/point). MNQ = the mini version ($2/point). Start with MNQ while learning." },
+  { id: "ch1-3", chapter: "Trading Basics", title: "What is a Candlestick Chart?", keywords: ["candlestick", "candle", "chart", "open", "close", "high", "low", "wick", "bullish", "bearish"], takeaway: "Each candle shows Open, High, Low, Close for a time period. Green = price went up, Red = price went down." },
+  { id: "ch1-4", chapter: "Trading Basics", title: "What are Timeframes?", keywords: ["timeframe", "timeframes", "htf", "ltf", "daily", "1h", "5m", "15m", "top-down", "bias"], takeaway: "Higher timeframes (Daily, 1H) show the big picture. Lower timeframes (15m, 5m, 1m) show the details. Always start with the big picture first." },
+  { id: "ch1-5", chapter: "Trading Basics", title: "What is a Broker and Trading Platform?", keywords: ["broker", "platform", "account", "demo", "commission", "ninjatrader", "tradingview", "tradovate"], takeaway: "A broker connects you to the market. Always start with a demo account to practice with fake money first!" },
+  { id: "ch1-6", chapter: "Trading Basics", title: "What is a Prop Firm?", keywords: ["prop", "prop firm", "funded", "evaluation", "topstep", "apex", "ftmo", "drawdown", "daily loss"], takeaway: "Prop firms give you their money to trade with. Pass their evaluation by following strict risk rules." },
+  { id: "ch2-1", chapter: "How the Market Really Works", title: "Who Moves the Market?", keywords: ["smart money", "institutions", "banks", "retail", "manipulation", "whales", "hedge fund"], takeaway: "Banks and institutions (Smart Money) move the market. ICT teaches you to follow the Smart Money instead of getting fooled." },
+  { id: "ch2-2", chapter: "How the Market Really Works", title: "What is Liquidity?", keywords: ["liquidity", "stop loss", "stop hunt", "stops", "orders", "fill"], takeaway: "Liquidity = stop-loss orders sitting at predictable levels. The big players sweep these stops to fill their orders, then reverse." },
+  { id: "ch2-3", chapter: "How the Market Really Works", title: "Buy-Side vs Sell-Side Liquidity", keywords: ["bsl", "ssl", "buy side", "sell side", "buyside", "sellside", "liquidity", "sweep"], takeaway: "BSL (Buy-Side Liquidity) = stop-losses above highs. SSL (Sell-Side Liquidity) = stop-losses below lows. Smart Money sweeps one side, then moves the other way." },
+  { id: "ch2-4", chapter: "How the Market Really Works", title: "What is Smart Money?", keywords: ["smart money", "institutional", "displacement", "fair value gap", "clues"], takeaway: "Smart Money = big banks and institutions that move the market. ICT teaches you to follow their moves instead of fighting them." },
+  { id: "ch2-5", chapter: "How the Market Really Works", title: "Internal vs External Liquidity", keywords: ["internal liquidity", "external liquidity", "tp1", "tp2", "target", "fvg"], takeaway: "External Liquidity = old highs/lows (the big target, TP2). Internal Liquidity = nearby gaps and levels (the first target, TP1)." },
+  { id: "ch3-1", chapter: "The ICT Toolbox", title: "Market Structure — Highs, Lows, Trends", keywords: ["market structure", "trend", "uptrend", "downtrend", "higher high", "lower low", "swing high", "swing low"], takeaway: "Uptrend = higher highs + higher lows (buy only). Downtrend = lower highs + lower lows (sell only). Always trade in the direction of the trend." },
+  { id: "ch3-2", chapter: "The ICT Toolbox", title: "Market Structure Shift (MSS)", keywords: ["mss", "market structure shift", "choch", "change of character", "bos", "break of structure", "reversal", "shift"], takeaway: "MSS = the trend just changed direction. Bullish MSS = breaks above a high. Bearish MSS = breaks below a low. Wait for the candle to CLOSE." },
+  { id: "ch3-3", chapter: "The ICT Toolbox", title: "Fair Value Gap (FVG)", keywords: ["fvg", "fair value gap", "gap", "imbalance", "3 candle", "entry", "ifvg", "inversion"], takeaway: "FVG = a price gap from a fast move. Price usually comes back to fill it. This is where you place your entry order." },
+  { id: "ch3-4", chapter: "The ICT Toolbox", title: "Liquidity Sweep — The Fake-Out", keywords: ["sweep", "liquidity sweep", "fake out", "fakeout", "stop hunt", "trap"], takeaway: "A sweep is a fake move that grabs stop-losses, then price reverses. It's the bait before the real move. Always wait for the sweep BEFORE entering." },
+  { id: "ch3-5", chapter: "The ICT Toolbox", title: "Optimal Trade Entry (OTE)", keywords: ["ote", "optimal trade entry", "fibonacci", "fib", "0.62", "0.79", "62", "79", "retracement"], takeaway: "OTE = the 62-79% Fibonacci zone. After a sweep + MSS, price pulls back to this zone before continuing." },
+  { id: "ch3-6", chapter: "The ICT Toolbox", title: "Premium vs Discount", keywords: ["premium", "discount", "50%", "equilibrium", "eq", "cheap", "expensive", "midpoint"], takeaway: "Premium = above 50% (expensive, sell zone). Discount = below 50% (cheap, buy zone). Always buy in Discount and sell in Premium." },
+  { id: "ch3-7", chapter: "The ICT Toolbox", title: "Displacement — The Power Candle", keywords: ["displacement", "power candle", "aggressive", "fast move", "momentum"], takeaway: "Displacement = a big, fast candle showing real Smart Money intent. It creates FVGs and signals the real move has started." },
+  { id: "ch4-1", chapter: "The Kill Zones", title: "Asian Session", keywords: ["asian session", "asian range", "accumulation", "overnight", "range", "8pm", "midnight"], takeaway: "Asian session builds the range. It sets up the liquidity that London and NY will sweep." },
+  { id: "ch4-2", chapter: "The Kill Zones", title: "London Open Kill Zone", keywords: ["london", "london open", "london kill zone", "2am", "3am", "4am", "5am", "lkz"], takeaway: "London Open (2-5 AM NY) is the first major liquidity hunt of the day. Often sets the fake-out direction." },
+  { id: "ch4-3", chapter: "The Kill Zones", title: "New York Open Kill Zone", keywords: ["new york", "ny open", "nyc", "7am", "8am", "9am", "10am", "nykz", "kill zone", "silver bullet"], takeaway: "NY Open (7-10 AM NY) is where the real daily direction is decided. Highest volume and best setups." },
+  { id: "ch4-4", chapter: "The Kill Zones", title: "Silver Bullet", keywords: ["silver bullet", "10am", "11am", "10-11", "silver", "bullet", "1-minute"], takeaway: "Silver Bullet (10:00-11:00 AM NY) is a precise 1-hour window for the cleanest FVG entries on the 1m/5m chart." },
+  { id: "ch4-5", chapter: "The Kill Zones", title: "Power of Three (AMD)", keywords: ["power of three", "amd", "accumulation", "manipulation", "distribution", "judas swing", "fake move"], takeaway: "Power of Three: Accumulate → Manipulate (fake move) → Distribute (real move). The daily candle follows this pattern." },
+  { id: "ch5-1", chapter: "Order Blocks", title: "What is an Order Block?", keywords: ["order block", "ob", "institutional order", "last candle", "bearish ob", "bullish ob"], takeaway: "An Order Block is the last opposing candle before a big move. It's where institutions placed their orders — price returns to it." },
+  { id: "ch5-2", chapter: "Order Blocks", title: "Breaker Blocks", keywords: ["breaker", "breaker block", "violated ob", "failed ob", "support becomes resistance"], takeaway: "A Breaker Block is a former Order Block that was violated — it now acts as resistance/support in the opposite direction." },
+];
+
+interface KillZone {
+  name: string;
+  startHour: number;
+  startMin: number;
+  endHour: number;
+  endMin: number;
+  description: string;
+  tip: string;
+}
+
+const ICT_KILL_ZONES: KillZone[] = [
+  { name: "Asian Session / Accumulation", startHour: 20, startMin: 0, endHour: 0, endMin: 0, description: "Price sets the overnight range. No trades — watch for the levels being built.", tip: "Mark the Asian session high and low. These will be the liquidity targets for London and NY." },
+  { name: "London Open Kill Zone", startHour: 2, startMin: 0, endHour: 5, endMin: 0, description: "First major liquidity hunt of the day. London often creates the Judas Swing (fake direction).", tip: "Watch for a sweep of the Asian range high or low, followed by a CHoCH. That's your London entry signal." },
+  { name: "New York AM Kill Zone", startHour: 7, startMin: 0, endHour: 10, endMin: 0, description: "Highest volume session. The real daily direction is established here. Best setups of the day.", tip: "Combine with the 5-step process: confirm HTF bias, then look for a sweep + FVG inside this window." },
+  { name: "Silver Bullet", startHour: 10, startMin: 0, endHour: 11, endMin: 0, description: "ICT's most precise 1-hour entry window. 1-min and 5-min FVG entries with the cleanest risk-reward.", tip: "Only take FVG entries aligned with the NY AM bias. Stop loss beyond the manipulation wick." },
+  { name: "London Close", startHour: 10, startMin: 0, endHour: 12, endMin: 0, description: "London closes, often reversing the AM move. Good for counter-trend scalps — experienced traders only.", tip: "If the AM move was very extended, watch for a partial retrace during this window." },
+  { name: "New York PM Session", startHour: 13, startMin: 30, endHour: 16, endMin: 0, description: "Lower volume afternoon session. Can continue or partially retrace the AM move.", tip: "Lower probability than the AM session. If you are not premium/experienced, this window is best avoided." },
+];
+
+function getNyTime(): { hour: number; minute: number; totalMinutes: number; label: string } {
+  const now = new Date();
+  const nyString = now.toLocaleString("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", hour12: false });
+  const [hStr, mStr] = nyString.split(":");
+  const hour = parseInt(hStr, 10);
+  const minute = parseInt(mStr, 10);
+  const label = now.toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", hour12: true, weekday: "short" });
+  return { hour, minute, totalMinutes: hour * 60 + minute, label };
+}
+
+function isInZone(zone: KillZone, totalMinutes: number): boolean {
+  const start = zone.startHour * 60 + zone.startMin;
+  let end = zone.endHour * 60 + zone.endMin;
+  if (end === 0) end = 24 * 60;
+  if (start <= end) return totalMinutes >= start && totalMinutes < end;
+  return totalMinutes >= start || totalMinutes < end;
+}
+
+function minutesUntilZone(zone: KillZone, totalMinutes: number): number {
+  const start = zone.startHour * 60 + zone.startMin;
+  if (start > totalMinutes) return start - totalMinutes;
+  return (24 * 60 - totalMinutes) + start;
+}
 
 async function executeToolCall(toolName: string, args: Record<string, unknown>, userId?: number, isAdmin?: boolean): Promise<Record<string, unknown>> {
   switch (toolName) {
@@ -652,6 +761,159 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
         currentPrompt: await getSystemPrompt(),
         suggestion: `Generate a refined system prompt focused on: ${focus}. The admin will review and can save it.`,
       };
+    }
+
+    case "get_kill_zone_status": {
+      const ny = getNyTime();
+      const activeZones: KillZone[] = ICT_KILL_ZONES.filter(z => isInZone(z, ny.totalMinutes));
+      const upcomingZones = ICT_KILL_ZONES
+        .filter(z => !isInZone(z, ny.totalMinutes))
+        .map(z => ({ zone: z, minutesUntil: minutesUntilZone(z, ny.totalMinutes) }))
+        .sort((a, b) => a.minutesUntil - b.minutesUntil)
+        .slice(0, 2);
+
+      const isWeekend = (() => {
+        const day = new Date().toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short" });
+        return day === "Sat" || day === "Sun";
+      })();
+
+      return {
+        action: "data",
+        currentNyTime: ny.label,
+        isWeekend,
+        activeKillZones: activeZones.map(z => ({
+          name: z.name,
+          description: z.description,
+          tip: z.tip,
+        })),
+        isInHighProbabilityWindow: activeZones.some(z =>
+          z.name.includes("Silver Bullet") || z.name.includes("New York AM") || z.name.includes("London Open")
+        ),
+        nextKillZones: upcomingZones.map(({ zone, minutesUntil }) => ({
+          name: zone.name,
+          opensIn: `${Math.floor(minutesUntil / 60)}h ${minutesUntil % 60}m`,
+          description: zone.description,
+          tip: zone.tip,
+        })),
+        tradingAdvice: isWeekend
+          ? "Markets are closed for the weekend. Use this time to study charts, review your journal, and prepare your plan for Monday."
+          : activeZones.length > 0
+            ? `You are currently inside the ${activeZones.map(z => z.name).join(" and ")} window. This is an active trading window — run your 5-step checklist before entering any position.`
+            : `No high-probability kill zone is active right now. The next window opens in ${upcomingZones[0] ? `${Math.floor(upcomingZones[0].minutesUntil / 60)}h ${upcomingZones[0].minutesUntil % 60}m (${upcomingZones[0].zone.name})` : "unknown"}. Use this time to prepare your bias and mark your levels.`,
+      };
+    }
+
+    case "get_academy_lesson": {
+      const concept = ((args.concept as string) || "").toLowerCase().trim();
+      if (!concept) return { action: "data", lessons: [], error: "No concept provided." };
+
+      const scored = ACADEMY_LESSON_INDEX.map(lesson => {
+        let score = 0;
+        for (const kw of lesson.keywords) {
+          if (concept === kw) { score += 10; continue; }
+          if (concept.includes(kw) || kw.includes(concept)) { score += 5; continue; }
+          const words = concept.split(/\s+/);
+          if (words.some(w => kw.includes(w) || w.includes(kw))) score += 2;
+        }
+        if (lesson.title.toLowerCase().includes(concept)) score += 8;
+        return { lesson, score };
+      })
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+
+      if (scored.length === 0) {
+        return {
+          action: "data",
+          lessons: [],
+          message: `No academy lesson found for "${concept}". Use your built-in ICT knowledge to explain this concept, and suggest the user explore the Academy section for related lessons.`,
+        };
+      }
+
+      return {
+        action: "data",
+        concept,
+        lessons: scored.map(({ lesson }) => ({
+          id: lesson.id,
+          title: lesson.title,
+          chapter: lesson.chapter,
+          takeaway: lesson.takeaway,
+          academyPath: `/#academy-${lesson.id}`,
+        })),
+        message: `Found ${scored.length} matching lesson(s) in the Academy. Use the takeaway to ground your explanation in the app's own course material.`,
+      };
+    }
+
+    case "get_psychology_report": {
+      try {
+        const trades = await db.select().from(tradesTable).orderBy(desc(tradesTable.createdAt));
+        const completed = trades.filter(t => !t.isDraft);
+        const total = completed.length;
+
+        if (total === 0) {
+          return {
+            action: "data",
+            psychReport: null,
+            message: "No completed trades found yet. Start logging trades with a behaviour tag (Disciplined, FOMO, Chased, Greedy) to get a psychology report.",
+          };
+        }
+
+        const tagCounts: Record<string, number> = { Disciplined: 0, FOMO: 0, Chased: 0, Greedy: 0, Untagged: 0 };
+        for (const t of completed) {
+          const tag = t.behaviorTag && tagCounts[t.behaviorTag] !== undefined ? t.behaviorTag : "Untagged";
+          tagCounts[tag]++;
+        }
+
+        const leakTotal = tagCounts.FOMO + tagCounts.Chased + tagCounts.Greedy;
+        const disciplineRate = total > 0 ? Math.round((tagCounts.Disciplined / total) * 100) : 0;
+        const leakRate = total > 0 ? Math.round((leakTotal / total) * 100) : 0;
+
+        const leakBreakdown: { tag: string; count: number; pct: number }[] = [
+          { tag: "FOMO", count: tagCounts.FOMO, pct: Math.round((tagCounts.FOMO / total) * 100) },
+          { tag: "Chased", count: tagCounts.Chased, pct: Math.round((tagCounts.Chased / total) * 100) },
+          { tag: "Greedy", count: tagCounts.Greedy, pct: Math.round((tagCounts.Greedy / total) * 100) },
+        ].sort((a, b) => b.count - a.count);
+
+        const topLeak = leakBreakdown.find(l => l.count > 0) || null;
+
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const recentTrades = completed.filter(t => t.createdAt && new Date(t.createdAt) >= weekAgo);
+        const recentLeaks = recentTrades.filter(t => t.behaviorTag && t.behaviorTag !== "Disciplined").length;
+        const recentTotal = recentTrades.length;
+
+        const mindsetScore = Math.max(1, Math.min(10, Math.round(10 * (tagCounts.Disciplined / Math.max(total, 1)))));
+
+        return {
+          action: "data",
+          psychReport: {
+            totalTrades: total,
+            disciplined: tagCounts.Disciplined,
+            disciplineRate,
+            leakRate,
+            mindsetScore,
+            topLeak: topLeak ? { name: topLeak.tag, count: topLeak.count, pct: topLeak.pct } : null,
+            leakBreakdown,
+            recentWeek: {
+              trades: recentTotal,
+              leaks: recentLeaks,
+              leakRate: recentTotal > 0 ? Math.round((recentLeaks / recentTotal) * 100) : 0,
+            },
+            tagCounts,
+          },
+          coachingHint: (() => {
+            const hints: Record<string, string> = {
+              Disciplined: "Great discipline! Keep following your checklist and the results will compound.",
+              FOMO: "FOMO is your #1 leak. Remember: the bus route has a schedule. If you missed this setup, the next one is coming. Never chase.",
+              Chased: "You've been chasing entries. Review the OTE zone — wait for price to COME TO YOU, not the other way around.",
+              Greedy: "Greed is creeping in. Lock in TP1 at the first target. Letting winners run beyond the plan is how good trades turn bad.",
+            };
+            return hints[topLeak?.tag ?? "Disciplined"] ?? hints["Disciplined"];
+          })(),
+        };
+      } catch {
+        return { action: "data", psychReport: null, error: "Failed to fetch psychology report." };
+      }
     }
 
     default:
