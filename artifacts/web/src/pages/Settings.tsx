@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTourGuideContext } from "@/contexts/TourGuideContext";
 import { toast } from "@/hooks/use-toast";
 import {
   Settings as SettingsIcon,
@@ -16,6 +17,7 @@ import {
   Zap,
   Trash2,
   AlertTriangle,
+  Map,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -57,6 +59,7 @@ interface RiskRulesData {
 
 export default function Settings() {
   const { user, refreshUser, tierLevel } = useAuth();
+  const { resetTour } = useTourGuideContext();
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingTrading, setSavingTrading] = useState(false);
@@ -422,6 +425,30 @@ export default function Settings() {
         </div>
 
         <TradingViewWebhookCard isPremium={isPremium} />
+
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+            <Map className="h-5 w-5 text-primary" />
+            <h2 className="text-sm font-bold text-foreground">Platform Tour</h2>
+          </div>
+          <div className="px-5 py-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Take the Tour Again</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Restart the guided video tour from the beginning. It walks through all 11 platform features with video explanations.
+                </p>
+              </div>
+              <button
+                onClick={resetTour}
+                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/30 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors shrink-0"
+              >
+                <Map className="h-4 w-4" />
+                Start Tour
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div className="bg-card border border-red-500/30 rounded-xl overflow-hidden">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-red-500/30">

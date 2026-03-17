@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { PlannerProvider } from "@/contexts/PlannerContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppConfigProvider } from "@/contexts/AppConfigContext";
+import { TourGuideProvider } from "@/contexts/TourGuideContext";
 import Layout from "@/components/Layout";
 import Welcome from "@/pages/Welcome";
 import Login from "@/pages/Login";
@@ -115,7 +116,7 @@ function App() {
                 <Route path="privacy" element={<OpenRoute><PrivacyPolicy /></OpenRoute>} />
                 <Route path="risk-disclosure" element={<OpenRoute><RiskDisclosure /></OpenRoute>} />
 
-                <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                <Route element={<ProtectedRoute><TourGuideProvider><Layout /></TourGuideProvider></ProtectedRoute>}>
                   <Route index element={<IndexRedirect />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="academy" element={<IctAcademy />} />

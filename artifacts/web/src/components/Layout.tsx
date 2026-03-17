@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import { FreeSidebar, LockedFeatureOverlay, SpinWheelFloatingTrigger } from "@/components/CasinoElements";
 import AIAssistant from "@/components/AIAssistant";
+import { TourGuide } from "@/components/TourGuide";
+import { useTourGuideContext } from "@/contexts/TourGuideContext";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0 },
@@ -126,6 +128,7 @@ export default function Layout() {
   const [shareCopied, setShareCopied] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { state: tourState, dispatch: tourDispatch, closeTour } = useTourGuideContext();
 
   const isFreeUser = tierLevel === 0;
 
@@ -371,6 +374,14 @@ export default function Layout() {
             </button>
           </div>
         </div>
+      )}
+
+      {tourState.visible && (
+        <TourGuide
+          onClose={closeTour}
+          state={tourState}
+          dispatch={tourDispatch}
+        />
       )}
     </div>
   );

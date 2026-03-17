@@ -1,233 +1,483 @@
-import { useState, useEffect } from "react";
-import { X, ChevronRight, ChevronLeft, Map, BookOpen, Calendar, BookMarked, BarChart2, Shield, Users, LayoutDashboard } from "lucide-react";
+import { useReducer, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  X,
+  ChevronRight,
+  ChevronLeft,
+  SkipForward,
+  List,
+  Play,
+} from "lucide-react";
+import {
+  TOUR_STEPS,
+  TOUR_STORAGE_KEY,
+  DEFAULT_TOUR_STATE,
+  type TourState,
+  type TourMachineState,
+} from "./tourConfig";
+import TourChecklist from "./TourChecklist";
 
-const TOUR_KEY = "ict_tour_complete_v1";
+export type { TourMachineState };
 
-interface TourStep {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  description: string;
-  tip: string;
-  path?: string;
-  color: string;
+type TourAction =
+  | { type: "START_TOUR" }
+  | { type: "CLOSE_TOUR" }
+  | { type: "PLAY_VIDEO" }
+  | { type: "VIDEO_ENDED" }
+  | { type: "NEXT_STEP" }
+  | { type: "PREV_STEP" }
+  | { type: "JUMP_TO_STEP"; step: number }
+  | { type: "COMPLETE_TOUR" }
+  | { type: "TOGGLE_CHECKLIST" }
+  | { type: "NAVIGATE_DONE" }
+  | { type: "RESET_TOUR" };
+
+function tourReducer(state: TourState, action: TourAction): TourState {
+  switch (action.type) {
+    case "START_TOUR":
+      return {
+        ...state,
+        visible: true,
+        machineState: "INTRODUCING",
+      };
+
+    case "CLOSE_TOUR":
+      return {
+        ...state,
+        visible: false,
+        machineState: "IDLE",
+      };
+
+    case "RESET_TOUR":
+      return {
+        ...DEFAULT_TOUR_STATE,
+        visible: true,
+        machineState: "INTRODUCING",
+        currentStep: 0,
+        completedSteps: [],
+      };
+
+    case "PLAY_VIDEO":
+      return {
+        ...state,
+        machineState: "PLAYING_VIDEO",
+      };
+
+    case "VIDEO_ENDED": {
+      const nextCompleted = state.completedSteps.includes(state.currentStep)
+        ? state.completedSteps
+        : [...state.completedSteps, state.currentStep];
+      const isLast = state.currentStep >= TOUR_STEPS.length - 1;
+      if (isLast) {
+        return {
+          ...state,
+          completedSteps: nextCompleted,
+          machineState: "COMPLETED",
+          visible: true,
+        };
+      }
+      return {
+        ...state,
+        completedSteps: nextCompleted,
+        machineState: "NAVIGATING",
+      };
+    }
+
+    case "NAVIGATE_DONE": {
+      const nextStep = state.currentStep + 1;
+      return {
+        ...state,
+        currentStep: nextStep,
+        machineState: "INTRODUCING",
+      };
+    }
+
+    case "NEXT_STEP": {
+      const nextCompleted = state.completedSteps.includes(state.currentStep)
+        ? state.completedSteps
+        : [...state.completedSteps, state.currentStep];
+      const nextStep = state.currentStep + 1;
+      if (nextStep >= TOUR_STEPS.length) {
+        return {
+          ...state,
+          completedSteps: nextCompleted,
+          machineState: "COMPLETED",
+          visible: true,
+        };
+      }
+      return {
+        ...state,
+        completedSteps: nextCompleted,
+        machineState: "NAVIGATING",
+      };
+    }
+
+    case "PREV_STEP": {
+      if (state.currentStep <= 0) return state;
+      return {
+        ...state,
+        currentStep: state.currentStep - 1,
+        machineState: "INTRODUCING",
+      };
+    }
+
+    case "JUMP_TO_STEP":
+      return {
+        ...state,
+        currentStep: action.step,
+        machineState: "INTRODUCING",
+        checklistOpen: false,
+      };
+
+    case "COMPLETE_TOUR":
+      return {
+        ...state,
+        machineState: "COMPLETED",
+        completedSteps: TOUR_STEPS.map((_, i) => i),
+        visible: true,
+      };
+
+    case "TOGGLE_CHECKLIST":
+      return {
+        ...state,
+        checklistOpen: !state.checklistOpen,
+      };
+
+    default:
+      return state;
+  }
 }
 
-const STEPS: TourStep[] = [
-  {
-    icon: <LayoutDashboard className="h-8 w-8" />,
-    title: "Welcome to ICT Trading Mentor!",
-    subtitle: "Your AI-powered trading coach",
-    description: "This platform teaches you the ICT (Inner Circle Trader) methodology — a professional approach to reading markets used by full-time traders worldwide. Let us show you around.",
-    tip: "Your dashboard shows your daily score, spin wheel rewards, and quick access to everything.",
-    color: "text-primary",
-  },
-  {
-    icon: <BookOpen className="h-8 w-8" />,
-    title: "ICT Academy",
-    subtitle: "Learn the full system — step by step",
-    description: "Start here if you're new. The Academy breaks down every ICT concept — Fair Value Gaps, Kill Zones, Market Structure, Silver Bullet setups — into easy lessons with quizzes.",
-    tip: "Complete lessons to unlock higher-difficulty content and earn XP points.",
-    path: "/academy",
-    color: "text-blue-500",
-  },
-  {
-    icon: <Calendar className="h-8 w-8" />,
-    title: "Daily Planner",
-    subtitle: "Plan your sessions before the market opens",
-    description: "Every professional trader plans their day. The planner shows you Kill Zone timers (the best trading windows), a pre-market checklist, and lets you set your daily game plan.",
-    tip: "London and New York Kill Zones are the highest-probability times. Always plan before you trade.",
-    path: "/planner",
-    color: "text-green-500",
-  },
-  {
-    icon: <BookMarked className="h-8 w-8" />,
-    title: "Smart Journal",
-    subtitle: "Log every trade — learn from every outcome",
-    description: "The journal is your most powerful improvement tool. Log your trades with setup tags, behavior notes, and let the AI coach grade your decisions and give personal feedback.",
-    tip: "Be honest in your notes. The AI coach uses your journal to spot patterns you can't see yourself.",
-    path: "/journal",
-    color: "text-purple-500",
-  },
-  {
-    icon: <BarChart2 className="h-8 w-8" />,
-    title: "Analytics Dashboard",
-    subtitle: "See your real performance data",
-    description: "Your analytics page shows your win rate, P&L, average reward-to-risk, discipline score, best setups, and worst habits — all from your journal data. No more guessing about your performance.",
-    tip: "Sort by setup type to discover which ICT patterns work best for YOUR trading style.",
-    path: "/analytics",
-    color: "text-amber-500",
-  },
-  {
-    icon: <Shield className="h-8 w-8" />,
-    title: "Risk Shield",
-    subtitle: "Protect your account like a pro",
-    description: "Risk Shield tracks your daily drawdown, calculates your position size for any trade, and locks you out when you hit your daily loss limit — before you do damage you can't recover from.",
-    tip: "Set your max daily loss to 2% and stick to it. Most accounts blow up from one bad day, not bad trades.",
-    path: "/risk-shield",
-    color: "text-red-500",
-  },
-  {
-    icon: <Users className="h-8 w-8" />,
-    title: "Community",
-    subtitle: "Learn alongside other ICT traders",
-    description: "Share your trade setups, ask questions, and connect with other traders learning the ICT methodology. The community is moderated and focused on quality — not noise.",
-    tip: "Post your best trades (with chart screenshots) to get feedback from the community.",
-    path: "/community",
-    color: "text-cyan-500",
-  },
-  {
-    icon: <Map className="h-8 w-8" />,
-    title: "You're all set!",
-    subtitle: "Start your journey today",
-    description: "The best traders are relentless learners. Log your first trade in the journal, complete your first Academy lesson, and let the AI coach start learning your patterns.",
-    tip: "You can restart this tour anytime from the Dashboard menu.",
-    color: "text-primary",
-  },
-];
+function makeStorageKey(userId: string | number, suffix: string) {
+  return `${TOUR_STORAGE_KEY}:${userId}:${suffix}`;
+}
+
+function loadPersistedState(stateKey: string): TourState {
+  try {
+    const raw = localStorage.getItem(stateKey);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<TourState>;
+      return { ...DEFAULT_TOUR_STATE, ...parsed };
+    }
+  } catch {}
+  return DEFAULT_TOUR_STATE;
+}
+
+export function useTourGuide(userId?: string | number) {
+  const stateKey = userId !== undefined ? makeStorageKey(userId, "state") : TOUR_STORAGE_KEY;
+  const autoShownKey = userId !== undefined ? makeStorageKey(userId, "auto-shown") : "ict-tour-auto-shown";
+
+  const [state, dispatch] = useReducer(tourReducer, undefined, () => loadPersistedState(stateKey));
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(stateKey, JSON.stringify(state));
+    } catch {}
+  }, [state, stateKey]);
+
+  useEffect(() => {
+    const seen = localStorage.getItem(autoShownKey);
+    if (!seen && !state.visible && state.machineState === "IDLE" && state.completedSteps.length === 0) {
+      const timer = setTimeout(() => {
+        const stillEligible =
+          !localStorage.getItem(autoShownKey) &&
+          !state.visible &&
+          state.machineState === "IDLE";
+        if (stillEligible) {
+          localStorage.setItem(autoShownKey, "1");
+          dispatch({ type: "START_TOUR" });
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [autoShownKey, state.visible, state.machineState, state.completedSteps.length]);
+
+  const startTour = useCallback(() => {
+    dispatch({ type: "START_TOUR" });
+  }, []);
+
+  const closeTour = useCallback(() => {
+    dispatch({ type: "CLOSE_TOUR" });
+  }, []);
+
+  const resetTour = useCallback(() => {
+    dispatch({ type: "RESET_TOUR" });
+  }, []);
+
+  return {
+    state,
+    dispatch,
+    showTour: state.visible,
+    startTour,
+    closeTour,
+    resetTour,
+  };
+}
 
 interface TourGuideProps {
   onClose?: () => void;
+  state: TourState;
+  dispatch: React.Dispatch<TourAction>;
 }
 
-export function TourGuide({ onClose }: TourGuideProps) {
-  const [step, setStep] = useState(0);
+export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   const navigate = useNavigate();
-  const current = STEPS[step];
-  const total = STEPS.length;
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const step = TOUR_STEPS[state.currentStep];
+  const isLast = state.currentStep >= TOUR_STEPS.length - 1;
+  const isFirst = state.currentStep === 0;
+
+  useEffect(() => {
+    if (state.machineState === "NAVIGATING") {
+      const targetRoute = TOUR_STEPS[state.currentStep]?.targetRoute;
+      if (targetRoute) {
+        navigate(targetRoute);
+      }
+      const timer = setTimeout(() => {
+        dispatch({ type: "NAVIGATE_DONE" });
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [state.machineState, state.currentStep, navigate, dispatch]);
+
+  useEffect(() => {
+    if (state.machineState !== "PLAYING_VIDEO") return;
+
+    const HEYGEN_ORIGIN = "https://app.heygen.com";
+
+    function handleMessage(e: MessageEvent) {
+      if (e.origin !== HEYGEN_ORIGIN) return;
+      if (
+        e.data === "heygen:video:ended" ||
+        (e.data && typeof e.data === "object" && e.data.type === "heygen:video:ended")
+      ) {
+        dispatch({ type: "VIDEO_ENDED" });
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [state.machineState, dispatch]);
 
   function handleClose() {
-    localStorage.setItem(TOUR_KEY, "1");
+    dispatch({ type: "CLOSE_TOUR" });
     onClose?.();
   }
 
+  function handlePlayVideo() {
+    dispatch({ type: "PLAY_VIDEO" });
+  }
+
+  function handleSkipVideo() {
+    dispatch({ type: "VIDEO_ENDED" });
+  }
+
   function handleNext() {
-    if (step < total - 1) {
-      setStep(step + 1);
-    } else {
-      handleClose();
-    }
+    dispatch({ type: "NEXT_STEP" });
   }
 
   function handlePrev() {
-    if (step > 0) setStep(step - 1);
+    dispatch({ type: "PREV_STEP" });
   }
 
-  function handleGoTo() {
-    if (current.path) {
-      navigate(current.path);
-    }
-    handleClose();
+  function handleJumpToStep(stepIndex: number) {
+    dispatch({ type: "JUMP_TO_STEP", step: stepIndex });
+  }
+
+  function handleToggleChecklist() {
+    dispatch({ type: "TOGGLE_CHECKLIST" });
+  }
+
+  if (!state.visible) return null;
+
+  if (state.machineState === "COMPLETED") {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-8 text-center animate-in fade-in zoom-in-95 duration-300">
+          <div className="text-6xl mb-4">🎉</div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Tour Complete!</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            You've seen everything this platform has to offer. Now it's time to put it to work. Happy trading!
+          </p>
+          <button
+            onClick={handleClose}
+            className="px-6 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm"
+          >
+            Let's Go!
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.machineState === "NAVIGATING") {
+    return (
+      <div className="fixed bottom-6 right-6 z-[99] w-full max-w-xs">
+        <div className="bg-card border border-border rounded-2xl shadow-2xl px-5 py-4 flex items-center gap-3 animate-in fade-in duration-300">
+          <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
+          <p className="text-sm text-muted-foreground">Navigating to next section...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
-      <div className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
-        <div className="h-1 bg-muted">
-          <div
-            className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${((step + 1) / total) * 100}%` }}
-          />
-        </div>
-
-        <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-10"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="p-7 space-y-4">
-          <div className="flex items-start gap-4">
-            <div className={`p-3 rounded-2xl bg-card border border-border shrink-0 ${current.color}`}>
-              {current.icon}
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-0.5">
-                Step {step + 1} of {total}
+    <>
+      {state.machineState === "PLAYING_VIDEO" && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/92 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-4xl">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <p className="text-white/80 text-sm font-medium">
+                Step {state.currentStep + 1} of {TOUR_STEPS.length}: {step.title}
               </p>
-              <h2 className="text-lg font-bold text-foreground leading-tight">{current.title}</h2>
-              <p className="text-sm text-primary font-medium">{current.subtitle}</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSkipVideo}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
+                >
+                  <SkipForward className="h-3.5 w-3.5" />
+                  Continue
+                </button>
+                <button
+                  onClick={handleClose}
+                  className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          </div>
 
-          <p className="text-sm text-muted-foreground leading-relaxed">{current.description}</p>
+            <div
+              className="relative w-full bg-black rounded-2xl overflow-hidden shadow-2xl"
+              style={{ paddingBottom: "56.25%" }}
+            >
+              <iframe
+                ref={iframeRef}
+                src={`https://app.heygen.com/share/${step.videoId}`}
+                allow="autoplay; fullscreen"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full border-0"
+                title={step.title}
+              />
+            </div>
 
-          <div className="bg-muted/50 border border-border rounded-xl p-3">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">Pro tip: </span>
-              {current.tip}
+            <p className="text-center text-white/40 text-xs mt-3">
+              Video not advancing? Click "Continue" above to proceed to the next step.
             </p>
           </div>
+        </div>
+      )}
 
-          <div className="flex items-center gap-2 pt-1">
-            {step > 0 && (
-              <button
-                onClick={handlePrev}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back
-              </button>
-            )}
-
-            <div className="flex gap-1 mx-auto">
-              {STEPS.map((_, i) => (
+      {state.machineState === "INTRODUCING" && (
+        <div className="fixed bottom-6 right-6 z-[99] w-full max-w-sm animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-primary/5">
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-2xl select-none"
+                  style={{ filter: "drop-shadow(0 0 8px hsl(165 100% 39% / 0.5))" }}
+                >
+                  🤖
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-foreground">ICT Tour Guide</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Step {state.currentStep + 1} of {TOUR_STEPS.length}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <button
-                  key={i}
-                  onClick={() => setStep(i)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === step ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/30"
+                  onClick={handleToggleChecklist}
+                  className={`p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ${
+                    state.checklistOpen ? "bg-secondary text-foreground" : ""
                   }`}
-                />
-              ))}
+                  title="View progress checklist"
+                >
+                  <List className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleClose}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  title="Close tour"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
-            {current.path && step < total - 1 && (
-              <button
-                onClick={handleGoTo}
-                className="px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors"
-              >
-                Go there
-              </button>
-            )}
+            <div className="px-4 py-4">
+              <h3 className="text-sm font-bold text-foreground mb-2">{step.title}</h3>
 
-            <button
-              onClick={handleNext}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity ml-auto"
-            >
-              {step === total - 1 ? "Let's go!" : "Next"}
-              {step < total - 1 && <ChevronRight className="h-4 w-4" />}
-            </button>
+              <div className="relative bg-secondary/50 border border-border rounded-xl p-3 mb-4">
+                <div className="absolute -top-2 left-5 w-3 h-3 bg-secondary/50 border-l border-t border-border rotate-45" />
+                <p className="text-xs text-foreground/80 leading-relaxed">{step.description}</p>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex gap-0.5">
+                  {TOUR_STEPS.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-all ${
+                        state.completedSteps.includes(i)
+                          ? "bg-primary"
+                          : i === state.currentStep
+                          ? "bg-primary/40"
+                          : "bg-muted"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {state.completedSteps.length} of {TOUR_STEPS.length} completed
+                </p>
+              </div>
+
+              <button
+                onClick={handlePlayVideo}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm mb-3"
+              >
+                <Play className="h-4 w-4 fill-current" />
+                Watch Video
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrev}
+                  disabled={isFirst}
+                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Back
+                </button>
+                <div className="flex-1" />
+                <button
+                  onClick={handleNext}
+                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  {isLast ? "Finish" : "Skip"}
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      {state.checklistOpen && state.machineState === "INTRODUCING" && (
+        <TourChecklist
+          steps={TOUR_STEPS}
+          currentStep={state.currentStep}
+          completedSteps={state.completedSteps}
+          onJumpToStep={handleJumpToStep}
+          onClose={handleToggleChecklist}
+        />
+      )}
+    </>
   );
 }
 
-export function useTourGuide() {
-  const [showTour, setShowTour] = useState(false);
-
-  useEffect(() => {
-    const seen = localStorage.getItem(TOUR_KEY);
-    if (!seen) {
-      const timer = setTimeout(() => setShowTour(true), 1200);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  function startTour() {
-    setShowTour(true);
-  }
-
-  function closeTour() {
-    setShowTour(false);
-  }
-
-  return { showTour, startTour, closeTour };
-}
-
-export { TOUR_KEY };
+export const TOUR_KEY = TOUR_STORAGE_KEY;
