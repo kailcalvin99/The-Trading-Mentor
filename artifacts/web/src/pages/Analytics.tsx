@@ -538,10 +538,13 @@ export default function Analytics() {
     }));
   }, [trades]);
 
+  const isDisciplinedTag = (tag: string | null | undefined) =>
+    ["Disciplined", "Patient", "Waited for Confirmation"].includes(tag ?? "");
+
   const gradeScore = useMemo(() => {
     if (trades.length === 0) return 0;
 
-    const disciplinedCount = trades.filter((t) => t.behaviorTag === "Disciplined").length;
+    const disciplinedCount = trades.filter((t) => isDisciplinedTag(t.behaviorTag)).length;
     const disciplineRate = trades.length > 0 ? (disciplinedCount / trades.length) * 100 : 0;
 
     const winRate = stats.winRate;
@@ -565,7 +568,7 @@ export default function Analytics() {
 
   const gradeBreakdown = useMemo(() => {
     if (trades.length === 0) return [];
-    const disciplinedCount = trades.filter((t) => t.behaviorTag === "Disciplined").length;
+    const disciplinedCount = trades.filter((t) => isDisciplinedTag(t.behaviorTag)).length;
     const disciplineRate = (disciplinedCount / trades.length) * 100;
     const riskAdherenceCount = trades.filter((t) => t.riskPct <= 2).length;
     const riskAdherence = (riskAdherenceCount / trades.length) * 100;
