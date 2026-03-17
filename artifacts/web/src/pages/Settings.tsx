@@ -46,12 +46,14 @@ interface ProfileData {
 }
 
 interface TradingDefaultsData {
+  [key: string]: unknown;
   defaultSession: string;
   preferredEntryStyle: string;
   defaultPairs: string;
 }
 
 interface RiskRulesData {
+  [key: string]: unknown;
   startingBalance: string;
   maxDailyLossPct: string;
   maxTotalDrawdownPct: string;

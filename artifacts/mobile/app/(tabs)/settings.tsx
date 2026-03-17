@@ -573,7 +573,7 @@ const s = StyleSheet.create({
   content: { padding: 14, paddingBottom: 100, gap: 12 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   card: {
-    backgroundColor: C.cardBg,
+    backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.cardBorder,
     borderRadius: 14,
@@ -620,7 +620,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: C.cardBg,
+    backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.accent + "35",
     borderRadius: 14,

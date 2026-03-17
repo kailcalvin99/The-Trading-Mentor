@@ -45,6 +45,7 @@ export default function Pricing() {
       }, 5000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [paymentSuccess, paymentCanceled]);
 
   useEffect(() => {

@@ -75,7 +75,7 @@ function SectionCard({
 
 const sc = StyleSheet.create({
   card: {
-    backgroundColor: C.cardBg,
+    backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.cardBorder,
     borderRadius: 14,

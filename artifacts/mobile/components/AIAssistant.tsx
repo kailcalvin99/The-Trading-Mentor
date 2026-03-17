@@ -139,7 +139,7 @@ export default function AIAssistant() {
       const page = String(result.page);
       const route = NAV_MAP[page] || NAV_MAP["planner"];
       setVisible(false);
-      router.push(route);
+      router.push(route as Parameters<typeof router.push>[0]);
     } else if (result.action === "log_trade" && result.requiresConfirmation) {
       Alert.alert(
         "Log Trade",

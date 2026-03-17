@@ -45,7 +45,7 @@ type EntryMode = "conservative" | "aggressive";
 interface ExtendedTrade extends Trade {
   behaviorTag?: string | null;
   stressLevel?: number | null;
-  isDraft?: boolean | null;
+  isDraft?: boolean;
   sideDirection?: string | null;
   followedTimeRule?: boolean | null;
   hasFvgConfirmation?: boolean | null;
@@ -328,10 +328,11 @@ export default function SmartJournal() {
       riskPct: draft.riskPct?.toString() || "0.5",
       sideDirection: draft.sideDirection || "BUY",
       liquiditySweep: draft.liquiditySweep || false,
-      outcome: draft.outcome || "",
+      outcome: (draft.outcome || "") as OutcomeType,
       notes: cleanNotes,
-      behaviorTag: draft.behaviorTag || "",
+      behaviorTag: (draft.behaviorTag || "") as BehaviorTag | "",
       stressLevel: draft.stressLevel || 5,
+      setupTypes: [],
     });
     setShowForm(true);
   }
@@ -365,7 +366,6 @@ export default function SmartJournal() {
         isDraft: false,
         sideDirection: form.sideDirection,
         setupScore: liveSetupScore,
-        setupType: form.setupTypes.length > 0 ? form.setupTypes.join(", ") : undefined,
       };
       const result = await createTradeMut({ data: payload });
       if (editingDraftId) {

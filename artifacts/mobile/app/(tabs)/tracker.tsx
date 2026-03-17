@@ -21,7 +21,7 @@ import {
   useListTrades,
 } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
-import type { Trade } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { Trade } from "@workspace/api-client-react";
 
 const C = Colors.dark;
 

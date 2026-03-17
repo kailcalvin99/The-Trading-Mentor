@@ -168,6 +168,7 @@ export default function DisciplineGate({ children }: Props) {
       }, 1000);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [lockout.locked, lockoutMinutes]);
 
   const startQuiz = useCallback(() => {

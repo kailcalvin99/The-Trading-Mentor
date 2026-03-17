@@ -304,12 +304,13 @@ export default function JournalScreen() {
       entryTime: draft.entryTime || new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
       riskPct: draft.riskPct?.toString() || "0.5",
       liquiditySweep: draft.liquiditySweep || false,
-      outcome: draft.outcome || "",
+      outcome: (draft.outcome || "") as OutcomeType,
       notes: cleanNotes,
-      behaviorTag: draft.behaviorTag || "",
+      behaviorTag: (draft.behaviorTag || "") as BehaviorTag | "",
       followedTimeRule: draft.followedTimeRule ?? null,
       hasFvgConfirmation: draft.hasFvgConfirmation ?? null,
       stressLevel: draft.stressLevel || 5,
+      setupTypes: [],
     });
     setShowForm(true);
   }
@@ -337,7 +338,6 @@ export default function JournalScreen() {
           stressLevel: form.stressLevel,
           isDraft: false,
           setupScore: liveSetupScore,
-          setupType: form.setupTypes.length > 0 ? form.setupTypes.join(", ") : undefined,
         },
       });
       qc.invalidateQueries({ queryKey: [`/api/trades`] });
@@ -458,7 +458,7 @@ export default function JournalScreen() {
           <>
             <Text style={styles.sectionTitle}>Trade Log</Text>
             {[...completedTrades].reverse().map((trade) => {
-              const tag = tagInfo(trade.behaviorTag);
+              const tag = trade.behaviorTag ? tagInfo(trade.behaviorTag) : undefined;
               const isWin = trade.outcome === "win";
               const isLoss = trade.outcome === "loss";
               const expanded = expandedTradeId === trade.id;

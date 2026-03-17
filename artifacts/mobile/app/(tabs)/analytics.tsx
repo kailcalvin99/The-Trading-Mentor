@@ -388,7 +388,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 32,
   },
   heroCard: {
-    backgroundColor: C.cardBg,
+    backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.cardBorder,
     borderRadius: 16,
@@ -419,7 +419,7 @@ const s = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: "44%",
-    backgroundColor: C.cardBg,
+    backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.cardBorder,
     borderRadius: 12,
@@ -429,7 +429,7 @@ const s = StyleSheet.create({
   statValue: { fontSize: 22, fontWeight: "800", color: C.text },
   statLabel: { fontSize: 11, color: C.textSecondary, fontWeight: "500" },
   discCard: {
-    backgroundColor: C.cardBg,
+    backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.cardBorder,
     borderRadius: 12,

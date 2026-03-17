@@ -134,7 +134,7 @@ function ToolCallCard({ toolCall, onConfirm, onNavigate }: {
           <div><span className="text-muted-foreground">NQ:</span> <strong>{calc.nqContractsRounded as number} contracts</strong></div>
           <div><span className="text-muted-foreground">MNQ:</span> <strong>{calc.mnqContractsRounded as number} contracts</strong></div>
         </div>
-        {result.navigateTo && (
+        {!!result.navigateTo && (
           <button
             onClick={() => onNavigate?.(result.navigateTo as string)}
             className="flex items-center gap-1.5 text-emerald-500 text-xs font-bold hover:underline"
