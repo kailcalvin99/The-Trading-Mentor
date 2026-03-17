@@ -16,15 +16,17 @@ const MC_PROFILES = {
 } as const;
 type MCProfile = keyof typeof MC_PROFILES;
 
+const MC_START = 10_000;
+const MC_RUIN = MC_START * 0.1; // 10% of starting balance = blown account
+
 function runMonteCarlo(profile: MCProfile): number[][] {
   const { winRate, risk, rewardRatio } = MC_PROFILES[profile];
-  const START = 10_000;
   const TRADES = 1000;
   const PATHS = 100;
   const paths: number[][] = [];
   for (let p = 0; p < PATHS; p++) {
-    const history: number[] = [START];
-    let balance = START;
+    const history: number[] = [MC_START];
+    let balance = MC_START;
     for (let t = 0; t < TRADES; t++) {
       const riskAmt = balance * risk;
       if (Math.random() < winRate) {
@@ -32,7 +34,7 @@ function runMonteCarlo(profile: MCProfile): number[][] {
       } else {
         balance -= riskAmt;
       }
-      if (balance <= 0) { history.push(0); break; }
+      if (balance <= MC_RUIN) { history.push(0); break; }
       history.push(balance);
     }
     paths.push(history);
@@ -223,10 +225,10 @@ export default function Admin() {
   const [mcRerunKey, setMcRerunKey] = useState(0);
   const mcPaths = useMemo(() => runMonteCarlo(mcProfile), [mcProfile, mcRerunKey]);
   const mcStats = useMemo(() => {
-    const START = 10_000;
     const finals = mcPaths.map((p) => p[p.length - 1]);
-    const blown = finals.filter((f) => f <= 0).length;
-    const profitable = finals.filter((f) => f > START).length;
+    const total = finals.length;
+    const blown = Math.round((finals.filter((f) => f <= 0).length / total) * 100);
+    const profitable = Math.round((finals.filter((f) => f > MC_START).length / total) * 100);
     const sorted = [...finals].sort((a, b) => a - b);
     const median = sorted[Math.floor(sorted.length / 2)];
     const best = Math.max(...finals);
