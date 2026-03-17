@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useCallback, useRef, useState } from "react";
+import { useReducer, useEffect, useLayoutEffect, useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   X,
@@ -235,6 +235,9 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   const [videoError, setVideoError] = useState(false);
   const signalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heygenConfirmedRef = useRef(false);
+  const navigateRef = useRef(navigate);
+  useLayoutEffect(() => { navigateRef.current = navigate; });
+  const navigatingRef = useRef(false);
 
   const step = TOUR_STEPS[state.currentStep];
   const isLast = state.currentStep >= TOUR_STEPS.length - 1;
@@ -276,18 +279,23 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   }, [state.machineState, state.currentStep, videoId]);
 
   useEffect(() => {
-    if (state.machineState === "NAVIGATING") {
+    if (state.machineState === "NAVIGATING" && !navigatingRef.current) {
+      navigatingRef.current = true;
       const targetRoute = TOUR_STEPS[state.currentStep]?.targetRoute;
       if (targetRoute) {
-        navigate(targetRoute);
+        navigateRef.current(targetRoute);
       }
       const timer = setTimeout(() => {
+        navigatingRef.current = false;
         dispatch({ type: "NAVIGATE_DONE" });
       }, 700);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        navigatingRef.current = false;
+      };
     }
     return undefined;
-  }, [state.machineState, state.currentStep, navigate, dispatch]);
+  }, [state.machineState, state.currentStep, dispatch]);
 
   useEffect(() => {
     if (state.machineState !== "PLAYING_VIDEO") return;
