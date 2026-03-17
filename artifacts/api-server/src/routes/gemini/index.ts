@@ -354,6 +354,9 @@ interface AcademyLessonEntry {
   keywords: string[];
 }
 
+// NOTE: This index is hand-derived from artifacts/web/src/data/academy-data.ts.
+// Keep in sync when lessons are added/updated in academy-data.ts.
+// A future improvement could source this from a shared @workspace/academy-data package.
 const ACADEMY_LESSON_INDEX: AcademyLessonEntry[] = [
   { id: "ch1-1", chapter: "Trading Basics", title: "What is Trading?", keywords: ["trading", "buy", "sell", "profit", "short", "shorting", "market"], takeaway: "Trading is buying and selling to profit from price changes. You can make money when prices go up (buying) or down (selling/shorting)." },
   { id: "ch1-2", chapter: "Trading Basics", title: "What are Futures? What is NQ?", keywords: ["futures", "nq", "mnq", "nasdaq", "contract", "e-mini"], takeaway: "NQ = Nasdaq-100 Futures ($20/point). MNQ = the mini version ($2/point). Start with MNQ while learning." },
