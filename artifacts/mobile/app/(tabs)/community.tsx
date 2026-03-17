@@ -11,6 +11,7 @@ import {
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
+  Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -259,13 +260,27 @@ export default function CommunityScreen() {
     );
   }
 
+  async function handleShare() {
+    try {
+      await Share.share({
+        message: "🚀 I've been using ICT AI Trading Mentor — an AI-powered app that teaches you the ICT methodology step by step. They're in their Founder phase so the first 20 members get a special discount. Check it out: ictmentor.com",
+        title: "Join me on ICT AI Trading Mentor",
+      });
+    } catch {}
+  }
+
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
       <View style={s.header}>
         <Text style={s.pageTitle}>Community</Text>
-        <TouchableOpacity style={s.newPostBtn} onPress={() => setShowNewPost(true)}>
-          <Ionicons name="add" size={20} color="#0A0A0F" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <TouchableOpacity style={[s.newPostBtn, { backgroundColor: C.backgroundSecondary }]} onPress={handleShare}>
+            <Ionicons name="share-outline" size={20} color={C.accent} />
+          </TouchableOpacity>
+          <TouchableOpacity style={s.newPostBtn} onPress={() => setShowNewPost(true)}>
+            <Ionicons name="add" size={20} color="#0A0A0F" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catBar} contentContainerStyle={{ paddingHorizontal: 12, gap: 6 }}>

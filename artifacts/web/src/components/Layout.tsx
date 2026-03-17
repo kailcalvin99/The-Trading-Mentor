@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -122,6 +122,8 @@ export default function Layout() {
   const [showLockToast, setShowLockToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCasinoSidebar, setShowCasinoSidebar] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -207,6 +209,14 @@ export default function Layout() {
             <span className="hidden lg:inline">Help & Tour</span>
           </Link>
 
+          <button
+            onClick={() => setShowShare(true)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full text-left"
+          >
+            <Share2 className="h-5 w-5 shrink-0" />
+            <span className="hidden lg:inline">Invite Friends</span>
+          </button>
+
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
@@ -286,6 +296,62 @@ export default function Layout() {
           ))}
         </nav>
       </div>
+
+      {showShare && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Share2 className="h-5 w-5 text-primary" />
+                <h2 className="text-base font-bold text-foreground">Invite Friends</h2>
+              </div>
+              <button onClick={() => { setShowShare(false); setShareCopied(false); }} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              Know someone who wants to learn ICT trading? The first 20 members get founder pricing. Share this message:
+            </p>
+
+            <div className="bg-secondary/50 border border-border rounded-xl p-4 mb-4">
+              <p className="text-sm text-foreground leading-relaxed">
+                🚀 I've been using <strong>ICT AI Trading Mentor</strong> — it's an AI-powered app that teaches you the ICT methodology step by step. They're in their Founder phase so the first 20 members get a special discount. Check it out: <span className="text-primary">ictmentor.com</span>
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText("🚀 I've been using ICT AI Trading Mentor — it's an AI-powered app that teaches you the ICT methodology step by step. They're in their Founder phase so the first 20 members get a special discount. Check it out: ictmentor.com");
+                setShareCopied(true);
+                setTimeout(() => setShareCopied(false), 3000);
+              }}
+              className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm"
+            >
+              {shareCopied ? "✓ Copied to Clipboard!" : "Copy Message"}
+            </button>
+
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("🚀 I've been using ICT AI Trading Mentor — an AI-powered app that teaches ICT methodology step by step. First 20 members get founder pricing. Check it out: ictmentor.com")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 text-center border border-border rounded-xl py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                Share on X
+              </a>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent("🚀 I've been using ICT AI Trading Mentor — an AI-powered app that teaches ICT methodology step by step. First 20 members get founder pricing! ictmentor.com")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 text-center border border-border rounded-xl py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                Share on WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showLockToast && (
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">

@@ -2,10 +2,11 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { tradesTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { authRequired } from "../../middleware/auth";
 
 const router: IRouter = Router();
 
-router.get("/", async (_req, res) => {
+router.get("/", authRequired, async (_req, res) => {
   try {
     const trades = await db
       .select()
@@ -22,7 +23,7 @@ router.get("/", async (_req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", authRequired, async (req, res) => {
   try {
     const {
       pair,
@@ -70,7 +71,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authRequired, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     await db.delete(tradesTable).where(eq(tradesTable.id, id));

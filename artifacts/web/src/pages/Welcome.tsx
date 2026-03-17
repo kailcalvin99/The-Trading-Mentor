@@ -6,6 +6,7 @@ import {
   Shield,
   BookOpen,
   BarChart3,
+  LayoutDashboard,
   ChevronRight,
   ChevronLeft,
   Rocket,
@@ -28,6 +29,20 @@ const TUTORIAL_STEPS = [
       "An adaptive quiz with 30 questions that gets harder as you answer correctly and easier when you miss.",
       "An AI mentor you can ask any question — like having a private tutor available 24/7.",
       "Complete all lessons and pass the quiz to unlock the rest of the app's powerful tools.",
+    ],
+  },
+  {
+    icon: LayoutDashboard,
+    title: "Dashboard",
+    color: "#A78BFA",
+    heading: "Track Your Growth",
+    locked: false,
+    bullets: [
+      "Your personal command center — see your XP, streak, level, and overall progress all in one place.",
+      "Complete daily missions to earn XP and level up. Missions reset every day so there's always a reason to come back.",
+      "Spin the reward wheel when you earn spins from completing sessions or hitting milestones — win bonus XP or special badges.",
+      "Live session timers show exactly how long until the next major trading window opens.",
+      "The more consistent you are, the faster you grow. Your streak tracks consecutive days of activity.",
     ],
   },
   {

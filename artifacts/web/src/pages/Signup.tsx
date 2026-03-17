@@ -220,6 +220,10 @@ export default function Signup() {
           <p className="text-center text-xs text-muted-foreground mt-2">
             <Link to="/pricing" className="underline hover:text-foreground transition-colors">View pricing plans</Link>
           </p>
+
+          <p className="text-center text-[10px] text-muted-foreground/60 mt-3">
+            For educational purposes only. Not financial advice. Trading involves substantial risk of loss.
+          </p>
         </div>
       </div>
     </div>

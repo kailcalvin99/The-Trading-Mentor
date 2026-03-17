@@ -293,6 +293,19 @@ export default function Pricing() {
             7-Day Money-Back Guarantee
           </Link>
         </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-xs text-muted-foreground/60 max-w-md mx-auto">
+            ICT Trading Mentor is an educational platform. Content is for informational purposes only and does not constitute financial advice. Trading involves substantial risk of loss and is not suitable for all investors.
+          </p>
+          <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground/50">
+            <Link to="/terms" className="hover:text-muted-foreground transition-colors">Terms of Service</Link>
+            <span>·</span>
+            <Link to="/privacy" className="hover:text-muted-foreground transition-colors">Privacy Policy</Link>
+            <span>·</span>
+            <Link to="/refund" className="hover:text-muted-foreground transition-colors">Refund Policy</Link>
+          </div>
+        </div>
       </div>
     </div>
   );
