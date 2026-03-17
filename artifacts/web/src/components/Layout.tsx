@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -8,21 +8,30 @@ import { FreeSidebar, LockedFeatureOverlay, SpinWheelFloatingTrigger } from "@/c
 import AIAssistant from "@/components/AIAssistant";
 import { TourGuide } from "@/components/TourGuide";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
+import { getSkillLevel } from "@/components/OnboardingQuiz";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
+const SIDEBAR_COLLAPSED_KEY = "ict-sidebar-collapsed";
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0 },
-  { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0 },
-  { to: "/planner", label: "Daily Planner", mobileLabel: "Planner", icon: Calendar, requiredTier: 0 },
-  { to: "/risk-shield", label: "Risk Shield", mobileLabel: "Risk", icon: Shield, requiredTier: 1 },
-  { to: "/prop-tracker", label: "Prop Tracker", mobileLabel: "Prop", icon: Trophy, requiredTier: 1 },
-  { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 2 },
-  { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2 },
-  { to: "/leaderboard", label: "Leaderboard", mobileLabel: "Rank", icon: Trophy, requiredTier: 2 },
-  { to: "/webhooks", label: "TV Webhooks", mobileLabel: "Webhooks", icon: Webhook, requiredTier: 2 },
-  { to: "/community", label: "Community", mobileLabel: "Community", icon: Users, requiredTier: 0 },
+const ALL_NAV_ITEMS = [
+  { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkill: 0 },
+  { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0, minSkill: 0 },
+  { to: "/planner", label: "Daily Planner", mobileLabel: "Planner", icon: Calendar, requiredTier: 0, minSkill: 0 },
+  { to: "/risk-shield", label: "Risk Shield", mobileLabel: "Risk", icon: Shield, requiredTier: 1, minSkill: 0 },
+  { to: "/prop-tracker", label: "Prop Tracker", mobileLabel: "Prop", icon: Trophy, requiredTier: 1, minSkill: 1 },
+  { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 2, minSkill: 1 },
+  { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2, minSkill: 1 },
+  { to: "/leaderboard", label: "Leaderboard", mobileLabel: "Rank", icon: Trophy, requiredTier: 2, minSkill: 2 },
+  { to: "/webhooks", label: "TV Webhooks", mobileLabel: "Webhooks", icon: Webhook, requiredTier: 2, minSkill: 2 },
+  { to: "/community", label: "Community", mobileLabel: "Community", icon: Users, requiredTier: 0, minSkill: 0 },
 ];
+
+function getSkillNumber(): number {
+  const level = getSkillLevel();
+  if (level === "advanced") return 2;
+  if (level === "intermediate") return 1;
+  return 0;
+}
 
 function NavItem({
   to,
@@ -31,6 +40,7 @@ function NavItem({
   requiredTier,
   userTier,
   onLockedClick,
+  collapsed,
 }: {
   to: string;
   label: string;
@@ -38,6 +48,7 @@ function NavItem({
   requiredTier: number;
   userTier: number;
   onLockedClick: () => void;
+  collapsed: boolean;
 }) {
   const isLocked = requiredTier > userTier;
 
@@ -45,14 +56,15 @@ function NavItem({
     return (
       <button
         onClick={onLockedClick}
+        title={collapsed ? label : undefined}
         className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground/40 cursor-not-allowed w-full text-left group relative"
       >
         <div className="relative">
           <Icon className="h-5 w-5 shrink-0 opacity-40" />
           <Lock className="h-3 w-3 absolute -bottom-1 -right-1 text-muted-foreground/60" />
         </div>
-        <span className="hidden lg:inline opacity-40">{label}</span>
-        <Crown className="h-3 w-3 text-amber-500 hidden lg:block ml-auto opacity-60" />
+        {!collapsed && <span className="hidden lg:inline opacity-40">{label}</span>}
+        {!collapsed && <Crown className="h-3 w-3 text-amber-500 hidden lg:block ml-auto opacity-60" />}
       </button>
     );
   }
@@ -61,6 +73,7 @@ function NavItem({
     <NavLink
       to={to}
       end
+      title={collapsed ? label : undefined}
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
           isActive
@@ -70,7 +83,7 @@ function NavItem({
       }
     >
       <Icon className="h-5 w-5 shrink-0" />
-      <span className="hidden lg:inline">{label}</span>
+      {!collapsed && <span className="hidden lg:inline">{label}</span>}
     </NavLink>
   );
 }
@@ -231,11 +244,24 @@ export default function Layout() {
   const [showShare, setShowShare] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  });
   const navigate = useNavigate();
   const location = useLocation();
   const { state: tourState, dispatch: tourDispatch, closeTour } = useTourGuideContext();
 
   const isFreeUser = tierLevel === 0;
+  const skillNum = getSkillNumber();
+  const navItems = ALL_NAV_ITEMS.filter((item) => item.minSkill <= skillNum);
+
+  function toggleSidebar() {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (isAdmin) return;
@@ -279,13 +305,35 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="hidden md:flex flex-col w-16 lg:w-56 border-r border-sidebar-border bg-sidebar shrink-0 h-screen overflow-y-auto">
-        <Link to="/" className="flex items-center justify-center lg:justify-start gap-2 px-2 lg:px-3 h-14 border-b border-sidebar-border hover:bg-secondary/50 transition-colors">
-          <Logo size={52} />
-          <span className="hidden lg:block text-xs font-semibold text-sidebar-foreground truncate">
-            {config.app_name || "ICT AI Trading Mentor"}
-          </span>
-        </Link>
+      <aside className={`hidden md:flex flex-col border-r border-sidebar-border bg-sidebar shrink-0 h-screen overflow-y-auto transition-all duration-200 ${sidebarCollapsed ? "w-16" : "w-16 lg:w-56"}`}>
+        <div className="flex items-center justify-between h-14 border-b border-sidebar-border px-2">
+          <Link to="/" className={`flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity ${sidebarCollapsed ? "justify-center w-full" : "lg:justify-start"}`}>
+            <Logo size={36} />
+            {!sidebarCollapsed && (
+              <span className="hidden lg:block text-xs font-semibold text-sidebar-foreground truncate">
+                {config.app_name || "ICT AI Trading Mentor"}
+              </span>
+            )}
+          </Link>
+          {!sidebarCollapsed && (
+            <button
+              onClick={toggleSidebar}
+              title="Collapse sidebar"
+              className="hidden lg:flex p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          )}
+          {sidebarCollapsed && (
+            <button
+              onClick={toggleSidebar}
+              title="Expand sidebar"
+              className="hidden lg:flex p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors absolute top-3.5 left-10"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
+          )}
+        </div>
 
         <nav className="flex flex-col gap-1 p-2 flex-1">
           {navItems.map((item) => (
@@ -294,6 +342,7 @@ export default function Layout() {
               {...item}
               userTier={tierLevel}
               onLockedClick={handleLockedClick}
+              collapsed={sidebarCollapsed}
             />
           ))}
         </nav>
@@ -301,44 +350,49 @@ export default function Layout() {
         <div className="p-2 border-t border-sidebar-border space-y-1">
           <Link
             to="/pricing"
+            title={sidebarCollapsed ? "Subscription" : undefined}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <CreditCard className="h-5 w-5 shrink-0" />
-            <span className="hidden lg:inline">Subscription</span>
+            {!sidebarCollapsed && <span className="hidden lg:inline">Subscription</span>}
           </Link>
 
           <Link
             to="/settings"
+            title={sidebarCollapsed ? "Settings" : undefined}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <Settings className="h-5 w-5 shrink-0" />
-            <span className="hidden lg:inline">Settings</span>
+            {!sidebarCollapsed && <span className="hidden lg:inline">Settings</span>}
           </Link>
 
           {isAdmin && (
             <Link
               to="/admin"
+              title={sidebarCollapsed ? "Admin" : undefined}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
               <Lock className="h-5 w-5 shrink-0" />
-              <span className="hidden lg:inline">Admin</span>
+              {!sidebarCollapsed && <span className="hidden lg:inline">Admin</span>}
             </Link>
           )}
 
           <Link
             to="/welcome"
+            title={sidebarCollapsed ? "Help & Tour" : undefined}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <HelpCircle className="h-5 w-5 shrink-0" />
-            <span className="hidden lg:inline">Help & Tour</span>
+            {!sidebarCollapsed && <span className="hidden lg:inline">Help & Tour</span>}
           </Link>
 
           <button
             onClick={handleOpenShare}
+            title={sidebarCollapsed ? "Invite Friends" : undefined}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full text-left"
           >
             <Share2 className="h-5 w-5 shrink-0" />
-            <span className="hidden lg:inline">Invite Friends</span>
+            {!sidebarCollapsed && <span className="hidden lg:inline">Invite Friends</span>}
           </button>
 
           <div className="relative">
@@ -349,9 +403,9 @@ export default function Layout() {
               <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                 <User className="h-3 w-3 text-primary" />
               </div>
-              <span className="hidden lg:inline truncate flex-1">{user?.name}</span>
-              {user?.isFounder && <Crown className="h-3 w-3 text-amber-500 hidden lg:block" />}
-              <ChevronDown className="h-3 w-3 hidden lg:block" />
+              {!sidebarCollapsed && <span className="hidden lg:inline truncate flex-1">{user?.name}</span>}
+              {!sidebarCollapsed && user?.isFounder && <Crown className="h-3 w-3 text-amber-500 hidden lg:block" />}
+              {!sidebarCollapsed && <ChevronDown className="h-3 w-3 hidden lg:block" />}
             </button>
 
             {showUserMenu && (

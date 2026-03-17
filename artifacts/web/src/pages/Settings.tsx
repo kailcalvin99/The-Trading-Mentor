@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
 import { toast } from "@/hooks/use-toast";
@@ -18,7 +19,9 @@ import {
   Trash2,
   AlertTriangle,
   Map,
+  GraduationCap,
 } from "lucide-react";
+import { clearQuiz, getSkillLevel } from "@/components/OnboardingQuiz";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -62,7 +65,9 @@ interface RiskRulesData {
 export default function Settings() {
   const { user, refreshUser, tierLevel } = useAuth();
   const { resetTour } = useTourGuideContext();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const currentSkillLevel = getSkillLevel();
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingTrading, setSavingTrading] = useState(false);
   const [savingRisk, setSavingRisk] = useState(false);
@@ -427,6 +432,43 @@ export default function Settings() {
         </div>
 
         <TradingViewWebhookCard isPremium={isPremium} />
+
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+            <GraduationCap className="h-5 w-5 text-primary" />
+            <h2 className="text-sm font-bold text-foreground">Skill Assessment</h2>
+            {currentSkillLevel && (
+              <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${
+                currentSkillLevel === "advanced" ? "bg-primary/10 text-primary border-primary/30" :
+                currentSkillLevel === "intermediate" ? "bg-amber-500/10 text-amber-500 border-amber-500/30" :
+                "bg-green-500/10 text-green-400 border-green-500/30"
+              }`}>
+                {currentSkillLevel}
+              </span>
+            )}
+          </div>
+          <div className="px-5 py-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Retake Skill Assessment</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Retake the onboarding quiz to update your skill level and recalibrate which features and academy lessons are shown to you. This will also reset your academy progress.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  clearQuiz();
+                  navigate("/dashboard");
+                  window.location.reload();
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/30 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors shrink-0"
+              >
+                <GraduationCap className="h-4 w-4" />
+                Retake Quiz
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border">

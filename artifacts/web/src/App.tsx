@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -31,6 +32,7 @@ import RiskDisclosure from "@/pages/RiskDisclosure";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import VideoTourPage from "@/pages/VideoTourPage";
+import OnboardingQuiz, { hasCompletedQuiz, type SkillLevel } from "@/components/OnboardingQuiz";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -50,6 +52,7 @@ function ResetApp() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const [quizDone, setQuizDone] = useState(() => hasCompletedQuiz());
 
   if (loading) {
     return (
@@ -61,6 +64,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!quizDone) {
+    return (
+      <>
+        {children}
+        <OnboardingQuiz onComplete={(_level: SkillLevel) => setQuizDone(true)} />
+      </>
+    );
   }
 
   return <>{children}</>;

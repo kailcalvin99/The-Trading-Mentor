@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Flame, Star, Trophy, Zap, Crown, TrendingUp, Lock, Gift,
   ArrowRight, Clock, Target, BookOpen, BarChart3, Shield,
-  Calendar, GraduationCap, Sparkles, Map,
+  Calendar, GraduationCap, Sparkles, Map, Pencil, Check, X as XIcon,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { SpinWheel, useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
@@ -520,10 +520,32 @@ function QuickNavCards() {
   );
 }
 
+const WIDGET_PREFS_KEY = "dashboard-widget-prefs";
+
+const ALL_WIDGETS = [
+  { id: "mascot", label: "AI Greeting" },
+  { id: "status", label: "Stats & Level" },
+  { id: "spin", label: "Daily Tip Wheel" },
+  { id: "mission", label: "Daily Mission" },
+  { id: "sessions", label: "Market Sessions" },
+  { id: "quickref", label: "ICT Quick Reference" },
+  { id: "quicknav", label: "Jump To (shortcuts)" },
+];
+
+function loadWidgetPrefs(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(WIDGET_PREFS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return Object.fromEntries(ALL_WIDGETS.map((w) => [w.id, true]));
+}
+
 export default function Dashboard() {
   const { tierLevel } = useAuth();
   const isFreeUser = tierLevel === 0;
   const { startTour } = useTourGuideContext();
+  const [editMode, setEditMode] = useState(false);
+  const [widgetPrefs, setWidgetPrefs] = useState<Record<string, boolean>>(loadWidgetPrefs);
 
   useEffect(() => {
     if (!localStorage.getItem("dashboard-visited")) {
@@ -531,28 +553,85 @@ export default function Dashboard() {
     }
   }, []);
 
+  function toggleWidget(id: string) {
+    setWidgetPrefs((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      localStorage.setItem(WIDGET_PREFS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  const show = (id: string) => widgetPrefs[id] !== false;
+
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 pb-24">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <IctMascot />
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        {show("mascot") && (
+          <div className="flex-1 min-w-0">
+            <IctMascot />
+          </div>
+        )}
+        <div className="flex items-center gap-2 shrink-0 mt-1">
+          <button
+            onClick={() => setEditMode(!editMode)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
+              editMode
+                ? "bg-primary text-primary-foreground border-primary"
+                : "text-muted-foreground hover:text-foreground border-border hover:bg-muted"
+            }`}
+            title="Customise dashboard layout"
+          >
+            {editMode ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+            {editMode ? "Done" : "Edit"}
+          </button>
+          <button
+            onClick={startTour}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors"
+            title="Start guided tour"
+          >
+            <Map className="h-3.5 w-3.5" />
+            Tour
+          </button>
         </div>
-        <button
-          onClick={startTour}
-          className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors mt-1"
-          title="Start guided tour"
-        >
-          <Map className="h-3.5 w-3.5" />
-          Tour
-        </button>
       </div>
-      <GamifiedStatusRow />
 
-      <DailySpinSection />
-      <SlotMachine />
+      {editMode && (
+        <div className="bg-card border border-primary/30 rounded-2xl p-5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-bold text-foreground">Customise your dashboard</p>
+            <button onClick={() => setEditMode(false)} className="text-muted-foreground hover:text-foreground">
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {ALL_WIDGETS.map((w) => {
+              const on = widgetPrefs[w.id] !== false;
+              return (
+                <button
+                  key={w.id}
+                  onClick={() => toggleWidget(w.id)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                    on
+                      ? "bg-primary/10 border-primary/40 text-primary"
+                      : "bg-secondary/30 border-border text-muted-foreground"
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${on ? "bg-primary" : "bg-muted"}`}>
+                    {on && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                  </div>
+                  {w.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      <SessionsLiveBoard />
-      <QuickReference />
+      {show("status") && <GamifiedStatusRow />}
+      {show("spin") && <DailySpinSection />}
+      {show("mission") && <SlotMachine />}
+      {show("sessions") && <SessionsLiveBoard />}
+      {show("quickref") && <QuickReference />}
       {!isFreeUser && <AchievementBadges />}
       {isFreeUser && (
         <PremiumTeaser
@@ -561,7 +640,7 @@ export default function Dashboard() {
           buttonText="See Plans"
         />
       )}
-      <QuickNavCards />
+      {show("quicknav") && <QuickNavCards />}
     </div>
   );
 }
