@@ -37,6 +37,7 @@ import {
 
 import type { Trade, CreateTradeBody } from "@workspace/api-client-react";
 import { recordTradeResult } from "@/components/CoolDownOverlay";
+import { dispatchAITrigger } from "@/hooks/useAITrigger";
 
 type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
@@ -289,6 +290,7 @@ export default function SmartJournal() {
       entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
     });
     setShowForm(true);
+    dispatchAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
   }
 
   function openNewForm() {
@@ -335,6 +337,7 @@ export default function SmartJournal() {
       setupTypes: [],
     });
     setShowForm(true);
+    dispatchAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
   }
 
   const handleSubmit = useCallback(async () => {
@@ -378,6 +381,7 @@ export default function SmartJournal() {
       setShowForm(false);
       setEditingDraftId(null);
       toast({ title: "Trade saved", description: `${form.pair} trade logged successfully.` });
+      dispatchAITrigger({ message: "Trade saved! Want a post-trade coaching review?" });
       if (result && result.id) {
         setExpandedTradeId(result.id);
         fetchCoachFeedback(result.id);

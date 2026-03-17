@@ -11,6 +11,7 @@ import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
+import { fireMobileAITrigger, incrementMobileQuizFail, resetMobileQuizFail } from "@/lib/aiTrigger";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   COURSE_CHAPTERS,
@@ -264,8 +265,18 @@ function QuizView() {
     if (correct) {
       setScore((s) => s + pts);
       setDiffScore((s) => s + 1);
+      resetMobileQuizFail();
     } else {
       setDiffScore((s) => Math.max(0, s - 1));
+      const failCount = incrementMobileQuizFail();
+      if (failCount >= 2) {
+        resetMobileQuizFail();
+        fireMobileAITrigger({
+          message: "Need help with this concept?",
+          autoOpen: true,
+          prefillPrompt: `I keep getting quiz questions wrong about "${q.scenario.slice(0, 60)}". Can you explain this concept?`,
+        });
+      }
     }
   }
 
@@ -305,6 +316,7 @@ function QuizView() {
     setMaxScore(0);
     setDiffScore(0);
     setDone(false);
+    resetMobileQuizFail();
     const emptySet = new Set<number>();
     setUsedIndices(emptySet);
     setActiveQuestion(pickQuestion("medium", emptySet));

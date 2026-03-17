@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Animated,
   type DimensionValue,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,10 +22,53 @@ import {
   createGeminiConversation,
   getGeminiConversation,
   deleteGeminiConversation,
+  useGetPropAccount,
 } from "@workspace/api-client-react";
 import { streamMessage, apiPost, type ToolCallEvent } from "@/lib/api";
 import { usePlanner } from "@/contexts/PlannerContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { subscribeToAITrigger } from "@/lib/aiTrigger";
 import Colors from "@/constants/colors";
+
+interface AITrigger {
+  message: string;
+  autoOpen?: boolean;
+  prefillPrompt?: string;
+}
+
+const KILL_ZONES = [
+  { label: "London Kill Zone", startHour: 2, endHour: 5 },
+  { label: "New York Kill Zone", startHour: 10, endHour: 11 },
+];
+
+function getNewYorkHour(): number {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+    }).formatToParts(new Date());
+    const h = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+    const m = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+    return h + m / 60;
+  } catch {
+    const now = new Date();
+    const utcHour = now.getUTCHours() + now.getUTCMinutes() / 60;
+    return ((utcHour - 5) % 24 + 24) % 24;
+  }
+}
+
+function getCurrentKillZone(): { active: boolean; label: string } {
+  const h = getNewYorkHour();
+  for (const kz of KILL_ZONES) {
+    if (h >= kz.startHour && h < kz.endHour) return { active: true, label: kz.label };
+  }
+  return { active: false, label: "" };
+}
+
+const KZ_NUDGE_COOLDOWN = 60 * 60 * 1000;
+const KZ_NUDGE_STORAGE_KEY = "ict-ai-kz-nudge-last";
 
 const C = Colors.dark;
 
@@ -56,18 +100,123 @@ export default function AIAssistant() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [pendingToolCalls, setPendingToolCalls] = useState<ToolCallInfo[]>([]);
+  const [nudge, setNudge] = useState<AITrigger | null>(null);
+  const [nudgeExpanded, setNudgeExpanded] = useState(false);
+  const nudgeAnim = useRef(new Animated.Value(0)).current;
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const killZoneCheckedRef = useRef(false);
+
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const planner = usePlanner();
 
   const { data: conversations, refetch } = useListGeminiConversations();
+  const { data: propAccount } = useGetPropAccount();
+
+  const drawdownNudgedRef = useRef(false);
 
   useEffect(() => {
     if (visible) {
       scrollRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages, visible]);
+
+  const fireTrigger = useCallback((trigger: AITrigger) => {
+    if (visible) return;
+    setNudge(trigger);
+    setNudgeExpanded(true);
+    Animated.spring(nudgeAnim, { toValue: 1, useNativeDriver: true }).start();
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+    nudgeTimerRef.current = setTimeout(() => {
+      Animated.timing(nudgeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setNudgeExpanded(false);
+        setNudge(null);
+      });
+    }, 6000);
+    if (trigger.autoOpen) {
+      if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
+      autoOpenTimerRef.current = setTimeout(() => {
+        setNudge(null);
+        setNudgeExpanded(false);
+        setInput(trigger.prefillPrompt || "");
+        setVisible(true);
+      }, 800);
+    }
+  }, [visible, nudgeAnim]);
+
+  useEffect(() => {
+    return () => {
+      if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+      if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
+    };
+  }, []);
+
+  function dismissNudge() {
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+    if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
+    Animated.timing(nudgeAnim, { toValue: 0, duration: 250, useNativeDriver: true }).start(() => {
+      setNudgeExpanded(false);
+      setNudge(null);
+    });
+  }
+
+  function openFromNudge() {
+    const msg = nudge?.prefillPrompt || "";
+    dismissNudge();
+    setInput(msg);
+    setVisible(true);
+  }
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAITrigger((trigger) => fireTrigger(trigger));
+    return unsubscribe;
+  }, [fireTrigger]);
+
+  useEffect(() => {
+    const startingBalance = propAccount?.startingBalance ?? 0;
+    const dailyLoss = propAccount?.dailyLoss ?? 0;
+    const maxDailyLoss = propAccount?.maxDailyLossPct ?? 2;
+    if (startingBalance <= 0) return;
+    const dailyLossPct = (dailyLoss / startingBalance) * 100;
+    const ratio = dailyLossPct / maxDailyLoss;
+    if (ratio >= 0.75 && !drawdownNudgedRef.current) {
+      drawdownNudgedRef.current = true;
+      fireTrigger({
+        message: "Your drawdown is near the limit — want advice?",
+        autoOpen: true,
+        prefillPrompt: "My drawdown is getting close to the limit. What should I do?",
+      });
+    } else if (ratio < 0.5) {
+      drawdownNudgedRef.current = false;
+    }
+  }, [propAccount, fireTrigger]);
+
+  useEffect(() => {
+    async function checkKillZone() {
+      if (killZoneCheckedRef.current) return;
+      const kz = getCurrentKillZone();
+      if (!kz.active) return;
+      let lastNudge = 0;
+      try {
+        const stored = await AsyncStorage.getItem(KZ_NUDGE_STORAGE_KEY);
+        lastNudge = stored ? parseInt(stored, 10) || 0 : 0;
+      } catch {}
+      if (Date.now() - lastNudge < KZ_NUDGE_COOLDOWN) return;
+      killZoneCheckedRef.current = true;
+      try {
+        await AsyncStorage.setItem(KZ_NUDGE_STORAGE_KEY, String(Date.now()));
+      } catch {}
+      fireTrigger({ message: `Kill zone is open — ready to trade? (${kz.label})` });
+    }
+    checkKillZone();
+    const interval = setInterval(() => {
+      killZoneCheckedRef.current = false;
+      checkKillZone();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fireTrigger]);
 
   async function startConversation() {
     try {
@@ -278,9 +427,40 @@ export default function AIAssistant() {
 
   return (
     <>
-      <TouchableOpacity style={s.fab} onPress={openDrawer} activeOpacity={0.8}>
-        <Ionicons name="sparkles" size={24} color="#0A0A0F" />
-      </TouchableOpacity>
+      <View style={s.fabContainer}>
+        {nudgeExpanded && nudge && (
+          <Animated.View
+            style={[
+              s.nudgeCard,
+              {
+                opacity: nudgeAnim,
+                transform: [{ translateY: nudgeAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+              },
+            ]}
+          >
+            <TouchableOpacity style={s.nudgeDismiss} onPress={dismissNudge}>
+              <Ionicons name="close" size={14} color={C.textSecondary} />
+            </TouchableOpacity>
+            <View style={s.nudgeHeader}>
+              <Ionicons name="sparkles" size={12} color={C.accent} />
+              <Text style={s.nudgeLabel}>AI Coach</Text>
+            </View>
+            <Text style={s.nudgeMessage}>{nudge.message}</Text>
+            <TouchableOpacity onPress={openFromNudge} style={s.nudgeAction}>
+              <Text style={s.nudgeActionText}>Open AI</Text>
+              <Ionicons name="arrow-forward" size={12} color={C.accent} />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+        <TouchableOpacity
+          style={nudgeExpanded ? s.fabExpanded : s.fabMini}
+          onPress={openDrawer}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="sparkles" size={nudgeExpanded ? 16 : 14} color="#0A0A0F" />
+          {nudgeExpanded && <Text style={s.fabLabel}>AI</Text>}
+        </TouchableOpacity>
+      </View>
 
       <Modal
         visible={visible}
@@ -541,22 +721,95 @@ const tcStyles = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
-  fab: {
+  fabContainer: {
     position: "absolute",
     bottom: 90,
-    right: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    right: 14,
+    alignItems: "flex-end",
+    zIndex: 100,
+  },
+  fabMini: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: C.accent,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 8,
+    elevation: 4,
     shadowColor: C.accent,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    opacity: 0.85,
+  },
+  fabExpanded: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: C.accent,
+    elevation: 6,
+    shadowColor: C.accent,
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.4,
-    shadowRadius: 8,
-    zIndex: 100,
+    shadowRadius: 6,
+  },
+  fabLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: "#0A0A0F",
+  },
+  nudgeCard: {
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.accent + "55",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    maxWidth: 220,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  nudgeDismiss: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    padding: 2,
+  },
+  nudgeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 6,
+  },
+  nudgeLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: C.accent,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  nudgeMessage: {
+    fontSize: 13,
+    color: C.text,
+    lineHeight: 18,
+    marginBottom: 8,
+    paddingRight: 16,
+  },
+  nudgeAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  nudgeActionText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: C.accent,
   },
   modal: {
     flex: 1,

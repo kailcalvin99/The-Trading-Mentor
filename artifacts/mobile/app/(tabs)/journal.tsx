@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useListTrades, useCreateTrade, useDeleteTrade } from "@workspace/api-client-react";
 import type { Trade } from "@workspace/api-client-react";
 import { usePlanner } from "@/contexts/PlannerContext";
+import { fireMobileAITrigger } from "@/lib/aiTrigger";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
@@ -274,6 +275,7 @@ export default function JournalScreen() {
       entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
     });
     setShowForm(true);
+    fireMobileAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
   }
 
   function openNewForm() {
@@ -313,6 +315,7 @@ export default function JournalScreen() {
       setupTypes: [],
     });
     setShowForm(true);
+    fireMobileAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
   }
 
   const handleSubmit = useCallback(async () => {
@@ -343,6 +346,7 @@ export default function JournalScreen() {
       qc.invalidateQueries({ queryKey: [`/api/trades`] });
       setShowForm(false);
       setEditingDraftId(null);
+      fireMobileAITrigger({ message: "Trade saved! Want a post-trade coaching review?" });
       if (result && result.id) {
         setExpandedTradeId(result.id);
         fetchCoachFeedback(result.id);

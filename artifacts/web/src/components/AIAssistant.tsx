@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { getListTradesQueryKey } from "@workspace/api-client-react";
+import { getListTradesQueryKey, useGetPropAccount } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanner } from "@/contexts/PlannerContext";
+import { useAITrigger, type AITrigger } from "@/hooks/useAITrigger";
 import {
   Bot,
   Send,
@@ -180,6 +181,9 @@ export default function AIAssistant() {
   const [isNewUser, setIsNewUser] = useState(() => !localStorage.getItem("ict-ai-welcomed"));
   const [showTip, setShowTip] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
+  const [nudge, setNudge] = useState<AITrigger | null>(null);
+  const [nudgeExpanded, setNudgeExpanded] = useState(false);
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -189,6 +193,12 @@ export default function AIAssistant() {
   const { user, tierLevel, isAdmin } = useAuth();
   const { routineConfig, toggleItem, isRoutineComplete, routineItems } = usePlanner();
   const qc = useQueryClient();
+
+  const { data: propAccount } = useGetPropAccount();
+  const startingBalance = propAccount?.startingBalance ?? 0;
+  const dailyLoss = propAccount?.dailyLoss ?? 0;
+  const maxDailyLoss = propAccount?.maxDailyLossPct ?? 2;
+  const dailyLossPct = startingBalance > 0 ? (dailyLoss / startingBalance) * 100 : 0;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -239,6 +249,50 @@ export default function AIAssistant() {
     const interval = setInterval(checkTip, 60_000);
     return () => clearInterval(interval);
   }, [isNewUser]);
+
+  const autoOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleAITrigger = useCallback((trigger: AITrigger) => {
+    if (isOpen) return;
+    setNudge(trigger);
+    setNudgeExpanded(true);
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+    nudgeTimerRef.current = setTimeout(() => {
+      setNudgeExpanded(false);
+      nudgeTimerRef.current = setTimeout(() => setNudge(null), 400);
+    }, 6000);
+    if (trigger.autoOpen) {
+      if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
+      autoOpenTimerRef.current = setTimeout(() => {
+        setIsOpen(true);
+        if (trigger.prefillPrompt) setInput(trigger.prefillPrompt);
+        setNudge(null);
+        setNudgeExpanded(false);
+      }, 800);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+      if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
+    };
+  }, []);
+
+  useAITrigger({ dailyLossPct, maxDailyLoss, onTrigger: handleAITrigger });
+
+  function dismissNudge() {
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+    if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
+    setNudgeExpanded(false);
+    nudgeTimerRef.current = setTimeout(() => setNudge(null), 400);
+  }
+
+  function openFromNudge() {
+    dismissNudge();
+    if (nudge?.prefillPrompt) setInput(nudge.prefillPrompt);
+    setIsOpen(true);
+  }
 
   async function startConversation(): Promise<number | null> {
     try {
@@ -498,14 +552,30 @@ export default function AIAssistant() {
 
   return (
     <>
-      <div className="hidden md:flex items-center gap-2 h-10 px-3 bg-card/50 border border-border rounded-xl cursor-pointer hover:bg-card transition-colors flex-1 max-w-md relative"
+      <div
+        className={`hidden md:flex items-center gap-2 h-9 px-3 border rounded-xl cursor-pointer transition-all duration-300 flex-1 max-w-md relative ${
+          nudgeExpanded && nudge
+            ? "bg-primary/10 border-primary/40 shadow-sm"
+            : "bg-card/30 border-border/50 opacity-60 hover:opacity-100 hover:bg-card"
+        }`}
         onClick={() => { setIsOpen(true); }}
       >
-        <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="text-sm text-muted-foreground truncate">Ask AI anything...</span>
-        <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground ml-auto shrink-0">
-          AI
-        </kbd>
+        <Sparkles className={`h-3.5 w-3.5 shrink-0 transition-colors ${nudgeExpanded && nudge ? "text-primary" : "text-muted-foreground"}`} />
+        <span className="text-sm text-muted-foreground truncate">
+          {nudgeExpanded && nudge ? nudge.message : "Ask AI anything..."}
+        </span>
+        {nudgeExpanded && nudge ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); dismissNudge(); }}
+            className="ml-auto text-muted-foreground hover:text-foreground shrink-0"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground ml-auto shrink-0">
+            AI
+          </kbd>
+        )}
         {isNewUser && (
           <span className="absolute -top-1 -right-1 flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
@@ -514,44 +584,69 @@ export default function AIAssistant() {
         )}
       </div>
 
-      <div className="md:hidden fixed bottom-20 right-4 z-50" style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}>
-        {showTip && !isOpen && (
-          <div className="absolute bottom-14 right-0 w-64 bg-card border border-border rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <button onClick={dismissTip} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
+      <div className="md:hidden fixed bottom-20 right-3 z-50" style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        {nudge && !isOpen && (
+          <div className={`absolute bottom-12 right-0 w-60 bg-card border border-primary/30 rounded-xl shadow-2xl p-3 transition-all duration-300 ${nudgeExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
+            <button onClick={dismissNudge} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />
             </button>
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
-                <Bot className="h-3 w-3 text-primary" />
-              </div>
-              <span className="text-xs font-bold text-primary">💡 Did you know?</span>
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-bold text-primary">AI Coach</span>
             </div>
-            <p className="text-sm font-medium text-foreground mb-2">{currentTip.headline}</p>
-            <div className="space-y-1 mb-3">
-              {currentTip.examples.map((ex, i) => (
-                <p key={i} className="text-xs text-muted-foreground italic">"{ex}"</p>
-              ))}
+            <p className="text-xs text-foreground pr-4">{nudge.message}</p>
+            <button onClick={openFromNudge} className="mt-2 text-xs text-primary font-bold hover:underline">
+              Open AI →
+            </button>
+          </div>
+        )}
+        {showTip && !isOpen && !nudge && (
+          <div className="absolute bottom-12 right-0 w-60 bg-card border border-border rounded-xl shadow-2xl p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <button onClick={dismissTip} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Bot className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-bold text-primary">Tip</span>
             </div>
+            <p className="text-xs font-medium text-foreground mb-1.5">{currentTip.headline}</p>
             <button onClick={handleTryIt} className="w-full bg-primary text-primary-foreground text-xs font-bold py-1.5 rounded-lg hover:opacity-90 transition-opacity">
               Try it
             </button>
           </div>
         )}
         <button
-          className="w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center hover:opacity-90 transition-opacity relative"
+          className={`flex items-center gap-1.5 rounded-full bg-primary/90 text-primary-foreground shadow-lg transition-all duration-300 hover:opacity-90 relative ${nudgeExpanded ? "px-3 py-2" : "w-8 h-8 justify-center"}`}
           onClick={() => setIsOpen(true)}
         >
-          <Bot className="h-5 w-5" />
+          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+          {nudgeExpanded && <span className="text-xs font-semibold whitespace-nowrap">AI</span>}
           {isNewUser && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-primary" />
+            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-foreground" />
             </span>
           )}
         </button>
       </div>
 
-      {showTip && !isOpen && (
+      {nudge && !isOpen && (
+        <div className={`hidden md:block fixed bottom-4 right-4 z-40 w-72 bg-card border border-primary/30 rounded-xl shadow-2xl p-4 transition-all duration-300 ${nudgeExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
+          <button onClick={dismissNudge} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-bold text-primary">AI Coach</span>
+          </div>
+          <p className="text-sm text-foreground">{nudge.message}</p>
+          <button onClick={openFromNudge} className="mt-2 text-xs text-primary font-bold hover:underline">
+            Open AI →
+          </button>
+        </div>
+      )}
+
+      {showTip && !isOpen && !nudge && (
         <div className="hidden md:block fixed bottom-4 right-4 z-40 w-72 bg-card border border-border rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <button onClick={dismissTip} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
             <X className="h-3.5 w-3.5" />

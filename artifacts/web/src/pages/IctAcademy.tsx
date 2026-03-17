@@ -40,6 +40,7 @@ import {
   type Lesson,
   type IndicatorItem,
 } from "../data/academy-data";
+import { dispatchAITrigger, incrementQuizFailCount, resetQuizFailCount } from "@/hooks/useAITrigger";
 
 type Tab = "learn" | "glossary" | "quiz" | "plan" | "tools";
 
@@ -962,8 +963,18 @@ function QuizView() {
     if (correct) {
       setScore((s) => s + pts);
       setDiffScore((s) => s + 1);
+      resetQuizFailCount();
     } else {
       setDiffScore((s) => Math.max(0, s - 1));
+      const failCount = incrementQuizFailCount();
+      if (failCount >= 2) {
+        resetQuizFailCount();
+        dispatchAITrigger({
+          message: "Need help with this concept?",
+          autoOpen: true,
+          prefillPrompt: `I keep getting quiz questions wrong about "${q.scenario.slice(0, 60)}". Can you explain this concept?`,
+        });
+      }
     }
   }
 
@@ -1010,6 +1021,7 @@ function QuizView() {
     setMaxScore(0);
     setDiffScore(0);
     setDone(false);
+    resetQuizFailCount();
     const emptySet = new Set<number>();
     setUsedIndices(emptySet);
     setActiveQuestion(pickQuestion("medium", emptySet));
