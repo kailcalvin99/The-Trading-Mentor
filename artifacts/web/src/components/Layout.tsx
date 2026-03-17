@@ -236,6 +236,7 @@ export default function Layout() {
   const isFreeUser = tierLevel === 0;
 
   useEffect(() => {
+    if (isAdmin) return;
     const lockedPaths: Record<string, number> = {
       "/risk-shield": 1,
       "/prop-tracker": 1,
@@ -248,7 +249,7 @@ export default function Layout() {
         break;
       }
     }
-  }, [location.pathname, tierLevel, navigate]);
+  }, [location.pathname, tierLevel, isAdmin, navigate]);
 
   const handleOpenShare = useCallback(() => {
     setShowShare(true);

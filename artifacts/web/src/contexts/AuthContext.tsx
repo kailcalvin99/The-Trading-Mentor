@@ -129,8 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return features.some((f) => f.toLowerCase().includes(feature.toLowerCase()));
   };
 
-  const tierLevel = subscription?.tierLevel ?? 0;
   const isAdmin = user?.role === "admin";
+  const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
 
   return (
     <AuthContext.Provider value={{ user, subscription, loading, login, register, logout, refreshUser, hasFeature, tierLevel, isAdmin }}>

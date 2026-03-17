@@ -7,16 +7,20 @@ const router: IRouter = Router();
 
 router.get("/tradingview/info", authRequired, async (req, res) => {
   try {
-    const sub = await db
-      .select({ tierLevel: subscriptionTiersTable.level })
-      .from(userSubscriptionsTable)
-      .innerJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
-      .where(eq(userSubscriptionsTable.userId, req.user!.userId))
-      .limit(1);
+    const isAdmin = req.user?.role === "admin";
 
-    if (!sub.length || sub[0].tierLevel < 1) {
-      res.status(403).json({ error: "Premium subscription required" });
-      return;
+    if (!isAdmin) {
+      const sub = await db
+        .select({ tierLevel: subscriptionTiersTable.level })
+        .from(userSubscriptionsTable)
+        .innerJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
+        .where(eq(userSubscriptionsTable.userId, req.user!.userId))
+        .limit(1);
+
+      if (!sub.length || sub[0].tierLevel < 1) {
+        res.status(403).json({ error: "Premium subscription required" });
+        return;
+      }
     }
 
     const [user] = await db
