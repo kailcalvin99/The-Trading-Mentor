@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import { db, usersTable, userSubscriptionsTable, subscriptionTiersTable, adminSettingsTable } from "@workspace/db";
 import { eq, count } from "drizzle-orm";
-import { signToken, authRequired, setAuthCookie } from "../../middleware/auth";
+import { signToken, authRequired, setAuthCookie, clearAuthCookie } from "../../middleware/auth";
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -205,7 +205,7 @@ router.get("/me", authRequired, async (req, res) => {
 });
 
 router.post("/logout", (_req, res) => {
-  res.clearCookie("token", { path: "/" });
+  clearAuthCookie(res);
   res.json({ success: true });
 });
 

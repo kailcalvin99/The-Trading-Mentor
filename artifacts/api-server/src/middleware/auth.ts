@@ -43,6 +43,16 @@ export function setAuthCookie(res: Response, token: string): void {
   });
 }
 
+export function clearAuthCookie(res: Response): void {
+  const isReplit = !!process.env.REPL_ID;
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: isReplit || process.env.NODE_ENV === "production",
+    sameSite: isReplit ? "none" : "lax",
+    path: "/",
+  });
+}
+
 export async function authRequired(req: Request, res: Response, next: NextFunction): Promise<void> {
   const token = req.cookies?.token;
 

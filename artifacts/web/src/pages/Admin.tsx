@@ -223,7 +223,7 @@ function SettingToggle({ label, desc, checked, onChange }: {
 }
 
 export default function Admin() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { reload: reloadConfig } = useAppConfig();
   const [tab, setTab] = useState<"users" | "tiers" | "settings" | "ai">("users");
   const [mcProfile, setMcProfile] = useState<MCProfile>("Median");
@@ -367,6 +367,9 @@ export default function Admin() {
       const data = await res.json();
       if (res.ok) {
         if (data.selfDeleted) {
+          await logout();
+          localStorage.clear();
+          sessionStorage.clear();
           window.location.href = import.meta.env.BASE_URL || "/web/";
         } else {
           setDeleteConfirmId(null);

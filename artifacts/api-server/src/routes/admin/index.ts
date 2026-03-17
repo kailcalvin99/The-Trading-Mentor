@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, tradesTable, conversations, messages, propAccountTable, communityPostsTable, communityRepliesTable, postLikesTable } from "@workspace/db";
 import { eq, sql, inArray } from "drizzle-orm";
-import { authRequired, adminRequired } from "../../middleware/auth";
+import { authRequired, adminRequired, clearAuthCookie } from "../../middleware/auth";
 import { seedDefaults } from "../../seed";
 import { getStripeClient } from "../../stripe/stripeClient";
 
@@ -149,7 +149,7 @@ router.delete("/users/:id", async (req, res) => {
     await db.delete(usersTable).where(eq(usersTable.id, userId));
 
     if (isSelfDelete) {
-      res.clearCookie("token", { path: "/" });
+      clearAuthCookie(res);
     }
 
     res.json({ success: true, selfDeleted: isSelfDelete, message: `User ${targetUser.email} deleted` });
@@ -243,7 +243,7 @@ router.post("/reset", async (req, res) => {
     await seedDefaults();
     invalidateConfigCache();
 
-    res.clearCookie("token");
+    clearAuthCookie(res);
     res.json({ success: true, message: "Full reset complete. All data has been wiped." });
   } catch (err) {
     console.error("Hard reset error:", err);
