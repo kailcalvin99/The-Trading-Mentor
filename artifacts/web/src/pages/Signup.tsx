@@ -16,6 +16,7 @@ export default function Signup() {
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
   const [showFounderModal, setShowFounderModal] = useState(false);
   const [founderNum, setFounderNum] = useState(0);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -187,9 +188,24 @@ export default function Signup() {
               </div>
             </div>
 
+            <label className="flex items-start gap-2.5 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+              <span className="text-xs text-muted-foreground leading-relaxed">
+                I agree to the{" "}
+                <Link to="/terms" className="underline hover:text-foreground transition-colors">Terms of Service</Link>
+                {" "}and{" "}
+                <Link to="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !agreedToTerms}
               className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
@@ -208,13 +224,6 @@ export default function Signup() {
             <Link to="/login" className="text-primary font-medium hover:underline">
               Sign in
             </Link>
-          </p>
-
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            By creating an account you agree to our{" "}
-            <Link to="/terms" className="underline hover:text-foreground transition-colors">Terms of Service</Link>
-            {" "}and{" "}
-            <Link to="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>.
           </p>
 
           <p className="text-center text-xs text-muted-foreground mt-2">
