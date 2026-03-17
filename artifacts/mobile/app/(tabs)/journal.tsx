@@ -313,24 +313,26 @@ export default function JournalScreen() {
     if (!allCriteriaMet) return Alert.alert("Entry Criteria Required", "Check off all entry criteria before saving.");
     try {
       if (editingDraftId) {
-        await deleteTradeMut(editingDraftId);
+        await deleteTradeMut({ id: editingDraftId });
       }
       const modeTag = entryMode === "conservative" ? "[Conservative]" : "[Silver Bullet]";
       const notesWithMode = form.notes ? `${modeTag} ${form.notes}` : modeTag;
       const result = await createTradeMut({
-        pair: form.pair,
-        entryTime: form.entryTime,
-        riskPct: form.riskPct,
-        liquiditySweep: form.liquiditySweep,
-        outcome: form.outcome || undefined,
-        notes: notesWithMode,
-        behaviorTag: form.behaviorTag || undefined,
-        followedTimeRule: form.followedTimeRule ?? undefined,
-        hasFvgConfirmation: form.hasFvgConfirmation ?? undefined,
-        stressLevel: form.stressLevel,
-        isDraft: false,
-        setupScore: liveSetupScore,
-      } as any);
+        data: {
+          pair: form.pair,
+          entryTime: form.entryTime,
+          riskPct: form.riskPct,
+          liquiditySweep: form.liquiditySweep,
+          outcome: form.outcome || undefined,
+          notes: notesWithMode,
+          behaviorTag: form.behaviorTag || undefined,
+          followedTimeRule: form.followedTimeRule ?? undefined,
+          hasFvgConfirmation: form.hasFvgConfirmation ?? undefined,
+          stressLevel: form.stressLevel,
+          isDraft: false,
+          setupScore: liveSetupScore,
+        },
+      });
       qc.invalidateQueries({ queryKey: [`/api/trades`] });
       setShowForm(false);
       setEditingDraftId(null);
@@ -350,7 +352,7 @@ export default function JournalScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await deleteTradeMut(id);
+          await deleteTradeMut({ id });
           qc.invalidateQueries({ queryKey: [`/api/trades`] });
         },
       },
