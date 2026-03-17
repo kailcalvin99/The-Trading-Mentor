@@ -30,6 +30,10 @@ export default function Signup() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!agreedToTerms) {
+      setError("You must agree to the Terms of Service and Privacy Policy to continue");
+      return;
+    }
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -111,7 +115,8 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8 justify-center">
           <Logo size={44} />
@@ -235,6 +240,19 @@ export default function Signup() {
           </p>
         </div>
       </div>
+      </div>
+      <footer className="w-full border-t border-border bg-card/30 py-4 px-6">
+        <div className="max-w-md mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-muted-foreground/60">
+          <p>© {new Date().getFullYear()} ICT AI Trading Mentor. For educational purposes only.</p>
+          <div className="flex items-center gap-3">
+            <Link to="/terms" className="hover:text-muted-foreground transition-colors">Terms</Link>
+            <span>·</span>
+            <Link to="/privacy" className="hover:text-muted-foreground transition-colors">Privacy</Link>
+            <span>·</span>
+            <Link to="/pricing" className="hover:text-muted-foreground transition-colors">Pricing</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -140,9 +140,9 @@ function App() {
                 <Route path="reset" element={<ResetApp />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <CookieNotice />
             </BrowserRouter>
             <Toaster />
-            <CookieNotice />
             </PlannerProvider>
           </AuthProvider>
         </AppConfigProvider>

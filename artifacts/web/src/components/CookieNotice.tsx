@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Cookie, X } from "lucide-react";
 
 const COOKIE_KEY = "ict-cookie-notice-dismissed";
@@ -30,9 +31,9 @@ export default function CookieNotice() {
           <p className="text-sm text-foreground font-medium">We use cookies</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             This site uses essential cookies to keep you logged in and remember your preferences.{" "}
-            <a href="/web/privacy" className="underline hover:text-foreground transition-colors">
+            <Link to="/privacy" className="underline hover:text-foreground transition-colors">
               Learn more
-            </a>
+            </Link>
           </p>
           <button
             onClick={dismiss}

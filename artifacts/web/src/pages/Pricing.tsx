@@ -126,6 +126,13 @@ export default function Pricing() {
           <span className="text-lg font-bold text-foreground">Choose Your Plan</span>
         </div>
 
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-6 flex items-center gap-2">
+          <Shield className="h-4 w-4 text-amber-500 shrink-0" />
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+            Trading involves significant risk of loss and is not suitable for all investors. Past performance is not indicative of future results.
+          </p>
+        </div>
+
         {paymentSuccess && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-8 flex items-center gap-3 animate-in fade-in duration-300">
             <CheckCircle2 className="h-6 w-6 text-green-500 shrink-0" />

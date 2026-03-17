@@ -596,6 +596,13 @@ export default function RiskShieldScreen() {
           </View>
         ) : null}
 
+        <View style={styles.disclaimer}>
+          <Ionicons name="warning-outline" size={12} color={C.textSecondary} />
+          <Text style={styles.disclaimerText}>
+            For educational purposes only. Not financial advice. Trading futures involves significant risk of loss and is not suitable for all investors.
+          </Text>
+        </View>
+
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
 
@@ -962,6 +969,23 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   resetSmallText: { fontSize: 13, color: C.textSecondary },
+  disclaimer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: 16,
+    marginHorizontal: 4,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 10,
+    color: C.textSecondary,
+    lineHeight: 15,
+    opacity: 0.7,
+  },
 });
 
 const gaugeStyles = StyleSheet.create({

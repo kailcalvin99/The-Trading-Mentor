@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Calendar,
   GraduationCap,
@@ -113,9 +113,25 @@ export default function Welcome() {
     navigate("/planner");
   }
 
+  const LegalFooter = () => (
+    <footer className="w-full border-t border-border bg-card/30 py-4 px-6 mt-auto">
+      <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-muted-foreground/60">
+        <p>For educational purposes only. Not financial advice.</p>
+        <div className="flex items-center gap-3">
+          <Link to="/terms" className="hover:text-muted-foreground transition-colors underline">Terms</Link>
+          <span>·</span>
+          <Link to="/privacy" className="hover:text-muted-foreground transition-colors underline">Privacy</Link>
+          <span>·</span>
+          <Link to="/risk-disclosure" className="hover:text-muted-foreground transition-colors underline">Risk Disclosure</Link>
+        </div>
+      </div>
+    </footer>
+  );
+
   if (step === -1) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-6 overflow-auto">
+      <div className="min-h-screen bg-background flex flex-col p-4 sm:p-6 overflow-auto">
+        <div className="flex-1 flex items-center justify-center">
         <div className="max-w-2xl w-full text-center py-6">
           <Logo size={64} className="mx-auto mb-4 sm:mb-6" />
 
@@ -163,6 +179,8 @@ export default function Welcome() {
             </button>
           </div>
         </div>
+        </div>
+        <LegalFooter />
       </div>
     );
   }
@@ -241,6 +259,7 @@ export default function Welcome() {
             </div>
           </div>
         </div>
+        <LegalFooter />
       </div>
     );
   }
@@ -325,6 +344,7 @@ export default function Welcome() {
           </div>
         </div>
       </div>
+      <LegalFooter />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListTrades,
@@ -1001,7 +1002,7 @@ export default function SmartJournal() {
     <div className="px-4 pb-4 max-w-5xl mx-auto w-full">
       <p className="text-center text-[11px] text-muted-foreground/60 border-t border-border pt-3">
         ⚠️ For educational purposes only. Not financial advice. Trading involves substantial risk of loss.{" "}
-        <a href="/web/risk-disclosure" className="underline hover:text-muted-foreground transition-colors">Full Risk Disclosure</a>
+        <Link to="/risk-disclosure" className="underline hover:text-muted-foreground transition-colors">Full Risk Disclosure</Link>
       </p>
     </div>
     </>

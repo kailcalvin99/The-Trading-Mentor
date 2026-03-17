@@ -563,6 +563,13 @@ export default function JournalScreen() {
           </>
         )}
 
+        <View style={styles.disclaimer}>
+          <Ionicons name="warning-outline" size={12} color={C.textSecondary} />
+          <Text style={styles.disclaimerText}>
+            For educational purposes only. Not financial advice. Trading futures involves significant risk of loss and is not suitable for all investors.
+          </Text>
+        </View>
+
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
 
@@ -828,6 +835,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
   scroll: { flex: 1 },
   content: { padding: 16 },
+  disclaimer: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 16, marginHorizontal: 4, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.cardBorder },
+  disclaimerText: { flex: 1, fontSize: 10, color: C.textSecondary, lineHeight: 15, opacity: 0.7 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.text },
   monkBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: C.accent },

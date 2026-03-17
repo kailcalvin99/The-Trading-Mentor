@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -789,7 +790,7 @@ export default function RiskShield() {
       <div className="max-w-4xl mx-auto px-4 pb-6">
         <p className="text-center text-[11px] text-muted-foreground/60 border-t border-border pt-4">
           ⚠️ For educational purposes only. Not financial advice. Trading futures and forex involves substantial risk of loss.{" "}
-          <a href="/web/risk-disclosure" className="underline hover:text-muted-foreground transition-colors">Full Risk Disclosure</a>
+          <Link to="/risk-disclosure" className="underline hover:text-muted-foreground transition-colors">Full Risk Disclosure</Link>
         </p>
       </div>
     </div>
