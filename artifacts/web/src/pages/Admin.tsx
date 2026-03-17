@@ -1183,6 +1183,38 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
     return data.id;
   }
 
+  async function streamAdminMessageSilent(msg: string, convId: number): Promise<string> {
+    const response = await fetch(`${API_BASE}/gemini/conversations/${convId}/messages`, {
+      method: "POST", ...fetchOpts, headers,
+      body: JSON.stringify({
+        content: msg,
+        pageContext: { currentPage: "Admin Dashboard", route: "/admin", isAdmin: true },
+      }),
+    });
+    const reader = response.body?.getReader();
+    if (!reader) return "";
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullText = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data: ")) continue;
+        try {
+          const parsed = JSON.parse(trimmed.slice(6));
+          if (parsed.content) fullText += parsed.content;
+          if (parsed.done) break;
+        } catch {}
+      }
+    }
+    return fullText;
+  }
+
   async function streamAdminMessage(msg: string, convId: number) {
     const response = await fetch(`${API_BASE}/gemini/conversations/${convId}/messages`, {
       method: "POST", ...fetchOpts, headers,
@@ -1318,7 +1350,7 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
       const kzPct = data.killZoneCompliance.week;
       const weekTotal = data.week.total;
       const prompt = `You are an ICT trading psychology coach. Based on platform-wide data this week: top emotional leak = "${tag}" (${count} out of ${weekTotal} trades), kill zone compliance = ${kzPct !== null ? `${kzPct}%` : "unknown"}. Write a concise coaching insight (2-3 sentences, no bullet points) that: 1) names the specific emotional leak pattern, 2) explains the root cause from an ICT perspective, 3) gives one actionable fix. Output ONLY the coaching insight text, no labels or headers.`;
-      const insight = await streamAdminMessage(prompt, convId);
+      const insight = await streamAdminMessageSilent(prompt, convId);
       setAiLeakInsight(insight.trim());
     } catch {
       setAiLeakInsight(null);

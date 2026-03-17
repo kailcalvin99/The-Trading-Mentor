@@ -289,7 +289,8 @@ router.get("/psychology-analytics", async (_req, res) => {
         entryTime: tradesTable.entryTime,
         createdAt: tradesTable.createdAt,
       })
-      .from(tradesTable);
+      .from(tradesTable)
+      .where(eq(tradesTable.isDraft, false));
 
     const now = new Date();
     const weekStart = new Date(now);
