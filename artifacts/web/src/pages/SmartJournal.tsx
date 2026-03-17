@@ -426,11 +426,12 @@ export default function SmartJournal() {
               <h3 className="text-lg font-bold">Consider Sitting Out</h3>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {completedTrades.length >= 2 &&
-               completedTrades.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.outcome === "loss" &&
-               completedTrades.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[1]?.outcome === "loss"
-                ? "You've had 2 consecutive losses. Trading while on a losing streak often leads to revenge trades that make things worse."
-                : "Your last trade had a high stress level. Trading under emotional pressure reduces decision quality and increases risk of impulsive entries."}
+              {(() => {
+                const sorted = [...completedTrades].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                return sorted.length >= 2 && sorted[0]?.outcome === "loss" && sorted[1]?.outcome === "loss"
+                  ? "You've had 2 consecutive losses. Trading while on a losing streak often leads to revenge trades that make things worse."
+                  : "Your last trade had a high stress level. Trading under emotional pressure reduces decision quality and increases risk of impulsive entries.";
+              })()}
             </p>
             <p className="text-sm text-muted-foreground">
               Stepping away protects your account and lets you come back with a clear head.
