@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, ChevronLeft } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, ChevronLeft, Video } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -16,6 +16,7 @@ const SIDEBAR_COLLAPSED_KEY = "ict-sidebar-collapsed";
 const navItems = [
   { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkillLevel: 0 },
   { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/videos", label: "Videos", mobileLabel: "Videos", icon: Video, requiredTier: 0, minSkillLevel: 0 },
   { to: "/planner", label: "Daily Planner", mobileLabel: "Planner", icon: Calendar, requiredTier: 0, minSkillLevel: 0 },
   { to: "/risk-shield", label: "Risk Shield", mobileLabel: "Risk", icon: Shield, requiredTier: 1, minSkillLevel: 0 },
   { to: "/prop-tracker", label: "Prop Tracker", mobileLabel: "Prop", icon: Trophy, requiredTier: 1, minSkillLevel: 1 },

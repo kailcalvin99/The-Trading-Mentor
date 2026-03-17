@@ -10,6 +10,7 @@ import adminRouter from "./admin";
 import userSettingsRouter from "./user-settings";
 import communityRouter from "./community";
 import leaderboardRouter from "./leaderboard";
+import videosRouter from "./videos";
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -23,5 +24,6 @@ router.use("/trades", tradesRouter);
 router.use("/webhook", webhookRouter);
 router.use("/community", communityRouter);
 router.use("/leaderboard", leaderboardRouter);
+router.use("/videos", videosRouter);
 
 export default router;

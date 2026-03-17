@@ -40,6 +40,7 @@ The application is built as a pnpm monorepo, leveraging Node.js 24 and TypeScrip
     - **Sit-Out Warning:** Alerts users to potential overtrading based on recent losses or high-stress trades.
     - **Cool Down Timers:** Enforces breaks after consecutive losses.
     - **Hall of Fame:** Tracks discipline streaks and achievements.
+- **Video Library:** Dedicated video library on both web and mobile platforms. 30 curated ICT-relevant YouTube videos organized by 7 Academy chapters with difficulty levels (Beginner/Intermediate/Advanced). Web: `/videos` route with chapter filter tabs, difficulty filters, search, video cards with YouTube thumbnails, and in-page YouTube iframe player modal. Mobile: `videos.tsx` tab screen with chapter/difficulty filter chips and full-screen YouTube embed via `react-native-webview`. Watched state persisted per-user via API (`GET/POST /api/videos/watched`). Academy lessons show "Related Videos" buttons linking to the video player modal. DB table: `video_watched` (userId, videoId, watchedAt).
 - **TradingView Indicators:** Curated list of recommended indicators with descriptions and setup instructions.
 - **Community Hub:** A Reddit-style forum with categories, post creation, and replies, available across all tiers.
 - **Risk Disclosure:** Public legal page at `/risk-disclosure` covering educational purpose, no-financial-advice, trading risk warning, ICT methodology disclaimer, AI limitations, prop trading notice, and user responsibility. Cross-linked from all legal page footers and the Login page footer.

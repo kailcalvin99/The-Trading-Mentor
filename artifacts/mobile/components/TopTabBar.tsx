@@ -17,6 +17,7 @@ const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selec
   dashboard:    { default: "home-outline",        selected: "home" },
   index:        { default: "checkbox-outline",    selected: "checkbox" },
   academy:      { default: "school-outline",      selected: "school" },
+  videos:       { default: "play-circle-outline", selected: "play-circle" },
   tracker:      { default: "shield-outline",      selected: "shield" },
   journal:      { default: "book-outline",        selected: "book" },
   community:    { default: "people-outline",      selected: "people" },
@@ -29,6 +30,7 @@ const TAB_LABELS: Record<string, string> = {
   dashboard:    "Dashboard",
   index:        "Planner",
   academy:      "Academy",
+  videos:       "Videos",
   tracker:      "Risk",
   journal:      "Journal",
   community:    "Social",
@@ -37,12 +39,13 @@ const TAB_LABELS: Record<string, string> = {
   admin:        "Admin",
 };
 
-type TabRoute = "dashboard" | "index" | "academy" | "tracker" | "journal" | "community" | "analytics" | "subscription" | "admin";
+type TabRoute = "dashboard" | "index" | "academy" | "videos" | "tracker" | "journal" | "community" | "analytics" | "subscription" | "admin";
 
 const TAB_HREFS: Record<TabRoute, Href> = {
   dashboard:    "/dashboard",
   index:        "/",
   academy:      "/academy",
+  videos:       "/videos",
   tracker:      "/tracker",
   journal:      "/journal",
   community:    "/community",
@@ -51,7 +54,7 @@ const TAB_HREFS: Record<TabRoute, Href> = {
   admin:        "/admin",
 };
 
-const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "tracker", "journal", "community", "analytics", "subscription"];
+const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "tracker", "journal", "community", "analytics", "subscription"];
 
 interface TopTabBarProps {
   pathname: string;

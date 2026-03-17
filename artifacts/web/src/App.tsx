@@ -33,6 +33,7 @@ import RiskDisclosure from "@/pages/RiskDisclosure";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import VideoTourPage from "@/pages/VideoTourPage";
+import VideoLibrary from "@/pages/VideoLibrary";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -150,6 +151,7 @@ function App() {
                   <Route path="prop-tracker" element={<PropTracker />} />
                   <Route path="journal" element={<SmartJournal />} />
                   <Route path="analytics" element={<Analytics />} />
+                  <Route path="videos" element={<VideoLibrary />} />
                   <Route path="community" element={<Community />} />
                   <Route path="leaderboard" element={<Leaderboard />} />
                   <Route path="webhooks" element={<TradingViewWebhooks />} />

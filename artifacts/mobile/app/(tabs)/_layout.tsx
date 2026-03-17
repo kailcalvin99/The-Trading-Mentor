@@ -48,6 +48,10 @@ export default function TabLayout() {
           options={{ title: "Academy" }}
         />
         <Tabs.Screen
+          name="videos"
+          options={{ title: "Videos" }}
+        />
+        <Tabs.Screen
           name="tracker"
           options={{ title: "Risk" }}
         />

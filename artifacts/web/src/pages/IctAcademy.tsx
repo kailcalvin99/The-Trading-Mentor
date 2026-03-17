@@ -44,6 +44,80 @@ import {
 import { dispatchAITrigger, incrementQuizFailCount, resetQuizFailCount } from "@/hooks/useAITrigger";
 import { ChartLightbox, chartImageToConceptKey, FVGDiagram, OTEDiagram, MSSDiagram, LiquiditySweepDiagram, KillZoneDiagram, SilverBulletDiagram, ConservativeEntryDiagram, ExitCriteriaDiagram } from "@/components/IctChartDiagrams";
 import { Maximize2 } from "lucide-react";
+import { ALL_VIDEOS, type Video as VideoItem } from "../data/video-data";
+import { VideoPlayerModal } from "./VideoLibrary";
+
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+function useAcademyWatchedVideos() {
+  const [watched, setWatched] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/videos/watched`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.watchedIds)) {
+          setWatched(new Set(data.watchedIds));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const markWatched = useCallback(async (videoId: string) => {
+    setWatched((prev) => new Set([...prev, videoId]));
+    try {
+      await fetch(`${API_BASE}/videos/watched`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId }),
+      });
+    } catch {}
+  }, []);
+
+  const unmarkWatched = useCallback(async (videoId: string) => {
+    setWatched((prev) => {
+      const next = new Set(prev);
+      next.delete(videoId);
+      return next;
+    });
+    try {
+      await fetch(`${API_BASE}/videos/watched/${videoId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+    } catch {}
+  }, []);
+
+  return { watched, loading, markWatched, unmarkWatched };
+}
+
+const LESSON_VIDEO_MAP: Record<string, string[]> = {
+  "ch1-3": ["v-ch1-2"],
+  "ch1-4": ["v-ch1-3"],
+  "ch2-2": ["v-ch2-2"],
+  "ch2-3": ["v-ch2-3"],
+  "ch2-4": ["v-ch2-1"],
+  "ch3-1": [],
+  "ch3-2": ["v-ch3-4"],
+  "ch3-3": ["v-ch3-1", "v-ch3-2", "v-ch3-3"],
+  "ch3-4": ["v-ch3-5"],
+  "ch3-5": ["v-ch3-6"],
+  "ch4-1": ["v-ch4-1"],
+  "ch4-2": ["v-ch4-2"],
+  "ch5-1": ["v-ch5-1"],
+  "ch5-2": ["v-ch5-2"],
+  "ch5-3": ["v-ch5-3"],
+  "ch5-4": ["v-ch5-4"],
+  "ch6-1": ["v-ch6-1"],
+  "ch6-2": ["v-ch6-2"],
+  "ch6-3": ["v-ch6-3"],
+  "ch7-1": ["v-ch7-1"],
+  "ch7-2": ["v-ch7-2"],
+  "ch7-4": ["v-ch7-4"],
+};
 
 type Tab = "learn" | "glossary" | "quiz" | "plan" | "tools";
 
@@ -736,6 +810,49 @@ function LearnView() {
   );
 }
 
+const ACADEMY_API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+function useAcademyWatchedVideos() {
+  const [watched, setWatched] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch(`${ACADEMY_API_BASE}/videos/watched`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.watchedIds)) setWatched(new Set(data.watchedIds));
+      })
+      .catch(() => {});
+  }, []);
+
+  const markWatched = useCallback(async (videoId: string) => {
+    setWatched((prev) => new Set([...prev, videoId]));
+    try {
+      await fetch(`${ACADEMY_API_BASE}/videos/watched`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId }),
+      });
+    } catch {}
+  }, []);
+
+  const unmarkWatched = useCallback(async (videoId: string) => {
+    setWatched((prev) => {
+      const next = new Set(prev);
+      next.delete(videoId);
+      return next;
+    });
+    try {
+      await fetch(`${ACADEMY_API_BASE}/videos/watched/${videoId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+    } catch {}
+  }, []);
+
+  return { watched, markWatched, unmarkWatched };
+}
+
 function ChapterAccordion({
   chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, isFree, chapterStartIdx,
 }: {
@@ -746,6 +863,8 @@ function ChapterAccordion({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const [lightboxKey, setLightboxKey] = useState<string | null>(null);
+  const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
+  const { watched: videoWatched, markWatched, unmarkWatched } = useAcademyWatchedVideos();
 
   return (
     <div className="rounded-xl border overflow-hidden bg-card">
@@ -890,6 +1009,32 @@ function ChapterAccordion({
                       </div>
                     )}
 
+                    {(() => {
+                      const videoIds = LESSON_VIDEO_MAP[lesson.id] ?? [];
+                      const videos = videoIds.map((vid) => ALL_VIDEOS.find((v) => v.id === vid)).filter(Boolean) as VideoItem[];
+                      if (videos.length === 0) return null;
+                      return (
+                        <div className="mt-4">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <Play className="h-3.5 w-3.5 text-red-500" />
+                            Related Videos
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {videos.map((v) => (
+                              <button
+                                key={v.id}
+                                onClick={() => setActiveVideo(v)}
+                                className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+                              >
+                                <Play className="h-3 w-3 fill-red-500" />
+                                {v.title}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     <div
                       className="mt-4 rounded-lg p-4 border-l-[3px]"
                       style={{ borderLeftColor: chapter.color, backgroundColor: chapter.color + "10" }}
@@ -915,6 +1060,16 @@ function ChapterAccordion({
             );
           })}
         </div>
+      )}
+
+      {activeVideo && (
+        <VideoPlayerModal
+          video={activeVideo}
+          isWatched={videoWatched.has(activeVideo.id)}
+          onClose={() => setActiveVideo(null)}
+          onWatched={markWatched}
+          onUnwatched={unmarkWatched}
+        />
       )}
     </div>
   );
