@@ -17,7 +17,9 @@ const MC_PROFILES = {
 type MCProfile = keyof typeof MC_PROFILES;
 
 const MC_START = 10_000;
-const MC_RUIN = MC_START * 0.1; // 10% of starting balance = blown account
+// With proportional risk, balance asymptotically approaches 0 and never reaches it exactly.
+// $1 is used as a practical ruin threshold — below this the account is unrecoverable.
+const MC_RUIN = 1;
 
 function runMonteCarlo(profile: MCProfile): number[][] {
   const { winRate, risk, rewardRatio } = MC_PROFILES[profile];
@@ -34,7 +36,10 @@ function runMonteCarlo(profile: MCProfile): number[][] {
       } else {
         balance -= riskAmt;
       }
-      if (balance <= MC_RUIN) { history.push(0); break; }
+      if (balance <= MC_RUIN) {
+        history.push(balance); // record actual sub-ruin balance, no artificial sentinel
+        break;
+      }
       history.push(balance);
     }
     paths.push(history);
@@ -98,8 +103,8 @@ function MonteCarloChart({ paths, width = 780, height = 320 }: { paths: number[]
       ))}
       {paths.map((history, i) => {
         const final = history[history.length - 1];
-        const blown = final <= 0;
-        const won = final > 10_000;
+        const blown = final <= MC_RUIN;
+        const won = final > MC_START;
         const stroke = blown ? "#ef4444" : won ? "#22c55e" : "#6b7280";
         return (
           <polyline
@@ -227,7 +232,7 @@ export default function Admin() {
   const mcStats = useMemo(() => {
     const finals = mcPaths.map((p) => p[p.length - 1]);
     const total = finals.length;
-    const blown = Math.round((finals.filter((f) => f <= 0).length / total) * 100);
+    const blown = Math.round((finals.filter((f) => f <= MC_RUIN).length / total) * 100);
     const profitable = Math.round((finals.filter((f) => f > MC_START).length / total) * 100);
     const sorted = [...finals].sort((a, b) => a - b);
     const median = sorted[Math.floor(sorted.length / 2)];
@@ -486,10 +491,10 @@ export default function Admin() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {[
                 { label: "Profitable", value: `${mcStats.profitable}%`, sub: "of paths above $10k", color: "text-green-500" },
-                { label: "Blown", value: `${mcStats.blown}%`, sub: "of paths hit $0", color: "text-red-500" },
+                { label: "Blown", value: `${mcStats.blown}%`, sub: "of paths ruined", color: "text-red-500" },
                 { label: "Median Outcome", value: fmt(mcStats.median), sub: "middle path final", color: "text-foreground" },
                 { label: "Best Path", value: fmt(mcStats.best), sub: "top outcome", color: "text-primary" },
-                { label: "Worst Path", value: fmt(mcStats.worst <= 0 ? 0 : mcStats.worst), sub: "bottom outcome", color: "text-muted-foreground" },
+                { label: "Worst Path", value: fmt(mcStats.worst), sub: "bottom outcome", color: "text-muted-foreground" },
               ].map(({ label, value, sub, color }) => (
                 <div key={label} className="bg-card border border-border rounded-xl p-4">
                   <p className="text-xs text-muted-foreground">{label}</p>
