@@ -132,6 +132,7 @@ function App() {
                 </Route>
 
                 <Route path="reset" element={<ResetApp />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
             <Toaster />

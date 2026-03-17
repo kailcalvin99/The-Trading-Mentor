@@ -15,10 +15,10 @@ export default function NotFound() {
             The page you're looking for doesn't exist.
           </p>
           <Link
-            to="/"
+            to="/dashboard"
             className="mt-4 inline-block text-sm text-primary hover:underline"
           >
-            Go to Daily Planner
+            Go to Dashboard
           </Link>
         </CardContent>
       </Card>

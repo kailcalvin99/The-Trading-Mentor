@@ -20,12 +20,20 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
   : [];
 
+const isProduction = !!(process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === "production");
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     const replitDomain = process.env.REPLIT_DEV_DOMAIN || "";
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    if (isProduction) {
+      callback(new Error("Not allowed by CORS"));
+      return;
+    }
     if (
-      allowedOrigins.includes(origin) ||
       (replitDomain && origin.includes(replitDomain)) ||
       origin.includes(".replit.dev") ||
       origin.includes(".repl.co") ||
@@ -47,10 +55,10 @@ const generalApiLimiter = rateLimit({
   skip: (req) => req.path.startsWith("/auth"),
 });
 
-const authLimiter = rateLimit({
+const webhookLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
-  message: { error: "Too many login attempts. Please wait a minute and try again." },
+  max: 60,
+  message: { error: "Webhook rate limit reached. Please slow down." },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -96,8 +104,8 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 app.use("/api", generalApiLimiter);
-app.use("/api/auth", authLimiter);
 app.use("/api/gemini", aiLimiter);
+app.use("/api/webhook", webhookLimiter);
 app.use("/api", router);
 
 seedDefaults().catch((err) => console.error("Seed error:", err));
