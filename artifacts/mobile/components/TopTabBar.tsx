@@ -16,7 +16,6 @@ const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selec
   community:    { default: "people-outline",      selected: "people" },
   analytics:    { default: "bar-chart-outline",   selected: "bar-chart" },
   subscription: { default: "card-outline",        selected: "card" },
-  settings:     { default: "settings-outline",    selected: "settings" },
   admin:        { default: "shield-half-outline", selected: "shield-half" },
 };
 
@@ -28,11 +27,10 @@ const TAB_LABELS: Record<string, string> = {
   community:    "Social",
   analytics:    "Analytics",
   subscription: "Subscription",
-  settings:     "Settings",
   admin:        "Admin",
 };
 
-type TabRoute = "index" | "academy" | "tracker" | "journal" | "community" | "analytics" | "subscription" | "settings" | "admin";
+type TabRoute = "index" | "academy" | "tracker" | "journal" | "community" | "analytics" | "subscription" | "admin";
 
 const TAB_HREFS: Record<TabRoute, Href> = {
   index:        "/",
@@ -42,11 +40,10 @@ const TAB_HREFS: Record<TabRoute, Href> = {
   community:    "/community",
   analytics:    "/analytics",
   subscription: "/subscription",
-  settings:     "/settings",
   admin:        "/admin",
 };
 
-const BASE_TAB_ROUTES: TabRoute[] = ["index", "academy", "tracker", "journal", "community", "analytics", "subscription", "settings"];
+const BASE_TAB_ROUTES: TabRoute[] = ["index", "academy", "tracker", "journal", "community", "analytics", "subscription"];
 
 interface TopTabBarProps {
   pathname: string;
@@ -62,44 +59,66 @@ export default function TopTabBar({ pathname, onNavigate, isAdmin = false }: Top
     : BASE_TAB_ROUTES;
 
   const normalizedPath = pathname.replace(/^\/\(tabs\)\/?/, "/");
-  const activeRoute: TabRoute = TAB_ROUTES.find(
+  const isSettingsActive = normalizedPath === "/settings";
+  const activeRoute: TabRoute | undefined = TAB_ROUTES.find(
     (route) => normalizedPath === TAB_HREFS[route]
-  ) ?? "index";
+  );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.bar}
-        bounces={false}
-      >
-        {TAB_ROUTES.map((route) => {
-          const isFocused = activeRoute === route;
-          const icons = TAB_ICONS[route];
-          const label = TAB_LABELS[route];
-          const color = isFocused ? C.accent : C.tabIconDefault;
+      <View style={styles.row}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.bar}
+          bounces={false}
+          style={{ flex: 1 }}
+        >
+          {TAB_ROUTES.map((route) => {
+            const isFocused = activeRoute === route;
+            const icons = TAB_ICONS[route];
+            const label = TAB_LABELS[route];
+            const color = isFocused ? C.accent : C.tabIconDefault;
 
-          return (
-            <Pressable
-              key={route}
-              onPress={() => onNavigate(TAB_HREFS[route])}
-              style={styles.tab}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isFocused }}
-              accessibilityLabel={label}
-            >
-              <Ionicons
-                name={isFocused ? icons.selected : icons.default}
-                size={20}
-                color={color}
-              />
-              <Text style={[styles.label, { color }]}>{label}</Text>
-              {isFocused && <View style={[styles.indicator, { backgroundColor: C.accent }]} />}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+            return (
+              <Pressable
+                key={route}
+                onPress={() => onNavigate(TAB_HREFS[route])}
+                style={styles.tab}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isFocused }}
+                accessibilityLabel={label}
+              >
+                <Ionicons
+                  name={isFocused ? icons.selected : icons.default}
+                  size={20}
+                  color={color}
+                />
+                <Text style={[styles.label, { color }]}>{label}</Text>
+                {isFocused && <View style={[styles.indicator, { backgroundColor: C.accent }]} />}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <Pressable
+          onPress={() => onNavigate("/settings" as Href)}
+          style={styles.pinnedTab}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: isSettingsActive }}
+          accessibilityLabel="Settings"
+        >
+          <Ionicons
+            name={isSettingsActive ? "settings" : "settings-outline"}
+            size={20}
+            color={isSettingsActive ? C.accent : C.tabIconDefault}
+          />
+          <Text style={[styles.label, { color: isSettingsActive ? C.accent : C.tabIconDefault }]}>
+            Settings
+          </Text>
+          {isSettingsActive && <View style={[styles.indicator, { backgroundColor: C.accent }]} />}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -109,6 +128,10 @@ const styles = StyleSheet.create({
     backgroundColor: C.backgroundSecondary,
     borderBottomWidth: 1,
     borderBottomColor: C.cardBorder,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "stretch",
   },
   bar: {
     flexDirection: "row",
@@ -134,5 +157,15 @@ const styles = StyleSheet.create({
     right: 8,
     height: 2,
     borderRadius: 1,
+  },
+  pinnedTab: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    gap: 2,
+    position: "relative",
+    borderLeftWidth: 1,
+    borderLeftColor: C.cardBorder,
+    height: 52,
   },
 });
