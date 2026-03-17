@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { apiGet, apiPatch, apiDelete } from "@/lib/api";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
@@ -34,14 +34,8 @@ const ENTRY_STYLE_OPTIONS = [
   { value: "silver-bullet", label: "Silver Bullet" },
 ];
 
-interface SettingsData {
-  profile: {
-    name: string;
-    email: string;
-    role: string;
-    tierLevel: number;
-    isFounder: boolean;
-  };
+interface UserSettingsData {
+  profile: { name: string; email: string };
   tradingDefaults: {
     defaultSession: string;
     preferredEntryStyle: string;
@@ -52,6 +46,21 @@ interface SettingsData {
     maxDailyLossPct: number;
     maxTotalDrawdownPct: number;
   };
+}
+
+interface AuthMeData {
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    role: string;
+    isFounder: boolean;
+    founderNumber: number | null;
+  };
+  subscription: {
+    tierLevel: number;
+    tierName: string;
+  } | null;
 }
 
 function CycleSelect({
@@ -187,23 +196,26 @@ export default function SettingsScreen() {
 
   async function load() {
     try {
-      const data = await apiGet<SettingsData>("user/settings");
+      const [settingsData, meData] = await Promise.all([
+        apiGet<UserSettingsData>("user/settings"),
+        apiGet<AuthMeData>("auth/me"),
+      ]);
       setProfile({
-        name: data.profile?.name || "",
-        email: data.profile?.email || "",
-        role: data.profile?.role || "user",
-        tierLevel: data.profile?.tierLevel ?? 0,
-        isFounder: data.profile?.isFounder ?? false,
+        name: settingsData.profile?.name || "",
+        email: settingsData.profile?.email || "",
+        role: meData.user?.role || "user",
+        tierLevel: meData.subscription?.tierLevel ?? 0,
+        isFounder: meData.user?.isFounder ?? false,
       });
       setTrading({
-        defaultSession: data.tradingDefaults?.defaultSession || "",
-        preferredEntryStyle: data.tradingDefaults?.preferredEntryStyle || "",
-        defaultPairs: data.tradingDefaults?.defaultPairs || "",
+        defaultSession: settingsData.tradingDefaults?.defaultSession || "",
+        preferredEntryStyle: settingsData.tradingDefaults?.preferredEntryStyle || "",
+        defaultPairs: settingsData.tradingDefaults?.defaultPairs || "",
       });
       setRisk({
-        startingBalance: String(data.riskRules?.startingBalance ?? 50000),
-        maxDailyLossPct: String(data.riskRules?.maxDailyLossPct ?? 2),
-        maxTotalDrawdownPct: String(data.riskRules?.maxTotalDrawdownPct ?? 10),
+        startingBalance: String(settingsData.riskRules?.startingBalance ?? 50000),
+        maxDailyLossPct: String(settingsData.riskRules?.maxDailyLossPct ?? 2),
+        maxTotalDrawdownPct: String(settingsData.riskRules?.maxTotalDrawdownPct ?? 10),
       });
     } catch {
       Alert.alert("Error", "Failed to load settings");
@@ -278,7 +290,7 @@ export default function SettingsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await apiDelete("auth/session");
+            await apiPost("auth/logout", {});
           } catch {}
           router.replace("/");
         },
