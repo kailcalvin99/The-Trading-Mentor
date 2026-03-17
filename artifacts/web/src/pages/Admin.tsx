@@ -7,6 +7,7 @@ import {
   AlertTriangle, RotateCcw, ChevronDown, ChevronRight,
   Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target,
   Sparkles, Send, Loader2, BarChart3, FileText, Filter, TrendingUp, RefreshCw, Video,
+  KeyRound, Copy,
 } from "lucide-react";
 import { TOUR_STEPS } from "@/components/tourConfig";
 
@@ -156,6 +157,17 @@ interface AdminTier {
   isActive: boolean;
 }
 
+interface PasswordReset {
+  id: number;
+  token: string;
+  expiresAt: string;
+  used: boolean;
+  createdAt: string;
+  userId: number;
+  userEmail: string;
+  userName: string;
+}
+
 function SettingsSection({ title, icon: Icon, children, defaultOpen = false }: {
   title: string;
   icon: React.ElementType;
@@ -257,6 +269,8 @@ export default function Admin() {
   const [showInactiveOnly, setShowInactiveOnly] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [passwordResets, setPasswordResets] = useState<PasswordReset[]>([]);
+  const [copiedResetId, setCopiedResetId] = useState<number | null>(null);
 
   const fetchOpts: RequestInit = { credentials: "include" };
   const headers = { "Content-Type": "application/json" };
@@ -265,14 +279,16 @@ export default function Admin() {
 
   async function loadData() {
     try {
-      const [usersRes, tiersRes, settingsRes] = await Promise.all([
+      const [usersRes, tiersRes, settingsRes, resetsRes] = await Promise.all([
         fetch(`${API_BASE}/admin/users`, { ...fetchOpts, headers }),
         fetch(`${API_BASE}/admin/tiers`, { ...fetchOpts, headers }),
         fetch(`${API_BASE}/admin/settings`, { ...fetchOpts, headers }),
+        fetch(`${API_BASE}/admin/password-resets`, { ...fetchOpts, headers }),
       ]);
       if (usersRes.ok) setUsers((await usersRes.json()).users);
       if (tiersRes.ok) setTiers((await tiersRes.json()).tiers);
       if (settingsRes.ok) setSettings((await settingsRes.json()).settings);
+      if (resetsRes.ok) setPasswordResets((await resetsRes.json()).resets);
     } catch {}
   }
 
@@ -700,6 +716,51 @@ export default function Admin() {
               </table>
             </div>
           </div>
+
+          {passwordResets.length > 0 && (
+            <div className="bg-card border border-amber-500/30 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 bg-amber-500/5 border-b border-amber-500/20 flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-amber-500" />
+                <span className="text-sm font-bold text-amber-500">Pending Password Resets ({passwordResets.length})</span>
+              </div>
+              <div className="divide-y divide-border">
+                {passwordResets.map((r) => {
+                  const resetUrl = `${window.location.origin}${import.meta.env.BASE_URL}reset-password?token=${r.token}`;
+                  const expiresAt = new Date(r.expiresAt);
+                  const minutesLeft = Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 60000));
+                  return (
+                    <div key={r.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{r.userName}</p>
+                        <p className="text-xs text-muted-foreground">{r.userEmail}</p>
+                        <p className="text-xs text-amber-500 mt-0.5">Expires in {minutesLeft} minute{minutesLeft !== 1 ? "s" : ""}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(resetUrl);
+                          setCopiedResetId(r.id);
+                          setTimeout(() => setCopiedResetId(null), 2000);
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 transition-colors shrink-0"
+                      >
+                        {copiedResetId === r.id ? (
+                          <>
+                            <Check className="h-3.5 w-3.5" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" />
+                            Copy Reset Link
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {deleteConfirmId !== null && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

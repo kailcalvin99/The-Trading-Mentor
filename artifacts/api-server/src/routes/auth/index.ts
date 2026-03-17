@@ -1,14 +1,23 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import { db, usersTable, userSubscriptionsTable, subscriptionTiersTable, adminSettingsTable } from "@workspace/db";
-import { eq, count } from "drizzle-orm";
+import { db, usersTable, userSubscriptionsTable, subscriptionTiersTable, adminSettingsTable, passwordResetTokensTable } from "@workspace/db";
+import { eq, count, and, gt } from "drizzle-orm";
 import { signToken, authRequired, setAuthCookie, clearAuthCookie } from "../../middleware/auth";
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { error: "Too many login attempts. Please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: "Too many reset requests. Please try again in 1 hour." },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -207,6 +216,91 @@ router.get("/me", authRequired, async (req, res) => {
 router.post("/logout", (_req, res) => {
   clearAuthCookie(res);
   res.json({ success: true });
+});
+
+router.post("/forgot-password", forgotPasswordLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      res.status(400).json({ error: "Email is required" });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      res.json({ success: true });
+      return;
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, normalizedEmail));
+
+    if (!user) {
+      res.json({ success: true });
+      return;
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    await db.insert(passwordResetTokensTable).values({
+      userId: user.id,
+      token,
+      expiresAt,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ error: "Failed to process request" });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      res.status(400).json({ error: "Token and password are required" });
+      return;
+    }
+
+    if (typeof password !== "string" || password.length < 6) {
+      res.status(400).json({ error: "Password must be at least 6 characters" });
+      return;
+    }
+
+    const [resetRecord] = await db
+      .select()
+      .from(passwordResetTokensTable)
+      .where(
+        and(
+          eq(passwordResetTokensTable.token, token),
+          eq(passwordResetTokensTable.used, false),
+          gt(passwordResetTokensTable.expiresAt, new Date())
+        )
+      );
+
+    if (!resetRecord) {
+      res.status(400).json({ error: "Invalid or expired reset token" });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    await db.update(usersTable)
+      .set({ passwordHash })
+      .where(eq(usersTable.id, resetRecord.userId));
+
+    await db.update(passwordResetTokensTable)
+      .set({ used: true })
+      .where(eq(passwordResetTokensTable.userId, resetRecord.userId));
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ error: "Failed to reset password" });
+  }
 });
 
 export default router;

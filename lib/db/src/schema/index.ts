@@ -6,3 +6,4 @@ export * from "./users";
 export * from "./subscriptions";
 export * from "./admin_settings";
 export * from "./community";
+export * from "./password_reset_tokens";

@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, tradesTable, conversations, messages, propAccountTable, communityPostsTable, communityRepliesTable, postLikesTable } from "@workspace/db";
-import { eq, sql, inArray } from "drizzle-orm";
+import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, tradesTable, conversations, messages, propAccountTable, communityPostsTable, communityRepliesTable, postLikesTable, passwordResetTokensTable } from "@workspace/db";
+import { eq, sql, inArray, and, gt } from "drizzle-orm";
 import { authRequired, adminRequired, clearAuthCookie } from "../../middleware/auth";
 import { seedDefaults } from "../../seed";
 import { getStripeClient } from "../../stripe/stripeClient";
@@ -248,6 +248,36 @@ router.post("/reset", async (req, res) => {
   } catch (err) {
     console.error("Hard reset error:", err);
     res.status(500).json({ error: "Failed to perform reset" });
+  }
+});
+
+router.get("/password-resets", async (_req, res) => {
+  try {
+    const resets = await db
+      .select({
+        id: passwordResetTokensTable.id,
+        token: passwordResetTokensTable.token,
+        expiresAt: passwordResetTokensTable.expiresAt,
+        used: passwordResetTokensTable.used,
+        createdAt: passwordResetTokensTable.createdAt,
+        userId: usersTable.id,
+        userEmail: usersTable.email,
+        userName: usersTable.name,
+      })
+      .from(passwordResetTokensTable)
+      .innerJoin(usersTable, eq(passwordResetTokensTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(passwordResetTokensTable.used, false),
+          gt(passwordResetTokensTable.expiresAt, new Date())
+        )
+      )
+      .orderBy(passwordResetTokensTable.createdAt);
+
+    res.json({ resets });
+  } catch (err) {
+    console.error("Get password resets error:", err);
+    res.status(500).json({ error: "Failed to get password resets" });
   }
 });
 

@@ -227,7 +227,13 @@ export default function Login() {
                 </button>
               </form>
 
-              <p className="text-center text-sm text-muted-foreground mt-6">
+              <div className="text-center mt-4">
+                <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
+
+              <p className="text-center text-sm text-muted-foreground mt-4">
                 Don't have an account?{" "}
                 <Link to="/signup" className="text-primary font-medium hover:underline">
                   Create account

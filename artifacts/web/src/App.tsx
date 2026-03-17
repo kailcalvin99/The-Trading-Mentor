@@ -25,6 +25,8 @@ import RefundPolicy from "@/pages/RefundPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import RiskDisclosure from "@/pages/RiskDisclosure";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -116,6 +118,8 @@ function App() {
                 <Route path="terms" element={<OpenRoute><TermsOfService /></OpenRoute>} />
                 <Route path="privacy" element={<OpenRoute><PrivacyPolicy /></OpenRoute>} />
                 <Route path="risk-disclosure" element={<OpenRoute><RiskDisclosure /></OpenRoute>} />
+                <Route path="forgot-password" element={<OpenRoute><ForgotPassword /></OpenRoute>} />
+                <Route path="reset-password" element={<OpenRoute><ResetPassword /></OpenRoute>} />
 
                 <Route element={<ProtectedRoute><TourGuideProvider><Layout /></TourGuideProvider></ProtectedRoute>}>
                   <Route index element={<IndexRedirect />} />
