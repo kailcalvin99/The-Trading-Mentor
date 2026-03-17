@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -18,8 +18,10 @@ import {
   useCreatePropAccount,
   useAddDailyLoss,
   useResetDailyLoss,
+  useListTrades,
 } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
+import type { Trade } from "@workspace/api-client-react/src/generated/api.schemas";
 
 const C = Colors.dark;
 
@@ -82,6 +84,125 @@ function getGaugeColor(pct: number) {
   return C.accent;
 }
 
+interface MobileInsight {
+  icon: string;
+  headline: string;
+  stat: string;
+  sentiment: "positive" | "negative" | "neutral";
+}
+
+function parseHourMobile(entryTime: string): number | null {
+  const match = entryTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!match) return null;
+  let hour = parseInt(match[1]);
+  const period = match[3]?.toUpperCase();
+  if (period === "PM" && hour !== 12) hour += 12;
+  if (period === "AM" && hour === 12) hour = 0;
+  return hour;
+}
+
+function computeMobileInsights(trades: Trade[]): MobileInsight[] {
+  if (trades.length < 10) return [];
+  const insights: MobileInsight[] = [];
+  const wins = trades.filter((t) => t.outcome === "win");
+  const overallWinRate = (wins.length / trades.length) * 100;
+
+  const highStress = trades.filter((t) => t.stressLevel != null && t.stressLevel > 6);
+  const lowStress = trades.filter((t) => t.stressLevel != null && t.stressLevel <= 6);
+  if (highStress.length >= 3 && lowStress.length >= 3) {
+    const highWR = (highStress.filter((t) => t.outcome === "win").length / highStress.length) * 100;
+    const lowWR = (lowStress.filter((t) => t.outcome === "win").length / lowStress.length) * 100;
+    if (Math.abs(lowWR - highWR) >= 10) {
+      insights.push({
+        icon: lowWR > highWR ? "flame-outline" : "flash-outline",
+        headline: lowWR > highWR ? "High Stress = Low Win Rate" : "You Thrive Under Pressure",
+        stat: lowWR > highWR
+          ? `${Math.round(lowWR)}% calm vs ${Math.round(highWR)}% stressed`
+          : `${Math.round(highWR)}% stressed vs ${Math.round(lowWR)}% calm`,
+        sentiment: lowWR > highWR ? "negative" : "positive",
+      });
+    }
+  }
+
+  for (const tag of ["FOMO", "Chased", "Greedy", "Disciplined"]) {
+    const tagged = trades.filter((t) => t.behaviorTag === tag);
+    if (tagged.length >= 3) {
+      const tagWR = (tagged.filter((t) => t.outcome === "win").length / tagged.length) * 100;
+      const tagLosses = tagged.filter((t) => t.outcome === "loss").length;
+      if (tag !== "Disciplined" && tagWR < 30) {
+        insights.push({ icon: "alert-circle-outline", headline: `${tag} Trades Cost You`, stat: `${Math.round(tagWR)}% WR on ${tagged.length} trades — ${tagLosses} losses`, sentiment: "negative" });
+        break;
+      } else if (tag === "Disciplined" && tagWR > overallWinRate + 10) {
+        insights.push({ icon: "checkmark-circle-outline", headline: "Discipline Pays Off", stat: `${Math.round(tagWR)}% disciplined vs ${Math.round(overallWinRate)}% overall`, sentiment: "positive" });
+        break;
+      }
+    }
+  }
+
+  const pairMap: Record<string, { wins: number; total: number }> = {};
+  trades.forEach((t) => { const p = t.pair; if (!pairMap[p]) pairMap[p] = { wins: 0, total: 0 }; pairMap[p].total++; if (t.outcome === "win") pairMap[p].wins++; });
+  const pairs = Object.entries(pairMap).filter(([, d]) => d.total >= 3);
+  if (pairs.length >= 2) {
+    pairs.sort((a, b) => (b[1].wins / b[1].total) - (a[1].wins / a[1].total));
+    const best = pairs[0]; const worst = pairs[pairs.length - 1];
+    const bestWR = Math.round((best[1].wins / best[1].total) * 100);
+    const worstWR = Math.round((worst[1].wins / worst[1].total) * 100);
+    if (bestWR - worstWR >= 15) {
+      insights.push({ icon: "trophy-outline", headline: `${best[0]} Is Your Best`, stat: `${bestWR}% vs ${worstWR}% on ${worst[0]}`, sentiment: "positive" });
+    }
+  }
+
+  const followed = trades.filter((t) => t.followedTimeRule === true);
+  const notFollowed = trades.filter((t) => t.followedTimeRule === false);
+  if (followed.length >= 3 && notFollowed.length >= 3) {
+    const fWR = (followed.filter((t) => t.outcome === "win").length / followed.length) * 100;
+    const nWR = (notFollowed.filter((t) => t.outcome === "win").length / notFollowed.length) * 100;
+    if (fWR - nWR >= 10) {
+      insights.push({ icon: "time-outline", headline: "Time Rule Works", stat: `${Math.round(fWR)}% in zone vs ${Math.round(nWR)}% outside`, sentiment: "positive" });
+    } else if (nWR - fWR >= 10) {
+      insights.push({ icon: "time-outline", headline: "Time Rule Isn't Helping", stat: `${Math.round(nWR)}% outside zone vs ${Math.round(fWR)}% inside — rethink timing`, sentiment: "negative" });
+    }
+  }
+
+  const withFVG = trades.filter((t) => t.hasFvgConfirmation === true);
+  const noFVG = trades.filter((t) => t.hasFvgConfirmation === false);
+  if (withFVG.length >= 3 && noFVG.length >= 3) {
+    const fvgWR = (withFVG.filter((t) => t.outcome === "win").length / withFVG.length) * 100;
+    const noWR = (noFVG.filter((t) => t.outcome === "win").length / noFVG.length) * 100;
+    if (fvgWR - noWR >= 10) {
+      insights.push({ icon: "shield-checkmark-outline", headline: "FVG Boosts Wins", stat: `${Math.round(fvgWR)}% with vs ${Math.round(noWR)}% without`, sentiment: "positive" });
+    }
+  }
+
+  const sorted = [...trades].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  let maxStreak = 0; let cur = 0;
+  for (const t of sorted) { if (t.outcome === "loss") { cur++; maxStreak = Math.max(maxStreak, cur); } else { cur = 0; } }
+  if (maxStreak >= 3) {
+    insights.push({ icon: "warning-outline", headline: `${maxStreak}-Trade Losing Streak`, stat: `Consider stepping away after 2 consecutive losses`, sentiment: "negative" });
+  }
+
+  const sessionMap: Record<string, { wins: number; total: number }> = {};
+  trades.forEach((t) => {
+    const h = parseHourMobile(t.entryTime);
+    if (h === null) return;
+    const session = h >= 9 && h <= 11 ? "NY AM" : h >= 13 && h <= 15 ? "NY PM" : "Other";
+    if (!sessionMap[session]) sessionMap[session] = { wins: 0, total: 0 };
+    sessionMap[session].total++;
+    if (t.outcome === "win") sessionMap[session].wins++;
+  });
+  const sessions = Object.entries(sessionMap).filter(([, d]) => d.total >= 3);
+  if (sessions.length >= 2) {
+    sessions.sort((a, b) => (b[1].wins / b[1].total) - (a[1].wins / a[1].total));
+    const bestS = sessions[0];
+    const bestSWR = Math.round((bestS[1].wins / bestS[1].total) * 100);
+    if (bestSWR > overallWinRate + 5) {
+      insights.push({ icon: "flash-outline", headline: `${bestS[0]} Is Your Best Session`, stat: `${bestSWR}% win rate (${bestS[1].total} trades)`, sentiment: "positive" });
+    }
+  }
+
+  return insights.slice(0, 6);
+}
+
 export default function RiskShieldScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
@@ -94,6 +215,13 @@ export default function RiskShieldScreen() {
   const [setupBalance, setSetupBalance] = useState("");
   const [setupDailyPct, setSetupDailyPct] = useState("");
   const [setupTotalPct, setSetupTotalPct] = useState("");
+
+  const { data: rawTrades } = useListTrades();
+  const completedTrades = useMemo(() => {
+    if (!rawTrades) return [];
+    return (rawTrades as Trade[]).filter((t) => !t.isDraft);
+  }, [rawTrades]);
+  const mobileInsights = useMemo(() => computeMobileInsights(completedTrades), [completedTrades]);
 
   const { data: account, refetch } = useGetPropAccount();
   const { mutateAsync: createAccount } = useCreatePropAccount();
@@ -427,6 +555,44 @@ export default function RiskShieldScreen() {
             {rightColumn}
           </>
         )}
+
+        {completedTrades.length >= 10 && mobileInsights.length > 0 ? (
+          <View style={insightStyles.section}>
+            <View style={insightStyles.headerRow}>
+              <Ionicons name="bulb-outline" size={18} color={C.accent} />
+              <Text style={insightStyles.sectionTitle}>Your Insights</Text>
+            </View>
+            <Text style={insightStyles.sectionSub}>Patterns from your recent trading</Text>
+            {mobileInsights.map((insight, i) => (
+              <View
+                key={i}
+                style={[
+                  insightStyles.card,
+                  insight.sentiment === "positive" && insightStyles.cardPositive,
+                  insight.sentiment === "negative" && insightStyles.cardNegative,
+                ]}
+              >
+                <View style={insightStyles.cardHeader}>
+                  <Ionicons
+                    name={insight.icon as any}
+                    size={16}
+                    color={insight.sentiment === "positive" ? "#22C55E" : insight.sentiment === "negative" ? "#EF4444" : C.accent}
+                  />
+                  <Text style={insightStyles.headline}>{insight.headline}</Text>
+                </View>
+                <Text style={insightStyles.stat}>{insight.stat}</Text>
+              </View>
+            ))}
+          </View>
+        ) : completedTrades.length > 0 && completedTrades.length < 10 ? (
+          <View style={insightStyles.placeholder}>
+            <Ionicons name="bulb-outline" size={20} color={C.textSecondary} />
+            <View style={{ flex: 1 }}>
+              <Text style={insightStyles.placeholderTitle}>Log more trades to unlock insights</Text>
+              <Text style={insightStyles.placeholderSub}>{10 - completedTrades.length} more needed</Text>
+            </View>
+          </View>
+        ) : null}
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
@@ -980,5 +1146,81 @@ const monkStyles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_700Bold",
     color: "#0A0A0F",
+  },
+});
+
+const insightStyles = StyleSheet.create({
+  section: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 2,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: C.text,
+  },
+  sectionSub: {
+    fontSize: 13,
+    color: C.textSecondary,
+    marginBottom: 12,
+  },
+  card: {
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    marginBottom: 10,
+  },
+  cardPositive: {
+    borderColor: "rgba(34,197,94,0.3)",
+    backgroundColor: "rgba(34,197,94,0.05)",
+  },
+  cardNegative: {
+    borderColor: "rgba(239,68,68,0.3)",
+    backgroundColor: "rgba(239,68,68,0.05)",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+  headline: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: C.text,
+  },
+  stat: {
+    fontSize: 12,
+    color: C.textSecondary,
+    lineHeight: 18,
+  },
+  placeholder: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    marginTop: 8,
+  },
+  placeholderTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: C.text,
+  },
+  placeholderSub: {
+    fontSize: 12,
+    color: C.textSecondary,
+    marginTop: 2,
   },
 });

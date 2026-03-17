@@ -37,6 +37,12 @@ import {
   Gauge,
   Calendar,
   Clock,
+  Lightbulb,
+  AlertTriangle,
+  Zap,
+  Timer,
+  Shield,
+  Flame,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
@@ -113,6 +119,182 @@ const behaviorChartConfig: ChartConfig = {
 
 const drawdownChartConfig: ChartConfig = {
   drawdown: { label: "Drawdown %", color: "hsl(0, 84%, 60%)" },
+};
+
+interface Insight {
+  icon: "stress" | "behavior" | "pair" | "time" | "fvg" | "streak" | "session";
+  headline: string;
+  stat: string;
+  sentiment: "positive" | "negative" | "neutral";
+}
+
+function computeInsights(trades: ExtendedTrade[]): Insight[] {
+  if (trades.length < 10) return [];
+  const insights: Insight[] = [];
+  const wins = trades.filter((t) => t.outcome === "win");
+  const losses = trades.filter((t) => t.outcome === "loss");
+  const overallWinRate = trades.length > 0 ? (wins.length / trades.length) * 100 : 0;
+
+  const highStress = trades.filter((t) => t.stressLevel != null && t.stressLevel > 6);
+  const lowStress = trades.filter((t) => t.stressLevel != null && t.stressLevel <= 6);
+  if (highStress.length >= 3 && lowStress.length >= 3) {
+    const highWR = (highStress.filter((t) => t.outcome === "win").length / highStress.length) * 100;
+    const lowWR = (lowStress.filter((t) => t.outcome === "win").length / lowStress.length) * 100;
+    const diff = Math.abs(lowWR - highWR);
+    if (diff >= 10) {
+      insights.push({
+        icon: "stress",
+        headline: lowWR > highWR ? "High Stress = Low Win Rate" : "You Thrive Under Pressure",
+        stat: lowWR > highWR
+          ? `${Math.round(lowWR)}% win rate when calm vs ${Math.round(highWR)}% when stressed`
+          : `${Math.round(highWR)}% win rate under pressure vs ${Math.round(lowWR)}% when calm`,
+        sentiment: lowWR > highWR ? "negative" : "positive",
+      });
+    }
+  }
+
+  const behaviorTags = ["FOMO", "Chased", "Greedy", "Disciplined"];
+  for (const tag of behaviorTags) {
+    const tagged = trades.filter((t) => t.behaviorTag === tag);
+    if (tagged.length >= 3) {
+      const tagWR = (tagged.filter((t) => t.outcome === "win").length / tagged.length) * 100;
+      const tagLosses = tagged.filter((t) => t.outcome === "loss").length;
+      if (tag !== "Disciplined" && tagWR < 30) {
+        insights.push({
+          icon: "behavior",
+          headline: `${tag} Trades Are Costing You`,
+          stat: `${Math.round(tagWR)}% win rate on ${tagged.length} "${tag}" trades — ${tagLosses} losses`,
+          sentiment: "negative",
+        });
+        break;
+      } else if (tag === "Disciplined" && tagWR > overallWinRate + 10) {
+        insights.push({
+          icon: "behavior",
+          headline: "Discipline Pays Off",
+          stat: `${Math.round(tagWR)}% win rate when disciplined vs ${Math.round(overallWinRate)}% overall`,
+          sentiment: "positive",
+        });
+        break;
+      }
+    }
+  }
+
+  const pairMap: Record<string, { wins: number; total: number }> = {};
+  trades.forEach((t) => {
+    const p = t.pair || t.ticker || "Unknown";
+    if (!pairMap[p]) pairMap[p] = { wins: 0, total: 0 };
+    pairMap[p].total++;
+    if (t.outcome === "win") pairMap[p].wins++;
+  });
+  const pairs = Object.entries(pairMap).filter(([, d]) => d.total >= 3);
+  if (pairs.length >= 2) {
+    pairs.sort((a, b) => (b[1].wins / b[1].total) - (a[1].wins / a[1].total));
+    const best = pairs[0];
+    const worst = pairs[pairs.length - 1];
+    const bestWR = Math.round((best[1].wins / best[1].total) * 100);
+    const worstWR = Math.round((worst[1].wins / worst[1].total) * 100);
+    if (bestWR - worstWR >= 15) {
+      insights.push({
+        icon: "pair",
+        headline: `${best[0]} Is Your Best Pair`,
+        stat: `${bestWR}% win rate on ${best[0]} vs ${worstWR}% on ${worst[0]}`,
+        sentiment: "positive",
+      });
+    }
+  }
+
+  const followed = trades.filter((t) => t.followedTimeRule === true);
+  const notFollowed = trades.filter((t) => t.followedTimeRule === false);
+  if (followed.length >= 3 && notFollowed.length >= 3) {
+    const followedWR = (followed.filter((t) => t.outcome === "win").length / followed.length) * 100;
+    const notWR = (notFollowed.filter((t) => t.outcome === "win").length / notFollowed.length) * 100;
+    if (followedWR - notWR >= 10) {
+      insights.push({
+        icon: "time",
+        headline: "Time Rule Works for You",
+        stat: `${Math.round(followedWR)}% win rate in the kill zone vs ${Math.round(notWR)}% outside it`,
+        sentiment: "positive",
+      });
+    } else if (notWR - followedWR >= 10) {
+      insights.push({
+        icon: "time",
+        headline: "Time Rule Isn't Helping",
+        stat: `${Math.round(notWR)}% win rate outside kill zone vs ${Math.round(followedWR)}% inside — rethink your timing`,
+        sentiment: "negative",
+      });
+    }
+  }
+
+  const withFVG = trades.filter((t) => t.hasFvgConfirmation === true);
+  const noFVG = trades.filter((t) => t.hasFvgConfirmation === false);
+  if (withFVG.length >= 3 && noFVG.length >= 3) {
+    const fvgWR = (withFVG.filter((t) => t.outcome === "win").length / withFVG.length) * 100;
+    const noFvgWR = (noFVG.filter((t) => t.outcome === "win").length / noFVG.length) * 100;
+    if (fvgWR - noFvgWR >= 10) {
+      insights.push({
+        icon: "fvg",
+        headline: "FVG Confirmation Boosts Wins",
+        stat: `${Math.round(fvgWR)}% with FVG vs ${Math.round(noFvgWR)}% without — always wait for it`,
+        sentiment: "positive",
+      });
+    }
+  }
+
+  const sorted = [...trades].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  let maxStreak = 0;
+  let current = 0;
+  for (const t of sorted) {
+    if (t.outcome === "loss") {
+      current++;
+      maxStreak = Math.max(maxStreak, current);
+    } else {
+      current = 0;
+    }
+  }
+  if (maxStreak >= 3) {
+    insights.push({
+      icon: "streak",
+      headline: `${maxStreak}-Trade Losing Streak`,
+      stat: `Your worst streak was ${maxStreak} consecutive losses — consider stepping away after 2 losses`,
+      sentiment: "negative",
+    });
+  }
+
+  const hourMap: Record<string, { wins: number; total: number }> = {};
+  trades.forEach((t) => {
+    const h = parseHour(t.entryTime);
+    if (h === null) return;
+    const session = h >= 9 && h <= 11 ? "NY AM" : h >= 13 && h <= 15 ? "NY PM" : "Other";
+    if (!hourMap[session]) hourMap[session] = { wins: 0, total: 0 };
+    hourMap[session].total++;
+    if (t.outcome === "win") hourMap[session].wins++;
+  });
+  const sessions = Object.entries(hourMap).filter(([, d]) => d.total >= 3);
+  if (sessions.length >= 2) {
+    sessions.sort((a, b) => (b[1].wins / b[1].total) - (a[1].wins / a[1].total));
+    const bestSession = sessions[0];
+    const bestSWR = Math.round((bestSession[1].wins / bestSession[1].total) * 100);
+    if (bestSWR > overallWinRate + 5) {
+      insights.push({
+        icon: "session",
+        headline: `${bestSession[0]} Is Your Best Session`,
+        stat: `${bestSWR}% win rate during ${bestSession[0]} (${bestSession[1].total} trades)`,
+        sentiment: "positive",
+      });
+    }
+  }
+
+  return insights.slice(0, 6);
+}
+
+const INSIGHT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  stress: Flame,
+  behavior: Brain,
+  pair: Trophy,
+  time: Timer,
+  fvg: Shield,
+  streak: AlertTriangle,
+  session: Zap,
 };
 
 function StatCard({
@@ -391,6 +573,8 @@ export default function Analytics() {
     ];
   }, [trades, stats.winRate]);
 
+  const insights = useMemo(() => computeInsights(trades), [trades]);
+
   if (tradesLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -454,6 +638,59 @@ export default function Analytics() {
           trend={stats.avgRisk <= 2 ? "up" : "down"}
         />
       </div>
+
+      {trades.length >= 10 && insights.length > 0 ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-primary" />
+              Your Insights
+            </CardTitle>
+            <CardDescription>Patterns we spotted in your recent trading</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {insights.map((insight, i) => {
+                const IconComp = INSIGHT_ICONS[insight.icon] || Lightbulb;
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "rounded-lg border p-3 space-y-1.5",
+                      insight.sentiment === "positive" && "border-green-500/30 bg-green-500/5",
+                      insight.sentiment === "negative" && "border-red-500/30 bg-red-500/5",
+                      insight.sentiment === "neutral" && "border-primary/20 bg-primary/5",
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <IconComp className={cn(
+                        "h-4 w-4",
+                        insight.sentiment === "positive" && "text-green-500",
+                        insight.sentiment === "negative" && "text-red-500",
+                        insight.sentiment === "neutral" && "text-primary",
+                      )} />
+                      <span className="text-sm font-semibold">{insight.headline}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{insight.stat}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      ) : trades.length > 0 && trades.length < 10 ? (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Lightbulb className="h-5 w-5 text-primary/50" />
+              <div>
+                <p className="text-sm font-medium">Log more trades to unlock insights</p>
+                <p className="text-xs">{10 - trades.length} more completed trades needed to surface patterns</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
