@@ -15,6 +15,7 @@ import Pricing from "@/pages/Pricing";
 import DailyPlanner from "@/pages/DailyPlanner";
 import IctAcademy from "@/pages/IctAcademy";
 import RiskShield from "@/pages/RiskShield";
+import PropTracker from "@/pages/PropTracker";
 import SmartJournal from "@/pages/SmartJournal";
 import Analytics from "@/pages/Analytics";
 import Admin from "@/pages/Admin";
@@ -127,6 +128,7 @@ function App() {
                   <Route path="academy" element={<IctAcademy />} />
                   <Route path="planner" element={<DailyPlanner />} />
                   <Route path="risk-shield" element={<RiskShield />} />
+                  <Route path="prop-tracker" element={<PropTracker />} />
                   <Route path="journal" element={<SmartJournal />} />
                   <Route path="analytics" element={<Analytics />} />
                   <Route path="community" element={<Community />} />
