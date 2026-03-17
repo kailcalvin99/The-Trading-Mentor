@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, saveToken, deleteToken } from "@/lib/api";
 
 interface AuthUser {
   id: number;
@@ -26,6 +26,12 @@ interface AuthContextValue {
 interface AuthMeResponse {
   user: AuthUser;
   subscription: AuthSubscription | null;
+}
+
+interface AuthLoginResponse {
+  token?: string;
+  user: AuthUser;
+  subscription?: AuthSubscription | null;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -58,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await apiPost("auth/logout", {});
     } catch {}
+    await deleteToken();
     setUser(null);
     setSubscription(null);
   }, []);
@@ -75,4 +82,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   return useContext(AuthContext);
+}
+
+export async function handleAuthResponse(data: AuthLoginResponse): Promise<void> {
+  if (data.token) {
+    await saveToken(data.token);
+  }
 }

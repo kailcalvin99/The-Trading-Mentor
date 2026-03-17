@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { apiPost } from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, handleAuthResponse } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
@@ -35,7 +35,8 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      await apiPost("auth/login", { email: email.trim(), password });
+      const data = await apiPost<{ token?: string; user: unknown }>("auth/login", { email: email.trim(), password });
+      await handleAuthResponse(data as Parameters<typeof handleAuthResponse>[0]);
       await refresh();
       router.replace("/(tabs)");
     } catch (e: unknown) {

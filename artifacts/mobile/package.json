@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "expo-notifications": "~0.29.14",
+    "expo-secure-store": "^55.0.8",
     "expo-sharing": "^55.0.11"
   }
 }

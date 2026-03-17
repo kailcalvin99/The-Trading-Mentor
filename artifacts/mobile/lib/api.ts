@@ -1,4 +1,7 @@
 import { fetch } from "expo/fetch";
+import * as SecureStore from "expo-secure-store";
+
+const TOKEN_KEY = "auth_token";
 
 export const getBaseUrl = () => {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -8,18 +11,39 @@ export const getBaseUrl = () => {
 
 export const getApiUrl = () => `${getBaseUrl()}api/`;
 
+export async function saveToken(token: string): Promise<void> {
+  await SecureStore.setItemAsync(TOKEN_KEY, token);
+}
+
+export async function getToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(TOKEN_KEY);
+}
+
+export async function deleteToken(): Promise<void> {
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getToken();
+  if (token) return { Authorization: `Bearer ${token}` };
+  return {};
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
+  const headers = await authHeaders();
   const res = await fetch(`${getApiUrl()}${path}`, {
     credentials: "include",
+    headers,
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json() as Promise<T>;
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const headers = await authHeaders();
   const res = await fetch(`${getApiUrl()}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
     credentials: "include",
   });
@@ -28,9 +52,10 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  const headers = await authHeaders();
   const res = await fetch(`${getApiUrl()}${path}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
     credentials: "include",
   });
@@ -39,9 +64,10 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  const headers = await authHeaders();
   const res = await fetch(`${getApiUrl()}${path}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
     credentials: "include",
   });
@@ -50,9 +76,11 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function apiDelete(path: string): Promise<void> {
+  const headers = await authHeaders();
   const res = await fetch(`${getApiUrl()}${path}`, {
     method: "DELETE",
     credentials: "include",
+    headers,
   });
   if (!res.ok && res.status !== 204) throw new Error(`API error: ${res.status}`);
 }
@@ -72,6 +100,7 @@ export async function streamMessage(
   pageContext?: Record<string, unknown>,
   onToolCall?: (toolCall: ToolCallEvent) => void
 ): Promise<void> {
+  const headers = await authHeaders();
   const res = await fetch(
     `${getApiUrl()}gemini/conversations/${conversationId}/messages`,
     {
@@ -79,6 +108,7 @@ export async function streamMessage(
       headers: {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
+        ...headers,
       },
       body: JSON.stringify({ content, pageContext }),
       credentials: "include",

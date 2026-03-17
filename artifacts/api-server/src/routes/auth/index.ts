@@ -107,6 +107,7 @@ router.post("/register", async (req, res) => {
     setAuthCookie(res, token);
 
     res.status(201).json({
+      token,
       user: {
         id: user.id,
         email: user.email,
@@ -151,6 +152,7 @@ router.post("/login", loginLimiter, async (req, res) => {
     setAuthCookie(res, token);
 
     res.json({
+      token,
       user: {
         id: user.id,
         email: user.email,
