@@ -199,7 +199,7 @@ export default function SmartJournal() {
     if (expandedTradeId) {
       const trade = completedTrades.find((t) => t.id === expandedTradeId);
       if (trade && !trade.isDraft) {
-        const existing = (trade as any).coachFeedback;
+        const existing = trade.coachFeedback;
         if (existing) {
           setCoachFeedback((prev) => ({ ...prev, [expandedTradeId]: existing }));
         } else {
@@ -305,10 +305,9 @@ export default function SmartJournal() {
       setShowForm(false);
       setEditingDraftId(null);
       toast({ title: "Trade saved", description: `${form.pair} trade logged successfully.` });
-      if (result && (result as any).id && form.outcome) {
-        const newId = (result as any).id;
-        setExpandedTradeId(newId);
-        fetchCoachFeedback(newId);
+      if (result && result.id) {
+        setExpandedTradeId(result.id);
+        fetchCoachFeedback(result.id);
       }
     } catch {
       toast({ title: "Error", description: "Could not save trade.", variant: "destructive" });
@@ -768,7 +767,7 @@ export default function SmartJournal() {
                           )}
 
                           {/* Coach Feedback */}
-                          {(coachFeedback[trade.id] || coachLoading[trade.id] || coachError[trade.id] || (trade as any).coachFeedback) && (
+                          {(coachFeedback[trade.id] || coachLoading[trade.id] || coachError[trade.id] || trade.coachFeedback) && (
                             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
                               <div className="flex items-center gap-1.5 mb-1.5">
                                 <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -791,7 +790,7 @@ export default function SmartJournal() {
                                 </div>
                               ) : (
                                 <p className="text-xs text-muted-foreground leading-relaxed">
-                                  {coachFeedback[trade.id] || (trade as any).coachFeedback}
+                                  {coachFeedback[trade.id] || trade.coachFeedback}
                                 </p>
                               )}
                             </div>

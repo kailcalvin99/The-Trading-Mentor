@@ -169,6 +169,14 @@ export const ListTradesResponseItem = zod.object({
   liquiditySweep: zod.boolean(),
   outcome: zod.string().optional(),
   notes: zod.string().optional(),
+  behaviorTag: zod.string().nullish(),
+  followedTimeRule: zod.boolean().nullish(),
+  hasFvgConfirmation: zod.boolean().nullish(),
+  stressLevel: zod.number().nullish(),
+  isDraft: zod.boolean().optional(),
+  ticker: zod.string().nullish(),
+  sideDirection: zod.string().nullish(),
+  coachFeedback: zod.string().nullish(),
   createdAt: zod.date(),
 });
 export const ListTradesResponse = zod.array(ListTradesResponseItem);

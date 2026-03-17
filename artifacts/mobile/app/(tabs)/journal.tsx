@@ -185,7 +185,7 @@ export default function JournalScreen() {
     if (expandedTradeId) {
       const trade = completedTrades.find((t: any) => t.id === expandedTradeId);
       if (trade) {
-        const existing = (trade as any).coachFeedback;
+        const existing = trade.coachFeedback;
         if (existing) {
           setCoachFeedback((prev) => ({ ...prev, [expandedTradeId]: existing }));
         } else {
@@ -273,10 +273,9 @@ export default function JournalScreen() {
       qc.invalidateQueries({ queryKey: [`/api/trades`] });
       setShowForm(false);
       setEditingDraftId(null);
-      if (result && (result as any).id && form.outcome) {
-        const newId = (result as any).id;
-        setExpandedTradeId(newId);
-        fetchCoachFeedback(newId);
+      if (result && result.id) {
+        setExpandedTradeId(result.id);
+        fetchCoachFeedback(result.id);
       }
     } catch {
       Alert.alert("Error", "Could not save trade");

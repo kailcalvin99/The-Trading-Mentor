@@ -71,6 +71,14 @@ export interface Trade {
   liquiditySweep: boolean;
   outcome?: string;
   notes?: string;
+  behaviorTag?: string | null;
+  followedTimeRule?: boolean | null;
+  hasFvgConfirmation?: boolean | null;
+  stressLevel?: number | null;
+  isDraft?: boolean;
+  ticker?: string | null;
+  sideDirection?: string | null;
+  coachFeedback?: string | null;
   createdAt: string;
 }
 
