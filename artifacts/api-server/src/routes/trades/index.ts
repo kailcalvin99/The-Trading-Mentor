@@ -71,6 +71,15 @@ router.post("/", authRequired, async (req, res) => {
   }
 });
 
+router.delete("/all", authRequired, async (_req, res) => {
+  try {
+    await db.delete(tradesTable);
+    res.json({ message: "All trades deleted" });
+  } catch {
+    res.status(500).json({ error: "Failed to delete trades" });
+  }
+});
+
 router.delete("/:id", authRequired, async (req, res) => {
   try {
     const id = parseInt(req.params.id);

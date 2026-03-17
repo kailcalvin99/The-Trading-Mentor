@@ -14,6 +14,8 @@ import {
   Check,
   Lock,
   Zap,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -61,6 +63,8 @@ export default function Settings() {
   const [savingRisk, setSavingRisk] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const [clearingTrades, setClearingTrades] = useState(false);
 
   const [profile, setProfile] = useState<ProfileData>({
     name: "",
@@ -169,6 +173,26 @@ export default function Settings() {
 
   function handleSaveRisk() {
     saveSection("riskRules", riskRules, setSavingRisk);
+  }
+
+  async function handleClearAllTrades() {
+    setClearingTrades(true);
+    try {
+      const res = await fetch(`${API_BASE}/trades/all`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast({ title: "Journal cleared", description: "All trades have been deleted." });
+        setClearConfirm(false);
+      } else {
+        toast({ title: "Error", description: "Failed to clear trades", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to clear trades", variant: "destructive" });
+    } finally {
+      setClearingTrades(false);
+    }
   }
 
   const isPremium = tierLevel >= 1;
@@ -398,6 +422,53 @@ export default function Settings() {
         </div>
 
         <TradingViewWebhookCard isPremium={isPremium} />
+
+        <div className="bg-card border border-red-500/30 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-red-500/30">
+            <Trash2 className="h-5 w-5 text-red-500" />
+            <h2 className="text-sm font-bold text-foreground">Danger Zone</h2>
+          </div>
+          <div className="px-5 py-5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Clear all journal trades</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Permanently deletes every trade in the journal. Use this to wipe test data before going live.
+                </p>
+              </div>
+              {!clearConfirm ? (
+                <button
+                  onClick={() => setClearConfirm(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/30 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors shrink-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear All Trades
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs text-red-400 font-medium">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Are you sure? This cannot be undone.
+                  </div>
+                  <button
+                    onClick={() => setClearConfirm(false)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleClearAllTrades}
+                    disabled={clearingTrades}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                  >
+                    {clearingTrades ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    Yes, delete all
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
