@@ -318,6 +318,7 @@ export default function Login() {
             <Link to="/refund" className="hover:text-foreground transition-colors">Refund Policy</Link>
             <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
             <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+            <Link to="/risk-disclosure" className="hover:text-foreground transition-colors">Risk Disclosure</Link>
           </div>
         </div>
       </footer>

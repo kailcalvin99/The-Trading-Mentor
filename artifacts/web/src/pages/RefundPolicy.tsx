@@ -70,8 +70,13 @@ export default function RefundPolicy() {
             </div>
           </div>
 
-          <div className="border-t border-border pt-4 text-xs text-muted-foreground">
-            Last updated: March 2026
+          <div className="border-t border-border pt-4 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-3">
+            <span>Last updated: March 2026</span>
+            <div className="flex flex-wrap gap-4">
+              <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link to="/risk-disclosure" className="hover:text-foreground transition-colors">Risk Disclosure</Link>
+            </div>
           </div>
         </div>
       </div>

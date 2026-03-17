@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ShareButton } from "@/components/ShareButton";
 import {
   Card,
   CardContent,
@@ -681,11 +682,23 @@ export default function Analytics() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          See how you are doing across {stats.totalTrades} completed trades
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            See how you are doing across {stats.totalTrades} completed trades
+          </p>
+        </div>
+        {stats.totalTrades > 0 && (
+          <ShareButton
+            stats={{
+              winRate: stats.winRate,
+              totalPnlPct: pnlData.length > 0 ? pnlData[pnlData.length - 1].pnl : 0,
+              totalTrades: stats.totalTrades,
+              profitFactor: stats.profitFactor,
+            }}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

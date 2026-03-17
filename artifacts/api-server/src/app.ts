@@ -1,11 +1,20 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import router from "./routes";
 import { seedDefaults } from "./seed";
 import { WebhookHandlers } from "./stripe/webhookHandlers";
 
 const app: Express = express();
+
+app.set("trust proxy", 1);
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
@@ -28,6 +37,23 @@ app.use(cors({
   },
   credentials: true,
 }));
+
+const generalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { error: "Too many requests. Please slow down." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path.startsWith("/auth"),
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { error: "AI rate limit reached. Please wait a moment." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.post(
   "/api/stripe/webhook",
@@ -58,9 +84,11 @@ app.post(
 );
 
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
+app.use("/api", generalApiLimiter);
+app.use("/api/gemini", aiLimiter);
 app.use("/api", router);
 
 seedDefaults().catch((err) => console.error("Seed error:", err));

@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import {
   Flame, Star, Trophy, Zap, Crown, TrendingUp, Lock, Gift,
   ArrowRight, Clock, Target, BookOpen, BarChart3, Shield,
-  Calendar, GraduationCap, Sparkles,
+  Calendar, GraduationCap, Sparkles, Map,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { SpinWheel, useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
+import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 const MASCOT_TIPS = [
   "Always wait for the liquidity sweep before entering!",
@@ -522,6 +523,7 @@ function QuickNavCards() {
 export default function Dashboard() {
   const { tierLevel } = useAuth();
   const isFreeUser = tierLevel === 0;
+  const { showTour, startTour, closeTour } = useTourGuide();
 
   useEffect(() => {
     if (!localStorage.getItem("dashboard-visited")) {
@@ -531,7 +533,21 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 pb-24">
-      <IctMascot />
+      {showTour && <TourGuide onClose={closeTour} />}
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <IctMascot />
+        </div>
+        <button
+          onClick={startTour}
+          className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors mt-1"
+          title="Start guided tour"
+        >
+          <Map className="h-3.5 w-3.5" />
+          Tour
+        </button>
+      </div>
       <GamifiedStatusRow />
 
       <DailySpinSection />

@@ -42,6 +42,10 @@ The application is built as a pnpm monorepo, leveraging Node.js 24 and TypeScrip
     - **Hall of Fame:** Tracks discipline streaks and achievements.
 - **TradingView Indicators:** Curated list of recommended indicators with descriptions and setup instructions.
 - **Community Hub:** A Reddit-style forum with categories, post creation, and replies, available across all tiers.
+- **Risk Disclosure:** Public legal page at `/risk-disclosure` covering educational purpose, no-financial-advice, trading risk warning, ICT methodology disclaimer, AI limitations, prop trading notice, and user responsibility. Cross-linked from all legal page footers and the Login page footer.
+- **Tour Guide System:** 8-step interactive modal tour (TourGuide component) that auto-triggers on first login (1.2s delay, `ict_tour_complete_v1` localStorage flag). "Tour" button in Dashboard header allows manual restart. Covers Dashboard, Academy, Planner, Journal, Analytics, Risk Shield, and Community pages.
+- **Share Stats:** ShareButton component on the Analytics page that generates a formatted performance summary (win rate, cumulative P&L, profit factor, total trades). Uses Web Share API with clipboard popup fallback.
+- **Security Hardening:** `helmet` middleware for HTTP security headers (CSP/COEP disabled for SPA compatibility), `express-rate-limit` applied globally (300 req/15min), to Gemini AI routes (30 req/min), and to auth login (10 req/15min). `trust proxy` set for accurate IP detection behind Replit's reverse proxy.
 
 ## External Dependencies
 
