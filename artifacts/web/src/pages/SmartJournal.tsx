@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListTrades,
@@ -31,6 +31,8 @@ import {
   Plus,
   CheckCircle2,
   X,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 
 import type { Trade, CreateTradeBody } from "@workspace/api-client-react";
@@ -141,6 +143,8 @@ export default function SmartJournal() {
   const [entryCriteria, setEntryCriteria] = useState<Record<string, boolean>>({});
   const [expandedTradeId, setExpandedTradeId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
+  const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
 
   const { data: tradesRaw } = useListTrades();
   const trades = (tradesRaw ?? []) as ExtendedTrade[];
@@ -163,6 +167,47 @@ export default function SmartJournal() {
   const activeCriteria = entryMode === "conservative" ? CONSERVATIVE_CRITERIA : AGGRESSIVE_CRITERIA;
   const criteriaChecked = activeCriteria.filter((c) => entryCriteria[c.key]).length;
   const allCriteriaMet = criteriaChecked === activeCriteria.length;
+
+  const API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+  const [coachError, setCoachError] = useState<Record<number, boolean>>({});
+
+  async function fetchCoachFeedback(tradeId: number) {
+    if (coachFeedback[tradeId] || coachLoading[tradeId]) return;
+    setCoachLoading((prev) => ({ ...prev, [tradeId]: true }));
+    setCoachError((prev) => ({ ...prev, [tradeId]: false }));
+    try {
+      const res = await fetch(`${API_BASE}/trades/${tradeId}/coach`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.feedback) {
+          setCoachFeedback((prev) => ({ ...prev, [tradeId]: data.feedback }));
+        }
+      } else {
+        setCoachError((prev) => ({ ...prev, [tradeId]: true }));
+      }
+    } catch {
+      setCoachError((prev) => ({ ...prev, [tradeId]: true }));
+    }
+    setCoachLoading((prev) => ({ ...prev, [tradeId]: false }));
+  }
+
+  useEffect(() => {
+    if (expandedTradeId) {
+      const trade = completedTrades.find((t) => t.id === expandedTradeId);
+      if (trade && !trade.isDraft) {
+        const existing = (trade as any).coachFeedback;
+        if (existing) {
+          setCoachFeedback((prev) => ({ ...prev, [expandedTradeId]: existing }));
+        } else {
+          fetchCoachFeedback(expandedTradeId);
+        }
+      }
+    }
+  }, [expandedTradeId]);
 
   function setField<K extends keyof TradeFormData>(key: K, val: TradeFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -249,7 +294,7 @@ export default function SmartJournal() {
         isDraft: false,
         sideDirection: form.sideDirection,
       };
-      await createTradeMut({ data: payload as CreateTradeBody });
+      const result = await createTradeMut({ data: payload as CreateTradeBody });
       if (editingDraftId) {
         await deleteTradeMut({ id: editingDraftId });
       }
@@ -260,6 +305,11 @@ export default function SmartJournal() {
       setShowForm(false);
       setEditingDraftId(null);
       toast({ title: "Trade saved", description: `${form.pair} trade logged successfully.` });
+      if (result && (result as any).id && form.outcome) {
+        const newId = (result as any).id;
+        setExpandedTradeId(newId);
+        fetchCoachFeedback(newId);
+      }
     } catch {
       toast({ title: "Error", description: "Could not save trade.", variant: "destructive" });
     }
@@ -716,6 +766,37 @@ export default function SmartJournal() {
                           {notes && (
                             <p className="text-sm text-muted-foreground italic">{notes}</p>
                           )}
+
+                          {/* Coach Feedback */}
+                          {(coachFeedback[trade.id] || coachLoading[trade.id] || coachError[trade.id] || (trade as any).coachFeedback) && (
+                            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                <span className="text-xs font-bold text-primary">Coach Says</span>
+                              </div>
+                              {coachLoading[trade.id] ? (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Analyzing your trade...
+                                </div>
+                              ) : coachError[trade.id] ? (
+                                <div className="flex items-center gap-2 text-xs text-red-400">
+                                  <span>Failed to load feedback.</span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setCoachError((prev) => ({ ...prev, [trade.id]: false })); fetchCoachFeedback(trade.id); }}
+                                    className="underline hover:text-primary transition-colors"
+                                  >
+                                    Retry
+                                  </button>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                  {coachFeedback[trade.id] || (trade as any).coachFeedback}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
                           <div className="text-xs text-muted-foreground">
                             {trade.createdAt && new Date(trade.createdAt).toLocaleDateString("en-US", {
                               weekday: "short",

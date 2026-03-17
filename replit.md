@@ -60,6 +60,7 @@ artifacts-monorepo/
 - `users` — id, email, password_hash, name, role (user/admin), is_founder, founder_number
 - `subscription_tiers` — id, name, level (0=Free, 1=Standard, 2=Premium), monthly_price, annual_price, features (jsonb)
 - `user_subscriptions` — user_id, tier_id, status, billing_cycle, custom prices, founder discount tracking
+- `trades` — id, pair, entry_time, risk_pct, liquidity_sweep, outcome, notes, behavior_tag, followed_time_rule, has_fvg_confirmation, stress_level, is_draft, ticker, side_direction, coach_feedback, created_at
 - `admin_settings` — key-value store for global config (branding, founder, discipline, planner, AI mentor, feature toggles)
 
 ### Subscription Tiers

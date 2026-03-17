@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -139,6 +139,9 @@ export default function JournalScreen() {
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
   const [entryMode, setEntryMode] = useState<EntryMode>("conservative");
   const [entryCriteria, setEntryCriteria] = useState<Record<string, boolean>>({});
+  const [expandedTradeId, setExpandedTradeId] = useState<number | null>(null);
+  const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
+  const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
 
   const { data: tradesData } = useListTrades();
   const trades = tradesData ?? [];
@@ -155,6 +158,42 @@ export default function JournalScreen() {
 
   const fomoCount = completedTrades.filter((t: any) => t.behaviorTag === "FOMO").length;
   const disciplinedCount = completedTrades.filter((t: any) => t.behaviorTag === "Disciplined").length;
+
+  const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+    : "http://localhost:8080/api";
+
+  async function fetchCoachFeedback(tradeId: number) {
+    if (coachFeedback[tradeId] || coachLoading[tradeId]) return;
+    setCoachLoading((prev) => ({ ...prev, [tradeId]: true }));
+    try {
+      const res = await fetch(`${API_BASE}/trades/${tradeId}/coach`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.feedback) {
+          setCoachFeedback((prev) => ({ ...prev, [tradeId]: data.feedback }));
+        }
+      }
+    } catch {}
+    setCoachLoading((prev) => ({ ...prev, [tradeId]: false }));
+  }
+
+  useEffect(() => {
+    if (expandedTradeId) {
+      const trade = completedTrades.find((t: any) => t.id === expandedTradeId);
+      if (trade) {
+        const existing = (trade as any).coachFeedback;
+        if (existing) {
+          setCoachFeedback((prev) => ({ ...prev, [expandedTradeId]: existing }));
+        } else {
+          fetchCoachFeedback(expandedTradeId);
+        }
+      }
+    }
+  }, [expandedTradeId]);
 
   function setField<K extends keyof TradeFormData>(key: K, val: TradeFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -218,7 +257,7 @@ export default function JournalScreen() {
       }
       const modeTag = entryMode === "conservative" ? "[Conservative]" : "[Silver Bullet]";
       const notesWithMode = form.notes ? `${modeTag} ${form.notes}` : modeTag;
-      await createTradeMut({
+      const result = await createTradeMut({
         pair: form.pair,
         entryTime: form.entryTime,
         riskPct: form.riskPct,
@@ -234,6 +273,11 @@ export default function JournalScreen() {
       qc.invalidateQueries({ queryKey: [`/api/trades`] });
       setShowForm(false);
       setEditingDraftId(null);
+      if (result && (result as any).id && form.outcome) {
+        const newId = (result as any).id;
+        setExpandedTradeId(newId);
+        fetchCoachFeedback(newId);
+      }
     } catch {
       Alert.alert("Error", "Could not save trade");
     }
@@ -348,8 +392,16 @@ export default function JournalScreen() {
               const tag = tagInfo(trade.behaviorTag);
               const isWin = trade.outcome === "win";
               const isLoss = trade.outcome === "loss";
+              const expanded = expandedTradeId === trade.id;
+              const feedback = coachFeedback[trade.id] || trade.coachFeedback;
+              const loading = coachLoading[trade.id];
               return (
-                <View key={trade.id} style={styles.tradeCard}>
+                <TouchableOpacity
+                  key={trade.id}
+                  style={styles.tradeCard}
+                  activeOpacity={0.8}
+                  onPress={() => setExpandedTradeId(expanded ? null : trade.id)}
+                >
                   <View style={styles.tradeHeader}>
                     <Text style={styles.tradePair}>{trade.pair}</Text>
                     <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
@@ -365,6 +417,7 @@ export default function JournalScreen() {
                           </Text>
                         </View>
                       )}
+                      <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={14} color={C.textSecondary} />
                     </View>
                   </View>
                   <View style={styles.tradeDetails}>
@@ -392,12 +445,41 @@ export default function JournalScreen() {
                     </View>
                   )}
                   {trade.notes && trade.notes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "").trim() ? (
-                    <Text style={styles.tradeNotes} numberOfLines={2}>{trade.notes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "").trim()}</Text>
+                    <Text style={styles.tradeNotes} numberOfLines={expanded ? undefined : 2}>{trade.notes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "").trim()}</Text>
                   ) : null}
-                  <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(trade.id)}>
-                    <Ionicons name="trash-outline" size={14} color={C.textSecondary} />
-                  </TouchableOpacity>
-                </View>
+
+                  {expanded && (
+                    <View style={coachStyles.expandedSection}>
+                      {(feedback || loading) && (
+                        <View style={coachStyles.feedbackCard}>
+                          <View style={coachStyles.feedbackHeader}>
+                            <Ionicons name="sparkles" size={14} color={C.accent} />
+                            <Text style={coachStyles.feedbackTitle}>Coach Says</Text>
+                          </View>
+                          {loading ? (
+                            <Text style={coachStyles.loadingText}>Analyzing your trade...</Text>
+                          ) : (
+                            <Text style={coachStyles.feedbackText}>{feedback}</Text>
+                          )}
+                        </View>
+                      )}
+                      <View style={coachStyles.actionRow}>
+                        <Text style={coachStyles.dateText}>
+                          {trade.createdAt ? new Date(trade.createdAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}
+                        </Text>
+                        <TouchableOpacity onPress={() => handleDelete(trade.id)}>
+                          <Ionicons name="trash-outline" size={16} color={C.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {!expanded && (
+                    <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(trade.id)}>
+                      <Ionicons name="trash-outline" size={14} color={C.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
               );
             })}
           </>
@@ -692,6 +774,17 @@ const sliderStyles = StyleSheet.create({
   dot: { flex: 1, height: 8, borderRadius: 4, backgroundColor: C.cardBorder },
   labels: { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
   labelText: { fontSize: 11, color: C.textSecondary },
+});
+
+const coachStyles = StyleSheet.create({
+  expandedSection: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.cardBorder },
+  feedbackCard: { backgroundColor: C.accent + "10", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.accent + "30", marginBottom: 8 },
+  feedbackHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
+  feedbackTitle: { fontSize: 12, fontFamily: "Inter_700Bold", color: C.accent },
+  feedbackText: { fontSize: 12, color: C.textSecondary, lineHeight: 18 },
+  loadingText: { fontSize: 12, color: C.textSecondary, fontStyle: "italic" },
+  actionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  dateText: { fontSize: 11, color: C.textSecondary },
 });
 
 const monkStyles = StyleSheet.create({

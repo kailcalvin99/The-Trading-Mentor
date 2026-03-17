@@ -17,6 +17,7 @@ export const tradesTable = pgTable("trades", {
   isDraft: boolean("is_draft").notNull().default(false),
   ticker: text("ticker"),
   sideDirection: text("side_direction"),
+  coachFeedback: text("coach_feedback"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
