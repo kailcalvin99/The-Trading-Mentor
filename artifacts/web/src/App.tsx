@@ -30,6 +30,7 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import RiskDisclosure from "@/pages/RiskDisclosure";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import VideoTourPage from "@/pages/VideoTourPage";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -140,6 +141,8 @@ function App() {
                   <Route path="settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
+
+                <Route path="video-tour" element={<ProtectedRoute><VideoTourPage /></ProtectedRoute>} />
 
                 <Route path="reset" element={<ResetApp />} />
                 <Route path="*" element={<NotFound />} />
