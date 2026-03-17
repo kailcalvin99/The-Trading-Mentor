@@ -36,12 +36,12 @@ const TAB_HREFS: Record<TabRoute, Href> = {
 
 const TAB_ROUTES: TabRoute[] = ["index", "academy", "tracker", "journal", "community"];
 
-interface TopTabBarProps {
+interface BottomTabBarProps {
   pathname: string;
   onNavigate: (href: Href) => void;
 }
 
-export default function TopTabBar({ pathname, onNavigate }: TopTabBarProps) {
+export default function BottomTabBar({ pathname, onNavigate }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   const normalizedPath = pathname.replace(/^\/\(tabs\)\/?/, "/");
@@ -50,7 +50,7 @@ export default function TopTabBar({ pathname, onNavigate }: TopTabBarProps) {
   ) ?? "index";
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.bar}>
         {TAB_ROUTES.map((route) => {
           const isFocused = activeRoute === route;
@@ -84,8 +84,8 @@ export default function TopTabBar({ pathname, onNavigate }: TopTabBarProps) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: C.backgroundSecondary,
-    borderBottomWidth: 1,
-    borderBottomColor: C.cardBorder,
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
   },
   bar: {
     flexDirection: "row",
