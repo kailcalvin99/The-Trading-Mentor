@@ -177,6 +177,7 @@ export const ListTradesResponseItem = zod.object({
   ticker: zod.string().nullish(),
   sideDirection: zod.string().nullish(),
   coachFeedback: zod.string().nullish(),
+  setupScore: zod.number().nullish(),
   createdAt: zod.date(),
 });
 export const ListTradesResponse = zod.array(ListTradesResponseItem);
@@ -191,6 +192,7 @@ export const CreateTradeBody = zod.object({
   liquiditySweep: zod.boolean(),
   outcome: zod.string().optional(),
   notes: zod.string().optional(),
+  setupScore: zod.number().optional(),
 });
 
 /**

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -103,6 +103,31 @@ function YesNoToggle({ value, onChange, label }: { value: boolean | null; onChan
   );
 }
 
+function calculateSetupScore(
+  criteriaChecked: number,
+  totalCriteria: number,
+  hasFvgConfirmation: boolean,
+  liquiditySweep: boolean,
+  followedTimeRule: boolean,
+  stressLevel: number,
+  riskPct: number
+): number {
+  let score = 0;
+  score += Math.round((criteriaChecked / totalCriteria) * 40);
+  if (hasFvgConfirmation) score += 15;
+  if (liquiditySweep) score += 15;
+  if (followedTimeRule) score += 10;
+  if (stressLevel <= 5) score += 10;
+  if (riskPct <= 1) score += 10;
+  return Math.min(100, Math.max(0, score));
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 70) return "#22C55E";
+  if (score >= 50) return "#F59E0B";
+  return "#EF4444";
+}
+
 function StressSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const levels = Array.from({ length: 10 }, (_, i) => i + 1);
   return (
@@ -142,6 +167,7 @@ export default function JournalScreen() {
   const [expandedTradeId, setExpandedTradeId] = useState<number | null>(null);
   const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
   const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
+  const [showSitOutWarning, setShowSitOutWarning] = useState(false);
 
   const { data: tradesData } = useListTrades();
   const trades = tradesData ?? [];
@@ -203,8 +229,45 @@ export default function JournalScreen() {
   const criteriaChecked = activeCriteria.filter((c) => entryCriteria[c.key]).length;
   const allCriteriaMet = criteriaChecked === activeCriteria.length;
 
+  const liveSetupScore = useMemo(() => {
+    const parsedRisk = parseFloat(form.riskPct) || 0;
+    const hasFvg = entryMode === "conservative" ? !!entryCriteria["gap"] : !!entryCriteria["fvg1m"];
+    const followedTime = entryMode === "aggressive" ? !!entryCriteria["time"] : false;
+    return calculateSetupScore(
+      criteriaChecked,
+      activeCriteria.length,
+      hasFvg,
+      form.liquiditySweep,
+      followedTime,
+      form.stressLevel,
+      parsedRisk
+    );
+  }, [criteriaChecked, activeCriteria.length, entryCriteria, form.liquiditySweep, form.stressLevel, form.riskPct, entryMode]);
+
+  const shouldSitOut = useMemo(() => {
+    const sorted = [...completedTrades].sort(
+      (a, b) => new Date(String(b.createdAt)).getTime() - new Date(String(a.createdAt)).getTime()
+    );
+    if (sorted.length === 0) return false;
+    const last = sorted[0];
+    if ((last.stressLevel ?? 0) >= 7) return true;
+    if (sorted.length >= 2 && last.outcome === "loss" && sorted[1].outcome === "loss") return true;
+    return false;
+  }, [completedTrades]);
+
   function toggleCriterion(key: string) {
     setEntryCriteria((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function proceedToNewForm() {
+    setEditingDraftId(null);
+    setEntryMode("conservative");
+    setEntryCriteria({});
+    setForm({
+      ...DEFAULT_FORM,
+      entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
+    });
+    setShowForm(true);
   }
 
   function openNewForm() {
@@ -216,14 +279,11 @@ export default function JournalScreen() {
       );
       return;
     }
-    setEditingDraftId(null);
-    setEntryMode("conservative");
-    setEntryCriteria({});
-    setForm({
-      ...DEFAULT_FORM,
-      entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
-    });
-    setShowForm(true);
+    if (shouldSitOut) {
+      setShowSitOutWarning(true);
+      return;
+    }
+    proceedToNewForm();
   }
 
   function openDraftForm(draft: any) {
@@ -269,6 +329,7 @@ export default function JournalScreen() {
         hasFvgConfirmation: form.hasFvgConfirmation ?? undefined,
         stressLevel: form.stressLevel,
         isDraft: false,
+        setupScore: liveSetupScore,
       } as any);
       qc.invalidateQueries({ queryKey: [`/api/trades`] });
       setShowForm(false);
@@ -404,6 +465,11 @@ export default function JournalScreen() {
                   <View style={styles.tradeHeader}>
                     <Text style={styles.tradePair}>{trade.pair}</Text>
                     <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+                      {trade.setupScore != null && (
+                        <View style={[styles.tagBadge, { backgroundColor: getScoreColor(trade.setupScore) + "20", borderColor: getScoreColor(trade.setupScore) }]}>
+                          <Text style={[styles.tagText, { color: getScoreColor(trade.setupScore) }]}>{trade.setupScore}</Text>
+                        </View>
+                      )}
                       {tag && (
                         <View style={[styles.tagBadge, { backgroundColor: tag.color + "20", borderColor: tag.color }]}>
                           <Text style={[styles.tagText, { color: tag.color }]}>{tag.tag}</Text>
@@ -645,12 +711,55 @@ export default function JournalScreen() {
               numberOfLines={4}
             />
 
+            {/* Setup Score Badge */}
+            <View style={[scoreStyles.badge, { borderColor: getScoreColor(liveSetupScore) + "50", backgroundColor: getScoreColor(liveSetupScore) + "15" }]}>
+              <View style={scoreStyles.badgeRow}>
+                <Ionicons name="speedometer-outline" size={16} color={getScoreColor(liveSetupScore)} />
+                <Text style={scoreStyles.badgeLabel}>Setup Score</Text>
+              </View>
+              <Text style={[scoreStyles.badgeValue, { color: getScoreColor(liveSetupScore) }]}>{liveSetupScore}/100</Text>
+            </View>
+
             <TouchableOpacity style={[formStyles.submitBtn, !allCriteriaMet && { backgroundColor: C.cardBorder, opacity: 0.6 }]} onPress={handleSubmit} disabled={!allCriteriaMet}>
               <Text style={[formStyles.submitBtnText, !allCriteriaMet && { color: C.textSecondary }]}>
                 {!allCriteriaMet ? `${criteriaChecked}/${activeCriteria.length} Criteria Met` : editingDraftId ? "Complete Trade Entry" : "Save Trade"}
               </Text>
             </TouchableOpacity>
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Sit-Out Warning Modal */}
+      <Modal visible={showSitOutWarning} animationType="fade" transparent statusBarTranslucent>
+        <View style={sitOutStyles.overlay}>
+          <View style={sitOutStyles.card}>
+            <View style={sitOutStyles.iconRow}>
+              <View style={sitOutStyles.iconCircle}>
+                <Ionicons name="hand-left-outline" size={24} color="#F59E0B" />
+              </View>
+              <Text style={sitOutStyles.title}>Consider Sitting Out</Text>
+            </View>
+            <Text style={sitOutStyles.body}>
+              {(() => {
+                const sorted = [...completedTrades].sort(
+                  (a, b) => new Date(String(b.createdAt)).getTime() - new Date(String(a.createdAt)).getTime()
+                );
+                if (sorted.length >= 2 && sorted[0].outcome === "loss" && sorted[1].outcome === "loss") {
+                  return "You've had 2 consecutive losses. Trading while on a losing streak often leads to revenge trades that make things worse.";
+                }
+                return "Your last trade had a high stress level. Trading under emotional pressure reduces decision quality and increases risk of impulsive entries.";
+              })()}
+            </Text>
+            <Text style={sitOutStyles.sub}>Stepping away protects your account and lets you come back with a clear head.</Text>
+            <View style={sitOutStyles.btnRow}>
+              <TouchableOpacity style={sitOutStyles.sitOutBtn} onPress={() => setShowSitOutWarning(false)}>
+                <Text style={sitOutStyles.sitOutBtnText}>I'll Sit Out</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={sitOutStyles.continueBtn} onPress={() => { setShowSitOutWarning(false); proceedToNewForm(); }}>
+                <Text style={sitOutStyles.continueBtnText}>Continue Anyway</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
 
@@ -818,4 +927,26 @@ const ecStyles = StyleSheet.create({
   criterionLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 1 },
   criterionDesc: { fontSize: 12, color: C.textSecondary, lineHeight: 18 },
   gateWarning: { fontSize: 11, color: "#F59E0B", textAlign: "center", marginTop: 8, fontFamily: "Inter_500Medium" },
+});
+
+const scoreStyles = StyleSheet.create({
+  badge: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 12, padding: 14, borderWidth: 1, marginBottom: 12 },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  badgeLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text },
+  badgeValue: { fontSize: 20, fontFamily: "Inter_700Bold" },
+});
+
+const sitOutStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 24 },
+  card: { backgroundColor: C.backgroundSecondary, borderRadius: 18, padding: 24, width: "100%", maxWidth: 400, borderWidth: 1, borderColor: "rgba(245,158,11,0.3)" },
+  iconRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
+  iconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(245,158,11,0.1)", alignItems: "center", justifyContent: "center" },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text },
+  body: { fontSize: 14, color: C.textSecondary, lineHeight: 22, marginBottom: 8 },
+  sub: { fontSize: 13, color: C.textSecondary, lineHeight: 20, marginBottom: 20 },
+  btnRow: { flexDirection: "row", gap: 12 },
+  sitOutBtn: { flex: 1, backgroundColor: C.accent, borderRadius: 14, padding: 14, alignItems: "center" },
+  sitOutBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+  continueBtn: { flex: 1, borderRadius: 14, padding: 14, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
+  continueBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.textSecondary },
 });

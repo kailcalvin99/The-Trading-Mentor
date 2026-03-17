@@ -22,5 +22,6 @@ export interface Trade {
   ticker?: string | null;
   sideDirection?: string | null;
   coachFeedback?: string | null;
+  setupScore?: number | null;
   createdAt: Date;
 }

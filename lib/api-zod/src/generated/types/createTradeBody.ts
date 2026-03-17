@@ -13,4 +13,5 @@ export interface CreateTradeBody {
   liquiditySweep: boolean;
   outcome?: string;
   notes?: string;
+  setupScore?: number;
 }

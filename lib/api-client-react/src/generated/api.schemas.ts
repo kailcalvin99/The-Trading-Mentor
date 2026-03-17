@@ -79,6 +79,7 @@ export interface Trade {
   ticker?: string | null;
   sideDirection?: string | null;
   coachFeedback?: string | null;
+  setupScore?: number | null;
   createdAt: string;
 }
 
@@ -89,4 +90,5 @@ export interface CreateTradeBody {
   liquiditySweep: boolean;
   outcome?: string;
   notes?: string;
+  setupScore?: number;
 }

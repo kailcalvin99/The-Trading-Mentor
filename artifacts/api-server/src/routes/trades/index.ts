@@ -40,6 +40,7 @@ router.post("/", authRequired, async (req, res) => {
       isDraft,
       ticker,
       sideDirection,
+      setupScore,
     } = req.body;
 
     if (!pair || !entryTime || riskPct === undefined) {
@@ -63,6 +64,7 @@ router.post("/", authRequired, async (req, res) => {
         isDraft: isDraft ?? false,
         ticker: ticker || null,
         sideDirection: sideDirection || null,
+        setupScore: setupScore ?? null,
       })
       .returning();
 

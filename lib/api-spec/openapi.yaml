@@ -439,6 +439,9 @@ components:
         coachFeedback:
           type: string
           nullable: true
+        setupScore:
+          type: integer
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -465,6 +468,8 @@ components:
           type: string
         notes:
           type: string
+        setupScore:
+          type: integer
       required:
         - pair
         - entryTime

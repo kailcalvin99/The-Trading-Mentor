@@ -50,6 +50,7 @@ interface ExtendedTrade extends Trade {
   followedTimeRule?: boolean | null;
   hasFvgConfirmation?: boolean | null;
   ticker?: string | null;
+  setupScore?: number | null;
 }
 
 interface ExtendedCreateTradeBody extends CreateTradeBody {
@@ -57,6 +58,7 @@ interface ExtendedCreateTradeBody extends CreateTradeBody {
   stressLevel?: number;
   isDraft?: boolean;
   sideDirection?: string;
+  setupScore?: number;
 }
 
 const CONSERVATIVE_CRITERIA = [
@@ -108,6 +110,43 @@ const DEFAULT_FORM: TradeFormData = {
   stressLevel: 5,
 };
 
+function calculateSetupScore(
+  criteriaChecked: number,
+  totalCriteria: number,
+  hasFvgConfirmation: boolean,
+  liquiditySweep: boolean,
+  followedTimeRule: boolean,
+  stressLevel: number,
+  riskPct: number
+): number {
+  let score = 0;
+  score += Math.round((criteriaChecked / totalCriteria) * 40);
+  if (hasFvgConfirmation) score += 15;
+  if (liquiditySweep) score += 15;
+  if (followedTimeRule) score += 10;
+  if (stressLevel <= 5) score += 10;
+  if (riskPct <= 1) score += 10;
+  return Math.min(100, Math.max(0, score));
+}
+
+function scoreColor(score: number): string {
+  if (score >= 70) return "text-emerald-400";
+  if (score >= 50) return "text-amber-400";
+  return "text-red-400";
+}
+
+function scoreBorderColor(score: number): string {
+  if (score >= 70) return "border-emerald-400/30";
+  if (score >= 50) return "border-amber-400/30";
+  return "border-red-400/30";
+}
+
+function scoreBgColor(score: number): string {
+  if (score >= 70) return "bg-emerald-400/10";
+  if (score >= 50) return "bg-amber-400/10";
+  return "bg-red-400/10";
+}
+
 function StressSliderControl({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const color = value <= 3 ? "text-emerald-400" : value <= 6 ? "text-amber-400" : "text-red-400";
   return (
@@ -145,6 +184,7 @@ export default function SmartJournal() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
   const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
+  const [showSitOutWarning, setShowSitOutWarning] = useState(false);
 
   const { data: tradesRaw } = useListTrades();
   const trades = (tradesRaw ?? []) as ExtendedTrade[];
@@ -167,6 +207,31 @@ export default function SmartJournal() {
   const activeCriteria = entryMode === "conservative" ? CONSERVATIVE_CRITERIA : AGGRESSIVE_CRITERIA;
   const criteriaChecked = activeCriteria.filter((c) => entryCriteria[c.key]).length;
   const allCriteriaMet = criteriaChecked === activeCriteria.length;
+
+  const liveSetupScore = useMemo(() => {
+    const parsedRisk = parseFloat(form.riskPct) || 0;
+    const hasFvg = entryMode === "conservative" ? !!entryCriteria["gap"] : !!entryCriteria["fvg1m"];
+    const followedTime = entryMode === "aggressive" ? !!entryCriteria["time"] : false;
+    return calculateSetupScore(
+      criteriaChecked,
+      activeCriteria.length,
+      hasFvg,
+      form.liquiditySweep,
+      followedTime,
+      form.stressLevel,
+      parsedRisk
+    );
+  }, [criteriaChecked, activeCriteria.length, entryCriteria, form.liquiditySweep, form.stressLevel, form.riskPct, entryMode]);
+
+  const shouldSitOut = useMemo(() => {
+    const sorted = [...completedTrades].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    if (sorted.length === 0) return false;
+    if ((sorted[0].stressLevel ?? 0) >= 7) return true;
+    if (sorted.length >= 2 && sorted[0].outcome === "loss" && sorted[1].outcome === "loss") return true;
+    return false;
+  }, [completedTrades]);
 
   const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -217,6 +282,17 @@ export default function SmartJournal() {
     setEntryCriteria((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  function proceedToNewForm() {
+    setEditingDraftId(null);
+    setEntryMode("conservative");
+    setEntryCriteria({});
+    setForm({
+      ...DEFAULT_FORM,
+      entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
+    });
+    setShowForm(true);
+  }
+
   function openNewForm() {
     if (!isRoutineComplete) {
       toast({
@@ -226,14 +302,11 @@ export default function SmartJournal() {
       });
       return;
     }
-    setEditingDraftId(null);
-    setEntryMode("conservative");
-    setEntryCriteria({});
-    setForm({
-      ...DEFAULT_FORM,
-      entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
-    });
-    setShowForm(true);
+    if (shouldSitOut) {
+      setShowSitOutWarning(true);
+      return;
+    }
+    proceedToNewForm();
   }
 
   function openDraftForm(draft: ExtendedTrade) {
@@ -293,6 +366,7 @@ export default function SmartJournal() {
         stressLevel: form.stressLevel,
         isDraft: false,
         sideDirection: form.sideDirection,
+        setupScore: liveSetupScore,
       };
       const result = await createTradeMut({ data: payload as CreateTradeBody });
       if (editingDraftId) {
@@ -340,6 +414,45 @@ export default function SmartJournal() {
   };
 
   return (
+    <>
+    {showSitOutWarning && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <Card className="max-w-md w-full mx-4 border-amber-500/30">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-amber-500/10">
+                <AlertTriangle className="h-6 w-6 text-amber-400" />
+              </div>
+              <h3 className="text-lg font-bold">Consider Sitting Out</h3>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {completedTrades.length >= 2 &&
+               completedTrades.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.outcome === "loss" &&
+               completedTrades.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[1]?.outcome === "loss"
+                ? "You've had 2 consecutive losses. Trading while on a losing streak often leads to revenge trades that make things worse."
+                : "Your last trade had a high stress level. Trading under emotional pressure reduces decision quality and increases risk of impulsive entries."}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Stepping away protects your account and lets you come back with a clear head.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowSitOutWarning(false)}
+                className="flex-1 py-2.5 rounded-xl font-bold text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                I'll Sit Out
+              </button>
+              <button
+                onClick={() => { setShowSitOutWarning(false); proceedToNewForm(); }}
+                className="flex-1 py-2.5 rounded-xl font-bold text-sm border border-border text-muted-foreground hover:text-foreground"
+              >
+                Continue Anyway
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )}
     <div className="flex flex-col lg:flex-row h-full">
       {/* Left Panel — Form */}
       <div className="lg:w-[480px] xl:w-[520px] lg:border-r border-border lg:shrink-0 overflow-auto">
@@ -643,6 +756,15 @@ export default function SmartJournal() {
                   />
                 </div>
 
+                {/* Setup Score Badge */}
+                <div className={`flex items-center justify-between p-3 rounded-lg border ${scoreBorderColor(liveSetupScore)} ${scoreBgColor(liveSetupScore)}`}>
+                  <div className="flex items-center gap-2">
+                    <Target className={`h-4 w-4 ${scoreColor(liveSetupScore)}`} />
+                    <span className="text-sm font-semibold">Setup Score</span>
+                  </div>
+                  <span className={`text-lg font-bold ${scoreColor(liveSetupScore)}`}>{liveSetupScore}/100</span>
+                </div>
+
                 {/* Save */}
                 <button
                   onClick={handleSubmit}
@@ -724,6 +846,11 @@ export default function SmartJournal() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
+                          {trade.setupScore != null && (
+                            <Badge variant="outline" className={`text-[10px] ${scoreColor(trade.setupScore)} ${scoreBorderColor(trade.setupScore)}`}>
+                              {trade.setupScore}
+                            </Badge>
+                          )}
                           {tag && (
                             <Badge variant="outline" className={`text-[10px] ${tag.color} border-current/30`}>
                               {tag.tag}
@@ -841,5 +968,6 @@ export default function SmartJournal() {
         </div>
       </div>
     </div>
+    </>
   );
 }
