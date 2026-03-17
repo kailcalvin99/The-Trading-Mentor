@@ -683,7 +683,7 @@ export default function RiskShieldScreen() {
       </Modal>
 
       <Modal visible={showMonkMode} animationType="fade" statusBarTranslucent>
-        <View style={monkStyles.overlay}>
+        <ScrollView style={{ flex: 1, backgroundColor: "#050505" }} contentContainerStyle={monkStyles.overlay}>
           <View style={monkStyles.header}>
             <Text style={monkStyles.title}>FOCUS MODE</Text>
             <Text style={monkStyles.subtitle}>
@@ -716,7 +716,7 @@ export default function RiskShieldScreen() {
             <Ionicons name="eye-outline" size={18} color="#0A0A0F" />
             <Text style={monkStyles.exitBtnText}>Exit Focus Mode</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </Modal>
     </SafeAreaView>
   );
@@ -1094,7 +1094,7 @@ const setupStyles = StyleSheet.create({
 
 const monkStyles = StyleSheet.create({
   overlay: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: "#050505",
     padding: 24,
     justifyContent: "center",

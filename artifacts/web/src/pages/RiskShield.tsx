@@ -741,8 +741,8 @@ export default function RiskShield() {
       </Dialog>
 
       {showFocusMode && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-6">
-          <div className="max-w-lg w-full space-y-8">
+        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center overflow-y-auto p-6">
+          <div className="max-w-lg w-full space-y-8 my-auto">
             <div className="text-center">
               <h2 className="text-3xl font-bold mb-2">FOCUS MODE</h2>
               <p className="text-muted-foreground">

@@ -811,7 +811,7 @@ export default function JournalScreen() {
 
       {/* Monk Mode Modal */}
       <Modal visible={showMonk} animationType="fade" statusBarTranslucent>
-        <View style={monkStyles.overlay}>
+        <ScrollView style={{ flex: 1, backgroundColor: "#050505" }} contentContainerStyle={monkStyles.overlay}>
           <Text style={monkStyles.title}>⚡ MONK MODE</Text>
           <Text style={monkStyles.sub}>Stay focused. Follow your plan.</Text>
           <View style={monkStyles.rulesCard}>
@@ -825,7 +825,7 @@ export default function JournalScreen() {
           <TouchableOpacity style={monkStyles.closeBtn} onPress={() => setShowMonk(false)}>
             <Text style={monkStyles.closeBtnText}>Exit Monk Mode</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </Modal>
     </SafeAreaView>
   );
@@ -944,7 +944,7 @@ const coachStyles = StyleSheet.create({
 });
 
 const monkStyles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "#050505", justifyContent: "center", padding: 24 },
+  overlay: { flexGrow: 1, backgroundColor: "#050505", justifyContent: "center", padding: 24 },
   title: { fontSize: 30, fontFamily: "Inter_700Bold", color: C.text, textAlign: "center", marginBottom: 6 },
   sub: { fontSize: 14, color: C.textSecondary, textAlign: "center", marginBottom: 32 },
   rulesCard: { backgroundColor: "#0F1A14", borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.accent + "44", marginBottom: 24 },
