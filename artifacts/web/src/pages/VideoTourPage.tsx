@@ -13,14 +13,12 @@ export default function VideoTourPage() {
     if (!state.visible) {
       startTour();
     }
-  }, []);
+  }, [state.visible, startTour]);
 
-  useEffect(() => {
-    // When tour is finished and hidden, redirect back to dashboard
-    if (!state.visible && state.machineState === "IDLE") {
-      navigate("/dashboard");
-    }
-  }, [state.visible, state.machineState, navigate]);
+  const handleClose = () => {
+    // Redirect back to dashboard when user closes the tour
+    navigate("/dashboard");
+  };
 
-  return <VideoTour state={state} dispatch={dispatch} />;
+  return <VideoTour state={state} dispatch={dispatch} onClose={handleClose} />;
 }

@@ -6,6 +6,7 @@ import {
   SkipForward,
   ExternalLink,
   VideoOff,
+  X,
 } from "lucide-react";
 import {
   TOUR_STEPS,
@@ -160,12 +161,13 @@ export function useVideoTour(userId?: string | number) {
 interface VideoTourProps {
   state: TourState;
   dispatch: React.Dispatch<TourAction>;
+  onClose?: () => void;
 }
 
 const HEYGEN_ORIGIN = "https://app.heygen.com";
 const HEYGEN_SIGNAL_TIMEOUT_MS = 10_000;
 
-export function VideoTour({ state, dispatch }: VideoTourProps) {
+export function VideoTour({ state, dispatch, onClose }: VideoTourProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { config } = useAppConfig();
   const [videoLoading, setVideoLoading] = useState(false);
@@ -262,7 +264,24 @@ export function VideoTour({ state, dispatch }: VideoTourProps) {
 
   function handleFinish() {
     dispatch({ type: "FINISH_TOUR" });
+    onClose?.();
   }
+
+  function handleExit() {
+    dispatch({ type: "FINISH_TOUR" });
+    onClose?.();
+  }
+
+  // Add escape key handler to exit
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        handleExit();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   if (!state.visible) return null;
 
@@ -287,22 +306,31 @@ export function VideoTour({ state, dispatch }: VideoTourProps) {
     );
   }
 
-  // Video viewer - NO X BUTTON
+  // Video viewer - with exit button
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/92 backdrop-blur-sm p-4 animate-in fade-in duration-300">
       <div className="w-full max-w-4xl">
-        {/* Top bar with title and skip button */}
+        {/* Top bar with title and action buttons */}
         <div className="flex items-center justify-between mb-3 px-1">
           <p className="text-white/80 text-sm font-medium">
             Video {state.currentStep + 1} of {TOUR_STEPS.length}: {step.title}
           </p>
-          <button
-            onClick={handleSkipVideo}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
-          >
-            <SkipForward className="h-3.5 w-3.5" />
-            Skip Video
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSkipVideo}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
+            >
+              <SkipForward className="h-3.5 w-3.5" />
+              Skip Video
+            </button>
+            <button
+              onClick={handleExit}
+              className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+              title="Exit tour (ESC)"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Video container */}
