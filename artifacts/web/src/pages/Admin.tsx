@@ -6,8 +6,9 @@ import {
   Crown, Users, Settings, DollarSign, Save, Edit2, X, Check, Trash2,
   AlertTriangle, RotateCcw, ChevronDown, ChevronRight,
   Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target,
-  Sparkles, Send, Loader2, BarChart3, FileText, Filter, TrendingUp, RefreshCw,
+  Sparkles, Send, Loader2, BarChart3, FileText, Filter, TrendingUp, RefreshCw, Video,
 } from "lucide-react";
+import { TOUR_STEPS } from "@/components/tourConfig";
 
 const MC_PROFILES = {
   Perfect: { winRate: 0.75, risk: 0.01, rewardRatio: 2.5, label: "Perfect Trader", color: "hsl(142, 76%, 36%)" },
@@ -936,6 +937,54 @@ export default function Admin() {
                 rows={8}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-mono resize-y"
               />
+            </div>
+          </SettingsSection>
+
+          <SettingsSection title="Tour Videos" icon={Video}>
+            <p className="text-xs text-muted-foreground mb-4">
+              Override the HeyGen video ID for each tour step. Leave blank to use the default ID from the codebase. Changes take effect immediately after saving.
+            </p>
+            <div className="space-y-3">
+              {TOUR_STEPS.map((step, idx) => {
+                const key = `tour_video_${idx}`;
+                return (
+                  <div key={idx} className="bg-background border border-border rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">Step {idx + 1}: {step.title}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">Default: {step.videoId}</p>
+                      </div>
+                      {settings[key] && (
+                        <button
+                          onClick={() => updateSetting(key, "")}
+                          className="text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1 shrink-0"
+                          title="Clear override"
+                        >
+                          <X className="h-3 w-3" />
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={settings[key] || ""}
+                      onChange={(e) => updateSetting(key, e.target.value)}
+                      placeholder={`Override video ID (default: ${step.videoId})`}
+                      className="w-full bg-muted/30 border border-border rounded px-2.5 py-1.5 text-xs font-mono"
+                    />
+                    {settings[key] && (
+                      <a
+                        href={`https://app.heygen.com/share/${settings[key]}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline mt-1"
+                      >
+                        Preview override →
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </SettingsSection>
 

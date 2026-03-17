@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useCallback, useRef } from "react";
+import { useReducer, useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   X,
@@ -7,6 +7,8 @@ import {
   SkipForward,
   List,
   Play,
+  ExternalLink,
+  VideoOff,
 } from "lucide-react";
 import {
   TOUR_STEPS,
@@ -16,6 +18,7 @@ import {
   type TourMachineState,
 } from "./tourConfig";
 import TourChecklist from "./TourChecklist";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 
 export type { TourMachineState };
 
@@ -221,13 +224,56 @@ interface TourGuideProps {
   dispatch: React.Dispatch<TourAction>;
 }
 
+const HEYGEN_ORIGIN = "https://app.heygen.com";
+const HEYGEN_SIGNAL_TIMEOUT_MS = 10_000;
+
 export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   const navigate = useNavigate();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { config } = useAppConfig();
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const signalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heygenConfirmedRef = useRef(false);
 
   const step = TOUR_STEPS[state.currentStep];
   const isLast = state.currentStep >= TOUR_STEPS.length - 1;
   const isFirst = state.currentStep === 0;
+
+  const videoId = config[`tour_video_${state.currentStep}`] || step?.videoId || "";
+  const heygenShareUrl = videoId ? `https://app.heygen.com/share/${videoId}` : "";
+
+  function cancelSignalTimer() {
+    if (signalTimerRef.current !== null) {
+      clearTimeout(signalTimerRef.current);
+      signalTimerRef.current = null;
+    }
+  }
+
+  function startSignalTimer() {
+    cancelSignalTimer();
+    signalTimerRef.current = setTimeout(() => {
+      if (!heygenConfirmedRef.current) {
+        setVideoLoading(false);
+        setVideoError(true);
+      }
+    }, HEYGEN_SIGNAL_TIMEOUT_MS);
+  }
+
+  useEffect(() => {
+    if (state.machineState === "PLAYING_VIDEO") {
+      heygenConfirmedRef.current = false;
+      cancelSignalTimer();
+      if (!videoId) {
+        setVideoLoading(false);
+        setVideoError(true);
+      } else {
+        setVideoLoading(true);
+        setVideoError(false);
+      }
+    }
+    return () => { cancelSignalTimer(); };
+  }, [state.machineState, state.currentStep, videoId]);
 
   useEffect(() => {
     if (state.machineState === "NAVIGATING") {
@@ -246,10 +292,14 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   useEffect(() => {
     if (state.machineState !== "PLAYING_VIDEO") return;
 
-    const HEYGEN_ORIGIN = "https://app.heygen.com";
-
     function handleMessage(e: MessageEvent) {
       if (e.origin !== HEYGEN_ORIGIN) return;
+      if (!heygenConfirmedRef.current) {
+        heygenConfirmedRef.current = true;
+        cancelSignalTimer();
+        setVideoLoading(false);
+        setVideoError(false);
+      }
       if (
         e.data === "heygen:video:ended" ||
         (e.data && typeof e.data === "object" && e.data.type === "heygen:video:ended")
@@ -353,18 +403,52 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
               className="relative w-full bg-black rounded-2xl overflow-hidden shadow-2xl"
               style={{ paddingBottom: "56.25%" }}
             >
-              <iframe
-                ref={iframeRef}
-                src={`https://app.heygen.com/share/${step.videoId}`}
-                allow="autoplay; fullscreen"
-                allowFullScreen
-                className="absolute inset-0 w-full h-full border-0"
-                title={step.title}
-              />
+              {!videoError && (
+                <iframe
+                  ref={iframeRef}
+                  src={heygenShareUrl}
+                  allow="autoplay; fullscreen"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full border-0"
+                  title={step.title}
+                  onLoad={() => { if (!heygenConfirmedRef.current) startSignalTimer(); }}
+                  onError={() => { cancelSignalTimer(); setVideoLoading(false); setVideoError(true); }}
+                />
+              )}
+
+              {videoLoading && !videoError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
+                  <div className="h-10 w-10 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3" />
+                  <p className="text-white/60 text-sm">Loading video...</p>
+                </div>
+              )}
+
+              {videoError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 p-6 text-center">
+                  <VideoOff className="h-12 w-12 text-white/30 mb-4" />
+                  <p className="text-white font-semibold mb-1">{step.title}</p>
+                  <p className="text-white/50 text-sm mb-6 max-w-sm">
+                    This video couldn't be embedded. Watch it directly on HeyGen, then continue the tour.
+                  </p>
+                  {heygenShareUrl && (
+                    <a
+                      href={heygenShareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Watch on HeyGen
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
             <p className="text-center text-white/40 text-xs mt-3">
-              Video not advancing? Click "Continue" above to proceed to the next step.
+              {videoError
+                ? "Video couldn't load. Use 'Watch on HeyGen' above or click 'Continue' to proceed."
+                : "Video not advancing? Click 'Continue' above to proceed to the next step."}
             </p>
           </div>
         </div>
