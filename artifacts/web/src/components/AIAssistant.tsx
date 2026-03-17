@@ -11,7 +11,6 @@ import {
   Loader2,
   X,
   Plus,
-  ChevronDown,
   Trash2,
   MessageSquare,
   ArrowRight,
@@ -20,17 +19,31 @@ import {
   Navigation,
   BookOpen,
   Sparkles,
+  TrendingUp,
+  Clock,
+  Target,
+  Wind,
+  Waves,
+  Brain,
 } from "lucide-react";
 
 const CAPABILITY_TIPS = [
-  { headline: "Navigate the app hands-free", examples: ["Take me to the Daily Planner", "Open my Smart Journal"] },
-  { headline: "Log trades with your voice", examples: ["Log a win on NQ with 0.5% risk", "Record a loss on MNQ"] },
-  { headline: "Check your performance instantly", examples: ["What's our win rate?", "Show me the team's recent trades"] },
+  { headline: "Run the 5-step trade review", examples: ["Review my last trade (5-step)", "Did my setup have a valid sweep?"] },
+  { headline: "Check your kill zone timing", examples: ["Am I in a kill zone right now?", "When is the next NY kill zone?"] },
+  { headline: "Understand your emotional leaks", examples: ["What are my emotional leaks?", "Show me my psychology report"] },
+  { headline: "Learn ICT concepts simply", examples: ["Explain FVG like I'm in 6th grade", "What is OTE?"] },
+  { headline: "Reset when you're emotional", examples: ["Give me a cool-down exercise", "Help me stop revenge trading"] },
   { headline: "Calculate position sizing", examples: ["I have a 12 point stop, how many NQ contracts?"] },
-  { headline: "Learn ICT concepts simply", examples: ["Explain FVG in simple terms", "What is OTE?"] },
+  { headline: "Log trades effortlessly", examples: ["Log a win on NQ with 0.5% risk", "Record a loss on MNQ"] },
   { headline: "Complete your morning routine", examples: ["Mark my morning routine complete", "What's in my routine?"] },
-  { headline: "Review your trading rules", examples: ["Remind me the 5 rules before I trade"] },
-  { headline: "Get personalized coaching", examples: ["Review my trading discipline", "Am I following the rules?"] },
+];
+
+const WELCOME_SUGGESTIONS = [
+  "Review my last trade (5-step)",
+  "Am I in a kill zone right now?",
+  "What are my emotional leaks?",
+  "Explain FVG like I'm in 6th grade",
+  "Give me a cool-down exercise",
 ];
 
 const TIP_INTERVAL_MS = 2 * 60 * 60 * 1000;
@@ -52,6 +65,137 @@ interface ToolCallResult {
 interface Conversation {
   id: number;
   title: string;
+}
+
+function parseConfidenceBadge(content: string): { score: number | null; cleanContent: string } {
+  const match = content.match(/^Confidence:\s*(\d+)\/10[^\n]*\n?/i);
+  if (!match) return { score: null, cleanContent: content };
+  const score = parseInt(match[1], 10);
+  if (score < 1 || score > 10) return { score: null, cleanContent: content };
+  return { score, cleanContent: content.slice(match[0].length).trimStart() };
+}
+
+const FIVE_STEP_DEFS = [
+  { label: "HTF Bias", icon: TrendingUp, re: /\bHTF\s+Bias\b/i },
+  { label: "Timing", icon: Clock, re: /\bTiming\b/i },
+  { label: "The Sweep", icon: Waves, re: /\bSweep\b/i },
+  { label: "The Displacement", icon: Target, re: /\bDisplacement\b/i },
+  { label: "Risk Math", icon: Calculator, re: /\bRisk\s+Math\b/i },
+];
+
+function parseFiveStepReview(content: string): Array<{ label: string; Icon: typeof TrendingUp; body: string }> {
+  const lines = content.split("\n");
+  const found: Array<{ label: string; Icon: typeof TrendingUp; lineIndex: number }> = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.length > 120) continue;
+    for (const def of FIVE_STEP_DEFS) {
+      if (def.re.test(line)) {
+        if (!found.some(f => f.label === def.label)) {
+          found.push({ label: def.label, Icon: def.icon, lineIndex: i });
+        }
+        break;
+      }
+    }
+  }
+  if (found.length < 3) return [];
+  return found.map((step, idx) => {
+    const start = step.lineIndex + 1;
+    const end = idx + 1 < found.length ? found[idx + 1].lineIndex : lines.length;
+    const body = lines.slice(start, end).join("\n").replace(/\*\*/g, "").trim();
+    return { label: step.label, Icon: step.Icon, body };
+  });
+}
+
+const COOLDOWN_RES = [/COOL[\s-]DOWN/i, /take\s+a\s+(deep\s+)?breath/i, /step\s+away/i, /🧘/];
+
+function splitCoolDownContent(content: string): { before: string; coolDown: string | null } {
+  for (const re of COOLDOWN_RES) {
+    const match = content.match(re);
+    if (match && match.index !== undefined) {
+      const splitIdx = match.index;
+      const lineStart = content.lastIndexOf("\n", splitIdx - 1);
+      const actualSplit = lineStart === -1 ? splitIdx : lineStart;
+      const before = content.slice(0, actualSplit).trim();
+      const coolDown = content.slice(actualSplit).trim();
+      if (coolDown.length > 20) return { before, coolDown };
+    }
+  }
+  return { before: content, coolDown: null };
+}
+
+function getQuickReplies(lastMessage: string): string[] {
+  const msg = lastMessage.toLowerCase();
+  const steps = parseFiveStepReview(lastMessage);
+  if (steps.length >= 3) return ["Log this trade", "Run 5-step again", "What's my risk math?"];
+  if (msg.includes("kill zone") || msg.includes("killzone") || msg.includes("session"))
+    return ["When's the next kill zone?", "What's the bias today?", "Review my last trade"];
+  if (msg.includes("fomo") || msg.includes("emotional leak") || msg.includes("psychology") || msg.includes("behavior tag"))
+    return ["Show full psychology report", "Give me a cool-down", "What was my best week?"];
+  if (COOLDOWN_RES.some(r => r.test(lastMessage)))
+    return ["I'm feeling better now", "What's my trading plan?", "Review my journal"];
+  if (msg.includes("position size") || (msg.includes("contract") && msg.includes("risk")))
+    return ["Recalculate with 2% risk", "Go to Risk Shield", "Log this trade"];
+  if (msg.includes("fvg") || msg.includes("order block") || msg.includes("ote") || msg.includes("liquidity"))
+    return ["Explain OTE", "What are kill zones?", "Show me a setup example"];
+  return ["Review my last trade (5-step)", "Am I in a kill zone?", "What are my emotional leaks?"];
+}
+
+function ConfidenceBadge({ score }: { score: number }) {
+  const colour =
+    score >= 8
+      ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+      : score >= 5
+        ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+        : "bg-red-500/15 text-red-400 border-red-500/30";
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border ${colour} mb-1.5 select-none`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+      Confidence {score}/10
+    </span>
+  );
+}
+
+function FiveStepReviewCard({ steps }: { steps: Array<{ label: string; Icon: typeof TrendingUp; body: string }> }) {
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden my-1">
+      <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border-b border-border">
+        <Brain className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span className="text-[11px] font-bold text-primary uppercase tracking-wider">5-Step Trade Review</span>
+      </div>
+      <div className="divide-y divide-border">
+        {steps.map((step, i) => (
+          <div key={i} className="flex gap-2.5 px-3 py-2.5">
+            <div className="flex items-start gap-1.5 shrink-0 pt-0.5">
+              <span className="text-[10px] font-bold text-muted-foreground w-3">{i + 1}.</span>
+              <step.Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-foreground mb-0.5">{step.label}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {step.body || "—"}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CoolDownCard({ content }: { content: string }) {
+  const cleaned = content.replace(/\*\*/g, "").replace(/^#+\s*/gm, "").trim();
+  return (
+    <div className="rounded-xl border border-teal-500/30 bg-teal-500/5 overflow-hidden my-1">
+      <div className="flex items-center gap-2 px-3 py-2 bg-teal-500/10 border-b border-teal-500/20">
+        <Wind className="h-3.5 w-3.5 text-teal-400 shrink-0" />
+        <span className="text-[11px] font-bold text-teal-400 uppercase tracking-wider">Cool-Down Mode</span>
+      </div>
+      <div className="px-3 py-2.5">
+        <p className="text-xs text-teal-100/80 leading-relaxed whitespace-pre-wrap">{cleaned}</p>
+      </div>
+    </div>
+  );
 }
 
 function getPageName(pathname: string): string {
@@ -183,6 +327,7 @@ export default function AIAssistant() {
   const [tipIndex, setTipIndex] = useState(0);
   const [nudge, setNudge] = useState<AITrigger | null>(null);
   const [nudgeExpanded, setNudgeExpanded] = useState(false);
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingAutoSendRef = useRef<string | null>(null);
 
@@ -500,6 +645,7 @@ export default function AIAssistant() {
 
     setChatMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setIsStreaming(true);
+    setQuickReplies([]);
 
     let assistantMsg = "";
     let toolCalls: ToolCallResult[] = [];
@@ -605,6 +751,7 @@ export default function AIAssistant() {
       });
     }
 
+    if (assistantMsg) setQuickReplies(getQuickReplies(assistantMsg));
     setIsStreaming(false);
   }
 
@@ -826,17 +973,12 @@ export default function AIAssistant() {
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                         <Sparkles className="h-6 w-6 text-primary" />
                       </div>
-                      <h3 className="text-lg font-bold mb-1">AI Trading Assistant</h3>
+                      <h3 className="text-lg font-bold mb-1">ICT AI Trading Mentor</h3>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Ask me anything about ICT concepts, log trades, check analytics, or navigate the app.
+                        Trade reviews, kill zones, emotional leaks, ICT concepts — ask me anything.
                       </p>
                       <div className="grid gap-2 w-full max-w-xs">
-                        {[
-                          "How did I do this week?",
-                          "Calculate my position size for 10 tick stop",
-                          "Mark my morning routine done",
-                          "What is a Fair Value Gap?",
-                        ].map(suggestion => (
+                        {WELCOME_SUGGESTIONS.map(suggestion => (
                           <button
                             key={suggestion}
                             onClick={() => { setInput(suggestion); }}
@@ -849,43 +991,91 @@ export default function AIAssistant() {
                     </div>
                   )}
 
-                  {chatMessages.map((msg, i) => (
-                    <div key={i}>
-                      <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start gap-2"}`}>
-                        {msg.role === "assistant" && (
-                          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-1">
-                            <Sparkles className="h-3 w-3 text-primary" />
-                          </div>
-                        )}
-                        <div
-                          className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 ${
-                            msg.role === "user"
-                              ? "bg-primary text-primary-foreground rounded-br-sm"
-                              : "bg-card border rounded-bl-sm"
-                          }`}
-                        >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                            {msg.content}
-                            {isStreaming && i === chatMessages.length - 1 && msg.role === "assistant" ? "\u258B" : ""}
-                          </p>
-                        </div>
-                      </div>
+                  {chatMessages.map((msg, i) => {
+                    const isCurrentlyStreaming = isStreaming && i === chatMessages.length - 1 && msg.role === "assistant";
+                    const isAssistant = msg.role === "assistant";
 
-                      {msg.toolCalls?.map((tc, j) => (
-                        <div key={j} className="ml-8">
-                          <ToolCallCard
-                            toolCall={tc}
-                            onConfirm={handleConfirmToolCall}
-                            onNavigate={handleNavigate}
-                          />
+                    const { score: confScore, cleanContent } = isAssistant
+                      ? parseConfidenceBadge(msg.content)
+                      : { score: null, cleanContent: msg.content };
+
+                    const stepsResolved = isAssistant && !isCurrentlyStreaming
+                      ? parseFiveStepReview(cleanContent)
+                      : [];
+                    const is5Step = stepsResolved.length >= 3;
+
+                    const { before: beforeCool, coolDown } = isAssistant && !isCurrentlyStreaming && !is5Step
+                      ? splitCoolDownContent(cleanContent)
+                      : { before: cleanContent, coolDown: null };
+
+                    const displayText = is5Step ? "" : beforeCool;
+
+                    return (
+                      <div key={i}>
+                        <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start gap-2"}`}>
+                          {isAssistant && (
+                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-1">
+                              <Sparkles className="h-3 w-3 text-primary" />
+                            </div>
+                          )}
+                          <div
+                            className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 ${
+                              msg.role === "user"
+                                ? "bg-primary text-primary-foreground rounded-br-sm"
+                                : "bg-card border rounded-bl-sm"
+                            }`}
+                          >
+                            {confScore !== null && <ConfidenceBadge score={confScore} />}
+                            {isCurrentlyStreaming ? (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                {cleanContent}{"\u258B"}
+                              </p>
+                            ) : is5Step ? (
+                              <FiveStepReviewCard steps={stepsResolved} />
+                            ) : (
+                              <>
+                                {displayText.length > 0 && (
+                                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{displayText}</p>
+                                )}
+                                {coolDown && <CoolDownCard content={coolDown} />}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  ))}
+
+                        {msg.toolCalls?.map((tc, j) => (
+                          <div key={j} className="ml-8">
+                            <ToolCallCard
+                              toolCall={tc}
+                              onConfirm={handleConfirmToolCall}
+                              onNavigate={handleNavigate}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div className="p-3 border-t border-border shrink-0">
-                  <div className="flex items-center gap-2">
+                <div className="border-t border-border shrink-0">
+                  {quickReplies.length > 0 && !isStreaming && (
+                    <div className="flex gap-1.5 px-3 pt-2 pb-0 overflow-x-auto scrollbar-none">
+                      {quickReplies.map(chip => (
+                        <button
+                          key={chip}
+                          onClick={() => {
+                            setInput(chip);
+                            setQuickReplies([]);
+                            setTimeout(() => inputRef.current?.focus(), 0);
+                          }}
+                          className="shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors whitespace-nowrap"
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 p-3">
                     <input
                       ref={inputRef}
                       type="text"

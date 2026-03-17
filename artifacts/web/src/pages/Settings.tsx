@@ -23,7 +23,6 @@ import {
   Brain,
   RotateCcw,
 } from "lucide-react";
-import { clearQuizData, getSkillLevel } from "@/components/OnboardingQuiz";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
