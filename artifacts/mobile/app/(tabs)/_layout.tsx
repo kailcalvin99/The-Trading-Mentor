@@ -3,7 +3,7 @@ import React, { useCallback } from "react";
 import { View } from "react-native";
 
 import AIAssistant from "@/components/AIAssistant";
-import BottomTabBar from "@/components/BottomTabBar";
+import TopTabBar from "@/components/TopTabBar";
 
 export default function TabLayout() {
   const pathname = usePathname();
@@ -16,8 +16,16 @@ export default function TabLayout() {
     [router]
   );
 
+  const showTabBar = !pathname.endsWith("/admin");
+
   return (
     <View style={{ flex: 1 }}>
+      {showTabBar && (
+        <TopTabBar
+          pathname={pathname}
+          onNavigate={handleNavigate}
+        />
+      )}
       <Tabs
         tabBar={() => null}
         screenOptions={{
@@ -57,12 +65,6 @@ export default function TabLayout() {
           options={{ title: "Admin", href: null }}
         />
       </Tabs>
-      {!pathname.endsWith("/admin") && (
-        <BottomTabBar
-          pathname={pathname}
-          onNavigate={handleNavigate}
-        />
-      )}
       <AIAssistant />
     </View>
   );

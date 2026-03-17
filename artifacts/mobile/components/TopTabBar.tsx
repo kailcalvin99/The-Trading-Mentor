@@ -42,12 +42,12 @@ const TAB_HREFS: Record<TabRoute, Href> = {
 
 const TAB_ROUTES: TabRoute[] = ["index", "academy", "tracker", "journal", "community", "analytics", "settings"];
 
-interface BottomTabBarProps {
+interface TopTabBarProps {
   pathname: string;
   onNavigate: (href: Href) => void;
 }
 
-export default function BottomTabBar({ pathname, onNavigate }: BottomTabBarProps) {
+export default function TopTabBar({ pathname, onNavigate }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
 
   const normalizedPath = pathname.replace(/^\/\(tabs\)\/?/, "/");
@@ -56,7 +56,7 @@ export default function BottomTabBar({ pathname, onNavigate }: BottomTabBarProps
   ) ?? "index";
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.bar}>
         {TAB_ROUTES.map((route) => {
           const isFocused = activeRoute === route;
@@ -90,8 +90,8 @@ export default function BottomTabBar({ pathname, onNavigate }: BottomTabBarProps
 const styles = StyleSheet.create({
   container: {
     backgroundColor: C.backgroundSecondary,
-    borderTopWidth: 1,
-    borderTopColor: C.cardBorder,
+    borderBottomWidth: 1,
+    borderBottomColor: C.cardBorder,
   },
   bar: {
     flexDirection: "row",
