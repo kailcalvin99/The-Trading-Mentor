@@ -14,6 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { usePlanner } from "@/contexts/PlannerContext";
 import Colors from "@/constants/colors";
+import { XPLevelCard, SpinWheelCard, SlotMachineCard } from "@/components/DashboardGamification";
+import OnboardingTour, { useOnboardingTour } from "@/components/OnboardingTour";
 
 const C = Colors.dark;
 
@@ -62,6 +64,7 @@ export default function PlannerScreen() {
   } = usePlanner();
   const [newItemText, setNewItemText] = useState("");
   const [, setTick] = useState(0);
+  const { shouldShow: showTour, completeTour } = useOnboardingTour();
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
@@ -76,6 +79,7 @@ export default function PlannerScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      <OnboardingTour visible={showTour} onComplete={completeTour} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
 
         {/* Header */}
@@ -123,6 +127,12 @@ export default function PlannerScreen() {
             </View>
           )}
         </View>
+
+        {/* Gamification */}
+        <Text style={styles.sectionTitle}>Your Progress</Text>
+        <XPLevelCard />
+        <SlotMachineCard />
+        <SpinWheelCard />
 
         {/* Morning Routine Checklist */}
         <Text style={styles.sectionTitle}>Morning Routine</Text>

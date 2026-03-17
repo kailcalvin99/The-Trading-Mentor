@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Modal,
+  Animated,
+  PanResponder,
+  Dimensions,
+  Platform,
   type DimensionValue,
 } from "react-native";
 import { Image } from "expo-image";
@@ -13,6 +18,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { fireMobileAITrigger, incrementMobileQuizFail, resetMobileQuizFail } from "@/lib/aiTrigger";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import GraduationCelebration, { useGraduationCheck } from "@/components/GraduationCelebration";
+import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import {
   COURSE_CHAPTERS,
   GLOSSARY as GLOSSARY_DATA,
@@ -25,6 +32,8 @@ import {
   pickQuestion,
   type Difficulty,
   type QuizQuestion,
+  type Lesson,
+  type Chapter,
 } from "@/data/academy-data";
 
 const C = Colors.dark;
@@ -51,8 +60,369 @@ const CHART_IMAGES: Record<string, number> = {
 type Tab = "learn" | "glossary" | "quiz" | "plan";
 
 const PROGRESS_KEY = "ict-academy-progress";
+const SW = Dimensions.get("window").width;
+const ACADEMY_UNLOCKED_KEY = "ict-academy-unlocked";
 
-function LearnView() {
+function getAllCards(): { lesson: Lesson; chapter: Chapter; globalIdx: number }[] {
+  const cards: { lesson: Lesson; chapter: Chapter; globalIdx: number }[] = [];
+  let idx = 0;
+  for (const ch of COURSE_CHAPTERS) {
+    for (const l of ch.lessons) {
+      cards.push({ lesson: l, chapter: ch, globalIdx: idx++ });
+    }
+  }
+  return cards;
+}
+
+interface SwipeModeProps {
+  onExit: () => void;
+  onAskMentor: (topic: string) => void;
+}
+
+function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
+  const allCards = getAllCards();
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [cardStep, setCardStep] = useState(0);
+  const [justCompleted, setJustCompleted] = useState(false);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const cardScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    AsyncStorage.getItem(PROGRESS_KEY).then((raw) => {
+      if (raw) {
+        try {
+          const prog = new Set<string>(JSON.parse(raw));
+          setCompleted(prog);
+          const first = allCards.findIndex((c) => !prog.has(c.lesson.id));
+          setCurrentIdx(first >= 0 ? first : 0);
+        } catch {}
+      }
+    });
+  }, []);
+
+  const card = allCards[currentIdx];
+  if (!card) return null;
+
+  const { lesson, chapter } = card;
+  const isDone = completed.has(lesson.id);
+  const totalCards = allCards.length;
+  const completedCount = allCards.filter((c) => completed.has(c.lesson.id)).length;
+  const totalSteps = lesson.paragraphs.length + (lesson.chartImage ? 1 : 0) + 1;
+
+  async function markComplete() {
+    if (completed.has(lesson.id)) return;
+    const next = new Set(completed);
+    next.add(lesson.id);
+    setCompleted(next);
+    await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify([...next]));
+
+    if (next.size >= totalCards) {
+      await AsyncStorage.setItem(ACADEMY_UNLOCKED_KEY, "true");
+    }
+
+    setJustCompleted(true);
+    Animated.sequence([
+      Animated.timing(cardScale, { toValue: 1.03, duration: 150, useNativeDriver: true }),
+      Animated.timing(cardScale, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start(() => setJustCompleted(false));
+  }
+
+  function goNext() {
+    if (cardStep < totalSteps - 1) {
+      setCardStep(cardStep + 1);
+      return;
+    }
+    if (!isDone && !completed.has(lesson.id)) markComplete();
+    if (currentIdx < totalCards - 1) {
+      animateCardOut(1, () => {
+        setCurrentIdx(currentIdx + 1);
+        setCardStep(0);
+      });
+    }
+  }
+
+  function goPrev() {
+    if (cardStep > 0) {
+      setCardStep(cardStep - 1);
+      return;
+    }
+    if (currentIdx > 0) {
+      animateCardOut(-1, () => {
+        setCurrentIdx(currentIdx - 1);
+        setCardStep(0);
+      });
+    }
+  }
+
+  function animateCardOut(dir: 1 | -1, onDone: () => void) {
+    Animated.timing(translateX, {
+      toValue: dir * -SW,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => {
+      translateX.setValue(dir * SW);
+      onDone();
+      Animated.timing(translateX, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    });
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy),
+      onPanResponderMove: (_, gs) => translateX.setValue(gs.dx),
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx < -60) {
+          goNext();
+          Animated.timing(translateX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+        } else if (gs.dx > 60) {
+          goPrev();
+          Animated.timing(translateX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+        } else {
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
+
+  const stepContent = (() => {
+    const paraCount = lesson.paragraphs.length;
+    let step = cardStep;
+    if (step < paraCount) return { type: "paragraph" as const, text: lesson.paragraphs[step] };
+    step -= paraCount;
+    if (lesson.chartImage && step === 0) return { type: "chart" as const };
+    return { type: "takeaway" as const };
+  })();
+
+  const isLastCard = currentIdx === totalCards - 1 && cardStep === totalSteps - 1;
+
+  return (
+    <Modal visible animationType="slide" onRequestClose={onExit}>
+      <SafeAreaView style={swipeStyles.safe} edges={["top"]}>
+        <View style={swipeStyles.topBar}>
+          <TouchableOpacity onPress={onExit} style={swipeStyles.exitBtn}>
+            <Ionicons name="close" size={22} color={C.text} />
+          </TouchableOpacity>
+          <Text style={swipeStyles.progressText}>{completedCount}/{totalCards} lessons</Text>
+          <TouchableOpacity
+            style={swipeStyles.mentorBtn}
+            onPress={() => onAskMentor(lesson.title)}
+          >
+            <Ionicons name="sparkles" size={16} color="#0A0A0F" />
+            <Text style={swipeStyles.mentorBtnText}>Ask Mentor</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={swipeStyles.progressBarRow}>
+          {allCards.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                swipeStyles.progressSegment,
+                {
+                  backgroundColor:
+                    completed.has(allCards[i].lesson.id)
+                      ? C.accent
+                      : i === currentIdx
+                      ? C.accent + "80"
+                      : C.cardBorder,
+                },
+              ]}
+            />
+          ))}
+        </View>
+
+        <Animated.View
+          style={[swipeStyles.cardWrapper, { transform: [{ translateX }, { scale: cardScale }] }]}
+          {...panResponder.panHandlers}
+        >
+          <View style={[swipeStyles.cardHeader, { backgroundColor: chapter.color + "15" }]}>
+            <Text style={swipeStyles.chapterIcon}>{chapter.icon}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[swipeStyles.chapterLabel, { color: chapter.color }]}>{chapter.title}</Text>
+              <Text style={swipeStyles.lessonTitle}>{lesson.title}</Text>
+            </View>
+            {isDone && <Ionicons name="checkmark-circle" size={22} color={C.accent} />}
+          </View>
+
+          <ScrollView style={swipeStyles.cardBody} showsVerticalScrollIndicator={false}>
+            {stepContent.type === "paragraph" && (
+              <Text style={swipeStyles.paragraph}>{stepContent.text}</Text>
+            )}
+            {stepContent.type === "chart" && lesson.chartImage && CHART_IMAGES[lesson.chartImage] && (
+              <View>
+                <Text style={swipeStyles.chartLabel}>See it on the chart</Text>
+                <Image
+                  source={CHART_IMAGES[lesson.chartImage]}
+                  style={swipeStyles.chartImage}
+                  contentFit="cover"
+                />
+              </View>
+            )}
+            {stepContent.type === "takeaway" && (
+              <View style={[swipeStyles.takeawayBox, { borderLeftColor: chapter.color, backgroundColor: chapter.color + "10" }]}>
+                <Text style={[swipeStyles.takeawayLabel, { color: chapter.color }]}>Key Takeaway</Text>
+                <Text style={swipeStyles.takeawayText}>{lesson.takeaway}</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <View style={swipeStyles.stepDots}>
+            {Array.from({ length: totalSteps }).map((_, i) => (
+              <View
+                key={i}
+                style={[swipeStyles.stepDot, { backgroundColor: i === cardStep ? chapter.color : C.cardBorder, width: i === cardStep ? 18 : 8 }]}
+              />
+            ))}
+          </View>
+        </Animated.View>
+
+        <View style={swipeStyles.navRow}>
+          <TouchableOpacity
+            style={[swipeStyles.navBtn, (currentIdx === 0 && cardStep === 0) && swipeStyles.navBtnDisabled]}
+            onPress={goPrev}
+            disabled={currentIdx === 0 && cardStep === 0}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-back" size={22} color={currentIdx === 0 && cardStep === 0 ? C.textTertiary : C.text} />
+            <Text style={[swipeStyles.navBtnText, (currentIdx === 0 && cardStep === 0) && { color: C.textTertiary }]}>Back</Text>
+          </TouchableOpacity>
+
+          {stepContent.type === "takeaway" && !isDone && (
+            <TouchableOpacity style={swipeStyles.doneBtn} onPress={markComplete}>
+              <Ionicons name="checkmark-circle" size={16} color="#0A0A0F" />
+              <Text style={swipeStyles.doneBtnText}>Mark Done</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[swipeStyles.navBtn, isLastCard && swipeStyles.navBtnDisabled]}
+            onPress={goNext}
+            disabled={isLastCard}
+            activeOpacity={0.7}
+          >
+            <Text style={[swipeStyles.navBtnText, isLastCard && { color: C.textTertiary }]}>Next</Text>
+            <Ionicons name="chevron-forward" size={22} color={isLastCard ? C.textTertiary : C.text} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={swipeStyles.swipeHint}>Swipe left/right to navigate</Text>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+const swipeStyles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.background },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: C.cardBorder,
+    gap: 8,
+  },
+  exitBtn: { padding: 4 },
+  progressText: { flex: 1, fontSize: 13, color: C.textSecondary, textAlign: "center" },
+  mentorBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: C.accent,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  mentorBtnText: { fontSize: 12, fontWeight: "700", color: "#0A0A0F" },
+  progressBarRow: {
+    flexDirection: "row",
+    gap: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  progressSegment: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+  },
+  cardWrapper: {
+    flex: 1,
+    marginHorizontal: 14,
+    marginTop: 6,
+    marginBottom: 6,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    overflow: "hidden",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 16,
+  },
+  chapterIcon: { fontSize: 24 },
+  chapterLabel: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
+  lessonTitle: { fontSize: 17, fontWeight: "700", color: C.text },
+  cardBody: { flex: 1, padding: 18 },
+  paragraph: { fontSize: 15, color: C.text, lineHeight: 26, opacity: 0.9 },
+  chartLabel: { fontSize: 10, fontWeight: "700", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
+  chartImage: { width: "100%" as DimensionValue, height: 200, borderRadius: 12 },
+  takeawayBox: { borderLeftWidth: 3, borderRadius: 10, padding: 14 },
+  takeawayLabel: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+  takeawayText: { fontSize: 14, fontWeight: "500", color: C.text, lineHeight: 22 },
+  stepDots: {
+    flexDirection: "row",
+    gap: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+  },
+  stepDot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  navRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+    paddingTop: 2,
+  },
+  navBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    padding: 10,
+  },
+  navBtnDisabled: { opacity: 0.3 },
+  navBtnText: { fontSize: 14, fontWeight: "600", color: C.text },
+  doneBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: C.accent,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  doneBtnText: { fontSize: 14, fontWeight: "700", color: "#0A0A0F" },
+  swipeHint: {
+    fontSize: 11,
+    color: C.textTertiary,
+    textAlign: "center",
+    paddingBottom: Platform.OS === "ios" ? 20 : 10,
+  },
+});
+
+function LearnView({ onSwipeMode, onAskMentor }: { onSwipeMode: () => void; onAskMentor: (topic: string) => void }) {
   const [expandedChapter, setExpandedChapter] = useState<string | null>("ch1");
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
@@ -71,6 +441,11 @@ function LearnView() {
     else next.add(lessonId);
     setCompleted(next);
     AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify([...next]));
+    const allIds = COURSE_CHAPTERS.flatMap((ch) => ch.lessons.map((l) => l.id));
+    const allDone = allIds.every((id) => next.has(id));
+    if (allDone) {
+      AsyncStorage.setItem(ACADEMY_UNLOCKED_KEY, "true");
+    }
   }
 
   const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
@@ -95,6 +470,13 @@ function LearnView() {
       <View style={learnStyles.progressBar}>
         <View style={[learnStyles.progressFill, { width: `${totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0}%` }]} />
       </View>
+
+      <TouchableOpacity style={learnStyles.swipeModeBtn} onPress={onSwipeMode} activeOpacity={0.85}>
+        <Ionicons name="layers-outline" size={18} color="#0A0A0F" />
+        <Text style={learnStyles.swipeModeBtnText}>Swipe Mode</Text>
+        <Text style={learnStyles.swipeModeSubtext}>Flip through lessons like cards</Text>
+        <Ionicons name="arrow-forward" size={16} color="#0A0A0F" />
+      </TouchableOpacity>
 
       {COURSE_CHAPTERS.map((chapter, chIdx) => {
         const isOpen = expandedChapter === chapter.id;
@@ -172,6 +554,15 @@ function LearnView() {
                         <Text style={[learnStyles.takeawayLabel, { color: chapter.color }]}>Key Takeaway</Text>
                         <Text style={learnStyles.takeawayText}>{lesson.takeaway}</Text>
                       </View>
+
+                      <TouchableOpacity
+                        style={learnStyles.aiMentorBtn}
+                        onPress={() => onAskMentor(lesson.title)}
+                        activeOpacity={0.85}
+                      >
+                        <Ionicons name="sparkles" size={14} color={C.accent} />
+                        <Text style={learnStyles.aiMentorBtnText}>Ask AI Mentor about this lesson</Text>
+                      </TouchableOpacity>
 
                       {!isDone && (
                         <TouchableOpacity style={learnStyles.markBtn} onPress={() => toggleComplete(lesson.id)}>
@@ -484,9 +875,26 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export default function AcademyScreen() {
   const [tab, setTab] = useState<Tab>("learn");
+  const [swipeMode, setSwipeMode] = useState(false);
+  const { showCelebration, closeCelebration } = useGraduationCheck();
+  const { openWithTopic } = useAIAssistant();
+
+  function handleAskMentor(topic: string) {
+    setSwipeMode(false);
+    openWithTopic(topic);
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      <GraduationCelebration visible={showCelebration} onClose={closeCelebration} />
+
+      {swipeMode && (
+        <SwipeMode
+          onExit={() => setSwipeMode(false)}
+          onAskMentor={handleAskMentor}
+        />
+      )}
+
       <View style={styles.header}>
         <Text style={styles.title}>ICT Academy</Text>
         <View style={styles.tabBar}>
@@ -500,7 +908,7 @@ export default function AcademyScreen() {
         </View>
       </View>
       <View style={{ flex: 1 }}>
-        {tab === "learn" && <LearnView />}
+        {tab === "learn" && <LearnView onSwipeMode={() => setSwipeMode(true)} onAskMentor={handleAskMentor} />}
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
         {tab === "plan" && <PlanView />}
@@ -550,6 +958,11 @@ const learnStyles = StyleSheet.create({
   takeawayText: { fontSize: 13, fontFamily: "Inter_500Medium", color: C.text, lineHeight: 20 },
   markBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginTop: 12, alignSelf: "flex-start" },
   markBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+  swipeModeBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.accent, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 20 },
+  swipeModeBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F", flex: 1 },
+  swipeModeSubtext: { fontSize: 11, color: "#0A0A0F", opacity: 0.7 },
+  aiMentorBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: C.accent + "40", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginTop: 12, alignSelf: "flex-start", backgroundColor: C.accent + "10" },
+  aiMentorBtnText: { fontSize: 12, fontFamily: "Inter_500Medium", color: C.accent },
 });
 
 const glossStyles = StyleSheet.create({

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -135,6 +135,167 @@ const fi = StyleSheet.create({
     fontSize: 14,
     color: C.text,
   },
+});
+
+interface MonteCarloResult {
+  buckets: number[];
+  median: number;
+  p10: number;
+  p90: number;
+  ruinPct: number;
+  maxGain: number;
+}
+
+function runMonteCarlo(
+  winRate: number,
+  rr: number,
+  riskPct: number,
+  numTrades: number,
+  numSims: number
+): MonteCarloResult {
+  const finalEquities: number[] = [];
+  let ruinCount = 0;
+
+  for (let s = 0; s < numSims; s++) {
+    let equity = 100;
+    let ruined = false;
+    for (let t = 0; t < numTrades; t++) {
+      const win = Math.random() < winRate;
+      const change = win ? equity * (riskPct / 100) * rr : -equity * (riskPct / 100);
+      equity += change;
+      if (equity <= 10) { ruined = true; break; }
+    }
+    finalEquities.push(ruined ? 0 : equity);
+    if (ruined) ruinCount++;
+  }
+
+  finalEquities.sort((a, b) => a - b);
+  const p10 = finalEquities[Math.floor(numSims * 0.1)];
+  const p90 = finalEquities[Math.floor(numSims * 0.9)];
+  const median = finalEquities[Math.floor(numSims * 0.5)];
+  const maxGain = finalEquities[numSims - 1];
+
+  const min = finalEquities[0];
+  const max = maxGain;
+  const range = max - min || 1;
+  const NUM_BUCKETS = 20;
+  const buckets = new Array(NUM_BUCKETS).fill(0);
+  for (const v of finalEquities) {
+    const bi = Math.min(NUM_BUCKETS - 1, Math.floor(((v - min) / range) * NUM_BUCKETS));
+    buckets[bi]++;
+  }
+
+  return { buckets, median, p10, p90, ruinPct: (ruinCount / numSims) * 100, maxGain };
+}
+
+function MonteCarloSimulator() {
+  const [winRate, setWinRate] = useState("45");
+  const [rr, setRR] = useState("2.5");
+  const [riskPct, setRiskPct] = useState("1");
+  const [numTrades, setNumTrades] = useState("1000");
+  const [result, setResult] = useState<MonteCarloResult | null>(null);
+  const [running, setRunning] = useState(false);
+
+  const run = useCallback(() => {
+    setRunning(true);
+    setTimeout(() => {
+      const wr = Math.min(0.99, Math.max(0.01, parseFloat(winRate) / 100 || 0.45));
+      const r = Math.max(0.1, parseFloat(rr) || 2.5);
+      const rp = Math.min(10, Math.max(0.1, parseFloat(riskPct) || 1));
+      const nt = Math.min(2000, Math.max(10, parseInt(numTrades) || 1000));
+      setResult(runMonteCarlo(wr, r, rp, nt, 1000));
+      setRunning(false);
+    }, 50);
+  }, [winRate, rr, riskPct, numTrades]);
+
+  const maxBucket = result ? Math.max(...result.buckets, 1) : 1;
+  const chartH = 80;
+
+  return (
+    <View style={mc.container}>
+      <View style={mc.inputGrid}>
+        <View style={mc.inputCol}>
+          <Text style={mc.inputLabel}>Win Rate (%)</Text>
+          <TextInput style={mc.input} value={winRate} onChangeText={setWinRate} keyboardType="decimal-pad" placeholderTextColor={C.textSecondary} />
+        </View>
+        <View style={mc.inputCol}>
+          <Text style={mc.inputLabel}>Risk:Reward</Text>
+          <TextInput style={mc.input} value={rr} onChangeText={setRR} keyboardType="decimal-pad" placeholderTextColor={C.textSecondary} />
+        </View>
+        <View style={mc.inputCol}>
+          <Text style={mc.inputLabel}>Risk/Trade (%)</Text>
+          <TextInput style={mc.input} value={riskPct} onChangeText={setRiskPct} keyboardType="decimal-pad" placeholderTextColor={C.textSecondary} />
+        </View>
+        <View style={mc.inputCol}>
+          <Text style={mc.inputLabel}>Num Trades</Text>
+          <TextInput style={mc.input} value={numTrades} onChangeText={setNumTrades} keyboardType="number-pad" placeholderTextColor={C.textSecondary} />
+        </View>
+      </View>
+
+      <TouchableOpacity style={mc.runBtn} onPress={run} disabled={running} activeOpacity={0.85}>
+        {running
+          ? <ActivityIndicator size="small" color="#0A0A0F" />
+          : <><Ionicons name="flash" size={14} color="#0A0A0F" /><Text style={mc.runBtnText}>Run 1000 Simulations</Text></>
+        }
+      </TouchableOpacity>
+
+      {result && (
+        <View style={mc.results}>
+          <Text style={mc.chartTitle}>Final Equity Distribution (1000 runs)</Text>
+          <View style={[mc.chartArea, { height: chartH + 16 }]}>
+            {result.buckets.map((count, i) => {
+              const h = Math.max(2, (count / maxBucket) * chartH);
+              const isRuin = i === 0 && result.ruinPct > 5;
+              return (
+                <View key={i} style={[mc.bar, { height: h, backgroundColor: isRuin ? "#FF4444" : C.accent + "CC" }]} />
+              );
+            })}
+          </View>
+
+          <View style={mc.statsRow}>
+            <View style={mc.statBox}>
+              <Text style={mc.statLabel}>P10</Text>
+              <Text style={[mc.statVal, { color: result.p10 < 100 ? "#FF4444" : C.accent }]}>{result.p10.toFixed(0)}%</Text>
+            </View>
+            <View style={mc.statBox}>
+              <Text style={mc.statLabel}>Median</Text>
+              <Text style={[mc.statVal, { color: result.median < 100 ? "#F59E0B" : C.accent }]}>{result.median.toFixed(0)}%</Text>
+            </View>
+            <View style={mc.statBox}>
+              <Text style={mc.statLabel}>P90</Text>
+              <Text style={[mc.statVal, { color: C.accent }]}>{result.p90.toFixed(0)}%</Text>
+            </View>
+            <View style={mc.statBox}>
+              <Text style={mc.statLabel}>Ruin %</Text>
+              <Text style={[mc.statVal, { color: result.ruinPct > 20 ? "#FF4444" : result.ruinPct > 5 ? "#F59E0B" : C.accent }]}>{result.ruinPct.toFixed(1)}%</Text>
+            </View>
+          </View>
+          <Text style={mc.note}>
+            Starting equity = 100. Values show final equity as % of start. Ruin = below 10%.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const mc = StyleSheet.create({
+  container: { gap: 10 },
+  inputGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  inputCol: { flex: 1, minWidth: 80, gap: 4 },
+  inputLabel: { fontSize: 10, fontWeight: "600", color: C.textSecondary, textTransform: "uppercase" },
+  input: { backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: C.text },
+  runBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: C.accent, borderRadius: 10, paddingVertical: 11 },
+  runBtnText: { fontSize: 13, fontWeight: "700", color: "#0A0A0F" },
+  results: { gap: 8 },
+  chartTitle: { fontSize: 11, fontWeight: "600", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  chartArea: { flexDirection: "row", alignItems: "flex-end", gap: 2, paddingVertical: 8 },
+  bar: { flex: 1, borderRadius: 2 },
+  statsRow: { flexDirection: "row", gap: 8 },
+  statBox: { flex: 1, backgroundColor: C.backgroundSecondary, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
+  statLabel: { fontSize: 10, color: C.textSecondary, fontWeight: "600", textTransform: "uppercase" },
+  statVal: { fontSize: 18, fontWeight: "800", marginTop: 2 },
+  note: { fontSize: 10, color: C.textSecondary, lineHeight: 14 },
 });
 
 export default function AdminScreen() {
@@ -316,6 +477,11 @@ export default function AdminScreen() {
               </View>
             );
           })}
+        </SectionCard>
+
+        {/* Monte Carlo Simulator */}
+        <SectionCard icon="stats-chart-outline" title="Monte Carlo Simulator">
+          <MonteCarloSimulator />
         </SectionCard>
 
         <Text style={s.note}>

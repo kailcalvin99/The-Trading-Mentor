@@ -28,6 +28,7 @@ import { streamMessage, apiPost, type ToolCallEvent } from "@/lib/api";
 import { usePlanner } from "@/contexts/PlannerContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { subscribeToAITrigger } from "@/lib/aiTrigger";
+import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import Colors from "@/constants/colors";
 
 interface AITrigger {
@@ -111,11 +112,19 @@ export default function AIAssistant() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const planner = usePlanner();
+  const { registerOpenHandler } = useAIAssistant();
 
   const { data: conversations, refetch } = useListGeminiConversations();
   const { data: propAccount } = useGetPropAccount();
 
   const drawdownNudgedRef = useRef(false);
+
+  useEffect(() => {
+    registerOpenHandler((topic: string) => {
+      setInput(`Tell me more about: ${topic}`);
+      setVisible(true);
+    });
+  }, []);
 
   useEffect(() => {
     if (visible) {
