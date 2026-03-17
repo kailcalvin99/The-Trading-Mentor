@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 
 interface AuthUser {
   id: number;
@@ -20,6 +20,7 @@ interface AuthContextValue {
   subscription: AuthSubscription | null;
   loading: boolean;
   refresh: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 interface AuthMeResponse {
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextValue>({
   subscription: null,
   loading: true,
   refresh: async () => {},
+  logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -52,12 +54,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const logout = useCallback(async () => {
+    try {
+      await apiPost("auth/logout", {});
+    } catch {}
+    setUser(null);
+    setSubscription(null);
+  }, []);
+
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   return (
-    <AuthContext.Provider value={{ user, subscription, loading, refresh }}>
+    <AuthContext.Provider value={{ user, subscription, loading, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   );

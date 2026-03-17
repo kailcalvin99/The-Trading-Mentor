@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiGet, apiPatch } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
@@ -163,6 +164,7 @@ const sb = StyleSheet.create({
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -290,10 +292,7 @@ export default function SettingsScreen() {
         text: "Log Out",
         style: "destructive",
         onPress: async () => {
-          try {
-            await apiPost("auth/logout", {});
-          } catch {}
-          router.replace("/");
+          await logout();
         },
       },
     ]);

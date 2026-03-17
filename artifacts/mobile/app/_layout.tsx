@@ -6,7 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -14,12 +14,30 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { PlannerProvider } from "@/contexts/PlannerContext";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (loading) return;
+    const inLoginScreen = segments[0] === "login";
+    if (!user && !inLoginScreen) {
+      router.replace("/login");
+    } else if (user && inLoginScreen) {
+      router.replace("/(tabs)");
+    }
+  }, [user, loading, segments, router]);
+
+  return <>{children}</>;
+}
 
 function RootLayoutNav() {
   return (
@@ -30,6 +48,7 @@ function RootLayoutNav() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
     </Stack>
   );
 }
@@ -58,7 +77,9 @@ export default function RootLayout() {
             <PlannerProvider>
               <GestureHandlerRootView>
                 <KeyboardProvider>
-                  <RootLayoutNav />
+                  <AuthGuard>
+                    <RootLayoutNav />
+                  </AuthGuard>
                 </KeyboardProvider>
               </GestureHandlerRootView>
             </PlannerProvider>
