@@ -247,8 +247,9 @@ export default function SettingsScreen() {
       setNewPw("");
       setConfirmPw("");
       Alert.alert("Saved", "Profile updated successfully");
-    } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save profile");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to save profile";
+      Alert.alert("Error", msg);
     }
     setSaving(null);
   }
