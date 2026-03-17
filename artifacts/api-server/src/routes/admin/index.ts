@@ -281,4 +281,96 @@ router.get("/password-resets", async (_req, res) => {
   }
 });
 
+router.get("/psychology-analytics", async (_req, res) => {
+  try {
+    const allTrades = await db
+      .select({
+        behaviorTag: tradesTable.behaviorTag,
+        entryTime: tradesTable.entryTime,
+        createdAt: tradesTable.createdAt,
+      })
+      .from(tradesTable);
+
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - 7);
+
+    const BEHAVIOR_LABELS = ["Disciplined", "FOMO", "Chased", "Greedy"] as const;
+
+    const allTimeCounts: Record<string, number> = { Disciplined: 0, FOMO: 0, Chased: 0, Greedy: 0, Untagged: 0 };
+    const weekCounts: Record<string, number> = { Disciplined: 0, FOMO: 0, Chased: 0, Greedy: 0, Untagged: 0 };
+
+    let totalTrades = 0;
+    let weekTrades = 0;
+    let killZoneTotal = 0;
+    let killZoneCompliant = 0;
+    let weekKillZoneTotal = 0;
+    let weekKillZoneCompliant = 0;
+
+    function parseEntryTimeMins(entryTime: string | null): number | null {
+      if (!entryTime) return null;
+      const m = entryTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (!m) return null;
+      let h = parseInt(m[1]);
+      const min = parseInt(m[2]);
+      const period = m[3].toUpperCase();
+      if (period === "PM" && h !== 12) h += 12;
+      if (period === "AM" && h === 12) h = 0;
+      return h * 60 + min;
+    }
+
+    function inKillZone(totalMins: number): boolean {
+      return (
+        totalMins >= 20 * 60 ||
+        totalMins < 2 * 60 ||
+        (totalMins >= 2 * 60 && totalMins < 5 * 60) ||
+        (totalMins >= 7 * 60 && totalMins < 10 * 60) ||
+        (totalMins >= 10 * 60 && totalMins < 12 * 60) ||
+        (totalMins >= 13 * 60 + 30 && totalMins < 16 * 60)
+      );
+    }
+
+    for (const trade of allTrades) {
+      totalTrades++;
+      const tag = BEHAVIOR_LABELS.find(l => l === trade.behaviorTag) ?? "Untagged";
+      allTimeCounts[tag]++;
+
+      const tradeMins = parseEntryTimeMins(trade.entryTime);
+      if (tradeMins !== null) {
+        killZoneTotal++;
+        if (inKillZone(tradeMins)) killZoneCompliant++;
+      }
+
+      const tradeDate = trade.createdAt ? new Date(trade.createdAt) : null;
+      if (tradeDate && tradeDate >= weekStart) {
+        weekTrades++;
+        weekCounts[tag]++;
+        if (tradeMins !== null) {
+          weekKillZoneTotal++;
+          if (inKillZone(tradeMins)) weekKillZoneCompliant++;
+        }
+      }
+    }
+
+    const topWeekLeak = BEHAVIOR_LABELS.filter(l => l !== "Disciplined")
+      .map(l => ({ tag: l, count: weekCounts[l] }))
+      .sort((a, b) => b.count - a.count)[0];
+
+    res.json({
+      allTime: { counts: allTimeCounts, total: totalTrades },
+      week: { counts: weekCounts, total: weekTrades },
+      killZoneCompliance: {
+        allTime: killZoneTotal > 0 ? Math.round((killZoneCompliant / killZoneTotal) * 100) : null,
+        week: weekKillZoneTotal > 0 ? Math.round((weekKillZoneCompliant / weekKillZoneTotal) * 100) : null,
+        allTimeParsed: killZoneTotal,
+        weekParsed: weekKillZoneTotal,
+      },
+      topWeekLeak: topWeekLeak && topWeekLeak.count > 0 ? topWeekLeak : null,
+    });
+  } catch (err) {
+    console.error("Psychology analytics error:", err);
+    res.status(500).json({ error: "Failed to fetch psychology analytics" });
+  }
+});
+
 export default router;

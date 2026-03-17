@@ -1151,6 +1151,17 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
   const [summaryText, setSummaryText] = useState("");
   const [draftPromptLoading, setDraftPromptLoading] = useState(false);
   const [draftPrompt, setDraftPrompt] = useState("");
+  const [psychData, setPsychData] = useState<{
+    allTime: { counts: Record<string, number>; total: number };
+    week: { counts: Record<string, number>; total: number };
+    killZoneCompliance: { allTime: number | null; week: number | null; allTimeParsed: number; weekParsed: number };
+    topWeekLeak: { tag: string; count: number } | null;
+  } | null>(null);
+  const [psychLoading, setPsychLoading] = useState(false);
+  const [psychView, setPsychView] = useState<"week" | "alltime">("week");
+  const [reengageLoading, setReengageLoading] = useState(false);
+  const [reengageDraft, setReengageDraft] = useState("");
+  const [reengageCopied, setReengageCopied] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fetchOpts: RequestInit = { credentials: "include" };
   const headers = { "Content-Type": "application/json" };
@@ -1280,7 +1291,71 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
     }
   }
 
+  async function loadPsychData() {
+    setPsychLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/psychology-analytics`, fetchOpts);
+      if (res.ok) setPsychData(await res.json());
+    } catch {}
+    setPsychLoading(false);
+  }
+
+  async function generateReengage() {
+    if (!psychData) return;
+    setReengageLoading(true);
+    setReengageDraft("");
+    try {
+      const topLeak = psychData.topWeekLeak;
+      const kzPct = psychData.killZoneCompliance.week;
+      const convId = await ensureConversation();
+      const prompt = `You are an admin assistant. Write a short, friendly re-engagement message (max 4 sentences) for traders on our platform. This week's data: top emotional leak = ${topLeak ? `${topLeak.tag} (${topLeak.count} trades)` : "none detected"}, kill zone compliance = ${kzPct !== null ? `${kzPct}%` : "unknown"}. Use list_inactive_users to find users who haven't traded in 7+ days. The message should acknowledge the top leak, encourage trading during kill zones, and invite them back. Output ONLY the re-engagement message text, no extra commentary.`;
+      setAdminMessages(prev => [...prev,
+        { role: "user", content: "Draft a re-engagement message for inactive users based on this week's psychology data." },
+        { role: "assistant", content: "" },
+      ]);
+      const result = await streamAdminMessage(prompt, convId);
+      setReengageDraft(result);
+    } catch {}
+    setReengageLoading(false);
+  }
+
+  function copyReengage() {
+    navigator.clipboard.writeText(reengageDraft).then(() => {
+      setReengageCopied(true);
+      setTimeout(() => setReengageCopied(false), 2000);
+    });
+  }
+
+  const BEHAVIOUR_COLOURS: Record<string, string> = {
+    Disciplined: "bg-emerald-500",
+    FOMO: "bg-amber-500",
+    Chased: "bg-orange-500",
+    Greedy: "bg-red-500",
+    Untagged: "bg-slate-500",
+  };
+  const BEHAVIOUR_TEXT: Record<string, string> = {
+    Disciplined: "text-emerald-500",
+    FOMO: "text-amber-500",
+    Chased: "text-orange-500",
+    Greedy: "text-red-500",
+    Untagged: "text-slate-500",
+  };
+  const LEAK_INSIGHT: Record<string, string> = {
+    FOMO: "FOMO trades are spiking this week — traders may be chasing moves. Consider sending a reminder about waiting for kill zone setups.",
+    Chased: "Traders are chasing entries this week. A reminder to wait for OTE and price to come to them could help reduce this.",
+    Greedy: "Greed is showing up as a top leak. Encourage locking in TP1 and respecting the original risk plan.",
+  };
+
+  const activePsychCounts = psychView === "week" ? psychData?.week.counts : psychData?.allTime.counts;
+  const activePsychTotal = psychView === "week" ? (psychData?.week.total ?? 0) : (psychData?.allTime.total ?? 0);
+  const psychBars = ["Disciplined", "FOMO", "Chased", "Greedy", "Untagged"].map(tag => ({
+    tag,
+    count: activePsychCounts?.[tag] ?? 0,
+    pct: activePsychTotal > 0 ? Math.round(((activePsychCounts?.[tag] ?? 0) / activePsychTotal) * 100) : 0,
+  }));
+
   return (
+    <div className="space-y-6">
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-2">
@@ -1391,6 +1466,155 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
           )}
         </div>
       </div>
+    </div>
+
+    {/* Psychology & Behaviour Analytics */}
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Brain className="h-5 w-5 text-purple-500" />
+          <h3 className="text-sm font-bold">Psychology & Behaviour Analytics</h3>
+        </div>
+        <button
+          onClick={loadPsychData}
+          disabled={psychLoading}
+          className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-500/20 disabled:opacity-40"
+        >
+          {psychLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {psychData ? "Refresh" : "Load Data"}
+        </button>
+      </div>
+
+      {!psychData && !psychLoading && (
+        <p className="text-xs text-muted-foreground text-center py-6">
+          Click "Load Data" to see platform-wide behaviour tag distribution and kill zone compliance.
+        </p>
+      )}
+      {psychLoading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-purple-400" />
+        </div>
+      )}
+
+      {psychData && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Behaviour Tag Bar Chart */}
+          <div className="lg:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Behaviour Tag Distribution</p>
+              <div className="flex rounded-lg overflow-hidden border border-border text-[10px] font-bold">
+                <button
+                  onClick={() => setPsychView("week")}
+                  className={`px-2.5 py-1 transition-colors ${psychView === "week" ? "bg-purple-500/20 text-purple-400" : "text-muted-foreground hover:bg-secondary"}`}
+                >This Week</button>
+                <button
+                  onClick={() => setPsychView("alltime")}
+                  className={`px-2.5 py-1 transition-colors ${psychView === "alltime" ? "bg-purple-500/20 text-purple-400" : "text-muted-foreground hover:bg-secondary"}`}
+                >All Time</button>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">{activePsychTotal} trade{activePsychTotal !== 1 ? "s" : ""} recorded</p>
+            <div className="space-y-2">
+              {psychBars.map(bar => (
+                <div key={bar.tag} className="space-y-0.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className={`font-medium ${BEHAVIOUR_TEXT[bar.tag]}`}>{bar.tag}</span>
+                    <span className="text-muted-foreground">{bar.count} ({bar.pct}%)</span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${BEHAVIOUR_COLOURS[bar.tag]}`}
+                      style={{ width: `${bar.pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Kill Zone Compliance + Top Leak */}
+          <div className="space-y-3">
+            {/* Kill Zone Compliance */}
+            <div className="bg-muted/30 rounded-xl p-3 border border-border">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Clock className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Kill Zone Compliance</p>
+              </div>
+              {psychData.killZoneCompliance.week !== null ? (
+                <>
+                  <p className={`text-2xl font-black ${
+                    (psychData.killZoneCompliance.week ?? 0) >= 70 ? "text-emerald-400"
+                    : (psychData.killZoneCompliance.week ?? 0) >= 40 ? "text-amber-400"
+                    : "text-red-400"
+                  }`}>
+                    {psychData.killZoneCompliance.week}%
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    this week ({psychData.killZoneCompliance.weekParsed} trades w/ time data)
+                  </p>
+                  {psychData.killZoneCompliance.allTime !== null && (
+                    <p className="text-[10px] text-muted-foreground">
+                      all time: {psychData.killZoneCompliance.allTime}%
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">No entry time data available yet.</p>
+              )}
+            </div>
+
+            {/* Top Leak Insight */}
+            <div className="bg-muted/30 rounded-xl p-3 border border-border">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Target className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Top Leak This Week</p>
+              </div>
+              {psychData.topWeekLeak ? (
+                <>
+                  <p className={`text-lg font-black mb-1 ${BEHAVIOUR_TEXT[psychData.topWeekLeak.tag]}`}>
+                    {psychData.topWeekLeak.tag}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mb-2">
+                    {psychData.topWeekLeak.count} trade{psychData.topWeekLeak.count !== 1 ? "s" : ""} this week
+                  </p>
+                  {LEAK_INSIGHT[psychData.topWeekLeak.tag] && (
+                    <p className="text-[10px] text-foreground/70 leading-relaxed italic border-l-2 border-amber-500/40 pl-2">
+                      {LEAK_INSIGHT[psychData.topWeekLeak.tag]}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">No emotional leaks detected this week.</p>
+              )}
+            </div>
+
+            {/* Re-engage Button */}
+            <button
+              onClick={generateReengage}
+              disabled={reengageLoading || !psychData}
+              className="w-full flex items-center justify-center gap-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 px-3 py-2.5 rounded-lg text-xs font-bold hover:bg-purple-500/20 disabled:opacity-40 transition-colors"
+            >
+              {reengageLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              Draft Re-engagement Message
+            </button>
+
+            {reengageDraft && (
+              <div className="bg-muted/30 rounded-xl p-3 border border-border space-y-2">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Re-engagement Draft</p>
+                <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{reengageDraft}</p>
+                <button
+                  onClick={copyReengage}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-primary hover:underline"
+                >
+                  {reengageCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  {reengageCopied ? "Copied!" : "Copy to clipboard"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   );
 }
