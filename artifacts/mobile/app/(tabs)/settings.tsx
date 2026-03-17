@@ -8,11 +8,13 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Share,
 } from "react-native";
+import * as ExpoSharing from "expo-sharing";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiGet, apiPatch, getBaseUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
@@ -191,6 +193,7 @@ export default function SettingsScreen() {
   const [confirmPw, setConfirmPw] = useState("");
   const [showCurPw, setShowCurPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+  const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
 
   useEffect(() => {
     load();
@@ -198,10 +201,14 @@ export default function SettingsScreen() {
 
   async function load() {
     try {
-      const [settingsData, meData] = await Promise.all([
+      const [settingsData, meData, tiersData] = await Promise.all([
         apiGet<UserSettingsData>("user/settings"),
         apiGet<AuthMeData>("auth/me"),
+        apiGet<{ founderSpotsLeft?: number }>("subscriptions/tiers").catch(() => ({})),
       ]);
+      if (typeof (tiersData as { founderSpotsLeft?: number }).founderSpotsLeft === "number") {
+        setFounderSpotsLeft((tiersData as { founderSpotsLeft: number }).founderSpotsLeft);
+      }
       setProfile({
         name: settingsData.profile?.name || "",
         email: settingsData.profile?.email || "",
@@ -283,6 +290,20 @@ export default function SettingsScreen() {
       Alert.alert("Error", "Failed to save risk rules");
     }
     setSaving(null);
+  }
+
+  async function handleShare() {
+    const appUrl = getBaseUrl().replace(/\/$/, "");
+    const message = `Hey! I've been using this app to learn how to trade like the big banks. It's an all-in-one trading tool — from learning ICT concepts, to daily planning, risk calculating, journaling, smart analytics, and even an AI mentor and coach. Get started trading just like me 👉 ${appUrl}`;
+    const isAvailable = await ExpoSharing.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert("Sharing not available", "Sharing is not available on this device.");
+      return;
+    }
+    try {
+      await Share.share({ message, url: appUrl });
+    } catch {
+    }
   }
 
   async function handleLogout() {
@@ -528,6 +549,29 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Share / Invite Friends */}
+        <View style={s.card}>
+          <CardHeader icon="share-social-outline" title="Invite Friends" />
+          <View style={s.section}>
+            {founderSpotsLeft !== null && (
+              <View style={shareS.urgency}>
+                <Text style={shareS.urgencyText}>
+                  🔥 {founderSpotsLeft > 0
+                    ? `Only ${founderSpotsLeft} Founder spot${founderSpotsLeft !== 1 ? "s" : ""} left — share now to help your friends save 50%!`
+                    : "Founder spots are full — but sharing is still appreciated!"}
+                </Text>
+              </View>
+            )}
+            <Text style={[s.label, { marginTop: founderSpotsLeft !== null ? 4 : 0 }]}>
+              Share this app with your trading network
+            </Text>
+            <TouchableOpacity style={shareS.shareBtn} onPress={handleShare}>
+              <Ionicons name="share-social-outline" size={18} color="#0A0A0F" />
+              <Text style={shareS.shareBtnText}>Share with Friends</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Admin Panel */}
         {profile.role === "admin" && (
           <TouchableOpacity
@@ -646,5 +690,38 @@ const s = StyleSheet.create({
     color: C.textSecondary,
     textAlign: "center",
     marginTop: 4,
+  },
+});
+
+const shareS = StyleSheet.create({
+  urgency: {
+    backgroundColor: C.accent + "18",
+    borderWidth: 1,
+    borderColor: C.accent + "40",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  urgencyText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: C.accent,
+    lineHeight: 17,
+  },
+  shareBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  shareBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0A0A0F",
   },
 });

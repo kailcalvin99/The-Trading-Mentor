@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -8,6 +8,8 @@ import { FreeSidebar, LockedFeatureOverlay, SpinWheelFloatingTrigger } from "@/c
 import AIAssistant from "@/components/AIAssistant";
 import { TourGuide } from "@/components/TourGuide";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
+
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0 },
@@ -119,6 +121,105 @@ function MobileNavItem({
   );
 }
 
+function ShareModal({
+  founderSpotsLeft,
+  shareCopied,
+  setShareCopied,
+  onClose,
+}: {
+  founderSpotsLeft: number | null;
+  shareCopied: boolean;
+  setShareCopied: (v: boolean) => void;
+  onClose: () => void;
+}) {
+  const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+  const defaultMessage = `Hey! I've been using this app to learn how to trade like the big banks. It's an all-in-one trading tool — from learning ICT concepts, to daily planning, risk calculating, journaling, smart analytics, and even an AI mentor and coach. Get started trading just like me 👉 ${appUrl}`;
+  const [editableMessage, setEditableMessage] = useState(defaultMessage);
+  const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Share2 className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-bold text-foreground">Invite Friends</h2>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {founderSpotsLeft !== null && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5 mb-4 flex items-center gap-2">
+            <span className="text-base">🔥</span>
+            <p className="text-xs font-semibold text-amber-500">
+              {founderSpotsLeft > 0
+                ? `Only ${founderSpotsLeft} Founder spot${founderSpotsLeft !== 1 ? "s" : ""} left — share now to help your friends save 50%!`
+                : "Founder spots are full — but sharing is still appreciated!"}
+            </p>
+          </div>
+        )}
+
+        <p className="text-sm text-muted-foreground mb-2">
+          Edit your message before sharing:
+        </p>
+
+        <textarea
+          value={editableMessage}
+          onChange={(e) => setEditableMessage(e.target.value)}
+          rows={5}
+          className="w-full bg-secondary/50 border border-border rounded-xl p-3 text-sm text-foreground leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-primary mb-4"
+        />
+
+        <div className="flex gap-2 mb-3">
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(appUrl);
+              setShareCopied(true);
+              setTimeout(() => setShareCopied(false), 3000);
+            }}
+            className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm"
+          >
+            {shareCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {shareCopied ? "Copied!" : "Copy Link"}
+          </button>
+          {canNativeShare && (
+            <button
+              onClick={() => {
+                navigator.share({ title: "ICT AI Trading Mentor", text: editableMessage, url: appUrl }).catch(() => {});
+              }}
+              className="flex-1 flex items-center justify-center gap-2 border border-border rounded-xl py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              <Share2 className="h-4 w-4" />
+              Share
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center justify-center gap-3">
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(editableMessage)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-center border border-border rounded-xl py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            Share on X
+          </a>
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(editableMessage)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-center border border-border rounded-xl py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            Share on WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Layout() {
   const { user, subscription, tierLevel, isAdmin, logout } = useAuth();
   const { config } = useAppConfig();
@@ -127,6 +228,7 @@ export default function Layout() {
   const [showCasinoSidebar, setShowCasinoSidebar] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { state: tourState, dispatch: tourDispatch, closeTour } = useTourGuideContext();
@@ -147,6 +249,18 @@ export default function Layout() {
       }
     }
   }, [location.pathname, tierLevel, navigate]);
+
+  const handleOpenShare = useCallback(() => {
+    setShowShare(true);
+    fetch(`${API_BASE}/subscriptions/tiers`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (typeof data.founderSpotsLeft === "number") {
+          setFounderSpotsLeft(data.founderSpotsLeft);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   function handleLockedClick() {
     setShowLockToast(true);
@@ -215,7 +329,7 @@ export default function Layout() {
           </Link>
 
           <button
-            onClick={() => setShowShare(true)}
+            onClick={handleOpenShare}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full text-left"
           >
             <Share2 className="h-5 w-5 shrink-0" />
@@ -303,59 +417,12 @@ export default function Layout() {
       </div>
 
       {showShare && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Share2 className="h-5 w-5 text-primary" />
-                <h2 className="text-base font-bold text-foreground">Invite Friends</h2>
-              </div>
-              <button onClick={() => { setShowShare(false); setShareCopied(false); }} className="text-muted-foreground hover:text-foreground">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <p className="text-sm text-muted-foreground mb-4">
-              Know someone who wants to learn ICT trading? The first 20 members get founder pricing. Share this message:
-            </p>
-
-            <div className="bg-secondary/50 border border-border rounded-xl p-4 mb-4">
-              <p className="text-sm text-foreground leading-relaxed">
-                🚀 I've been using <strong>ICT AI Trading Mentor</strong> — it's an AI-powered app that teaches you the ICT methodology step by step. They're in their Founder phase so the first 20 members get a special discount. Check it out: <span className="text-primary">ictmentor.com</span>
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText("🚀 I've been using ICT AI Trading Mentor — it's an AI-powered app that teaches you the ICT methodology step by step. They're in their Founder phase so the first 20 members get a special discount. Check it out: ictmentor.com");
-                setShareCopied(true);
-                setTimeout(() => setShareCopied(false), 3000);
-              }}
-              className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm"
-            >
-              {shareCopied ? "✓ Copied to Clipboard!" : "Copy Message"}
-            </button>
-
-            <div className="flex items-center justify-center gap-3 mt-4">
-              <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("🚀 I've been using ICT AI Trading Mentor — an AI-powered app that teaches ICT methodology step by step. First 20 members get founder pricing. Check it out: ictmentor.com")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 text-center border border-border rounded-xl py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              >
-                Share on X
-              </a>
-              <a
-                href={`https://wa.me/?text=${encodeURIComponent("🚀 I've been using ICT AI Trading Mentor — an AI-powered app that teaches ICT methodology step by step. First 20 members get founder pricing! ictmentor.com")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 text-center border border-border rounded-xl py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              >
-                Share on WhatsApp
-              </a>
-            </div>
-          </div>
-        </div>
+        <ShareModal
+          founderSpotsLeft={founderSpotsLeft}
+          shareCopied={shareCopied}
+          setShareCopied={setShareCopied}
+          onClose={() => { setShowShare(false); setShareCopied(false); setFounderSpotsLeft(null); }}
+        />
       )}
 
       {showLockToast && (
