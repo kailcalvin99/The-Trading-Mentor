@@ -23,5 +23,6 @@ export interface Trade {
   sideDirection?: string | null;
   coachFeedback?: string | null;
   setupScore?: number | null;
+  setupType?: string | null;
   createdAt: Date;
 }

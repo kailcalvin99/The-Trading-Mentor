@@ -20,7 +20,7 @@ import Colors from "@/constants/colors";
 
 const C = Colors.dark;
 
-type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy";
+type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
 type EntryMode = "conservative" | "aggressive";
 
@@ -44,6 +44,7 @@ const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: str
   { tag: "Disciplined", label: "I followed my plan", color: "#00C896", icon: "shield-checkmark-outline" },
   { tag: "FOMO", label: "I jumped in too fast", color: "#F59E0B", icon: "flash-outline" },
   { tag: "Chased", label: "I entered late", color: "#818CF8", icon: "trending-up-outline" },
+  { tag: "Revenge", label: "I traded to get back losses", color: "#FB923C", icon: "alert-circle-outline" },
   { tag: "Greedy", label: "I held too long", color: "#EF4444", icon: "flame-outline" },
 ];
 
@@ -56,6 +57,8 @@ const EXIT_RULES = [
 
 const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
 
+const SETUP_TYPES = ["FVG", "Order Block", "Liquidity Sweep", "Turtle Soup", "BOS/CHoCH"] as const;
+
 interface TradeFormData {
   pair: string;
   entryTime: string;
@@ -67,6 +70,7 @@ interface TradeFormData {
   followedTimeRule: boolean | null;
   hasFvgConfirmation: boolean | null;
   stressLevel: number;
+  setupTypes: string[];
 }
 
 const DEFAULT_FORM: TradeFormData = {
@@ -80,6 +84,7 @@ const DEFAULT_FORM: TradeFormData = {
   followedTimeRule: null,
   hasFvgConfirmation: null,
   stressLevel: 5,
+  setupTypes: [],
 };
 
 function YesNoToggle({ value, onChange, label }: { value: boolean | null; onChange: (v: boolean) => void; label: string }) {
@@ -332,6 +337,7 @@ export default function JournalScreen() {
           stressLevel: form.stressLevel,
           isDraft: false,
           setupScore: liveSetupScore,
+          setupType: form.setupTypes.length > 0 ? form.setupTypes.join(", ") : undefined,
         },
       });
       qc.invalidateQueries({ queryKey: [`/api/trades`] });
@@ -698,6 +704,32 @@ export default function JournalScreen() {
                 >
                   <Ionicons name={icon as React.ComponentProps<typeof Ionicons>["name"]} size={14} color={form.behaviorTag === tag ? color : C.textSecondary} />
                   <Text style={[formStyles.tagBtnText, form.behaviorTag === tag && { color }]}>{tag} — {label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Setup Types */}
+            <Text style={formStyles.fieldLabel}>Setup Type (Confluence)</Text>
+            <View style={formStyles.tagRow}>
+              {SETUP_TYPES.map((st) => (
+                <TouchableOpacity
+                  key={st}
+                  style={[
+                    formStyles.tagBtn,
+                    form.setupTypes.includes(st) && { backgroundColor: C.accent + "25", borderColor: C.accent },
+                  ]}
+                  onPress={() => {
+                    const current = form.setupTypes;
+                    setField(
+                      "setupTypes",
+                      current.includes(st) ? current.filter((s) => s !== st) : [...current, st]
+                    );
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[formStyles.tagBtnText, form.setupTypes.includes(st) && { color: C.accent }]}>
+                    {st}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>

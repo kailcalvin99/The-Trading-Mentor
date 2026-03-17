@@ -41,6 +41,7 @@ router.post("/", authRequired, async (req, res) => {
       ticker,
       sideDirection,
       setupScore,
+      setupType,
     } = req.body;
 
     if (!pair || !entryTime || riskPct === undefined) {
@@ -65,6 +66,7 @@ router.post("/", authRequired, async (req, res) => {
         ticker: ticker || null,
         sideDirection: sideDirection || null,
         setupScore: setupScore ?? null,
+        setupType: setupType || null,
       })
       .returning();
 

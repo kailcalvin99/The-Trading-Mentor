@@ -20,4 +20,5 @@ export interface CreateTradeBody {
   sideDirection?: string;
   followedTimeRule?: boolean;
   hasFvgConfirmation?: boolean;
+  setupType?: string;
 }

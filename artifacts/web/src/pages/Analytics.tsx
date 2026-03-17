@@ -25,6 +25,10 @@ import {
   Cell,
   PieChart,
   Pie,
+  ReferenceArea,
+  ReferenceLine,
+  Label,
+  Tooltip,
 } from "recharts";
 import {
   TrendingUp,
@@ -43,6 +47,8 @@ import {
   Timer,
   Shield,
   Flame,
+  DollarSign,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
@@ -62,6 +68,7 @@ interface ExtendedTrade {
   isDraft?: boolean;
   ticker?: string;
   sideDirection?: string;
+  setupType?: string | null;
   createdAt: string;
 }
 
@@ -153,7 +160,7 @@ function computeInsights(trades: ExtendedTrade[]): Insight[] {
     }
   }
 
-  const behaviorTags = ["FOMO", "Chased", "Greedy", "Disciplined"];
+  const behaviorTags = ["FOMO", "Chased", "Revenge", "Greedy", "Disciplined"];
   for (const tag of behaviorTags) {
     const tagged = trades.filter((t) => t.behaviorTag === tag);
     if (tagged.length >= 3) {
@@ -510,7 +517,7 @@ export default function Analytics() {
 
   const behaviorData = useMemo(() => {
     if (trades.length === 0) return [];
-    const tags = ["Disciplined", "FOMO", "Chased", "Greedy"];
+    const tags = ["Disciplined", "FOMO", "Chased", "Revenge", "Greedy"];
     const tagMap: Record<string, { wins: number; losses: number; breakeven: number; total: number }> = {};
     trades.forEach((t) => {
       const tag = t.behaviorTag || "Untagged";
@@ -572,6 +579,75 @@ export default function Analytics() {
       { metric: "Time Rule (Trading at the Right Time)", value: Math.round(timeRuleRate), weight: "20%", fill: "hsl(45, 93%, 47%)" },
     ];
   }, [trades, stats.winRate]);
+
+  const maxDrawdownInfo = useMemo(() => {
+    if (pnlData.length < 2) return null;
+    let peak = pnlData[0].pnl;
+    let peakIdx = 0;
+    let maxDd = 0;
+    let ddStart = 0;
+    let ddEnd = 0;
+    for (let i = 1; i < pnlData.length; i++) {
+      if (pnlData[i].pnl > peak) {
+        peak = pnlData[i].pnl;
+        peakIdx = i;
+      }
+      const dd = peak - pnlData[i].pnl;
+      if (dd > maxDd) {
+        maxDd = dd;
+        ddStart = peakIdx;
+        ddEnd = i;
+      }
+    }
+    if (maxDd === 0) return null;
+    return {
+      startDate: pnlData[ddStart].date,
+      endDate: pnlData[ddEnd].date,
+      value: maxDd,
+    };
+  }, [pnlData]);
+
+  const mistakeCost = useMemo(() => {
+    const mistakeTags = ["FOMO", "Revenge", "Chased"];
+    const mistakeTrades = trades.filter(
+      (t) => t.behaviorTag && mistakeTags.includes(t.behaviorTag) && t.outcome === "loss"
+    );
+    const totalRiskPct = mistakeTrades.reduce((sum, t) => sum + t.riskPct, 0);
+    const totalR = mistakeTrades.length > 0 ? totalRiskPct : 0;
+    return {
+      rValue: totalR.toFixed(1),
+      pctOfAccount: totalRiskPct.toFixed(1),
+      tradeCount: mistakeTrades.length,
+    };
+  }, [trades]);
+
+  const confluenceData = useMemo(() => {
+    const setupTypes = ["FVG", "Order Block", "Liquidity Sweep", "Turtle Soup", "BOS/CHoCH"];
+    const setupMap: Record<string, { wins: number; losses: number; total: number; totalR: number }> = {};
+    trades.forEach((t) => {
+      if (!t.setupType) return;
+      const types = t.setupType.split(",").map((s) => s.trim());
+      types.forEach((st) => {
+        if (!setupMap[st]) setupMap[st] = { wins: 0, losses: 0, total: 0, totalR: 0 };
+        setupMap[st].total++;
+        if (t.outcome === "win") {
+          setupMap[st].wins++;
+          setupMap[st].totalR += t.riskPct;
+        } else if (t.outcome === "loss") {
+          setupMap[st].losses++;
+          setupMap[st].totalR -= t.riskPct;
+        }
+      });
+    });
+    return Object.entries(setupMap)
+      .map(([type, data]) => ({
+        type,
+        trades: data.total,
+        winRate: data.total > 0 ? Math.round((data.wins / data.total) * 100) : 0,
+        avgR: data.total > 0 ? (data.totalR / data.total).toFixed(2) : "0.00",
+      }))
+      .sort((a, b) => b.winRate - a.winRate);
+  }, [trades]);
 
   const insights = useMemo(() => computeInsights(trades), [trades]);
 
@@ -638,6 +714,30 @@ export default function Analytics() {
           trend={stats.avgRisk <= 2 ? "up" : "down"}
         />
       </div>
+
+      {mistakeCost.tradeCount > 0 && (
+        <Card className="border-red-500/30 bg-red-500/5">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <p className="text-sm font-semibold text-red-500">Total Cost of Discipline Errors</p>
+                </div>
+                <p className="text-2xl font-bold text-red-500">
+                  {mistakeCost.rValue}R / {mistakeCost.pctOfAccount}% of account
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Combined risk lost on {mistakeCost.tradeCount} trade{mistakeCost.tradeCount !== 1 ? "s" : ""} tagged FOMO, Revenge, or Chased
+                </p>
+              </div>
+              <div className="rounded-lg bg-red-500/10 p-2">
+                <DollarSign className="h-4 w-4 text-red-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {trades.length >= 10 && insights.length > 0 ? (
         <Card>
@@ -721,6 +821,23 @@ export default function Analytics() {
                   fill="url(#pnlGradient)"
                   strokeWidth={2}
                 />
+                {maxDrawdownInfo && (
+                  <ReferenceArea
+                    x1={maxDrawdownInfo.startDate}
+                    x2={maxDrawdownInfo.endDate}
+                    fill="hsl(0, 84%, 60%)"
+                    fillOpacity={0.15}
+                    stroke="hsl(0, 84%, 60%)"
+                    strokeOpacity={0.3}
+                    label={{
+                      value: `Max Drawdown: -${maxDrawdownInfo.value.toFixed(1)}R`,
+                      position: "insideTop",
+                      fill: "hsl(0, 84%, 60%)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                    }}
+                  />
+                )}
               </AreaChart>
             </ChartContainer>
           </CardContent>
@@ -768,12 +885,28 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartTooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const data = payload[0].payload;
+                      return (
+                        <div className="rounded-lg border bg-background p-2 shadow-md text-xs">
+                          <p className="font-semibold">{data.hour} — {data.trades} trade{data.trades !== 1 ? "s" : ""}</p>
+                          <p className={data.winRate < 40 ? "text-red-500 font-bold" : ""}>
+                            Win Rate: {data.winRate}%
+                          </p>
+                          {data.winRate < 40 && (
+                            <p className="text-red-500 font-semibold mt-1">⚠ Avoid trading this session</p>
+                          )}
+                        </div>
+                      );
+                    }}
+                  />
                   <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
                     {hourData.map((entry, index) => (
                       <Cell
                         key={index}
-                        fill={entry.winRate >= 50 ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)"}
+                        fill={entry.winRate < 40 ? "hsl(0, 84%, 60%)" : "hsl(142, 76%, 36%)"}
                       />
                     ))}
                   </Bar>
@@ -943,6 +1076,51 @@ export default function Analytics() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Layers className="h-4 w-4" />
+            Confluence Tracker
+          </CardTitle>
+          <CardDescription>Setup types ranked by win rate and average R</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {confluenceData.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-xs font-semibold text-muted-foreground">Setup Type</th>
+                    <th className="text-center py-2 text-xs font-semibold text-muted-foreground">Trades</th>
+                    <th className="text-center py-2 text-xs font-semibold text-muted-foreground">Win Rate</th>
+                    <th className="text-center py-2 text-xs font-semibold text-muted-foreground">Avg R</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {confluenceData.map((row) => (
+                    <tr key={row.type} className="border-b border-border/50">
+                      <td className="py-2 font-medium">{row.type}</td>
+                      <td className="text-center py-2 text-muted-foreground">{row.trades}</td>
+                      <td className={cn("text-center py-2 font-semibold", row.winRate >= 50 ? "text-green-600" : "text-red-500")}>
+                        {row.winRate}%
+                      </td>
+                      <td className={cn("text-center py-2 font-semibold", parseFloat(row.avgR) >= 0 ? "text-green-600" : "text-red-500")}>
+                        {row.avgR}R
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground">No setup type data yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Log setup types when adding trades to populate this table</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {drawdownData.length > 0 && (
         <Card>

@@ -19,6 +19,7 @@ export const tradesTable = pgTable("trades", {
   sideDirection: text("side_direction"),
   coachFeedback: text("coach_feedback"),
   setupScore: integer("setup_score"),
+  setupType: text("setup_type"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

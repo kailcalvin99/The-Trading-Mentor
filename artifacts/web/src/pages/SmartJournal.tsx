@@ -38,7 +38,7 @@ import {
 import type { Trade, CreateTradeBody } from "@workspace/api-client-react";
 import { recordTradeResult } from "@/components/CoolDownOverlay";
 
-type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy";
+type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
 type EntryMode = "conservative" | "aggressive";
 
@@ -74,10 +74,13 @@ const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: typ
   { tag: "Disciplined", label: "I followed my plan", color: "text-emerald-400", icon: Shield },
   { tag: "FOMO", label: "I jumped in too fast", color: "text-amber-400", icon: Zap },
   { tag: "Chased", label: "I entered late", color: "text-indigo-400", icon: TrendingUp },
+  { tag: "Revenge", label: "I traded to get back losses", color: "text-orange-400", icon: AlertTriangle },
   { tag: "Greedy", label: "I held too long", color: "text-red-400", icon: Flame },
 ];
 
 const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
+
+const SETUP_TYPES = ["FVG", "Order Block", "Liquidity Sweep", "Turtle Soup", "BOS/CHoCH"] as const;
 
 interface TradeFormData {
   pair: string;
@@ -89,6 +92,7 @@ interface TradeFormData {
   notes: string;
   behaviorTag: BehaviorTag | "";
   stressLevel: number;
+  setupTypes: string[];
 }
 
 const DEFAULT_FORM: TradeFormData = {
@@ -101,6 +105,7 @@ const DEFAULT_FORM: TradeFormData = {
   notes: "",
   behaviorTag: "",
   stressLevel: 5,
+  setupTypes: [],
 };
 
 function calculateSetupScore(
@@ -360,6 +365,7 @@ export default function SmartJournal() {
         isDraft: false,
         sideDirection: form.sideDirection,
         setupScore: liveSetupScore,
+        setupType: form.setupTypes.length > 0 ? form.setupTypes.join(", ") : undefined,
       };
       const result = await createTradeMut({ data: payload });
       if (editingDraftId) {
@@ -733,6 +739,32 @@ export default function SmartJournal() {
                       >
                         <Icon className="h-3.5 w-3.5" />
                         {tag} — {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Setup Types */}
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Setup Type (Confluence)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {SETUP_TYPES.map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => {
+                          const current = form.setupTypes;
+                          setField(
+                            "setupTypes",
+                            current.includes(st) ? current.filter((s) => s !== st) : [...current, st]
+                          );
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                          form.setupTypes.includes(st)
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {st}
                       </button>
                     ))}
                   </div>
