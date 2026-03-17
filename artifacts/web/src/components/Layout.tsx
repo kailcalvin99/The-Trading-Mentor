@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, ChevronLeft } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -63,8 +63,8 @@ function NavItem({
           <Icon className="h-5 w-5 shrink-0 opacity-40" />
           <Lock className="h-3 w-3 absolute -bottom-1 -right-1 text-muted-foreground/60" />
         </div>
-        {!collapsed && <span className="hidden lg:inline opacity-40">{label}</span>}
-        {!collapsed && <Crown className="h-3 w-3 text-amber-500 hidden lg:block ml-auto opacity-60" />}
+        {!collapsed && <span className="opacity-40">{label}</span>}
+        {!collapsed && <Crown className="h-3 w-3 text-amber-500 ml-auto opacity-60" />}
       </button>
     );
   }
@@ -83,7 +83,7 @@ function NavItem({
       }
     >
       <Icon className="h-5 w-5 shrink-0" />
-      {!collapsed && <span className="hidden lg:inline">{label}</span>}
+      {!collapsed && <span>{label}</span>}
     </NavLink>
   );
 }
@@ -244,7 +244,7 @@ export default function Layout() {
   const [showShare, setShowShare] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
   });
   const navigate = useNavigate();
@@ -263,13 +263,13 @@ export default function Layout() {
 
   const isFreeUser = tierLevel === 0;
 
-  function toggleSidebar() {
+  const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((prev) => {
       const next = !prev;
       localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
       return next;
     });
-  }
+  }, []);
 
   useEffect(() => {
     if (isAdmin) return;
@@ -313,35 +313,24 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className={`hidden md:flex flex-col border-r border-sidebar-border bg-sidebar shrink-0 h-screen overflow-y-auto transition-all duration-200 ${sidebarCollapsed ? "w-16" : "w-16 lg:w-56"}`}>
-        <div className="flex items-center justify-between h-14 border-b border-sidebar-border px-2">
-          <Link to="/" className={`flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity ${sidebarCollapsed ? "justify-center w-full" : "lg:justify-start"}`}>
-            <Logo size={36} />
-            {!sidebarCollapsed && (
-              <span className="hidden lg:block text-xs font-semibold text-sidebar-foreground truncate">
-                {config.app_name || "ICT AI Trading Mentor"}
-              </span>
-            )}
-          </Link>
+      <aside className={`hidden md:flex flex-col border-r border-sidebar-border bg-sidebar shrink-0 h-screen overflow-y-auto transition-all duration-300 ${sidebarCollapsed ? "w-16" : "w-56"}`}>
+        <button
+          onClick={toggleSidebar}
+          className={`flex items-center gap-2 h-14 border-b border-sidebar-border hover:bg-secondary/50 transition-colors w-full text-left relative ${sidebarCollapsed ? "justify-center px-2" : "justify-start px-3"}`}
+          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <Logo size={36} />
           {!sidebarCollapsed && (
-            <button
-              onClick={toggleSidebar}
-              title="Collapse sidebar"
-              className="hidden lg:flex p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </button>
+            <span className="text-xs font-semibold text-sidebar-foreground truncate flex-1">
+              {config.app_name || "ICT AI Trading Mentor"}
+            </span>
           )}
-          {sidebarCollapsed && (
-            <button
-              onClick={toggleSidebar}
-              title="Expand sidebar"
-              className="hidden lg:flex p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors absolute top-3.5 left-10"
-            >
-              <PanelLeftOpen className="h-4 w-4" />
-            </button>
+          {!sidebarCollapsed && (
+            <span className="flex items-center justify-center w-5 h-5 rounded-full text-muted-foreground hover:text-foreground shrink-0">
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </span>
           )}
-        </div>
+        </button>
 
         <nav className="flex flex-col gap-1 p-2 flex-1">
           {visibleNavItems.map((item) => (
@@ -362,7 +351,7 @@ export default function Layout() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <CreditCard className="h-5 w-5 shrink-0" />
-            {!sidebarCollapsed && <span className="hidden lg:inline">Subscription</span>}
+            {!sidebarCollapsed && <span>Subscription</span>}
           </Link>
 
           <Link
@@ -371,7 +360,7 @@ export default function Layout() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <Settings className="h-5 w-5 shrink-0" />
-            {!sidebarCollapsed && <span className="hidden lg:inline">Settings</span>}
+            {!sidebarCollapsed && <span>Settings</span>}
           </Link>
 
           {isAdmin && (
@@ -381,7 +370,7 @@ export default function Layout() {
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
               <Lock className="h-5 w-5 shrink-0" />
-              {!sidebarCollapsed && <span className="hidden lg:inline">Admin</span>}
+              {!sidebarCollapsed && <span>Admin</span>}
             </Link>
           )}
 
@@ -391,7 +380,7 @@ export default function Layout() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <HelpCircle className="h-5 w-5 shrink-0" />
-            {!sidebarCollapsed && <span className="hidden lg:inline">Help & Tour</span>}
+            {!sidebarCollapsed && <span>Help & Tour</span>}
           </Link>
 
           <button
@@ -400,20 +389,21 @@ export default function Layout() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full text-left"
           >
             <Share2 className="h-5 w-5 shrink-0" />
-            {!sidebarCollapsed && <span className="hidden lg:inline">Invite Friends</span>}
+            {!sidebarCollapsed && <span>Invite Friends</span>}
           </button>
 
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
+              title={sidebarCollapsed ? (user?.name || "Account") : undefined}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full text-left"
             >
               <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                 <User className="h-3 w-3 text-primary" />
               </div>
-              {!sidebarCollapsed && <span className="hidden lg:inline truncate flex-1">{user?.name}</span>}
-              {!sidebarCollapsed && user?.isFounder && <Crown className="h-3 w-3 text-amber-500 hidden lg:block" />}
-              {!sidebarCollapsed && <ChevronDown className="h-3 w-3 hidden lg:block" />}
+              {!sidebarCollapsed && <span className="truncate flex-1">{user?.name}</span>}
+              {!sidebarCollapsed && user?.isFounder && <Crown className="h-3 w-3 text-amber-500" />}
+              {!sidebarCollapsed && <ChevronDown className="h-3 w-3" />}
             </button>
 
             {showUserMenu && (
