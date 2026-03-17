@@ -9,7 +9,9 @@ export const getBaseUrl = () => {
 export const getApiUrl = () => `${getBaseUrl()}api/`;
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${getApiUrl()}${path}`);
+  const res = await fetch(`${getApiUrl()}${path}`, {
+    credentials: "include",
+  });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json() as Promise<T>;
 }
@@ -19,6 +21,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "include",
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json() as Promise<T>;
@@ -29,6 +32,7 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "include",
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json() as Promise<T>;
@@ -39,13 +43,17 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "include",
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json() as Promise<T>;
 }
 
 export async function apiDelete(path: string): Promise<void> {
-  const res = await fetch(`${getApiUrl()}${path}`, { method: "DELETE" });
+  const res = await fetch(`${getApiUrl()}${path}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
   if (!res.ok && res.status !== 204) throw new Error(`API error: ${res.status}`);
 }
 
@@ -73,6 +81,7 @@ export async function streamMessage(
         Accept: "text/event-stream",
       },
       body: JSON.stringify({ content, pageContext }),
+      credentials: "include",
     }
   );
 
