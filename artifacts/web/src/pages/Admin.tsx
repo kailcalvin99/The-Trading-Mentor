@@ -1162,6 +1162,8 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
   const [reengageLoading, setReengageLoading] = useState(false);
   const [reengageDraft, setReengageDraft] = useState("");
   const [reengageCopied, setReengageCopied] = useState(false);
+  const [aiLeakInsight, setAiLeakInsight] = useState<string | null>(null);
+  const [leakInsightLoading, setLeakInsightLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fetchOpts: RequestInit = { credentials: "include" };
   const headers = { "Content-Type": "application/json" };
@@ -1293,11 +1295,35 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
 
   async function loadPsychData() {
     setPsychLoading(true);
+    setAiLeakInsight(null);
     try {
       const res = await fetch(`${API_BASE}/admin/psychology-analytics`, fetchOpts);
-      if (res.ok) setPsychData(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setPsychData(data);
+        if (data.topWeekLeak) {
+          generateLeakInsight(data);
+        }
+      }
     } catch {}
     setPsychLoading(false);
+  }
+
+  async function generateLeakInsight(data: NonNullable<typeof psychData>) {
+    if (!data.topWeekLeak) return;
+    setLeakInsightLoading(true);
+    try {
+      const convId = await ensureConversation();
+      const { tag, count } = data.topWeekLeak;
+      const kzPct = data.killZoneCompliance.week;
+      const weekTotal = data.week.total;
+      const prompt = `You are an ICT trading psychology coach. Based on platform-wide data this week: top emotional leak = "${tag}" (${count} out of ${weekTotal} trades), kill zone compliance = ${kzPct !== null ? `${kzPct}%` : "unknown"}. Write a concise coaching insight (2-3 sentences, no bullet points) that: 1) names the specific emotional leak pattern, 2) explains the root cause from an ICT perspective, 3) gives one actionable fix. Output ONLY the coaching insight text, no labels or headers.`;
+      const insight = await streamAdminMessage(prompt, convId);
+      setAiLeakInsight(insight.trim());
+    } catch {
+      setAiLeakInsight(null);
+    }
+    setLeakInsightLoading(false);
   }
 
   async function generateReengage() {
@@ -1308,7 +1334,7 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
       const topLeak = psychData.topWeekLeak;
       const kzPct = psychData.killZoneCompliance.week;
       const convId = await ensureConversation();
-      const prompt = `You are an admin assistant. Write a short, friendly re-engagement message (max 4 sentences) for traders on our platform. This week's data: top emotional leak = ${topLeak ? `${topLeak.tag} (${topLeak.count} trades)` : "none detected"}, kill zone compliance = ${kzPct !== null ? `${kzPct}%` : "unknown"}. Use list_inactive_users to find users who haven't traded in 7+ days. The message should acknowledge the top leak, encourage trading during kill zones, and invite them back. Output ONLY the re-engagement message text, no extra commentary.`;
+      const prompt = `You are an admin assistant. Use the get_inactive_users tool to find traders who haven't logged a trade in 7+ days. Then write a short, friendly re-engagement message (max 4 sentences) tailored to those inactive users. This week's platform data: top emotional leak = ${topLeak ? `${topLeak.tag} (${topLeak.count} trades)` : "none detected"}, kill zone compliance = ${kzPct !== null ? `${kzPct}%` : "unknown"}. The message should acknowledge the top emotional pattern, encourage them to trade during ICT kill zones, and invite them back to journal their next trade. Output ONLY the re-engagement message text, no extra commentary.`;
       setAdminMessages(prev => [...prev,
         { role: "user", content: "Draft a re-engagement message for inactive users based on this week's psychology data." },
         { role: "assistant", content: "" },
@@ -1340,12 +1366,6 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
     Greedy: "text-red-500",
     Untagged: "text-slate-500",
   };
-  const LEAK_INSIGHT: Record<string, string> = {
-    FOMO: "FOMO trades are spiking this week — traders may be chasing moves. Consider sending a reminder about waiting for kill zone setups.",
-    Chased: "Traders are chasing entries this week. A reminder to wait for OTE and price to come to them could help reduce this.",
-    Greedy: "Greed is showing up as a top leak. Encourage locking in TP1 and respecting the original risk plan.",
-  };
-
   const activePsychCounts = psychView === "week" ? psychData?.week.counts : psychData?.allTime.counts;
   const activePsychTotal = psychView === "week" ? (psychData?.week.total ?? 0) : (psychData?.allTime.total ?? 0);
   const psychBars = ["Disciplined", "FOMO", "Chased", "Greedy", "Untagged"].map(tag => ({
@@ -1577,9 +1597,15 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
                   <p className="text-[10px] text-muted-foreground mb-2">
                     {psychData.topWeekLeak.count} trade{psychData.topWeekLeak.count !== 1 ? "s" : ""} this week
                   </p>
-                  {LEAK_INSIGHT[psychData.topWeekLeak.tag] && (
+                  {leakInsightLoading && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Generating coaching insight…
+                    </div>
+                  )}
+                  {!leakInsightLoading && aiLeakInsight && (
                     <p className="text-[10px] text-foreground/70 leading-relaxed italic border-l-2 border-amber-500/40 pl-2">
-                      {LEAK_INSIGHT[psychData.topWeekLeak.tag]}
+                      {aiLeakInsight}
                     </p>
                   )}
                 </>
