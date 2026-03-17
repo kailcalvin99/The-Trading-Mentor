@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const tradesTable = pgTable("trades", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id"),
   pair: text("pair").notNull(),
   entryTime: text("entry_time").notNull(),
   riskPct: numeric("risk_pct", { precision: 5, scale: 2 }).notNull(),

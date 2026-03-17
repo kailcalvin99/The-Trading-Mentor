@@ -62,6 +62,7 @@ router.post("/tradingview/:token", async (req, res) => {
     const [draft] = await db
       .insert(tradesTable)
       .values({
+        userId: user.id,
         pair: resolvedTicker,
         entryTime: new Date().toISOString(),
         riskPct: "0.5",

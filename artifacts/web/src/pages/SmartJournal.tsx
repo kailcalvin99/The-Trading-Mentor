@@ -34,6 +34,7 @@ import {
   X,
   Sparkles,
   Loader2,
+  Download,
 } from "lucide-react";
 
 import type { Trade, CreateTradeBody } from "@workspace/api-client-react";
@@ -186,13 +187,31 @@ export default function SmartJournal() {
   const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
   const [showSitOutWarning, setShowSitOutWarning] = useState(false);
 
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterOutcome, setFilterOutcome] = useState<OutcomeType | "">("");
+
   const { data: tradesRaw } = useListTrades();
   const trades = (tradesRaw ?? []) as ExtendedTrade[];
   const { mutateAsync: createTradeMut, isPending: isCreating } = useCreateTrade();
   const { mutateAsync: deleteTradeMut } = useDeleteTrade();
 
   const draftTrades = trades.filter((t) => t.isDraft);
-  const completedTrades = trades.filter((t) => !t.isDraft);
+  const allCompletedTrades = trades.filter((t) => !t.isDraft);
+  const completedTrades = useMemo(() => {
+    return allCompletedTrades.filter((t) => {
+      if (filterOutcome && t.outcome !== filterOutcome) return false;
+      if (filterDateFrom) {
+        const tradeDate = t.createdAt ? new Date(t.createdAt).toISOString().split("T")[0] : "";
+        if (tradeDate < filterDateFrom) return false;
+      }
+      if (filterDateTo) {
+        const tradeDate = t.createdAt ? new Date(t.createdAt).toISOString().split("T")[0] : "";
+        if (tradeDate > filterDateTo) return false;
+      }
+      return true;
+    });
+  }, [allCompletedTrades, filterOutcome, filterDateFrom, filterDateTo]);
 
   const stats = useMemo(() => {
     const wins = completedTrades.filter((t) => t.outcome === "win").length;
@@ -224,14 +243,14 @@ export default function SmartJournal() {
   }, [criteriaChecked, activeCriteria.length, entryCriteria, form.liquiditySweep, form.stressLevel, form.riskPct, entryMode]);
 
   const shouldSitOut = useMemo(() => {
-    const sorted = [...completedTrades].sort(
+    const sorted = [...allCompletedTrades].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
     if (sorted.length === 0) return false;
     if ((sorted[0].stressLevel ?? 0) >= 7) return true;
     if (sorted.length >= 2 && sorted[0].outcome === "loss" && sorted[1].outcome === "loss") return true;
     return false;
-  }, [completedTrades]);
+  }, [allCompletedTrades]);
 
   const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -403,6 +422,21 @@ export default function SmartJournal() {
     }
   }, [deleteTradeMut, qc]);
 
+  function handleExportCsv() {
+    const params = new URLSearchParams();
+    if (filterDateFrom) params.set("dateFrom", filterDateFrom);
+    if (filterDateTo) params.set("dateTo", filterDateTo);
+    if (filterOutcome) params.set("outcome", filterOutcome);
+    const qs = params.toString();
+    const url = `${API_BASE}/trades/export/csv${qs ? `?${qs}` : ""}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `trades-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   const tagInfo = (tag: string | null | undefined) => tag ? BEHAVIOR_TAGS.find((b) => b.tag === tag) : undefined;
 
   const getEntryMode = (notes: string | null | undefined) => {
@@ -431,7 +465,7 @@ export default function SmartJournal() {
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {(() => {
-                const sorted = [...completedTrades].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                const sorted = [...allCompletedTrades].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                 return sorted.length >= 2 && sorted[0]?.outcome === "loss" && sorted[1]?.outcome === "loss"
                   ? "You've had 2 consecutive losses. Trading while on a losing streak often leads to revenge trades that make things worse."
                   : "Your last trade had a high stress level. Trading under emotional pressure reduces decision quality and increases risk of impulsive entries.";
@@ -825,16 +859,75 @@ export default function SmartJournal() {
       {/* Right Panel — Trade History */}
       <div className="flex-1 overflow-auto">
         <div className="p-6 space-y-4">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
-            Trade History
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              Trade History
+            </h2>
+            {allCompletedTrades.length > 0 && (
+              <button
+                onClick={handleExportCsv}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export CSV
+              </button>
+            )}
+          </div>
+
+          {/* Filters */}
+          {allCompletedTrades.length > 0 && (
+            <div className="flex flex-wrap gap-2 items-center">
+              <input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                className="bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                title="From date"
+              />
+              <span className="text-xs text-muted-foreground">–</span>
+              <input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                className="bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                title="To date"
+              />
+              <select
+                value={filterOutcome}
+                onChange={(e) => setFilterOutcome(e.target.value as OutcomeType | "")}
+                className="bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+              >
+                <option value="">All outcomes</option>
+                <option value="win">Win</option>
+                <option value="loss">Loss</option>
+                <option value="breakeven">Breakeven</option>
+              </select>
+              {(filterDateFrom || filterDateTo || filterOutcome) && (
+                <button
+                  onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); setFilterOutcome(""); }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
 
           {completedTrades.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
               <BookOpen className="h-10 w-10 mb-3 opacity-40" />
-              <p className="font-semibold text-lg">No trades yet</p>
-              <p className="text-sm mt-1">Complete your morning routine and log your first trade</p>
+              {allCompletedTrades.length > 0 ? (
+                <>
+                  <p className="font-semibold text-lg">No trades match your filters</p>
+                  <p className="text-sm mt-1">Try clearing the date or outcome filter</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-lg">No trades yet</p>
+                  <p className="text-sm mt-1">Complete your morning routine and log your first trade</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-2">

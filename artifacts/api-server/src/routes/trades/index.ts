@@ -1,17 +1,19 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { tradesTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, gte, lte, and, type SQL } from "drizzle-orm";
 import { authRequired } from "../../middleware/auth";
 import { ai } from "@workspace/integrations-gemini-ai";
 
 const router: IRouter = Router();
 
-router.get("/", authRequired, async (_req, res) => {
+router.get("/", authRequired, async (req, res) => {
   try {
+    const userId = req.user!.userId;
     const trades = await db
       .select()
       .from(tradesTable)
+      .where(eq(tradesTable.userId, userId))
       .orderBy(desc(tradesTable.createdAt));
     res.json(
       trades.map((t) => ({
@@ -21,6 +23,89 @@ router.get("/", authRequired, async (_req, res) => {
     );
   } catch {
     res.status(500).json({ error: "Failed to list trades" });
+  }
+});
+
+router.get("/export/csv", authRequired, async (req, res) => {
+  try {
+    const rawQuery = req.query as Record<string, string | string[] | undefined>;
+    const dateFrom = typeof rawQuery.dateFrom === "string" ? rawQuery.dateFrom : undefined;
+    const dateTo = typeof rawQuery.dateTo === "string" ? rawQuery.dateTo : undefined;
+    const outcome = typeof rawQuery.outcome === "string" ? rawQuery.outcome : undefined;
+
+    const userId = req.user!.userId;
+    const conditions: SQL[] = [
+      eq(tradesTable.isDraft, false),
+      eq(tradesTable.userId, userId),
+    ];
+    if (dateFrom) conditions.push(gte(tradesTable.createdAt, new Date(dateFrom)));
+    if (dateTo) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59, 999);
+      conditions.push(lte(tradesTable.createdAt, to));
+    }
+    if (outcome) conditions.push(eq(tradesTable.outcome, outcome));
+
+    const trades = await db
+      .select()
+      .from(tradesTable)
+      .where(and(...conditions))
+      .orderBy(desc(tradesTable.createdAt));
+
+    const stripModePrefix = (notes: string | null) => {
+      if (!notes) return "";
+      return notes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "").trim();
+    };
+
+    const escapeCsv = (value: string | number | boolean | null | undefined): string => {
+      if (value === null || value === undefined) return "";
+      const str = String(value);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const headers = [
+      "date",
+      "instrument",
+      "direction",
+      "entry_price",
+      "exit_price",
+      "size",
+      "pnl",
+      "rr_achieved",
+      "setup_score",
+      "tags",
+      "notes",
+    ];
+
+    const rows = trades.map((t) => [
+      t.createdAt ? new Date(t.createdAt).toISOString().split("T")[0] : "",
+      t.pair,
+      t.sideDirection === "BUY" ? "long" : t.sideDirection === "SELL" ? "short" : (t.sideDirection ?? ""),
+      "",
+      "",
+      "",
+      t.outcome ?? "",
+      "",
+      t.setupScore !== null && t.setupScore !== undefined ? t.setupScore : "",
+      t.behaviorTag ?? "",
+      stripModePrefix(t.notes),
+    ]);
+
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) => row.map(escapeCsv).join(",")),
+    ].join("\n");
+
+    const exportDate = new Date().toISOString().split("T")[0];
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="trades-${exportDate}.csv"`);
+    res.send(csv);
+  } catch (err) {
+    console.error("CSV export error:", err);
+    res.status(500).json({ error: "Failed to export trades" });
   }
 });
 
@@ -49,9 +134,11 @@ router.post("/", authRequired, async (req, res) => {
       return;
     }
 
+    const userId = req.user!.userId;
     const [trade] = await db
       .insert(tradesTable)
       .values({
+        userId,
         pair,
         entryTime,
         riskPct: riskPct.toString(),
