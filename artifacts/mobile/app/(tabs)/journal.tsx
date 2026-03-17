@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useListTrades, useCreateTrade, useDeleteTrade } from "@workspace/api-client-react";
+import type { Trade } from "@workspace/api-client-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import Colors from "@/constants/colors";
 
@@ -209,7 +210,7 @@ export default function JournalScreen() {
 
   useEffect(() => {
     if (expandedTradeId) {
-      const trade = completedTrades.find((t: any) => t.id === expandedTradeId);
+      const trade = completedTrades.find((t) => t.id === expandedTradeId);
       if (trade) {
         const existing = trade.coachFeedback;
         if (existing) {
@@ -286,7 +287,7 @@ export default function JournalScreen() {
     proceedToNewForm();
   }
 
-  function openDraftForm(draft: any) {
+  function openDraftForm(draft: Trade) {
     setEditingDraftId(draft.id);
     const draftNotes = draft.notes || "";
     const inferredMode: EntryMode = draftNotes.startsWith("[Silver Bullet]") ? "aggressive" : "conservative";
@@ -409,7 +410,7 @@ export default function JournalScreen() {
               <Ionicons name="radio" size={14} color="#F59E0B" />
               <Text style={styles.draftTitle}>{draftTrades.length} Draft{draftTrades.length > 1 ? "s" : ""} from TradingView</Text>
             </View>
-            {draftTrades.map((draft: any) => (
+            {draftTrades.map((draft) => (
               <TouchableOpacity key={draft.id} style={styles.draftCard} onPress={() => openDraftForm(draft)} activeOpacity={0.8}>
                 <View style={styles.draftInfo}>
                   <Text style={styles.draftPair}>{draft.pair}</Text>
@@ -450,7 +451,7 @@ export default function JournalScreen() {
         ) : (
           <>
             <Text style={styles.sectionTitle}>Trade Log</Text>
-            {[...completedTrades].reverse().map((trade: any) => {
+            {[...completedTrades].reverse().map((trade) => {
               const tag = tagInfo(trade.behaviorTag);
               const isWin = trade.outcome === "win";
               const isLoss = trade.outcome === "loss";
@@ -614,7 +615,7 @@ export default function JournalScreen() {
                 </View>
               </View>
               <View style={ecStyles.progressBar}>
-                <View style={[ecStyles.progressFill, { width: `${(criteriaChecked / activeCriteria.length) * 100}%` as any, backgroundColor: allCriteriaMet ? C.accent : "#F59E0B" }]} />
+                <View style={[ecStyles.progressFill, { width: `${(criteriaChecked / activeCriteria.length) * 100}%` as unknown as number, backgroundColor: allCriteriaMet ? C.accent : "#F59E0B" }]} />
               </View>
               {activeCriteria.map((c) => (
                 <TouchableOpacity key={c.key} style={ecStyles.criterionRow} onPress={() => toggleCriterion(c.key)} activeOpacity={0.7}>
@@ -695,7 +696,7 @@ export default function JournalScreen() {
                   onPress={() => setField("behaviorTag", form.behaviorTag === tag ? "" : tag)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name={icon as any} size={14} color={form.behaviorTag === tag ? color : C.textSecondary} />
+                  <Ionicons name={icon as React.ComponentProps<typeof Ionicons>["name"]} size={14} color={form.behaviorTag === tag ? color : C.textSecondary} />
                   <Text style={[formStyles.tagBtnText, form.behaviorTag === tag && { color }]}>{tag} — {label}</Text>
                 </TouchableOpacity>
               ))}
@@ -922,7 +923,7 @@ const ecStyles = StyleSheet.create({
   progressBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(245,158,11,0.15)", borderWidth: 1, borderColor: "#F59E0B" },
   progressText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#F59E0B" },
   progressBar: { height: 3, backgroundColor: C.cardBorder, borderRadius: 2, marginBottom: 12, overflow: "hidden" },
-  progressFill: { height: "100%" as any, borderRadius: 2 },
+  progressFill: { height: "100%" as unknown as number, borderRadius: 2 },
   criterionRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 8 },
   criterionCheck: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center", marginTop: 1 },
   criterionChecked: { backgroundColor: C.accent, borderColor: C.accent },
