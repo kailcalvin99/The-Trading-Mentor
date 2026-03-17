@@ -2,6 +2,7 @@ export interface MobileAITrigger {
   message: string;
   autoOpen?: boolean;
   prefillPrompt?: string;
+  autoSend?: boolean;
 }
 
 type TriggerListener = (trigger: MobileAITrigger) => void;

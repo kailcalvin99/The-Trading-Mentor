@@ -35,6 +35,7 @@ interface AITrigger {
   message: string;
   autoOpen?: boolean;
   prefillPrompt?: string;
+  autoSend?: boolean;
 }
 
 const KILL_ZONES = [
@@ -107,6 +108,7 @@ export default function AIAssistant() {
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const killZoneCheckedRef = useRef(false);
+  const pendingAutoSendRef = useRef<string | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
@@ -132,6 +134,69 @@ export default function AIAssistant() {
     }
   }, [messages, visible]);
 
+  useEffect(() => {
+    if (visible && pendingAutoSendRef.current) {
+      const msgToSend = pendingAutoSendRef.current;
+      pendingAutoSendRef.current = null;
+      setTimeout(() => {
+        (async () => {
+          let cid = conversationId;
+          if (!cid) {
+            try {
+              const res = await createGeminiConversation({ title: msgToSend.slice(0, 40) });
+              if (res) {
+                cid = res.id;
+                setConversationId(res.id);
+                refetch();
+              }
+            } catch {
+              return;
+            }
+          }
+          if (!cid) return;
+          setMessages((prev) => [...prev, { role: "user", content: msgToSend }]);
+          setIsStreaming(true);
+          setPendingToolCalls([]);
+          let assistantMsg = "";
+          setMessages((prev) => [...prev, { role: "assistant", content: "", toolCalls: [] }]);
+          try {
+            await streamMessage(
+              cid,
+              msgToSend,
+              (chunk) => {
+                assistantMsg += chunk;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  updated[updated.length - 1] = { ...last, role: "assistant", content: assistantMsg };
+                  return updated;
+                });
+              },
+              () => { setIsStreaming(false); },
+              () => {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role: "assistant", content: "Connection error. Please try again." };
+                  return updated;
+                });
+                setIsStreaming(false);
+              },
+              { currentPage: "Mobile App", platform: "mobile" },
+              handleToolCall
+            );
+          } catch {
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: "assistant", content: "Connection error. Please try again." };
+              return updated;
+            });
+            setIsStreaming(false);
+          }
+        })();
+      }, 300);
+    }
+  }, [visible]);
+
   const fireTrigger = useCallback((trigger: AITrigger) => {
     if (visible) return;
     setNudge(trigger);
@@ -149,7 +214,13 @@ export default function AIAssistant() {
       autoOpenTimerRef.current = setTimeout(() => {
         setNudge(null);
         setNudgeExpanded(false);
-        setInput(trigger.prefillPrompt || "");
+        if (trigger.prefillPrompt) {
+          if (trigger.autoSend) {
+            pendingAutoSendRef.current = trigger.prefillPrompt;
+          } else {
+            setInput(trigger.prefillPrompt);
+          }
+        }
         setVisible(true);
       }, 800);
     }

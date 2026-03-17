@@ -1020,6 +1020,7 @@ function QuizView() {
         dispatchAITrigger({
           message: "Need help with this concept?",
           autoOpen: true,
+          autoSend: true,
           prefillPrompt: `I keep getting quiz questions wrong about "${q.scenario.slice(0, 60)}". Can you explain this concept?`,
         });
       }

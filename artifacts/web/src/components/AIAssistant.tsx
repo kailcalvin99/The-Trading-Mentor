@@ -184,6 +184,7 @@ export default function AIAssistant() {
   const [nudge, setNudge] = useState<AITrigger | null>(null);
   const [nudgeExpanded, setNudgeExpanded] = useState(false);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingAutoSendRef = useRef<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -210,7 +211,20 @@ export default function AIAssistant() {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
     }
-    if (isOpen && isNewUser && chatMessages.length === 0 && !conversationId) {
+    if (isOpen && pendingAutoSendRef.current) {
+      const msgToSend = pendingAutoSendRef.current;
+      pendingAutoSendRef.current = null;
+      (async () => {
+        if (conversationId) {
+          await sendMessageToConversation(msgToSend, conversationId);
+        } else {
+          const newId = await startConversation();
+          if (newId) {
+            await sendMessageToConversation(msgToSend, newId);
+          }
+        }
+      })();
+    } else if (isOpen && isNewUser && chatMessages.length === 0 && !conversationId) {
       startConversation();
     }
   }, [isOpen]);
@@ -265,7 +279,13 @@ export default function AIAssistant() {
       if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
       autoOpenTimerRef.current = setTimeout(() => {
         setIsOpen(true);
-        if (trigger.prefillPrompt) setInput(trigger.prefillPrompt);
+        if (trigger.prefillPrompt) {
+          if (trigger.autoSend) {
+            pendingAutoSendRef.current = trigger.prefillPrompt;
+          } else {
+            setInput(trigger.prefillPrompt);
+          }
+        }
         setNudge(null);
         setNudgeExpanded(false);
       }, 800);

@@ -4,6 +4,7 @@ export interface AITrigger {
   message: string;
   autoOpen?: boolean;
   prefillPrompt?: string;
+  autoSend?: boolean;
 }
 
 interface UseAITriggerOptions {
