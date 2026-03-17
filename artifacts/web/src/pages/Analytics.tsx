@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { LockedFeatureOverlay } from "@/components/CasinoElements";
@@ -10,6 +10,10 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import {
   ChartContainer,
   ChartTooltip,
@@ -54,6 +58,8 @@ import {
   DollarSign,
   Layers,
   Lock,
+  Maximize2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
@@ -403,11 +409,14 @@ function GradeGauge({ score }: { score: number }) {
   );
 }
 
+type ExpandedChart = "pnl" | "hour" | "day" | "setup" | "behavior" | "confluence" | null;
+
 export default function Analytics() {
   const { tierLevel, isAdmin } = useAuth();
   const isPremium = isAdmin || (tierLevel ?? 0) >= 2;
   const { data: rawTrades, isLoading: tradesLoading } = useListTrades();
   const { data: propAccount } = useGetPropAccount();
+  const [expandedChart, setExpandedChart] = useState<ExpandedChart>(null);
 
   const trades = useMemo(() => {
     if (!rawTrades) return [];
@@ -844,13 +853,104 @@ export default function Analytics() {
         </Card>
       ) : null}
 
+      {expandedChart && (
+        <Dialog open onOpenChange={(open) => { if (!open) setExpandedChart(null); }}>
+          <DialogContent className="max-w-5xl w-full p-0 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <p className="font-semibold text-sm">
+                {expandedChart === "pnl" && "Cumulative P&L (Risk Units)"}
+                {expandedChart === "hour" && "Performance by Hour"}
+                {expandedChart === "day" && "Performance by Day"}
+                {expandedChart === "setup" && "Setup Analysis"}
+                {expandedChart === "behavior" && "Behavior Breakdown"}
+                {expandedChart === "confluence" && "Setup Confluence"}
+              </p>
+              <button onClick={() => setExpandedChart(null)} className="rounded-full p-1.5 hover:bg-muted transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-4">
+              {expandedChart === "pnl" && (
+                <ChartContainer config={pnlChartConfig} className="h-[500px] w-full">
+                  <AreaChart data={pnlData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="pnlGradientX" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Area type="monotone" dataKey="pnl" stroke="hsl(142, 76%, 36%)" fill="url(#pnlGradientX)" strokeWidth={2.5} />
+                    {maxDrawdownInfo && (
+                      <ReferenceArea x1={maxDrawdownInfo.startDate} x2={maxDrawdownInfo.endDate} fill="hsl(0, 84%, 60%)" fillOpacity={0.15} stroke="hsl(0, 84%, 60%)" strokeOpacity={0.3}
+                        label={{ value: `Max Drawdown: -${maxDrawdownInfo.value.toFixed(1)}R`, position: "insideTop", fill: "hsl(0, 84%, 60%)", fontSize: 12, fontWeight: 600 }} />
+                    )}
+                  </AreaChart>
+                </ChartContainer>
+              )}
+              {expandedChart === "hour" && (
+                <ChartContainer config={hourChartConfig} className="h-[500px] w-full">
+                  <BarChart data={hourData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
+                      {hourData.map((entry, index) => (
+                        <Cell key={index} fill={entry.winRate < 40 ? "hsl(0, 84%, 60%)" : "hsl(142, 76%, 36%)"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
+              )}
+              {expandedChart === "day" && (
+                <ChartContainer config={dayChartConfig} className="h-[500px] w-full">
+                  <BarChart data={dayData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
+                      {dayData.map((entry, index) => (
+                        <Cell key={index} fill={entry.winRate >= 50 ? "hsl(217, 91%, 60%)" : "hsl(0, 84%, 60%)"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
+              )}
+              {expandedChart === "behavior" && (
+                <ChartContainer config={behaviorChartConfig} className="h-[500px] w-full">
+                  <BarChart data={behaviorData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="tag" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="wins" fill="hsl(142, 76%, 36%)" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="losses" fill="hsl(0, 84%, 60%)" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="breakeven" fill="hsl(45, 93%, 47%)" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Cumulative P&L (Risk Units)
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Cumulative P&L (Risk Units)
+              </CardTitle>
+              <button onClick={() => setExpandedChart("pnl")} className="rounded-full p-1.5 hover:bg-muted transition-colors" title="Expand chart">
+                <Maximize2 className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
             <CardDescription>Your running total of wins and losses (measured in risk %)</CardDescription>
           </CardHeader>
           <CardContent>
@@ -924,10 +1024,17 @@ export default function Analytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Performance by Hour
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Performance by Hour
+              </CardTitle>
+              {hourData.length > 0 && (
+                <button onClick={() => setExpandedChart("hour")} className="rounded-full p-1.5 hover:bg-muted transition-colors" title="Expand chart">
+                  <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+            </div>
             <CardDescription>Win rate during each hour (your best Kill Zones)</CardDescription>
           </CardHeader>
           <CardContent>
@@ -972,10 +1079,17 @@ export default function Analytics() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Performance by Day
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Performance by Day
+              </CardTitle>
+              {dayData.length > 0 && (
+                <button onClick={() => setExpandedChart("day")} className="rounded-full p-1.5 hover:bg-muted transition-colors" title="Expand chart">
+                  <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+            </div>
             <CardDescription>Win rate by day of the week</CardDescription>
           </CardHeader>
           <CardContent>
@@ -1072,10 +1186,17 @@ export default function Analytics() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              Behavior Analysis (How You Traded)
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                Behavior Analysis (How You Traded)
+              </CardTitle>
+              {behaviorData.length > 0 && (
+                <button onClick={() => setExpandedChart("behavior")} className="rounded-full p-1.5 hover:bg-muted transition-colors" title="Expand chart">
+                  <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+            </div>
             <CardDescription>See which mindsets lead to wins and which lead to losses</CardDescription>
           </CardHeader>
           <CardContent>

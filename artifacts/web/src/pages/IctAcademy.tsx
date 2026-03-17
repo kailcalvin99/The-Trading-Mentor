@@ -42,6 +42,8 @@ import {
   type IndicatorItem,
 } from "../data/academy-data";
 import { dispatchAITrigger, incrementQuizFailCount, resetQuizFailCount } from "@/hooks/useAITrigger";
+import { ChartLightbox, chartImageToConceptKey, FVGDiagram, OTEDiagram, MSSDiagram, LiquiditySweepDiagram, KillZoneDiagram, SilverBulletDiagram, ConservativeEntryDiagram, ExitCriteriaDiagram } from "@/components/IctChartDiagrams";
+import { Maximize2 } from "lucide-react";
 
 type Tab = "learn" | "glossary" | "quiz" | "plan" | "tools";
 
@@ -181,6 +183,7 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
   const [streak, setStreak] = useState(getStreak);
   const [justCompleted, setJustCompleted] = useState(false);
   const [xpPop, setXpPop] = useState(0);
+  const [lightboxKey, setLightboxKey] = useState<string | null>(null);
   const dragStart = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -302,6 +305,9 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col" ref={containerRef}>
+      {lightboxKey && (
+        <ChartLightbox conceptKey={lightboxKey} onClose={() => setLightboxKey(null)} />
+      )}
       {showConfetti && <ConfettiBurst onDone={() => setShowConfetti(false)} />}
 
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
@@ -433,30 +439,39 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
                 </p>
               )}
 
-              {stepContent.type === "chart" && lesson.chartImage && (
-                <div className="animate-in fade-in zoom-in-95 duration-300">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-                    See it on the chart
-                  </p>
-                  <img
-                    src={getImageUrl(lesson.chartImage)}
-                    alt={`${lesson.title} chart`}
-                    className="w-full rounded-xl border cursor-zoom-in"
-                    style={{ maxHeight: "400px", objectFit: "contain" }}
-                    onClick={(e) => {
-                      const el = e.currentTarget;
-                      if (el.style.maxHeight === "none") {
-                        el.style.maxHeight = "400px";
-                        el.style.objectFit = "contain";
-                      } else {
-                        el.style.maxHeight = "none";
-                        el.style.objectFit = "contain";
-                      }
-                    }}
-                  />
-                  <p className="text-[10px] text-muted-foreground/50 text-center mt-1">Tap image to enlarge</p>
-                </div>
-              )}
+              {stepContent.type === "chart" && lesson.chartImage && (() => {
+                const ck = chartImageToConceptKey(lesson.chartImage);
+                return (
+                  <div className="animate-in fade-in zoom-in-95 duration-300">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                      See it on the chart
+                    </p>
+                    {ck ? (
+                      <div className="relative cursor-pointer group" onClick={() => setLightboxKey(ck)}>
+                        {ck === "fvg" && <FVGDiagram className="w-full rounded-xl border" />}
+                        {ck === "ote" && <OTEDiagram className="w-full rounded-xl border" />}
+                        {ck === "mss" && <MSSDiagram className="w-full rounded-xl border" />}
+                        {ck === "liquidity-sweep" && <LiquiditySweepDiagram className="w-full rounded-xl border" />}
+                        {ck === "kill-zone" && <KillZoneDiagram className="w-full rounded-xl border" />}
+                        {ck === "silver-bullet" && <SilverBulletDiagram className="w-full rounded-xl border" />}
+                        {ck === "conservative-entry" && <ConservativeEntryDiagram className="w-full rounded-xl border" />}
+                        {ck === "exit-criteria" && <ExitCriteriaDiagram className="w-full rounded-xl border" />}
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full p-1.5">
+                          <Maximize2 className="h-3.5 w-3.5 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={getImageUrl(lesson.chartImage)}
+                        alt={`${lesson.title} chart`}
+                        className="w-full rounded-xl border cursor-zoom-in"
+                        style={{ maxHeight: "400px", objectFit: "contain" }}
+                      />
+                    )}
+                    <p className="text-[10px] text-muted-foreground/50 text-center mt-1">Tap to enlarge</p>
+                  </div>
+                );
+              })()}
 
               {stepContent.type === "video" && lesson.videoFile && (
                 <div className="animate-in fade-in zoom-in-95 duration-300">
@@ -730,9 +745,13 @@ function ChapterAccordion({
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
+  const [lightboxKey, setLightboxKey] = useState<string | null>(null);
 
   return (
     <div className="rounded-xl border overflow-hidden bg-card">
+      {lightboxKey && (
+        <ChartLightbox conceptKey={lightboxKey} onClose={() => setLightboxKey(null)} />
+      )}
       <button
         className="w-full flex items-center gap-3 p-4 text-left hover:bg-secondary/50 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
@@ -820,28 +839,39 @@ function ChapterAccordion({
                       ))}
                     </div>
 
-                    {lesson.chartImage && (
-                      <div className="mt-4">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                          See it on the chart
-                        </p>
-                        <img
-                          src={getImageUrl(lesson.chartImage)}
-                          alt={`${lesson.title} chart example`}
-                          className="w-full rounded-lg border cursor-zoom-in"
-                          style={{ maxHeight: "360px", objectFit: "contain" }}
-                          onClick={(e) => {
-                            const el = e.currentTarget;
-                            if (el.style.maxHeight === "none") {
-                              el.style.maxHeight = "360px";
-                            } else {
-                              el.style.maxHeight = "none";
-                            }
-                          }}
-                        />
-                        <p className="text-[10px] text-muted-foreground/50 text-center mt-1">Tap image to enlarge</p>
-                      </div>
-                    )}
+                    {lesson.chartImage && (() => {
+                      const ck = chartImageToConceptKey(lesson.chartImage);
+                      return (
+                        <div className="mt-4">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                            See it on the chart
+                          </p>
+                          {ck ? (
+                            <div className="relative cursor-pointer group" onClick={() => setLightboxKey(ck)}>
+                              {ck === "fvg" && <FVGDiagram className="w-full rounded-lg border" />}
+                              {ck === "ote" && <OTEDiagram className="w-full rounded-lg border" />}
+                              {ck === "mss" && <MSSDiagram className="w-full rounded-lg border" />}
+                              {ck === "liquidity-sweep" && <LiquiditySweepDiagram className="w-full rounded-lg border" />}
+                              {ck === "kill-zone" && <KillZoneDiagram className="w-full rounded-lg border" />}
+                              {ck === "silver-bullet" && <SilverBulletDiagram className="w-full rounded-lg border" />}
+                              {ck === "conservative-entry" && <ConservativeEntryDiagram className="w-full rounded-lg border" />}
+                              {ck === "exit-criteria" && <ExitCriteriaDiagram className="w-full rounded-lg border" />}
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full p-1.5">
+                                <Maximize2 className="h-3.5 w-3.5 text-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <img
+                              src={getImageUrl(lesson.chartImage)}
+                              alt={`${lesson.title} chart example`}
+                              className="w-full rounded-lg border cursor-zoom-in"
+                              style={{ maxHeight: "360px", objectFit: "contain" }}
+                            />
+                          )}
+                          <p className="text-[10px] text-muted-foreground/50 text-center mt-1">Tap to enlarge</p>
+                        </div>
+                      );
+                    })()}
 
                     {lesson.videoFile && (
                       <div className="mt-4">
@@ -893,6 +923,7 @@ function ChapterAccordion({
 function GlossaryView() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [completed] = useState<Set<string>>(getProgress);
+  const [lightboxKey, setLightboxKey] = useState<string | null>(null);
 
   function hasUnlockedAdvanced(item: typeof GLOSSARY[0]): boolean {
     if (!item.requiredLessons || item.requiredLessons.length === 0) return false;
@@ -901,6 +932,9 @@ function GlossaryView() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+      {lightboxKey && (
+        <ChartLightbox conceptKey={lightboxKey} onClose={() => setLightboxKey(null)} />
+      )}
       <h2 className="text-xl font-bold mb-1">ICT Concepts</h2>
       <p className="text-sm text-muted-foreground mb-6">Click any term for the full definition + trader tip. Complete lessons to unlock advanced tiers.</p>
       <div className="grid gap-3">
@@ -937,14 +971,32 @@ function GlossaryView() {
               {isOpen && (
                 <div className="px-4 pb-4 space-y-3">
                   <p className="text-sm leading-relaxed">{item.definition}</p>
-                  {item.image && (
-                    <img
-                      src={getImageUrl(item.image)}
-                      alt={`${item.term} chart`}
-                      className="w-full rounded-lg"
-                      style={{ maxHeight: "320px", objectFit: "contain" }}
-                    />
-                  )}
+                  {item.image && (() => {
+                    const ck = chartImageToConceptKey(item.image);
+                    return ck ? (
+                      <div className="relative cursor-pointer group" onClick={(e) => { e.stopPropagation(); setLightboxKey(ck); }}>
+                        {ck === "fvg" && <FVGDiagram className="w-full rounded-lg" />}
+                        {ck === "ote" && <OTEDiagram className="w-full rounded-lg" />}
+                        {ck === "mss" && <MSSDiagram className="w-full rounded-lg" />}
+                        {ck === "liquidity-sweep" && <LiquiditySweepDiagram className="w-full rounded-lg" />}
+                        {ck === "kill-zone" && <KillZoneDiagram className="w-full rounded-lg" />}
+                        {ck === "silver-bullet" && <SilverBulletDiagram className="w-full rounded-lg" />}
+                        {ck === "conservative-entry" && <ConservativeEntryDiagram className="w-full rounded-lg" />}
+                        {ck === "exit-criteria" && <ExitCriteriaDiagram className="w-full rounded-lg" />}
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full p-1.5">
+                          <Maximize2 className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/50 text-center mt-1">Click to zoom in</p>
+                      </div>
+                    ) : (
+                      <img
+                        src={getImageUrl(item.image)}
+                        alt={`${item.term} chart`}
+                        className="w-full rounded-lg"
+                        style={{ maxHeight: "320px", objectFit: "contain" }}
+                      />
+                    );
+                  })()}
                   <div
                     className="border-l-[3px] pl-3 py-1"
                     style={{ borderLeftColor: item.color }}

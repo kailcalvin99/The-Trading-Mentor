@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -7,14 +7,19 @@ import {
   StyleSheet,
   Share,
   ActivityIndicator,
+  Modal,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import Svg, { Polyline, Line, Circle, Rect, Text as SvgText, G } from "react-native-svg";
 import { useListTrades } from "@workspace/api-client-react";
 import type { Trade } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
+
+const SCREEN_W = Dimensions.get("window").width;
 
 const C = Colors.dark;
 
@@ -27,9 +32,114 @@ interface StatCard {
   icon: IoniconsName;
 }
 
+function PnlLineChart({ trades, width, height }: { trades: Trade[]; width: number; height: number }) {
+  const sorted = useMemo(() => [...trades].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()), [trades]);
+  const points = useMemo(() => {
+    let cum = 0;
+    const pts: number[] = [0];
+    sorted.forEach((t) => {
+      if (t.outcome === "win") cum += t.riskPct;
+      else if (t.outcome === "loss") cum -= t.riskPct;
+      pts.push(cum);
+    });
+    return pts;
+  }, [sorted]);
+
+  if (points.length < 2) return null;
+
+  const pad = { top: 14, bottom: 28, left: 36, right: 12 };
+  const chartW = width - pad.left - pad.right;
+  const chartH = height - pad.top - pad.bottom;
+
+  const minPnl = Math.min(...points);
+  const maxPnl = Math.max(...points);
+  const range = maxPnl - minPnl || 1;
+
+  const xStep = chartW / (points.length - 1);
+  const toX = (i: number) => pad.left + i * xStep;
+  const toY = (v: number) => pad.top + chartH - ((v - minPnl) / range) * chartH;
+
+  const polyPoints = points.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(" ");
+  const isPositive = points[points.length - 1] >= 0;
+  const lineColor = isPositive ? "#00C896" : "#EF4444";
+
+  const yTicks = [minPnl, 0, maxPnl].filter((v, i, arr) => arr.indexOf(v) === i);
+
+  return (
+    <Svg width={width} height={height}>
+      {yTicks.map((v) => (
+        <G key={v}>
+          <Line
+            x1={pad.left} y1={toY(v).toFixed(1)}
+            x2={width - pad.right} y2={toY(v).toFixed(1)}
+            stroke={v === 0 ? C.textSecondary + "60" : C.cardBorder}
+            strokeWidth={v === 0 ? 1.5 : 0.8}
+            strokeDasharray={v === 0 ? "4 4" : undefined}
+          />
+          <SvgText
+            x={pad.left - 4} y={toY(v) + 4}
+            fontSize={9} fill={C.textSecondary} textAnchor="end"
+          >
+            {v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)}
+          </SvgText>
+        </G>
+      ))}
+      <Polyline points={polyPoints} fill="none" stroke={lineColor} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      <Circle cx={toX(points.length - 1)} cy={toY(points[points.length - 1])} r={4} fill={lineColor} />
+      {points.map((v, i) => (
+        <Circle key={i} cx={toX(i)} cy={toY(v)} r={2} fill={lineColor} opacity={0.5} />
+      ))}
+    </Svg>
+  );
+}
+
+function WinLossBarChart({ wins, losses, breakeven, width, height }: { wins: number; losses: number; breakeven: number; width: number; height: number }) {
+  const data = [
+    { label: "W", value: wins, color: "#00C896" },
+    { label: "L", value: losses, color: "#EF4444" },
+    { label: "BE", value: breakeven, color: "#6B7280" },
+  ].filter((d) => d.value > 0);
+
+  if (data.length === 0) return null;
+
+  const pad = { top: 14, bottom: 28, left: 28, right: 12 };
+  const chartW = width - pad.left - pad.right;
+  const chartH = height - pad.top - pad.bottom;
+  const maxVal = Math.max(...data.map((d) => d.value));
+  const barW = Math.min(48, (chartW / data.length) * 0.55);
+  const gap = chartW / data.length;
+
+  return (
+    <Svg width={width} height={height}>
+      {[0, Math.ceil(maxVal / 2), maxVal].map((tick) => {
+        const y = pad.top + chartH - (tick / maxVal) * chartH;
+        return (
+          <G key={tick}>
+            <Line x1={pad.left} y1={y} x2={width - pad.right} y2={y} stroke={C.cardBorder} strokeWidth={0.8} />
+            <SvgText x={pad.left - 4} y={y + 4} fontSize={9} fill={C.textSecondary} textAnchor="end">{tick}</SvgText>
+          </G>
+        );
+      })}
+      {data.map((d, i) => {
+        const barH = (d.value / maxVal) * chartH;
+        const x = pad.left + i * gap + (gap - barW) / 2;
+        const y = pad.top + chartH - barH;
+        return (
+          <G key={d.label}>
+            <Rect x={x} y={y} width={barW} height={barH} rx={4} fill={d.color} opacity={0.9} />
+            <SvgText x={x + barW / 2} y={pad.top + chartH + 16} fontSize={10} fill={d.color} textAnchor="middle" fontWeight="700">{d.label}</SvgText>
+            <SvgText x={x + barW / 2} y={y - 4} fontSize={10} fill={d.color} textAnchor="middle" fontWeight="700">{d.value}</SvgText>
+          </G>
+        );
+      })}
+    </Svg>
+  );
+}
+
 export default function AnalyticsScreen() {
   const { user, subscription } = useAuth();
   const router = useRouter();
+  const [expandedChart, setExpandedChart] = useState<"pnl" | "wlb" | null>(null);
   const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
   const { data: rawTrades, isLoading } = useListTrades();
 
@@ -274,55 +384,33 @@ export default function AnalyticsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={s.heroCard}>
-          <Text style={s.heroLabel}>Cumulative P&L</Text>
-          <Text style={[s.heroValue, { color: pnlColor }]}>
-            {pnlSign}{stats.cumPnl.toFixed(2)}%
-          </Text>
-          <Text style={s.heroSub}>{stats.totalTrades} completed trades</Text>
-
-          {stats.totalTrades > 0 && (
-            <>
-              <View style={s.wlbRow}>
-                {stats.wins > 0 && (
-                  <View
-                    style={[
-                      s.wlbBar,
-                      { flex: stats.wins, backgroundColor: "#00C896" },
-                    ]}
-                  />
-                )}
-                {stats.losses > 0 && (
-                  <View
-                    style={[
-                      s.wlbBar,
-                      { flex: stats.losses, backgroundColor: "#EF4444" },
-                    ]}
-                  />
-                )}
-                {stats.breakeven > 0 && (
-                  <View
-                    style={[
-                      s.wlbBar,
-                      { flex: stats.breakeven, backgroundColor: "#6B7280" },
-                    ]}
-                  />
-                )}
-              </View>
-              <View style={s.wlbLabels}>
-                <Text style={[s.wlbLabel, { color: "#00C896" }]}>
-                  {stats.wins}W
-                </Text>
-                <Text style={[s.wlbLabel, { color: "#EF4444" }]}>
-                  {stats.losses}L
-                </Text>
-                {stats.breakeven > 0 && (
-                  <Text style={[s.wlbLabel, { color: C.textSecondary }]}>
-                    {stats.breakeven}BE
-                  </Text>
-                )}
-              </View>
-            </>
+          <View style={s.chartCardHeader}>
+            <View>
+              <Text style={s.heroLabel}>Cumulative P&L</Text>
+              <Text style={[s.heroValue, { color: pnlColor }]}>
+                {pnlSign}{stats.cumPnl.toFixed(2)}%
+              </Text>
+              <Text style={s.heroSub}>{stats.totalTrades} completed trades</Text>
+            </View>
+            <TouchableOpacity style={s.expandBtn} onPress={() => setExpandedChart("pnl")}>
+              <Ionicons name="expand-outline" size={16} color={C.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          {trades.length >= 2 && (
+            <View style={{ marginTop: 8 }}>
+              <PnlLineChart trades={trades} width={SCREEN_W - 60} height={140} />
+            </View>
           )}
+        </View>
+
+        <View style={s.chartCard}>
+          <View style={s.chartCardHeader}>
+            <Text style={s.chartCardTitle}>Win / Loss / Breakeven</Text>
+            <TouchableOpacity style={s.expandBtn} onPress={() => setExpandedChart("wlb")}>
+              <Ionicons name="expand-outline" size={16} color={C.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <WinLossBarChart wins={stats.wins} losses={stats.losses} breakeven={stats.breakeven} width={SCREEN_W - 60} height={130} />
         </View>
 
         <View style={s.grid}>
@@ -364,6 +452,29 @@ export default function AnalyticsScreen() {
           <Text style={s.discSub}>{discLabel}</Text>
         </View>
       </ScrollView>
+
+      {expandedChart !== null && (
+        <Modal visible animationType="slide" transparent onRequestClose={() => setExpandedChart(null)}>
+          <View style={s.modalOverlay}>
+            <View style={s.modalCard}>
+              <View style={s.modalHeader}>
+                <Text style={s.modalTitle}>
+                  {expandedChart === "pnl" ? "Cumulative P&L" : "Win / Loss / Breakeven"}
+                </Text>
+                <TouchableOpacity onPress={() => setExpandedChart(null)}>
+                  <Ionicons name="close" size={22} color={C.text} />
+                </TouchableOpacity>
+              </View>
+              {expandedChart === "pnl" && (
+                <PnlLineChart trades={trades} width={SCREEN_W - 48} height={260} />
+              )}
+              {expandedChart === "wlb" && (
+                <WinLossBarChart wins={stats.wins} losses={stats.losses} breakeven={stats.breakeven} width={SCREEN_W - 48} height={240} />
+              )}
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -494,4 +605,52 @@ const s = StyleSheet.create({
   },
   discFill: { height: 6 },
   discSub: { fontSize: 12, color: C.textSecondary },
+  chartCard: {
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 16,
+    padding: 16,
+    gap: 4,
+  },
+  chartCardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  chartCardTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: C.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
+  },
+  expandBtn: {
+    padding: 4,
+    borderRadius: 8,
+    backgroundColor: C.backgroundSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "flex-end",
+  },
+  modalCard: {
+    backgroundColor: C.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 36,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: C.text,
+  },
 });

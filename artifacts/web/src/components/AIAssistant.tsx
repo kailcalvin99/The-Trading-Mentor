@@ -98,7 +98,7 @@ function parseFiveStepReview(content: string): Array<{ label: string; Icon: type
       }
     }
   }
-  if (found.length < 5) return [];
+  if (found.length < 3) return [];
   return found.map((step, idx) => {
     const start = step.lineIndex + 1;
     const end = idx + 1 < found.length ? found[idx + 1].lineIndex : lines.length;
@@ -156,7 +156,7 @@ function ConfidenceBadge({ score }: { score: number }) {
   );
 }
 
-function FiveStepReviewCard({ steps }: { steps: Array<{ label: string; Icon: typeof TrendingUp; body: string }> }) {
+function FiveStepReviewCard({ steps, streaming }: { steps: Array<{ label: string; Icon: typeof TrendingUp; body: string }>; streaming?: boolean }) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden my-1">
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border-b border-border">
@@ -173,7 +173,7 @@ function FiveStepReviewCard({ steps }: { steps: Array<{ label: string; Icon: typ
             <div className="min-w-0">
               <p className="text-[11px] font-bold text-foreground mb-0.5">{step.label}</p>
               <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {step.body || "—"}
+                {step.body || (streaming ? "…" : "—")}
               </p>
             </div>
           </div>
@@ -191,8 +191,7 @@ function CoolDownCard({ content }: { content: string }) {
         <Wind className="h-3.5 w-3.5 text-teal-400 shrink-0" />
         <span className="text-[11px] font-bold text-teal-400 uppercase tracking-wider">Cool-Down Mode</span>
       </div>
-      <div className="px-3 py-2.5 space-y-2">
-        <p className="text-xs font-semibold text-teal-300">Take a breath. Let's reset.</p>
+      <div className="px-3 py-2.5">
         <p className="text-xs text-teal-100/80 leading-relaxed whitespace-pre-wrap">{cleaned}</p>
       </div>
     </div>
@@ -1059,7 +1058,24 @@ export default function AIAssistant() {
                 </div>
 
                 <div className="border-t border-border shrink-0">
-                  <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+                  {quickReplies.length > 0 && !isStreaming && (
+                    <div className="flex gap-1.5 px-3 pt-2 pb-0 overflow-x-auto scrollbar-none">
+                      {quickReplies.map(chip => (
+                        <button
+                          key={chip}
+                          onClick={() => {
+                            setInput(chip);
+                            setQuickReplies([]);
+                            setTimeout(() => inputRef.current?.focus(), 0);
+                          }}
+                          className="shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors whitespace-nowrap"
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 p-3">
                     <input
                       ref={inputRef}
                       type="text"

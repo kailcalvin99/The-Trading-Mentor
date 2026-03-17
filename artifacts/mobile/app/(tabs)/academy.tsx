@@ -55,6 +55,40 @@ const CHART_IMAGES: Record<string, number> = {
   "chart-conservative-entry.png": require("@/assets/images/chart-conservative-entry.png"),
   "chart-silver-bullet.png": require("@/assets/images/chart-silver-bullet.png"),
   "chart-exit-criteria.png": require("@/assets/images/chart-exit-criteria.png"),
+  "lesson-what-is-trading.png": require("@/assets/images/lesson-what-is-trading.png"),
+  "lesson-futures-nq.png": require("@/assets/images/lesson-futures-nq.png"),
+  "lesson-candlestick.png": require("@/assets/images/lesson-candlestick.png"),
+  "lesson-timeframes.png": require("@/assets/images/lesson-timeframes.png"),
+  "lesson-broker-platform.png": require("@/assets/images/lesson-broker-platform.png"),
+  "lesson-prop-firm.png": require("@/assets/images/lesson-prop-firm.png"),
+  "lesson-who-moves-market.png": require("@/assets/images/lesson-who-moves-market.png"),
+  "lesson-liquidity.png": require("@/assets/images/lesson-liquidity.png"),
+  "lesson-buyside-sellside.png": require("@/assets/images/lesson-buyside-sellside.png"),
+  "lesson-smart-money.png": require("@/assets/images/lesson-smart-money.png"),
+  "lesson-internal-external.png": require("@/assets/images/lesson-internal-external.png"),
+  "lesson-market-structure.png": require("@/assets/images/lesson-market-structure.png"),
+  "lesson-premium-discount.png": require("@/assets/images/lesson-premium-discount.png"),
+  "lesson-displacement.png": require("@/assets/images/lesson-displacement.png"),
+  "lesson-time-matters.png": require("@/assets/images/lesson-time-matters.png"),
+  "lesson-ny-open.png": require("@/assets/images/lesson-ny-open.png"),
+  "lesson-silver-bullet-window.png": require("@/assets/images/lesson-silver-bullet-window.png"),
+  "lesson-when-not-trade.png": require("@/assets/images/lesson-when-not-trade.png"),
+  "lesson-top-down.png": require("@/assets/images/lesson-top-down.png"),
+  "lesson-stop-loss.png": require("@/assets/images/lesson-stop-loss.png"),
+  "lesson-targets.png": require("@/assets/images/lesson-targets.png"),
+  "lesson-breakeven.png": require("@/assets/images/lesson-breakeven.png"),
+  "lesson-risk-importance.png": require("@/assets/images/lesson-risk-importance.png"),
+  "lesson-risk-per-trade.png": require("@/assets/images/lesson-risk-per-trade.png"),
+  "lesson-position-sizing.png": require("@/assets/images/lesson-position-sizing.png"),
+  "lesson-loss-limits.png": require("@/assets/images/lesson-loss-limits.png"),
+  "lesson-breaking-rules.png": require("@/assets/images/lesson-breaking-rules.png"),
+  "lesson-why-lose.png": require("@/assets/images/lesson-why-lose.png"),
+  "lesson-fomo.png": require("@/assets/images/lesson-fomo.png"),
+  "lesson-revenge-trading.png": require("@/assets/images/lesson-revenge-trading.png"),
+  "lesson-morning-routine.png": require("@/assets/images/lesson-morning-routine.png"),
+  "lesson-journal-habit.png": require("@/assets/images/lesson-journal-habit.png"),
+  "lesson-patience.png": require("@/assets/images/lesson-patience.png"),
+  "lesson-discipline-toolkit.png": require("@/assets/images/lesson-discipline-toolkit.png"),
 };
 
 type Tab = "learn" | "glossary" | "quiz" | "plan";
@@ -85,6 +119,7 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [cardStep, setCardStep] = useState(0);
   const [justCompleted, setJustCompleted] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<number | null>(null);
   const translateY = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(1)).current;
 
@@ -257,11 +292,14 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
             {stepContent.type === "chart" && lesson.chartImage && CHART_IMAGES[lesson.chartImage] && (
               <View>
                 <Text style={swipeStyles.chartLabel}>See it on the chart</Text>
-                <Image
-                  source={CHART_IMAGES[lesson.chartImage]}
-                  style={swipeStyles.chartImage}
-                  contentFit="cover"
-                />
+                <TouchableOpacity activeOpacity={0.85} onPress={() => setLightboxImage(CHART_IMAGES[lesson.chartImage!])}>
+                  <Image
+                    source={CHART_IMAGES[lesson.chartImage]}
+                    style={swipeStyles.chartImage}
+                    contentFit="cover"
+                  />
+                  <Text style={swipeStyles.tapHint}>Tap to enlarge</Text>
+                </TouchableOpacity>
               </View>
             )}
             {stepContent.type === "takeaway" && (
@@ -313,6 +351,15 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
 
         <Text style={swipeStyles.swipeHint}>Swipe up/down to navigate</Text>
       </SafeAreaView>
+
+      {lightboxImage !== null && (
+        <Modal visible animationType="fade" transparent onRequestClose={() => setLightboxImage(null)}>
+          <TouchableOpacity style={swipeStyles.lightboxOverlay} activeOpacity={1} onPress={() => setLightboxImage(null)}>
+            <Image source={lightboxImage} style={swipeStyles.lightboxImage} contentFit="contain" />
+            <Text style={swipeStyles.lightboxDismiss}>Tap to close</Text>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </Modal>
   );
 }
@@ -432,6 +479,31 @@ const swipeStyles = StyleSheet.create({
     textAlign: "center",
     paddingBottom: Platform.OS === "ios" ? 20 : 10,
   },
+  tapHint: {
+    fontSize: 10,
+    color: C.textTertiary,
+    textAlign: "center",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+  lightboxOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+  lightboxImage: {
+    width: "100%",
+    height: "80%",
+    borderRadius: 12,
+  },
+  lightboxDismiss: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.5)",
+    textAlign: "center",
+    marginTop: 16,
+  },
 });
 
 function LearnView({ onSwipeMode, onAskMentor }: { onSwipeMode: () => void; onAskMentor: (topic: string) => void }) {
@@ -539,6 +611,13 @@ function LearnView({ onSwipeMode, onAskMentor }: { onSwipeMode: () => void; onAs
                       />
                     </TouchableOpacity>
                     <Text style={learnStyles.lessonNum}>{lIdx + 1}.</Text>
+                    {lesson.chartImage && CHART_IMAGES[lesson.chartImage] && (
+                      <Image
+                        source={CHART_IMAGES[lesson.chartImage]}
+                        style={learnStyles.lessonThumbnail}
+                        contentFit="cover"
+                      />
+                    )}
                     <Text style={[learnStyles.lessonTitle, isDone && learnStyles.lessonDone]} numberOfLines={2}>
                       {lesson.title}
                     </Text>
@@ -960,6 +1039,7 @@ const learnStyles = StyleSheet.create({
   lessonContainer: { borderTopWidth: 1, borderTopColor: C.cardBorder },
   lessonRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
   lessonNum: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_500Medium", width: 22 },
+  lessonThumbnail: { width: 40, height: 28, borderRadius: 6, backgroundColor: C.backgroundSecondary },
   lessonTitle: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: C.text },
   lessonDone: { textDecorationLine: "line-through", color: C.textSecondary },
   lessonContent: { paddingHorizontal: 14, paddingBottom: 16, marginLeft: 44 },
