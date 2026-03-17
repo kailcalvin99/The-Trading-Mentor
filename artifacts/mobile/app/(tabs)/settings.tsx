@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   ScrollView,
+  Switch,
   TouchableOpacity,
   TextInput,
+  Modal,
+  FlatList,
   StyleSheet,
   Alert,
+  Platform,
   ActivityIndicator,
   Share,
 } from "react-native";
@@ -17,6 +21,7 @@ import { useRouter } from "expo-router";
 import { apiGet, apiPatch, getBaseUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const C = Colors.dark;
 
@@ -164,11 +169,156 @@ const sb = StyleSheet.create({
   text: { fontSize: 14, fontWeight: "700", color: "#0A0A0F" },
 });
 
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const MINUTES = ["00", "15", "30", "45"];
+const ITEM_HEIGHT = 44;
+
+function TimePicker({
+  value,
+  onChange,
+  onClose,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onClose: () => void;
+}) {
+  const parts = value.match(/^(\d{2}):(\d{2})$/) ?? ["", "07", "00"];
+  const initH = parts[1];
+  const initM = parts[2];
+  const closestM = MINUTES.reduce((best, m) => {
+    return Math.abs(parseInt(m) - parseInt(initM)) < Math.abs(parseInt(best) - parseInt(initM)) ? m : best;
+  }, MINUTES[0]);
+
+  const [selH, setSelH] = useState(initH);
+  const [selM, setSelM] = useState(closestM);
+  const hRef = useRef<FlatList<string>>(null);
+  const mRef = useRef<FlatList<string>>(null);
+
+  useEffect(() => {
+    const hi = HOURS.indexOf(initH);
+    if (hi >= 0) hRef.current?.scrollToIndex({ index: hi, animated: false });
+    const mi = MINUTES.indexOf(closestM);
+    if (mi >= 0) mRef.current?.scrollToIndex({ index: mi, animated: false });
+  }, []);
+
+  function confirm() {
+    onChange(`${selH}:${selM}`);
+    onClose();
+  }
+
+  function renderHour({ item }: { item: string }) {
+    const selected = item === selH;
+    return (
+      <TouchableOpacity style={tpS.item} onPress={() => setSelH(item)}>
+        <Text style={[tpS.itemText, selected && tpS.itemSelected]}>{item}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  function renderMinute({ item }: { item: string }) {
+    const selected = item === selM;
+    return (
+      <TouchableOpacity style={tpS.item} onPress={() => setSelM(item)}>
+        <Text style={[tpS.itemText, selected && tpS.itemSelected]}>{item}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={tpS.overlay} activeOpacity={1} onPress={onClose}>
+        <View style={tpS.sheet} onStartShouldSetResponder={() => true}>
+          <Text style={tpS.title}>Select Time</Text>
+          <View style={tpS.columns}>
+            <View style={tpS.col}>
+              <Text style={tpS.colLabel}>Hour</Text>
+              <FlatList
+                ref={hRef}
+                data={HOURS}
+                keyExtractor={(item) => item}
+                renderItem={renderHour}
+                getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+                showsVerticalScrollIndicator={false}
+                style={tpS.list}
+              />
+            </View>
+            <Text style={tpS.colon}>:</Text>
+            <View style={tpS.col}>
+              <Text style={tpS.colLabel}>Min</Text>
+              <FlatList
+                ref={mRef}
+                data={MINUTES}
+                keyExtractor={(item) => item}
+                renderItem={renderMinute}
+                getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+                showsVerticalScrollIndicator={false}
+                style={tpS.list}
+              />
+            </View>
+          </View>
+          <View style={tpS.preview}>
+            <Text style={tpS.previewText}>{selH}:{selM}</Text>
+          </View>
+          <View style={tpS.buttons}>
+            <TouchableOpacity onPress={onClose} style={tpS.btnCancel}>
+              <Text style={tpS.btnCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={confirm} style={tpS.btnDone}>
+              <Text style={tpS.btnDoneText}>Set</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+const tpS = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sheet: {
+    backgroundColor: "#1A1A2E",
+    borderRadius: 16,
+    padding: 20,
+    width: 240,
+    borderWidth: 1,
+    borderColor: "#2A2A3E",
+  },
+  title: { fontSize: 15, fontWeight: "700", color: "#fff", textAlign: "center", marginBottom: 12 },
+  columns: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  col: { alignItems: "center", width: 70 },
+  colLabel: { fontSize: 11, color: "#888", marginBottom: 4 },
+  list: { height: ITEM_HEIGHT * 4, width: 70 },
+  item: { height: ITEM_HEIGHT, justifyContent: "center", alignItems: "center" },
+  itemText: { fontSize: 18, color: "#888" },
+  itemSelected: { color: "#00C896", fontWeight: "700", fontSize: 20 },
+  colon: { fontSize: 24, color: "#fff", marginHorizontal: 8, paddingTop: 18 },
+  preview: { alignItems: "center", marginTop: 8 },
+  previewText: { fontSize: 28, fontWeight: "700", color: "#00C896" },
+  buttons: { flexDirection: "row", gap: 10, marginTop: 16 },
+  btnCancel: {
+    flex: 1, paddingVertical: 10, borderRadius: 10,
+    borderWidth: 1, borderColor: "#333", alignItems: "center",
+  },
+  btnCancelText: { color: "#888", fontSize: 14, fontWeight: "600" },
+  btnDone: {
+    flex: 1, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: "#00C896", alignItems: "center",
+  },
+  btnDoneText: { color: "#0A0A0F", fontSize: 14, fontWeight: "700" },
+});
+
 export default function SettingsScreen() {
   const router = useRouter();
   const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const { settings: notifSettings, requestPermission, updateSettings: updateNotifSettings } = useNotifications();
+  const [showTimePicker, setShowTimePicker] = useState<"morning" | "evening" | null>(null);
 
   const [profile, setProfile] = useState({
     name: "",
@@ -343,6 +493,21 @@ export default function SettingsScreen() {
       <View style={s.pageHeader}>
         <Text style={s.pageTitle}>Settings</Text>
       </View>
+
+      {showTimePicker === "morning" && (
+        <TimePicker
+          value={notifSettings.morningTime}
+          onChange={(v) => updateNotifSettings({ morningTime: v })}
+          onClose={() => setShowTimePicker(null)}
+        />
+      )}
+      {showTimePicker === "evening" && (
+        <TimePicker
+          value={notifSettings.eveningTime}
+          onChange={(v) => updateNotifSettings({ eveningTime: v })}
+          onClose={() => setShowTimePicker(null)}
+        />
+      )}
 
       <ScrollView
         style={s.scroll}
@@ -572,6 +737,105 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Notifications */}
+        {Platform.OS !== "web" && (
+          <View style={s.card}>
+            <CardHeader icon="notifications-outline" title="Notifications" />
+            <View style={s.section}>
+              {!notifSettings.permissionGranted ? (
+                <>
+                  <Text style={s.hint}>
+                    Enable notifications to get kill zone alerts and daily reminders.
+                  </Text>
+                  <SaveButton
+                    onPress={requestPermission}
+                    loading={false}
+                    label="Enable Notifications"
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={[s.label, { marginBottom: 4 }]}>Kill Zone Alerts (5 min before)</Text>
+
+                  <View style={notifS.row}>
+                    <Text style={notifS.rowLabel}>London Open (7:00 AM UTC)</Text>
+                    <Switch
+                      value={notifSettings.killZoneLondon}
+                      onValueChange={(v) => updateNotifSettings({ killZoneLondon: v })}
+                      trackColor={{ false: C.cardBorder, true: C.accent }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+
+                  <View style={notifS.row}>
+                    <Text style={notifS.rowLabel}>NY Open (1:30 PM UTC)</Text>
+                    <Switch
+                      value={notifSettings.killZoneNY}
+                      onValueChange={(v) => updateNotifSettings({ killZoneNY: v })}
+                      trackColor={{ false: C.cardBorder, true: C.accent }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+
+                  <View style={notifS.row}>
+                    <Text style={notifS.rowLabel}>Asian Session (12:00 AM UTC)</Text>
+                    <Switch
+                      value={notifSettings.killZoneAsian}
+                      onValueChange={(v) => updateNotifSettings({ killZoneAsian: v })}
+                      trackColor={{ false: C.cardBorder, true: C.accent }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+
+                  <View style={notifS.divider} />
+
+                  <Text style={[s.label, { marginBottom: 4 }]}>Daily Reminders</Text>
+
+                  <View style={notifS.row}>
+                    <Text style={notifS.rowLabel}>Morning Routine</Text>
+                    <Switch
+                      value={notifSettings.morningReminder}
+                      onValueChange={(v) => updateNotifSettings({ morningReminder: v })}
+                      trackColor={{ false: C.cardBorder, true: C.accent }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+                  {notifSettings.morningReminder && (
+                    <TouchableOpacity
+                      style={notifS.timePicker}
+                      onPress={() => setShowTimePicker("morning")}
+                    >
+                      <Ionicons name="time-outline" size={14} color={C.textSecondary} />
+                      <Text style={notifS.timePickerText}>{notifSettings.morningTime}</Text>
+                      <Ionicons name="chevron-forward" size={13} color={C.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+
+                  <View style={notifS.row}>
+                    <Text style={notifS.rowLabel}>Evening Journal</Text>
+                    <Switch
+                      value={notifSettings.eveningReminder}
+                      onValueChange={(v) => updateNotifSettings({ eveningReminder: v })}
+                      trackColor={{ false: C.cardBorder, true: C.accent }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+                  {notifSettings.eveningReminder && (
+                    <TouchableOpacity
+                      style={notifS.timePicker}
+                      onPress={() => setShowTimePicker("evening")}
+                    >
+                      <Ionicons name="time-outline" size={14} color={C.textSecondary} />
+                      <Text style={notifS.timePickerText}>{notifSettings.eveningTime}</Text>
+                      <Ionicons name="chevron-forward" size={13} color={C.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Admin Panel */}
         {profile.role === "admin" && (
           <TouchableOpacity
@@ -600,6 +864,39 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
+
+const notifS = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  rowLabel: { fontSize: 14, color: C.text, flex: 1 },
+  divider: {
+    height: 1,
+    backgroundColor: C.cardBorder,
+    marginVertical: 8,
+  },
+  timePicker: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  timePickerText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: C.accent,
+    flex: 1,
+  },
+});
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
