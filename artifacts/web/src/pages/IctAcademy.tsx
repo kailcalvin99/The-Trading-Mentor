@@ -174,7 +174,7 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
     return firstIncomplete >= 0 ? firstIncomplete : 0;
   });
   const [cardStep, setCardStep] = useState(0);
-  const [swipeX, setSwipeX] = useState(0);
+  const [swipeY, setSwipeY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [xp, setXp] = useState(getXP);
@@ -230,7 +230,7 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
       if (currentIdx < totalCards - 1) {
         setCurrentIdx(currentIdx + 1);
         setCardStep(0);
-        setSwipeX(0);
+        setSwipeY(0);
       }
     }
   }
@@ -241,41 +241,40 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
     } else if (currentIdx > 0) {
       setCurrentIdx(currentIdx - 1);
       setCardStep(0);
-      setSwipeX(0);
+      setSwipeY(0);
     }
   }
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    dragStart.current = e.clientX;
+    dragStart.current = e.clientY;
     setIsDragging(true);
-    setSwipeX(0);
+    setSwipeY(0);
   }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging) return;
-    setSwipeX(e.clientX - dragStart.current);
+    setSwipeY(e.clientY - dragStart.current);
   }, [isDragging]);
 
   const handlePointerUp = useCallback(() => {
     if (!isDragging) return;
     setIsDragging(false);
-    if (swipeX > 100) {
-      if (!isDone) markComplete();
-      setSwipeX(0);
-    } else if (swipeX < -100) {
+    if (swipeY < -100) {
+      goNext();
+      setSwipeY(0);
+    } else if (swipeY > 100) {
       goPrev();
-      setSwipeX(0);
+      setSwipeY(0);
     } else {
-      setSwipeX(0);
+      setSwipeY(0);
     }
-  }, [isDragging, swipeX, isDone, currentIdx]);
+  }, [isDragging, swipeY, isDone, currentIdx]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goNext(); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
-      if (e.key === "ArrowUp") { e.preventDefault(); goPrev(); }
-      if (e.key === "ArrowDown") { e.preventDefault(); goNext(); }
+      if (e.key === "ArrowUp") { e.preventDefault(); goNext(); }
+      if (e.key === "ArrowDown") { e.preventDefault(); goPrev(); }
+      if (e.key === " ") { e.preventDefault(); goNext(); }
       if (e.key === "Escape") onExit();
     }
     window.addEventListener("keydown", handleKey);
@@ -299,8 +298,7 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
     return { type: "takeaway" as const, stepLabel: `${cardStep + 1} of ${totalSteps}` };
   })();
 
-  const swipeOpacity = Math.min(1, Math.abs(swipeX) / 150);
-  const swipeRotation = swipeX * 0.05;
+  const swipeOpacity = Math.min(1, Math.abs(swipeY) / 150);
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col" ref={containerRef}>
@@ -309,10 +307,10 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <button
           onClick={onExit}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-2 bg-card border border-border hover:bg-muted text-foreground font-semibold px-4 py-2 rounded-full text-sm transition-colors shadow-sm"
         >
-          <X className="h-5 w-5" />
-          <span className="hidden sm:inline">Exit</span>
+          <X className="h-4 w-4" />
+          <span>Exit</span>
         </button>
 
         <div className="flex items-center gap-4">
@@ -351,17 +349,6 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
 
       <div className="flex-1 flex items-center justify-center p-4 overflow-hidden relative">
         <button
-          onClick={goPrev}
-          disabled={currentIdx === 0 && cardStep === 0}
-          className="absolute left-0 top-0 bottom-0 w-16 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:hidden"
-          aria-label="Previous"
-        >
-          <div className="bg-card/80 backdrop-blur border border-border rounded-full p-2">
-            <ChevronLeft className="h-5 w-5 text-foreground" />
-          </div>
-        </button>
-
-        <button
           onClick={() => {
             if (stepContent.type === "takeaway" && !isDone) {
               markComplete();
@@ -370,18 +357,29 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
             }
           }}
           disabled={currentIdx === totalCards - 1 && cardStep === totalSteps - 1}
-          className="absolute right-0 top-0 bottom-0 w-16 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:hidden"
+          className="absolute left-0 right-0 top-0 h-16 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:hidden"
           aria-label="Next"
         >
           <div className="bg-card/80 backdrop-blur border border-border rounded-full p-2">
-            <ChevronRight className="h-5 w-5 text-foreground" />
+            <ChevronUp className="h-5 w-5 text-foreground" />
+          </div>
+        </button>
+
+        <button
+          onClick={goPrev}
+          disabled={currentIdx === 0 && cardStep === 0}
+          className="absolute left-0 right-0 bottom-0 h-16 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:hidden"
+          aria-label="Previous"
+        >
+          <div className="bg-card/80 backdrop-blur border border-border rounded-full p-2">
+            <ChevronDown className="h-5 w-5 text-foreground" />
           </div>
         </button>
 
         <div
           className="relative w-full max-w-lg select-none"
           style={{
-            transform: `translateX(${swipeX}px) rotate(${swipeRotation}deg)`,
+            transform: `translateY(${swipeY}px)`,
             transition: isDragging ? "none" : "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }}
           onPointerDown={handlePointerDown}
@@ -389,12 +387,20 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
         >
-          {swipeX > 20 && (
+          {swipeY < -20 && (
             <div
-              className="absolute -top-2 -right-2 bg-green-500 text-white px-4 py-1.5 rounded-full font-bold text-sm z-10 shadow-lg"
+              className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-1.5 rounded-full font-bold text-sm z-10 shadow-lg"
               style={{ opacity: swipeOpacity }}
             >
-              GOT IT
+              NEXT ↑
+            </div>
+          )}
+          {swipeY > 20 && (
+            <div
+              className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-4 py-1.5 rounded-full font-bold text-sm z-10 shadow-lg"
+              style={{ opacity: swipeOpacity }}
+            >
+              BACK ↓
             </div>
           )}
 
@@ -490,7 +496,7 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
 
                   {!isDone && (
                     <p className="text-center text-xs text-muted-foreground mt-4 animate-pulse">
-                      Swipe right or tap below to complete
+                      Swipe up or tap below to continue
                     </p>
                   )}
                 </div>
@@ -562,7 +568,7 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
       </div>
 
       <div className="text-center py-3 text-xs text-muted-foreground/50 shrink-0">
-        Use arrow keys, swipe, click edges, or use the buttons to navigate
+        Swipe up/down to navigate · ↑ next · ↓ back · Esc to exit
       </div>
     </div>
   );

@@ -60,7 +60,7 @@ const CHART_IMAGES: Record<string, number> = {
 type Tab = "learn" | "glossary" | "quiz" | "plan";
 
 const PROGRESS_KEY = "ict-academy-progress";
-const SW = Dimensions.get("window").width;
+const SH = Dimensions.get("window").height;
 const ACADEMY_UNLOCKED_KEY = "ict-academy-unlocked";
 
 function getAllCards(): { lesson: Lesson; chapter: Chapter; globalIdx: number }[] {
@@ -85,7 +85,7 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [cardStep, setCardStep] = useState(0);
   const [justCompleted, setJustCompleted] = useState(false);
-  const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -156,14 +156,14 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
   }
 
   function animateCardOut(dir: 1 | -1, onDone: () => void) {
-    Animated.timing(translateX, {
-      toValue: dir * -SW,
+    Animated.timing(translateY, {
+      toValue: dir * -SH,
       duration: 220,
       useNativeDriver: true,
     }).start(() => {
-      translateX.setValue(dir * SW);
+      translateY.setValue(dir * SH);
       onDone();
-      Animated.timing(translateX, {
+      Animated.timing(translateY, {
         toValue: 0,
         duration: 220,
         useNativeDriver: true,
@@ -173,17 +173,17 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy),
-      onPanResponderMove: (_, gs) => translateX.setValue(gs.dx),
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 10 && Math.abs(gs.dy) > Math.abs(gs.dx),
+      onPanResponderMove: (_, gs) => translateY.setValue(gs.dy),
       onPanResponderRelease: (_, gs) => {
-        if (gs.dx < -60) {
+        if (gs.dy < -60) {
           goNext();
-          Animated.timing(translateX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-        } else if (gs.dx > 60) {
+          Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+        } else if (gs.dy > 60) {
           goPrev();
-          Animated.timing(translateX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+          Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }).start();
         } else {
-          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
         }
       },
     })
@@ -205,7 +205,8 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
       <SafeAreaView style={swipeStyles.safe} edges={["top"]}>
         <View style={swipeStyles.topBar}>
           <TouchableOpacity onPress={onExit} style={swipeStyles.exitBtn}>
-            <Ionicons name="close" size={22} color={C.text} />
+            <Ionicons name="close" size={18} color={C.text} />
+            <Text style={swipeStyles.exitBtnText}>Exit</Text>
           </TouchableOpacity>
           <Text style={swipeStyles.progressText}>{completedCount}/{totalCards} lessons</Text>
           <TouchableOpacity
@@ -237,7 +238,7 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
         </View>
 
         <Animated.View
-          style={[swipeStyles.cardWrapper, { transform: [{ translateX }, { scale: cardScale }] }]}
+          style={[swipeStyles.cardWrapper, { transform: [{ translateY }, { scale: cardScale }] }]}
           {...panResponder.panHandlers}
         >
           <View style={[swipeStyles.cardHeader, { backgroundColor: chapter.color + "15" }]}>
@@ -310,7 +311,7 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
           </TouchableOpacity>
         </View>
 
-        <Text style={swipeStyles.swipeHint}>Swipe left/right to navigate</Text>
+        <Text style={swipeStyles.swipeHint}>Swipe up/down to navigate</Text>
       </SafeAreaView>
     </Modal>
   );
@@ -327,7 +328,18 @@ const swipeStyles = StyleSheet.create({
     borderBottomColor: C.cardBorder,
     gap: 8,
   },
-  exitBtn: { padding: 4 },
+  exitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  exitBtnText: { fontSize: 13, fontWeight: "600", color: C.text },
   progressText: { flex: 1, fontSize: 13, color: C.textSecondary, textAlign: "center" },
   mentorBtn: {
     flexDirection: "row",
