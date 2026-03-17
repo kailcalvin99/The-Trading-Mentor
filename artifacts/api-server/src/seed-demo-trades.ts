@@ -1,6 +1,5 @@
 import { db, tradesTable } from "@workspace/db";
 import { pool } from "@workspace/db";
-import { like } from "drizzle-orm";
 
 const DEMO_MARKER = "[DEMO-SEED]";
 
@@ -295,12 +294,8 @@ function generateTrades() {
 }
 
 async function main() {
-  const existing = await db.select({ id: tradesTable.id }).from(tradesTable)
-    .where(like(tradesTable.notes, `${DEMO_MARKER}%`));
-  if (existing.length > 0) {
-    console.log(`Removing ${existing.length} existing demo trades...`);
-    await db.delete(tradesTable).where(like(tradesTable.notes, `${DEMO_MARKER}%`));
-  }
+  console.log("Clearing all existing trades...");
+  await db.delete(tradesTable);
 
   console.log("Generating 1000 perfect ICT trader demo trades...");
   const trades = generateTrades();
