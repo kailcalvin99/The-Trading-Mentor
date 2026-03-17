@@ -193,6 +193,12 @@ export const CreateTradeBody = zod.object({
   outcome: zod.string().optional(),
   notes: zod.string().optional(),
   setupScore: zod.number().optional(),
+  behaviorTag: zod.string().optional(),
+  stressLevel: zod.number().optional(),
+  isDraft: zod.boolean().optional(),
+  sideDirection: zod.string().optional(),
+  followedTimeRule: zod.boolean().optional(),
+  hasFvgConfirmation: zod.boolean().optional(),
 });
 
 /**

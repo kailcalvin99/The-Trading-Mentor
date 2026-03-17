@@ -470,6 +470,18 @@ components:
           type: string
         setupScore:
           type: integer
+        behaviorTag:
+          type: string
+        stressLevel:
+          type: integer
+        isDraft:
+          type: boolean
+        sideDirection:
+          type: string
+        followedTimeRule:
+          type: boolean
+        hasFvgConfirmation:
+          type: boolean
       required:
         - pair
         - entryTime

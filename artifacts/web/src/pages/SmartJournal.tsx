@@ -53,13 +53,6 @@ interface ExtendedTrade extends Trade {
   setupScore?: number | null;
 }
 
-interface ExtendedCreateTradeBody extends CreateTradeBody {
-  behaviorTag?: string;
-  stressLevel?: number;
-  isDraft?: boolean;
-  sideDirection?: string;
-  setupScore?: number;
-}
 
 const CONSERVATIVE_CRITERIA = [
   { key: "bias", label: "Bias Check", desc: "Is the 1-Hour chart clearly going up (Bullish) or down (Bearish)?" },
@@ -211,7 +204,7 @@ export default function SmartJournal() {
   const liveSetupScore = useMemo(() => {
     const parsedRisk = parseFloat(form.riskPct) || 0;
     const hasFvg = entryMode === "conservative" ? !!entryCriteria["gap"] : !!entryCriteria["fvg1m"];
-    const followedTime = entryMode === "aggressive" ? !!entryCriteria["time"] : false;
+    const followedTime = entryMode === "aggressive" ? !!entryCriteria["time"] : true;
     return calculateSetupScore(
       criteriaChecked,
       activeCriteria.length,
@@ -355,7 +348,7 @@ export default function SmartJournal() {
     try {
       const modeTag = entryMode === "conservative" ? "[Conservative]" : "[Silver Bullet]";
       const notesWithMode = form.notes ? `${modeTag} ${form.notes}` : modeTag;
-      const payload: ExtendedCreateTradeBody = {
+      const payload: CreateTradeBody = {
         pair: form.pair,
         entryTime: form.entryTime,
         riskPct: parsedRisk,
@@ -368,7 +361,7 @@ export default function SmartJournal() {
         sideDirection: form.sideDirection,
         setupScore: liveSetupScore,
       };
-      const result = await createTradeMut({ data: payload as CreateTradeBody });
+      const result = await createTradeMut({ data: payload });
       if (editingDraftId) {
         await deleteTradeMut({ id: editingDraftId });
       }

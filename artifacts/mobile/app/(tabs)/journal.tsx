@@ -174,16 +174,16 @@ export default function JournalScreen() {
   const { mutateAsync: createTradeMut } = useCreateTrade();
   const { mutateAsync: deleteTradeMut } = useDeleteTrade();
 
-  const draftTrades = (trades as any[]).filter((t: any) => t.isDraft);
-  const completedTrades = (trades as any[]).filter((t: any) => !t.isDraft);
+  const draftTrades = trades.filter((t) => t.isDraft);
+  const completedTrades = trades.filter((t) => !t.isDraft);
 
-  const wins = completedTrades.filter((t: any) => t.outcome === "win").length;
-  const losses = completedTrades.filter((t: any) => t.outcome === "loss").length;
+  const wins = completedTrades.filter((t) => t.outcome === "win").length;
+  const losses = completedTrades.filter((t) => t.outcome === "loss").length;
   const total = wins + losses;
   const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
 
-  const fomoCount = completedTrades.filter((t: any) => t.behaviorTag === "FOMO").length;
-  const disciplinedCount = completedTrades.filter((t: any) => t.behaviorTag === "Disciplined").length;
+  const fomoCount = completedTrades.filter((t) => t.behaviorTag === "FOMO").length;
+  const disciplinedCount = completedTrades.filter((t) => t.behaviorTag === "Disciplined").length;
 
   const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -232,7 +232,7 @@ export default function JournalScreen() {
   const liveSetupScore = useMemo(() => {
     const parsedRisk = parseFloat(form.riskPct) || 0;
     const hasFvg = entryMode === "conservative" ? !!entryCriteria["gap"] : !!entryCriteria["fvg1m"];
-    const followedTime = entryMode === "aggressive" ? !!entryCriteria["time"] : false;
+    const followedTime = entryMode === "aggressive" ? !!entryCriteria["time"] : true;
     return calculateSetupScore(
       criteriaChecked,
       activeCriteria.length,
