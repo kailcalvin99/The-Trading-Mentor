@@ -322,7 +322,7 @@ export default function JournalScreen() {
         data: {
           pair: form.pair,
           entryTime: form.entryTime,
-          riskPct: form.riskPct,
+          riskPct: parseFloat(form.riskPct) || 0,
           liquiditySweep: form.liquiditySweep,
           outcome: form.outcome || undefined,
           notes: notesWithMode,
