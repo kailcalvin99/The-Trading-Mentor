@@ -4,10 +4,14 @@ import { View } from "react-native";
 
 import AIAssistant from "@/components/AIAssistant";
 import TopTabBar from "@/components/TopTabBar";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TabLayout() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
+
+  const isAdmin = user?.role === "admin";
 
   const handleNavigate = useCallback(
     (href: Href) => {
@@ -16,16 +20,13 @@ export default function TabLayout() {
     [router]
   );
 
-  const showTabBar = !pathname.endsWith("/admin");
-
   return (
     <View style={{ flex: 1 }}>
-      {showTabBar && (
-        <TopTabBar
-          pathname={pathname}
-          onNavigate={handleNavigate}
-        />
-      )}
+      <TopTabBar
+        pathname={pathname}
+        onNavigate={handleNavigate}
+        isAdmin={isAdmin}
+      />
       <Tabs
         tabBar={() => null}
         screenOptions={{
@@ -57,12 +58,16 @@ export default function TabLayout() {
           options={{ title: "Analytics" }}
         />
         <Tabs.Screen
+          name="subscription"
+          options={{ title: "Subscription" }}
+        />
+        <Tabs.Screen
           name="settings"
           options={{ title: "Settings" }}
         />
         <Tabs.Screen
           name="admin"
-          options={{ title: "Admin", href: null }}
+          options={{ title: "Admin" }}
         />
       </Tabs>
       <AIAssistant />

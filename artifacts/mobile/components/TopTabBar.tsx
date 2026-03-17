@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Href } from "expo-router";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Colors from "@/constants/colors";
@@ -9,46 +9,57 @@ import Colors from "@/constants/colors";
 const C = Colors.dark;
 
 const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selected: keyof typeof Ionicons.glyphMap }> = {
-  index:     { default: "checkbox-outline",  selected: "checkbox" },
-  academy:   { default: "school-outline",    selected: "school" },
-  tracker:   { default: "shield-outline",    selected: "shield" },
-  journal:   { default: "book-outline",      selected: "book" },
-  community: { default: "people-outline",    selected: "people" },
-  analytics: { default: "bar-chart-outline", selected: "bar-chart" },
-  settings:  { default: "settings-outline",  selected: "settings" },
+  index:        { default: "checkbox-outline",    selected: "checkbox" },
+  academy:      { default: "school-outline",      selected: "school" },
+  tracker:      { default: "shield-outline",      selected: "shield" },
+  journal:      { default: "book-outline",        selected: "book" },
+  community:    { default: "people-outline",      selected: "people" },
+  analytics:    { default: "bar-chart-outline",   selected: "bar-chart" },
+  subscription: { default: "card-outline",        selected: "card" },
+  settings:     { default: "settings-outline",    selected: "settings" },
+  admin:        { default: "shield-half-outline", selected: "shield-half" },
 };
 
 const TAB_LABELS: Record<string, string> = {
-  index:     "Planner",
-  academy:   "Academy",
-  tracker:   "Risk",
-  journal:   "Journal",
-  community: "Social",
-  analytics: "Analytics",
-  settings:  "Settings",
+  index:        "Planner",
+  academy:      "Academy",
+  tracker:      "Risk",
+  journal:      "Journal",
+  community:    "Social",
+  analytics:    "Analytics",
+  subscription: "Subscription",
+  settings:     "Settings",
+  admin:        "Admin",
 };
 
-type TabRoute = "index" | "academy" | "tracker" | "journal" | "community" | "analytics" | "settings";
+type TabRoute = "index" | "academy" | "tracker" | "journal" | "community" | "analytics" | "subscription" | "settings" | "admin";
 
 const TAB_HREFS: Record<TabRoute, Href> = {
-  index:     "/",
-  academy:   "/academy",
-  tracker:   "/tracker",
-  journal:   "/journal",
-  community: "/community",
-  analytics: "/analytics",
-  settings:  "/settings",
+  index:        "/",
+  academy:      "/academy",
+  tracker:      "/tracker",
+  journal:      "/journal",
+  community:    "/community",
+  analytics:    "/analytics",
+  subscription: "/subscription",
+  settings:     "/settings",
+  admin:        "/admin",
 };
 
-const TAB_ROUTES: TabRoute[] = ["index", "academy", "tracker", "journal", "community", "analytics", "settings"];
+const BASE_TAB_ROUTES: TabRoute[] = ["index", "academy", "tracker", "journal", "community", "analytics", "subscription", "settings"];
 
 interface TopTabBarProps {
   pathname: string;
   onNavigate: (href: Href) => void;
+  isAdmin?: boolean;
 }
 
-export default function TopTabBar({ pathname, onNavigate }: TopTabBarProps) {
+export default function TopTabBar({ pathname, onNavigate, isAdmin = false }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
+
+  const TAB_ROUTES: TabRoute[] = isAdmin
+    ? [...BASE_TAB_ROUTES, "admin"]
+    : BASE_TAB_ROUTES;
 
   const normalizedPath = pathname.replace(/^\/\(tabs\)\/?/, "/");
   const activeRoute: TabRoute = TAB_ROUTES.find(
@@ -57,7 +68,12 @@ export default function TopTabBar({ pathname, onNavigate }: TopTabBarProps) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.bar}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.bar}
+        bounces={false}
+      >
         {TAB_ROUTES.map((route) => {
           const isFocused = activeRoute === route;
           const icons = TAB_ICONS[route];
@@ -79,10 +95,11 @@ export default function TopTabBar({ pathname, onNavigate }: TopTabBarProps) {
                 color={color}
               />
               <Text style={[styles.label, { color }]}>{label}</Text>
+              {isFocused && <View style={[styles.indicator, { backgroundColor: C.accent }]} />}
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -96,16 +113,26 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
     height: 52,
+    paddingHorizontal: 4,
   },
   tab: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 14,
     gap: 2,
+    position: "relative",
   },
   label: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: "600",
     letterSpacing: 0.1,
+  },
+  indicator: {
+    position: "absolute",
+    bottom: 0,
+    left: 8,
+    right: 8,
+    height: 2,
+    borderRadius: 1,
   },
 });
