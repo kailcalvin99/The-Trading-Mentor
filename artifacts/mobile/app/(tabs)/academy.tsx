@@ -236,7 +236,7 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
   const isLastCard = currentIdx === totalCards - 1 && cardStep === totalSteps - 1;
 
   return (
-    <Modal visible animationType="slide" onRequestClose={onExit}>
+    <Modal visible animationType="slide" onRequestClose={onExit} statusBarTranslucent>
       <SafeAreaView style={swipeStyles.safe} edges={["top"]}>
         <View style={swipeStyles.topBar}>
           <TouchableOpacity onPress={onExit} style={swipeStyles.exitBtn}>
