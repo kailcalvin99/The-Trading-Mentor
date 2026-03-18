@@ -1,23 +1,186 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Shield, BookOpen, Calendar, Brain, CheckCircle2, AlertTriangle, ArrowRight, Lock } from "lucide-react";
+import {
+  Shield, BookOpen, Calendar, Brain, CheckCircle2, AlertTriangle,
+  ArrowRight, ChevronDown, Star, Zap, Crown, Check, Mail,
+} from "lucide-react";
 import Logo from "@/components/Logo";
 
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
+
 const DISCLAIMER =
-  "Trading involves significant risk of loss and is not suitable for all investors. This tool is for educational and decision-support purposes only — not financial advice.";
+  "Trading involves significant risk of loss and is not suitable for all investors. This tool is for educational and decision-support purposes only — not financial advice. Past performance is not indicative of future results.";
+
+interface Tier {
+  id: number;
+  name: string;
+  level: number;
+  monthlyPrice: string;
+  annualPrice: string;
+  annualDiscountPct: number;
+  features: string[];
+  description: string;
+}
+
+const STATS = [
+  { value: "39", label: "Structured Lessons" },
+  { value: "24hr", label: "Drawdown Lock" },
+  { value: "3", label: "Subscription Tiers" },
+  { value: "Free", label: "To Get Started" },
+];
+
+const HOW_IT_WORKS = [
+  {
+    step: "01",
+    title: "Create Your Free Account",
+    desc: "Sign up in under 60 seconds — no credit card needed. Access the first 5 lessons, the daily planner, and 3 AI mentor questions per day instantly.",
+    color: "text-primary",
+    bg: "bg-primary/10",
+  },
+  {
+    step: "02",
+    title: "Complete Your Morning Routine",
+    desc: "Each trading day starts with a 4-step pre-session checklist — market bias, news scan, hydration, breathing. The app locks you out of tools until you finish.",
+    color: "text-indigo-400",
+    bg: "bg-indigo-500/10",
+  },
+  {
+    step: "03",
+    title: "Trade With Guardrails",
+    desc: "The Risk Shield calculates your exact position size, tracks your daily loss limit, and automatically locks you out for 24 hours if you hit the drawdown threshold.",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+  },
+];
+
+const FEATURES = [
+  {
+    icon: Shield,
+    title: "Risk Shield",
+    color: "text-red-400",
+    bg: "bg-red-500/10",
+    border: "border-red-500/20",
+    desc: "Your personal risk guardian. Works like an air-traffic controller watching your account — stops small mistakes from becoming disasters.",
+    bullets: [
+      "Position-size calculator based on your exact risk rules",
+      "Daily loss limit: lose 2%? App locks you out for 24 hours",
+      "Drawdown shield tracks prop-firm balance in real time",
+      "Focus Mode blocks distractions during live sessions",
+    ],
+  },
+  {
+    icon: Brain,
+    title: "AI Mentor",
+    color: "text-indigo-400",
+    bg: "bg-indigo-500/10",
+    border: "border-indigo-500/20",
+    desc: "A private ICT tutor available 24/7. Ask anything, get plain-language answers, and build real knowledge — not just guesses.",
+    bullets: [
+      "39 structured lessons from zero to advanced ICT",
+      "Adaptive quiz that adjusts to your skill level",
+      "16-term glossary in plain, simple language",
+      "AI answers any trading question, any time",
+    ],
+  },
+  {
+    icon: Calendar,
+    title: "Daily Planner",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    desc: "Great traders don't wing it. The Daily Planner walks you through a morning routine before you touch the market — like a pilot's pre-flight checklist.",
+    bullets: [
+      "4-step pre-session checklist before you can trade",
+      "Live countdowns to London, NY Open, and Silver Bullet windows",
+      "News-event warnings flag high-risk periods automatically",
+      "Custom routine items you can add yourself",
+    ],
+  },
+  {
+    icon: BookOpen,
+    title: "Smart Journal",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    desc: "Log every trade and see the truth about your behavior. Patterns that cost you money become visible — so you can fix them.",
+    bullets: [
+      "Entry checklist so you only trade when criteria are met",
+      "Behavior tags: discipline, FOMO, revenge trading",
+      "Pattern analysis shows what's hurting your results",
+      "Monk Mode removes distractions during reviews",
+    ],
+  },
+];
+
+const FAQS = [
+  {
+    q: "What exactly is ICT Trading Mentor?",
+    a: "ICT Trading Mentor is a decision-support tool for futures traders who follow the Inner Circle Trader (ICT) methodology. It combines a structured course (39 lessons), an AI-powered mentor, a daily planner with pre-session checklists, a smart trading journal, and a risk shield that enforces hard drawdown limits. It is not a trading signal service or broker.",
+  },
+  {
+    q: "Is this financial advice?",
+    a: "No. ICT Trading Mentor is an educational and decision-support tool only. It does not provide investment advice, trading signals, or recommendations to buy or sell any financial instrument. All trading decisions remain entirely yours. Trading futures involves significant risk of loss.",
+  },
+  {
+    q: "What's included in the free tier?",
+    a: "The free tier gives you access to the first 5 ICT Academy lessons, the daily planner, 3 AI mentor questions per day, and the daily spin wheel. No credit card is required to sign up.",
+  },
+  {
+    q: "How does billing work? Can I cancel?",
+    a: "Paid plans are billed monthly or annually via Stripe — a secure, PCI-compliant payment processor. You can cancel your subscription at any time from your account settings. Cancellation takes effect at the end of your current billing period. See our Refund Policy for full details.",
+  },
+  {
+    q: "What is the 24-hour drawdown lock?",
+    a: "If your account hits the daily loss threshold you set (default 2%), the app locks you out of all trading tools for 24 hours. This is designed to prevent emotional revenge trading after a losing session. The lock is a feature, not a punishment.",
+  },
+  {
+    q: "What payment methods are accepted?",
+    a: "We accept all major credit and debit cards (Visa, Mastercard, American Express, Discover) through Stripe. All payment data is handled directly by Stripe and is never stored on our servers.",
+  },
+];
 
 export default function Welcome() {
+  const [annual, setAnnual] = useState(false);
+  const [tiers, setTiers] = useState<Tier[]>([]);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/subscriptions/tiers`)
+      .then((r) => r.json())
+      .then((data) => setTiers(data.tiers || []))
+      .catch(() => {});
+  }, []);
+
+  function getMonthlyEquivalent(tier: Tier) {
+    if (tier.level === 0) return 0;
+    return annual
+      ? parseFloat(tier.annualPrice) / 12
+      : parseFloat(tier.monthlyPrice);
+  }
+
+  const tierIcons = [Star, Zap, Crown];
+  const tierAccents = [
+    { border: "border-border", badge: "", glow: "" },
+    { border: "border-primary/60", badge: "Most Popular", glow: "shadow-[0_0_30px_rgba(0,200,150,0.12)]" },
+    { border: "border-amber-500/60", badge: "Full Access", glow: "shadow-[0_0_30px_rgba(245,158,11,0.12)]" },
+  ];
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Logo size={32} />
-          <span className="font-bold text-foreground text-base hidden sm:inline">ICT Trading Mentor</span>
+      {/* ── Sticky Header ── */}
+      <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Logo size={30} />
+          <span className="font-bold text-foreground text-sm sm:text-base">ICT Trading Mentor</span>
         </div>
+        <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+          <a href="#features" className="hover:text-foreground transition-colors">Features</a>
+          <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
+          <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
+        </nav>
         <div className="flex items-center gap-3">
-          <Link
-            to="/login"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:inline">
             Log In
           </Link>
           <Link
@@ -30,240 +193,389 @@ export default function Welcome() {
       </header>
 
       <main className="flex-1">
-        <section className="px-6 py-16 sm:py-24 text-center max-w-3xl mx-auto">
-          <Logo size={72} className="mx-auto mb-6" />
-          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4 leading-tight">
-            ICT Trading Mentor
-          </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground mb-3 max-w-2xl mx-auto leading-relaxed">
-            A Decision Support Tool for traders — not financial advice.
-          </p>
-          <p className="text-sm text-muted-foreground/80 mb-8 max-w-xl mx-auto">
-            Learn the ICT methodology, build disciplined habits, and protect your capital with
-            aviation-style safety checks — all in one place.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Link
-              to="/signup"
-              className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity text-base"
-            >
-              Get Started Free
-              <ArrowRight className="h-5 w-5" />
-            </Link>
-            <Link
-              to="/login"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
-            >
-              Already have an account? Log in
-            </Link>
+        {/* ── Hero ── */}
+        <section className="relative overflow-hidden px-6 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center">
+          {/* Background gradient */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(0,200,150,0.15),transparent)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_60%,hsl(240,20%,5%))]" />
+            {/* Subtle grid */}
+            <div
+              className="absolute inset-0 opacity-[0.04]"
+              style={{
+                backgroundImage:
+                  "linear-gradient(hsl(var(--border)) 1px,transparent 1px),linear-gradient(to right,hsl(var(--border)) 1px,transparent 1px)",
+                backgroundSize: "60px 60px",
+              }}
+            />
           </div>
 
-          <div className="inline-flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm text-amber-600 dark:text-amber-400 text-left max-w-xl">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-            <span className="font-medium">{DISCLAIMER}</span>
-          </div>
-        </section>
+          <div className="relative max-w-4xl mx-auto">
+            {/* Eyebrow badge */}
+            <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-full px-4 py-1.5 text-xs font-semibold text-primary mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              ICT Methodology · Decision-Support Tool
+            </div>
 
-        <section className="px-6 py-14 bg-card/40 border-y border-border">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-2">
-              Everything You Need to Trade with Discipline
-            </h2>
-            <p className="text-center text-muted-foreground mb-10 max-w-xl mx-auto">
-              Built on the ICT methodology. Designed to keep you safe, focused, and improving every day.
+            <h1 className="text-4xl sm:text-6xl font-extrabold text-foreground mb-5 leading-tight tracking-tight">
+              Trade Smarter.<br />
+              <span className="text-primary">Protect Your Capital.</span>
+            </h1>
+            <p className="text-lg sm:text-xl text-muted-foreground mb-3 max-w-2xl mx-auto leading-relaxed">
+              ICT Trading Mentor gives futures traders the structure, discipline, and guardrails they need to stop blowing accounts and start building real consistency.
+            </p>
+            <p className="text-sm text-muted-foreground/70 mb-10 max-w-xl mx-auto">
+              Educational tool only — not financial advice. Free to start, no credit card required.
             </p>
 
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div className="bg-card border border-border rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-11 h-11 rounded-xl bg-red-500/10 flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-red-500" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground">Risk Shield</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  Your personal risk guardian. Risk Shield watches your account like an air-traffic
-                  controller watching the skies — so small mistakes don't turn into disasters.
-                </p>
-                <ul className="space-y-2">
-                  {[
-                    "Position-size calculator based on your exact risk rules",
-                    "Daily loss limit: lose 2%? The app locks you out for 24 hours",
-                    "Drawdown shield tracks your prop-firm balance in real time",
-                    "Focus Mode blocks distractions during live sessions",
-                  ].map((item) => (
-                    <li key={item} className="flex gap-2 text-sm text-foreground/80">
-                      <CheckCircle2 className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+              <Link
+                to="/signup"
+                className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-8 py-3.5 rounded-xl hover:opacity-90 transition-all text-base shadow-[0_0_24px_rgba(0,200,150,0.3)]"
+              >
+                Get Started Free
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+              <a
+                href="#pricing"
+                className="flex items-center gap-2 bg-secondary border border-border text-foreground font-semibold px-8 py-3.5 rounded-xl hover:bg-secondary/80 transition-colors text-base"
+              >
+                View Pricing
+              </a>
+            </div>
 
-              <div className="bg-card border border-border rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                    <Brain className="h-6 w-6 text-indigo-400" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground">AI Mentor</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  A private tutor available 24/7. Ask anything about ICT concepts, get plain-language
-                  answers, and build real knowledge — not just guesses.
-                </p>
-                <ul className="space-y-2">
-                  {[
-                    "39 structured lessons from zero to advanced ICT",
-                    "Adaptive quiz that adjusts to your level",
-                    "16-term glossary in plain, simple language",
-                    "AI answers any trading question, any time",
-                  ].map((item) => (
-                    <li key={item} className="flex gap-2 text-sm text-foreground/80">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="bg-card border border-border rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                    <Calendar className="h-6 w-6 text-emerald-500" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground">Daily Planner</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  Great traders don't wing it. The Daily Planner walks you through a morning
-                  routine before you touch the market — like a pilot's pre-flight checklist.
-                </p>
-                <ul className="space-y-2">
-                  {[
-                    "4-step pre-session checklist before you can trade",
-                    "Live countdowns to London, NY Open, and Silver Bullet windows",
-                    "News-event warnings flag high-risk periods automatically",
-                    "Custom routine items you can add yourself",
-                  ].map((item) => (
-                    <li key={item} className="flex gap-2 text-sm text-foreground/80">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="bg-card border border-border rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                    <BookOpen className="h-6 w-6 text-amber-500" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground">Smart Journal</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  Log every trade and see the truth about your behavior. Patterns that cost you money
-                  become visible — so you can fix them.
-                </p>
-                <ul className="space-y-2">
-                  {[
-                    "Entry checklist so you only trade when criteria are met",
-                    "Behavior tags: discipline, FOMO, revenge trading",
-                    "Pattern analysis shows what's hurting your results",
-                    "Monk Mode removes distractions during reviews",
-                  ].map((item) => (
-                    <li key={item} className="flex gap-2 text-sm text-foreground/80">
-                      <CheckCircle2 className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {/* Risk disclaimer */}
+            <div className="inline-flex items-start gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3 text-xs text-amber-500 text-left max-w-2xl">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{DISCLAIMER}</span>
             </div>
           </div>
         </section>
 
-        <section className="px-6 py-14 max-w-3xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-            Aviation-Style Safety Checks
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Pilots don't skip their checklist, no matter how experienced they are. ICT Trading Mentor
-            builds the same discipline into every trading session.
-          </p>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              {
-                icon: "✈️",
-                title: "Pre-Flight Checklist",
-                desc: "Complete your morning routine before the market opens — every single day.",
-              },
-              {
-                icon: "🛡️",
-                title: "24-Hour Drawdown Lock",
-                desc: "Hit your daily loss limit and the app shuts you down before you dig a deeper hole.",
-              },
-              {
-                icon: "🎯",
-                title: "Position-Size Guardrails",
-                desc: "The calculator tells you exactly how many contracts to take so you never oversize.",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="bg-secondary/40 border border-border rounded-2xl px-5 py-6 text-left"
-              >
-                <span className="text-3xl mb-3 block">{item.icon}</span>
-                <h3 className="font-bold text-foreground mb-1">{item.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+        {/* ── Stat strip ── */}
+        <section className="border-y border-border bg-card/40 px-6 py-8">
+          <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6">
+            {STATS.map((s) => (
+              <div key={s.label} className="text-center">
+                <div className="text-3xl font-extrabold text-primary mb-1">{s.value}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-widest">{s.label}</div>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="px-6 py-14 bg-primary/5 border-y border-border text-center">
-          <div className="max-w-xl mx-auto">
-            <Lock className="h-8 w-8 text-primary mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              Your Vault Stays Closed Until You Log In
+        {/* ── How It Works ── */}
+        <section id="how-it-works" className="px-6 py-16 sm:py-20">
+          <div className="max-w-5xl mx-auto">
+            <p className="text-center text-xs font-bold uppercase tracking-widest text-primary mb-3">How It Works</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-3">
+              Three Steps to Trading Discipline
             </h2>
-            <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
-              The calculators, journal, dashboard, and all your trading data are only accessible
-              after you sign in. Sign up is free — no credit card required to get started.
+            <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto text-sm">
+              No complex setup. No trading signals. Just a system that keeps you accountable to your own rules.
             </p>
-            <Link
-              to="/signup"
-              className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-bold px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity"
-            >
-              Create Your Free Account
-              <ArrowRight className="h-5 w-5" />
-            </Link>
+
+            <div className="grid gap-6 sm:grid-cols-3">
+              {HOW_IT_WORKS.map((item) => (
+                <div
+                  key={item.step}
+                  className="relative bg-card border border-border rounded-2xl p-7 flex flex-col gap-4"
+                >
+                  <div className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center`}>
+                    <span className={`text-xl font-extrabold ${item.color}`}>{item.step}</span>
+                  </div>
+                  <h3 className="text-base font-bold text-foreground">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Features ── */}
+        <section id="features" className="px-6 py-16 sm:py-20 bg-card/30 border-y border-border">
+          <div className="max-w-5xl mx-auto">
+            <p className="text-center text-xs font-bold uppercase tracking-widest text-primary mb-3">Features</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-3">
+              Everything You Need to Trade with Discipline
+            </h2>
+            <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto text-sm">
+              Built on the ICT methodology. Designed to keep you safe, focused, and improving every session.
+            </p>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              {FEATURES.map((f) => {
+                const Icon = f.icon;
+                return (
+                  <div
+                    key={f.title}
+                    className={`bg-card border ${f.border} rounded-2xl p-7`}
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`w-11 h-11 rounded-xl ${f.bg} flex items-center justify-center`}>
+                        <Icon className={`h-6 w-6 ${f.color}`} />
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground">{f.title}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{f.desc}</p>
+                    <ul className="space-y-2">
+                      {f.bullets.map((b) => (
+                        <li key={b} className="flex gap-2 text-sm text-foreground/85">
+                          <CheckCircle2 className={`h-4 w-4 ${f.color} shrink-0 mt-0.5`} />
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Pricing ── */}
+        <section id="pricing" className="px-6 py-16 sm:py-20">
+          <div className="max-w-5xl mx-auto">
+            <p className="text-center text-xs font-bold uppercase tracking-widest text-primary mb-3">Pricing</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-3">
+              Simple, Transparent Pricing
+            </h2>
+            <p className="text-center text-muted-foreground mb-8 max-w-xl mx-auto text-sm">
+              Start free — no credit card required. Upgrade when you're ready for full access.
+            </p>
+
+            {/* Billing toggle */}
+            <div className="flex items-center justify-center gap-3 mb-10">
+              <span className={`text-sm font-medium ${!annual ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
+              <button
+                onClick={() => setAnnual((a) => !a)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${annual ? "bg-primary" : "bg-secondary border border-border"}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${annual ? "translate-x-5" : "translate-x-0"}`}
+                />
+              </button>
+              <span className={`text-sm font-medium ${annual ? "text-foreground" : "text-muted-foreground"}`}>
+                Annual
+                <span className="ml-1.5 text-xs text-primary font-bold">Save 17%</span>
+              </span>
+            </div>
+
+            {tiers.length === 0 ? (
+              <div className="grid gap-6 sm:grid-cols-3">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="bg-card border border-border rounded-2xl p-7 animate-pulse h-64" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-3">
+                {tiers.sort((a, b) => a.level - b.level).map((tier, i) => {
+                  const Icon = tierIcons[Math.min(i, tierIcons.length - 1)];
+                  const accent = tierAccents[Math.min(i, tierAccents.length - 1)];
+                  const monthlyEq = getMonthlyEquivalent(tier);
+                  const isFree = tier.level === 0;
+
+                  return (
+                    <div
+                      key={tier.id}
+                      className={`relative bg-card border ${accent.border} rounded-2xl p-7 flex flex-col ${accent.glow}`}
+                    >
+                      {accent.badge && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                          {accent.badge}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 mb-4">
+                        <Icon className={`h-5 w-5 ${i === 0 ? "text-muted-foreground" : i === 1 ? "text-primary" : "text-amber-400"}`} />
+                        <span className="font-bold text-foreground">{tier.name}</span>
+                      </div>
+
+                      <div className="mb-4">
+                        {isFree ? (
+                          <div className="text-4xl font-extrabold text-foreground">Free</div>
+                        ) : (
+                          <>
+                            <div className="flex items-end gap-1">
+                              <span className="text-4xl font-extrabold text-foreground">
+                                ${monthlyEq.toFixed(2)}
+                              </span>
+                              <span className="text-muted-foreground text-sm mb-1">/mo</span>
+                            </div>
+                            {annual && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Billed ${parseFloat(tier.annualPrice).toFixed(2)}/year
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{tier.description}</p>
+
+                      <ul className="space-y-2.5 flex-1 mb-6">
+                        {(tier.features as string[]).map((feat) => (
+                          <li key={feat} className="flex gap-2 text-sm text-foreground/85">
+                            <Check className={`h-4 w-4 shrink-0 mt-0.5 ${i === 0 ? "text-muted-foreground" : i === 1 ? "text-primary" : "text-amber-400"}`} />
+                            {feat}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <Link
+                        to="/signup"
+                        className={`text-center text-sm font-bold py-3 rounded-xl transition-all ${
+                          i === 1
+                            ? "bg-primary text-primary-foreground hover:opacity-90"
+                            : i === 2
+                            ? "bg-amber-500 text-black hover:opacity-90"
+                            : "bg-secondary border border-border text-foreground hover:bg-secondary/80"
+                        }`}
+                      >
+                        {isFree ? "Get Started Free" : "Start Free Trial"}
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="text-center text-xs text-muted-foreground mt-6">
+              All payments processed securely by <span className="text-foreground font-medium">Stripe</span>. Cancel anytime. No hidden fees.
+            </p>
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section id="faq" className="px-6 py-16 sm:py-20 bg-card/30 border-y border-border">
+          <div className="max-w-3xl mx-auto">
+            <p className="text-center text-xs font-bold uppercase tracking-widest text-primary mb-3">FAQ</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-10">
+              Common Questions
+            </h2>
+
+            <div className="space-y-3">
+              {FAQS.map((faq, i) => (
+                <div key={i} className="bg-card border border-border rounded-xl overflow-hidden">
+                  <button
+                    className="w-full flex items-center justify-between px-6 py-4 text-left text-sm font-semibold text-foreground hover:bg-secondary/30 transition-colors"
+                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  >
+                    <span>{faq.q}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 text-muted-foreground shrink-0 ml-3 transition-transform ${openFaq === i ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {openFaq === i && (
+                    <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border pt-4">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Final CTA ── */}
+        <section className="px-6 py-16 sm:py-24 text-center relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_80%_at_50%_100%,rgba(0,200,150,0.10),transparent)]" />
+          <div className="relative max-w-2xl mx-auto">
+            <Logo size={56} className="mx-auto mb-6" />
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-4">
+              Ready to Trade With Discipline?
+            </h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto text-sm leading-relaxed">
+              Join traders who are using ICT Trading Mentor to build consistent habits, protect their capital, and learn the ICT methodology properly.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                to="/signup"
+                className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-8 py-3.5 rounded-xl hover:opacity-90 transition-all text-base shadow-[0_0_24px_rgba(0,200,150,0.25)]"
+              >
+                Create Free Account
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+              <a
+                href="#pricing"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
+              >
+                Compare plans
+              </a>
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="sticky bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur px-6 py-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm text-amber-600 dark:text-amber-400 mb-5">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-            <span className="font-semibold">{DISCLAIMER}</span>
-          </div>
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-            <span>© {new Date().getFullYear()} ICT Trading Mentor. For educational purposes only.</span>
-            <div className="flex flex-wrap items-center gap-4">
-              <Link to="/terms" className="hover:text-foreground transition-colors underline">
-                Terms of Service
-              </Link>
-              <Link to="/privacy" className="hover:text-foreground transition-colors underline">
-                Privacy Policy
-              </Link>
-              <Link to="/refund" className="hover:text-foreground transition-colors underline">
-                Refund Policy
-              </Link>
-              <Link to="/risk-disclosure" className="hover:text-foreground transition-colors underline">
-                Risk Disclosure
-              </Link>
+      {/* ── Footer ── */}
+      <footer className="border-t border-border bg-card/60 px-6 pt-10 pb-8">
+        <div className="max-w-5xl mx-auto">
+          {/* Footer top */}
+          <div className="grid gap-8 sm:grid-cols-3 mb-8">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Logo size={26} />
+                <span className="font-bold text-foreground text-sm">ICT Trading Mentor</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
+                A decision-support tool for futures traders following the ICT methodology. Not a broker. Not a signal service. Not financial advice.
+              </p>
             </div>
+
+            {/* Links */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Legal</p>
+              <ul className="space-y-2">
+                {[
+                  { label: "Terms of Service", to: "/terms" },
+                  { label: "Privacy Policy", to: "/privacy" },
+                  { label: "Refund Policy", to: "/refund" },
+                  { label: "Risk Disclosure", to: "/risk-disclosure" },
+                ].map((l) => (
+                  <li key={l.label}>
+                    <Link to={l.to} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Support</p>
+              <a
+                href="mailto:support@ictradingmentor.com"
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Mail className="h-4 w-4" />
+                support@ictradingmentor.com
+              </a>
+              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                Response within 1–2 business days.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link to="/signup" className="text-xs bg-primary/10 border border-primary/30 text-primary font-semibold px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-colors">
+                  Sign Up Free
+                </Link>
+                <Link to="/login" className="text-xs bg-secondary border border-border text-foreground font-semibold px-3 py-1.5 rounded-lg hover:bg-secondary/80 transition-colors">
+                  Log In
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Risk disclaimer in footer */}
+          <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3 text-xs text-amber-500 mb-6">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{DISCLAIMER}</span>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>© {new Date().getFullYear()} ICT Trading Mentor. All rights reserved. For educational and decision-support purposes only.</span>
+            <span>Payments secured by Stripe</span>
           </div>
         </div>
       </footer>
