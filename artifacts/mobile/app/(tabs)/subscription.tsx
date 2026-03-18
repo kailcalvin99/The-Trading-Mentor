@@ -42,7 +42,7 @@ interface CheckoutResponse {
 const TIER_ACCENT_COLORS: Record<number, string> = {
   0: C.textSecondary,
   1: C.accent,
-  2: "#F59E0B",
+  2: "#E53E3E",
   3: "#8B5CF6",
   4: "#EC4899",
 };
@@ -172,7 +172,7 @@ export default function SubscriptionScreen() {
           </View>
           {user?.isFounder && (
             <View style={s.founderBadge}>
-              <Ionicons name="crown" size={11} color="#F59E0B" />
+              <Ionicons name="crown" size={11} color="#E53E3E" />
               <Text style={s.founderBadgeText}>Founder #{user.founderNumber}</Text>
             </View>
           )}
@@ -181,7 +181,7 @@ export default function SubscriptionScreen() {
         {/* Founder discount notice */}
         {user?.isFounder && (
           <View style={s.founderNotice}>
-            <Ionicons name="gift-outline" size={16} color="#F59E0B" />
+            <Ionicons name="gift-outline" size={16} color="#E53E3E" />
             <Text style={s.founderNoticeText}>
               You receive {founderDiscountPct}% founder discount on all paid plans!
             </Text>
@@ -191,7 +191,7 @@ export default function SubscriptionScreen() {
         {/* Founder spots remaining */}
         {founderSpotsLeft > 0 && !user?.isFounder && (
           <View style={s.founderSpots}>
-            <Ionicons name="people-outline" size={14} color="#F59E0B" />
+            <Ionicons name="people-outline" size={14} color="#E53E3E" />
             <Text style={s.founderSpotsText}>
               {founderSpotsLeft} of {founderLimit} founder spots remaining — lock in lifetime discount!
             </Text>
@@ -324,34 +324,34 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#F59E0B20",
+    backgroundColor: "#E53E3E20",
     borderWidth: 1,
-    borderColor: "#F59E0B50",
+    borderColor: "#E53E3E50",
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  founderBadgeText: { fontSize: 11, fontWeight: "700", color: "#F59E0B" },
+  founderBadgeText: { fontSize: 11, fontWeight: "700", color: "#E53E3E" },
 
   founderNotice: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F59E0B10",
+    backgroundColor: "#E53E3E10",
     borderWidth: 1,
-    borderColor: "#F59E0B30",
+    borderColor: "#E53E3E30",
     borderRadius: 10,
     padding: 12,
   },
-  founderNoticeText: { flex: 1, fontSize: 13, color: "#F59E0B", fontWeight: "600" },
+  founderNoticeText: { flex: 1, fontSize: 13, color: "#E53E3E", fontWeight: "600" },
 
   founderSpots: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F59E0B08",
+    backgroundColor: "#E53E3E08",
     borderWidth: 1,
-    borderColor: "#F59E0B30",
+    borderColor: "#E53E3E30",
     borderRadius: 10,
     padding: 10,
   },

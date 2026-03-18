@@ -21,6 +21,7 @@ import Colors from "@/constants/colors";
 import { SlotMachineCard, useDailyGamification } from "@/components/DashboardGamification";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGetPropAccount, useListTrades } from "@workspace/api-client-react";
+import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { usePlanner } from "@/contexts/PlannerContext";
 import {
   WIDGET_PREFS_KEY,
@@ -274,7 +275,7 @@ function MorningRoutineWidget() {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
-        <Ionicons name="sunny-outline" size={14} color="#F59E0B" />
+        <Ionicons name="sunny-outline" size={14} color="#E53E3E" />
         <Text style={styles.cardLabel}>Morning Routine</Text>
         {isRoutineComplete && (
           <View style={styles.doneBadge}>
@@ -505,7 +506,7 @@ function QuickJournalWidget() {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
-        <Ionicons name="pencil-outline" size={14} color="#F59E0B" />
+        <Ionicons name="pencil-outline" size={14} color="#E53E3E" />
         <Text style={styles.cardLabel}>Quick Journal</Text>
         <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/journal" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
           <Text style={styles.editLink}>Open Journal ↗</Text>
@@ -895,6 +896,17 @@ export default function DashboardScreen() {
   const { xp, streak } = useDailyGamification();
   const level = Math.floor(xp / 100) + 1;
   const xpInLevel = xp % 100;
+  const { data: apiTrades } = useListTrades();
+  const { data: propAccount } = useGetPropAccount();
+  const briefingTrades = (apiTrades || []) as Array<{
+    outcome?: string | null;
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+  }>;
+  const startingBalance = propAccount?.startingBalance ?? 0;
+  const currentBalance = propAccount?.currentBalance ?? startingBalance;
+  const briefingDrawdownPct = startingBalance > 0 ? ((startingBalance - currentBalance) / startingBalance) * 100 : 0;
 
   const [prefs, setPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
   const [showAchievements, setShowAchievements] = useState(false);
@@ -1064,6 +1076,14 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* AI Morning Briefing — shows once per day, auto-dismisses after 15s */}
+        <MorningBriefingWidget
+          firstName={firstName}
+          trades={briefingTrades}
+          drawdownPct={briefingDrawdownPct}
+          userId={user?.id}
+        />
 
         {/* AI Greeting — always-on, top of feed */}
         <AIGreetingCard />

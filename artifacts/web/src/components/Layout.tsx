@@ -39,11 +39,11 @@ function HeaderGamificationBadges() {
         </div>
       </div>
       <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1" title={`${streak}-day login streak`}>
-        <Flame className={`h-3 w-3 ${streak >= 7 ? "text-red-500" : streak >= 3 ? "text-amber-500" : "text-amber-400"}`} />
+        <Flame className={`h-3 w-3 ${streak >= 3 ? "text-red-500" : "text-muted-foreground"}`} />
         <span className="text-[10px] font-bold text-foreground">{streak}d</span>
       </div>
       <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1" title={`${earned}/8 badges earned`}>
-        <Trophy className="h-3 w-3 text-amber-500" />
+        <Trophy className="h-3 w-3 text-red-500" />
         <span className="text-[10px] font-bold text-foreground">{earned}/8</span>
       </div>
     </div>
@@ -109,7 +109,7 @@ function NavItem({
           <Lock className="h-3 w-3 absolute -bottom-1 -right-1 text-muted-foreground/60" />
         </div>
         {!collapsed && <span className="opacity-40">{label}</span>}
-        {!collapsed && <Crown className="h-3 w-3 text-amber-500 ml-auto opacity-60" />}
+        {!collapsed && <Crown className="h-3 w-3 text-red-500 ml-auto opacity-60" />}
       </button>
     );
   }
@@ -226,9 +226,9 @@ function ShareModal({
         </div>
 
         {founderSpotsLeft !== null && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5 mb-4 flex items-center gap-2">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2.5 mb-4 flex items-center gap-2">
             <span className="text-base">🔥</span>
-            <p className="text-xs font-semibold text-amber-500">
+            <p className="text-xs font-semibold text-red-500">
               {founderSpotsLeft > 0
                 ? `Only ${founderSpotsLeft} Founder spot${founderSpotsLeft !== 1 ? "s" : ""} left — share now to help your friends save 50%!`
                 : "Founder spots are full — but sharing is still appreciated!"}
@@ -304,7 +304,7 @@ function ModeSwitcher({ collapsed, appMode, setAppMode }: { collapsed: boolean; 
       title={collapsed ? (isLite ? "Switch to Full Mode" : "Switch to Lite Mode") : undefined}
       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left ${
         isLite
-          ? "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
+          ? "bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600/20"
           : "text-muted-foreground hover:text-foreground hover:bg-secondary"
       }`}
     >
@@ -464,7 +464,7 @@ export default function Layout() {
       <aside className={`hidden md:flex flex-col border-r border-sidebar-border bg-sidebar shrink-0 h-screen overflow-y-auto transition-all duration-300 ${sidebarCollapsed ? "w-16" : "w-56"}`}>
         <button
           onClick={toggleSidebar}
-          className={`flex items-center gap-2 h-14 border-b border-sidebar-border hover:bg-secondary/50 transition-colors w-full text-left relative ${sidebarCollapsed ? "justify-center px-2" : "justify-start px-3"}`}
+          className={`flex items-center gap-2 h-12 border-b border-sidebar-border hover:bg-secondary/50 transition-colors w-full text-left relative ${sidebarCollapsed ? "justify-center px-2" : "justify-start px-3"}`}
           title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           <Logo size={36} />
@@ -561,7 +561,7 @@ export default function Layout() {
                 )}
               </div>
               {!sidebarCollapsed && <span className="truncate flex-1">{user?.name}</span>}
-              {!sidebarCollapsed && user?.isFounder && <Crown className="h-3 w-3 text-amber-500" />}
+              {!sidebarCollapsed && user?.isFounder && <Crown className="h-3 w-3 text-red-500" />}
               {!sidebarCollapsed && <ChevronDown className="h-3 w-3" />}
             </button>
 
@@ -573,9 +573,9 @@ export default function Layout() {
                     <p className="text-xs font-medium text-foreground">{user?.name}</p>
                     <p className="text-[10px] text-muted-foreground">{user?.email}</p>
                     {user?.isFounder && (
-                      <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5 mt-1">
-                        <Crown className="h-2.5 w-2.5 text-amber-500" />
-                        <span className="text-[9px] font-bold text-amber-500">FOUNDER #{user.founderNumber}</span>
+                      <span className="inline-flex items-center gap-1 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5 mt-1">
+                        <Crown className="h-2.5 w-2.5 text-red-500" />
+                        <span className="text-[9px] font-bold text-red-500">FOUNDER #{user.founderNumber}</span>
                       </span>
                     )}
                     <p className="text-[10px] text-primary mt-1 font-medium">
@@ -644,7 +644,7 @@ export default function Layout() {
       </aside>
 
       <div className="flex flex-col flex-1 min-w-0">
-        <div className="hidden md:flex items-center gap-3 px-4 py-1 border-b border-border bg-sidebar shrink-0">
+        <div className="hidden md:flex items-center gap-3 px-4 py-0.5 border-b border-border bg-sidebar shrink-0">
           <AIAssistant />
           <HeaderGamificationBadges />
         </div>
@@ -692,7 +692,7 @@ export default function Layout() {
       {showLockToast && (
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="bg-card border border-border rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
-            <Crown className="h-5 w-5 text-amber-500 shrink-0" />
+            <Crown className="h-5 w-5 text-red-500 shrink-0" />
             <div>
               <p className="text-sm font-semibold text-foreground">Premium Feature</p>
               <p className="text-xs text-muted-foreground mt-0.5">

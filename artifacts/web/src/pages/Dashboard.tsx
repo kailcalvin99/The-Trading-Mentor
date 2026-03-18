@@ -7,6 +7,7 @@ import {
   Target, Settings, X,
   CheckCircle2,
 } from "lucide-react";
+import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
 import { useListTrades } from "@workspace/api-client-react";
@@ -199,11 +200,11 @@ function SlotMachine() {
   }, [seed]);
 
   return (
-    <div className="bg-gradient-to-b from-amber-500/5 to-card border border-amber-500/20 rounded-2xl p-5">
+    <div className="bg-gradient-to-b from-red-600/5 to-card border border-red-600/20 rounded-2xl p-5">
       <div className="flex items-center gap-2 mb-4">
-        <Target className="h-5 w-5 text-amber-500" />
+        <Target className="h-5 w-5 text-red-500" />
         <h3 className="text-base font-bold text-foreground">Today's Mission</h3>
-        <span className="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full font-bold">DAILY</span>
+        <span className="text-[10px] bg-red-600/10 text-red-500 px-2 py-0.5 rounded-full font-bold">DAILY</span>
       </div>
 
       <div className="flex gap-3 justify-center mb-4">
@@ -230,9 +231,9 @@ function SlotMachine() {
       </div>
 
       {reelsStopped.every(Boolean) && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <div className="bg-red-600/10 border border-red-600/20 rounded-xl p-3 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
           <p className="text-sm font-medium text-foreground">
-            <span className="text-amber-500 font-bold">Mission:</span> {results[0]} → {results[1]} → {results[2]}
+            <span className="text-red-500 font-bold">Mission:</span> {results[0]} → {results[1]} → {results[2]}
           </p>
         </div>
       )}
@@ -972,6 +973,7 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4">
+          <MorningBriefingWidget />
           {isEnabled("killzone") && <KillZoneStripWidget />}
           <CompactGreetingRow />
           {isEnabled("stats") && <StatsTickerStrip />}

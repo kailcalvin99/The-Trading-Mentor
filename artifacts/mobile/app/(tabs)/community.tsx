@@ -161,7 +161,7 @@ function HallOfFame() {
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
       <View style={hofS.heroBanner}>
-        <Ionicons name="trophy" size={28} color="#F59E0B" />
+        <Ionicons name="trophy" size={28} color="#E53E3E" />
         <View style={{ flex: 1 }}>
           <Text style={hofS.heroTitle}>Hall of Fame</Text>
           <Text style={hofS.heroSub}>Top traders by discipline & performance</Text>
@@ -483,10 +483,10 @@ function CommunityScreen() {
         <Text style={s.pageTitle}>Community</Text>
         <View style={{ flexDirection: "row", gap: 8 }}>
           <TouchableOpacity
-            style={[s.newPostBtn, { backgroundColor: C.backgroundSecondary }, showHallOfFame && { borderWidth: 1, borderColor: "#F59E0B" }]}
+            style={[s.newPostBtn, { backgroundColor: C.backgroundSecondary }, showHallOfFame && { borderWidth: 1, borderColor: "#E53E3E" }]}
             onPress={() => setShowHallOfFame((v) => !v)}
           >
-            <Ionicons name="trophy-outline" size={18} color={showHallOfFame ? "#F59E0B" : C.accent} />
+            <Ionicons name="trophy-outline" size={18} color={showHallOfFame ? "#E53E3E" : C.accent} />
           </TouchableOpacity>
           <TouchableOpacity style={[s.newPostBtn, { backgroundColor: C.backgroundSecondary }]} onPress={handleShare}>
             <Ionicons name="share-outline" size={20} color={C.accent} />
@@ -687,7 +687,7 @@ const hofS = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, padding: 32 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: C.text, textAlign: "center" },
   emptyText: { fontSize: 13, color: C.textSecondary, textAlign: "center", lineHeight: 20 },
-  heroBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#F59E0B18", borderRadius: 14, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: "#F59E0B44" },
+  heroBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#E53E3E18", borderRadius: 14, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: "#E53E3E44" },
   heroTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text },
   heroSub: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },

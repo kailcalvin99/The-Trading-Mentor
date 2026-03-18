@@ -189,8 +189,8 @@ export function SlotMachineCard() {
   return (
     <View style={styles.slotCard}>
       <View style={styles.cardHeader}>
-        <Ionicons name="trophy-outline" size={16} color="#F59E0B" />
-        <Text style={[styles.cardTitle, { color: "#F59E0B" }]}>Today's Mission</Text>
+        <Ionicons name="trophy-outline" size={16} color="#E53E3E" />
+        <Text style={[styles.cardTitle, { color: "#E53E3E" }]}>Today's Mission</Text>
         <View style={styles.dailyBadge}>
           <Text style={styles.dailyBadgeText}>DAILY</Text>
         </View>
@@ -306,12 +306,12 @@ const styles = StyleSheet.create({
     backgroundColor: C.backgroundSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#F59E0B30",
+    borderColor: "#E53E3E30",
     padding: 16,
     marginBottom: 14,
   },
   dailyBadge: {
-    backgroundColor: "#F59E0B20",
+    backgroundColor: "#E53E3E20",
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   dailyBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#F59E0B",
+    color: "#E53E3E",
   },
   reelsRow: {
     flexDirection: "row",
@@ -350,8 +350,8 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   reelStopped: {
-    borderColor: "#F59E0B40",
-    backgroundColor: "#F59E0B08",
+    borderColor: "#E53E3E40",
+    backgroundColor: "#E53E3E08",
   },
   reelText: {
     fontSize: 12,
@@ -363,11 +363,11 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   missionBox: {
-    backgroundColor: "#F59E0B10",
+    backgroundColor: "#E53E3E10",
     borderRadius: 10,
     padding: 10,
     borderWidth: 1,
-    borderColor: "#F59E0B30",
+    borderColor: "#E53E3E30",
   },
   missionText: {
     fontSize: 13,
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   missionLabel: {
-    color: "#F59E0B",
+    color: "#E53E3E",
     fontWeight: "700",
   },
 });

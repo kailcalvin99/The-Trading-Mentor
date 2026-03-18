@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   bar: {
-    height: 52,
+    height: 42,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
