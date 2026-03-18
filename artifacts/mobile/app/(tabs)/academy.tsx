@@ -104,8 +104,12 @@ async function loadMergedProgress(): Promise<Set<string>> {
   const localIds: string[] = local ? JSON.parse(local).filter(Boolean) : [];
   try {
     const data = await apiGet<{ lessonIds: string[] }>("academy/progress");
-    const merged = Array.from(new Set([...localIds, ...(data.lessonIds || [])]));
+    const serverIds: string[] = data.lessonIds || [];
+    const merged = Array.from(new Set([...localIds, ...serverIds]));
     await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(merged));
+    if (merged.length > serverIds.length) {
+      saveProgressToServer(new Set(merged));
+    }
     return new Set(merged);
   } catch {
     return new Set(localIds);
