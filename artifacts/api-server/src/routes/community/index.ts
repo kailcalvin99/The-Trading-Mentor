@@ -1,6 +1,14 @@
 import { Router } from "express";
-import { db, communityPostsTable, communityRepliesTable, postLikesTable, usersTable, tradesTable } from "@workspace/db";
-import { eq, desc, and, sql, count, isNotNull, gt } from "drizzle-orm";
+import {
+  db,
+  communityPostsTable,
+  communityRepliesTable,
+  postLikesTable,
+  communitySubscriptionsTable,
+  usersTable,
+  tradesTable,
+} from "@workspace/db";
+import { eq, desc, and, sql, count, isNotNull, gt, inArray } from "drizzle-orm";
 import { authRequired } from "../../middleware/auth";
 
 const router = Router();
@@ -238,18 +246,99 @@ router.post("/posts/:id/like", async (req, res) => {
   }
 });
 
+router.get("/subscriptions", async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const subs = await db
+      .select({ category: communitySubscriptionsTable.category })
+      .from(communitySubscriptionsTable)
+      .where(eq(communitySubscriptionsTable.userId, userId));
+    res.json({ subscribed: subs.map((s) => s.category) });
+  } catch (err) {
+    console.error("GET /community/subscriptions error:", err);
+    res.status(500).json({ error: "Failed to fetch subscriptions" });
+  }
+});
+
+router.post("/subscriptions/toggle", async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const { category } = req.body;
+    const validCategories = ["strategy-talk", "daily-wins", "indicators", "trade-reviews", "wins", "questions", "general"];
+    if (!validCategories.includes(category)) {
+      res.status(400).json({ error: "Invalid category" });
+      return;
+    }
+
+    const [existing] = await db
+      .select()
+      .from(communitySubscriptionsTable)
+      .where(and(eq(communitySubscriptionsTable.userId, userId), eq(communitySubscriptionsTable.category, category)));
+
+    if (existing) {
+      await db
+        .delete(communitySubscriptionsTable)
+        .where(and(eq(communitySubscriptionsTable.userId, userId), eq(communitySubscriptionsTable.category, category)));
+      res.json({ subscribed: false, category });
+    } else {
+      await db
+        .insert(communitySubscriptionsTable)
+        .values({ userId, category })
+        .onConflictDoNothing();
+      res.json({ subscribed: true, category });
+    }
+  } catch (err) {
+    console.error("POST /community/subscriptions/toggle error:", err);
+    res.status(500).json({ error: "Failed to toggle subscription" });
+  }
+});
+
 router.get("/new-count", async (req, res) => {
   try {
+    const userId = req.user!.userId;
     const since = req.query.since ? new Date(req.query.since as string) : new Date(Date.now() - 24 * 3600 * 1000);
+
+    const subs = await db
+      .select({ category: communitySubscriptionsTable.category })
+      .from(communitySubscriptionsTable)
+      .where(eq(communitySubscriptionsTable.userId, userId));
+
+    const subscribedCategories = subs.map((s) => s.category);
+
+    if (subscribedCategories.length === 0) {
+      res.json({ count: 0 });
+      return;
+    }
+
     const [{ total }] = await db
       .select({ total: count() })
       .from(communityPostsTable)
-      .where(gt(communityPostsTable.createdAt, since));
+      .where(
+        and(
+          gt(communityPostsTable.createdAt, since),
+          inArray(communityPostsTable.category, subscribedCategories),
+        ),
+      );
+
     res.json({ count: total });
   } catch {
     res.json({ count: 0 });
   }
 });
+
+function computeLongestWinStreak(outcomes: string[]): number {
+  let max = 0;
+  let current = 0;
+  for (const o of outcomes) {
+    if (o === "win") {
+      current++;
+      if (current > max) max = current;
+    } else {
+      current = 0;
+    }
+  }
+  return max;
+}
 
 router.get("/leaderboard", async (req, res) => {
   try {
@@ -275,20 +364,41 @@ router.get("/leaderboard", async (req, res) => {
         isFounder: usersTable.isFounder,
         founderNumber: usersTable.founderNumber,
         outcome: tradesTable.outcome,
+        createdAt: tradesTable.createdAt,
       })
       .from(tradesTable)
       .innerJoin(usersTable, eq(tradesTable.userId, usersTable.id))
-      .where(and(eq(tradesTable.isDraft, false), isNotNull(tradesTable.outcome)));
+      .where(and(eq(tradesTable.isDraft, false), isNotNull(tradesTable.outcome)))
+      .orderBy(tradesTable.userId, tradesTable.createdAt);
 
-    const winRateMap: Record<number, { name: string; isFounder: boolean; founderNumber: number | null; wins: number; total: number }> = {};
+    type UserStat = {
+      name: string;
+      isFounder: boolean;
+      founderNumber: number | null;
+      wins: number;
+      total: number;
+      outcomes: string[];
+    };
+
+    const statMap: Record<number, UserStat> = {};
     for (const t of allTrades) {
       if (!t.userId) continue;
-      if (!winRateMap[t.userId]) winRateMap[t.userId] = { name: t.name, isFounder: t.isFounder, founderNumber: t.founderNumber, wins: 0, total: 0 };
-      winRateMap[t.userId].total++;
-      if (t.outcome === "win") winRateMap[t.userId].wins++;
+      if (!statMap[t.userId]) {
+        statMap[t.userId] = {
+          name: t.name,
+          isFounder: t.isFounder,
+          founderNumber: t.founderNumber,
+          wins: 0,
+          total: 0,
+          outcomes: [],
+        };
+      }
+      statMap[t.userId].total++;
+      if (t.outcome === "win") statMap[t.userId].wins++;
+      if (t.outcome) statMap[t.userId].outcomes.push(t.outcome);
     }
 
-    const byWinRate = Object.entries(winRateMap)
+    const byWinRate = Object.entries(statMap)
       .filter(([, v]) => v.total >= 3)
       .map(([userId, v]) => ({
         userId: parseInt(userId),
@@ -301,7 +411,21 @@ router.get("/leaderboard", async (req, res) => {
       .sort((a, b) => b.winRate - a.winRate)
       .slice(0, 5);
 
-    res.json({ byTradeCount, byWinRate });
+    const byStreak = Object.entries(statMap)
+      .filter(([, v]) => v.total >= 3)
+      .map(([userId, v]) => ({
+        userId: parseInt(userId),
+        name: v.name,
+        isFounder: v.isFounder,
+        founderNumber: v.founderNumber,
+        streak: computeLongestWinStreak(v.outcomes),
+        total: v.total,
+      }))
+      .filter((e) => e.streak > 0)
+      .sort((a, b) => b.streak - a.streak)
+      .slice(0, 5);
+
+    res.json({ byTradeCount, byWinRate, byStreak });
   } catch (err) {
     console.error("GET /community/leaderboard error:", err);
     res.status(500).json({ error: "Failed to fetch leaderboard" });

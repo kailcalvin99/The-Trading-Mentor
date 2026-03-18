@@ -29,5 +29,14 @@ export const postLikesTable = pgTable("post_likes", {
   uniqueIndex("post_likes_post_user_idx").on(table.postId, table.userId),
 ]);
 
+export const communitySubscriptionsTable = pgTable("community_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  category: text("category").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("community_subscriptions_user_cat_idx").on(table.userId, table.category),
+]);
+
 export type CommunityPost = typeof communityPostsTable.$inferSelect;
 export type CommunityReply = typeof communityRepliesTable.$inferSelect;

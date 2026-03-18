@@ -9,8 +9,9 @@ import {
   Switch,
   TextInput,
   Platform,
-  Share,
 } from "react-native";
+import { File as FSFile, Paths as FSPaths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -78,7 +79,7 @@ interface SessionFull {
   endH: number;
   endM: number;
   color: string;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
 }
 
 const SESSION_SCHEDULE: SessionFull[] = [
@@ -199,7 +200,7 @@ function PlannerScreen() {
     savePlan({ ...plan, entryCriteria: { ...plan.entryCriteria, [key]: !plan.entryCriteria[key] } });
   }
 
-  function exportToCalendar() {
+  async function exportToCalendar() {
     const today = new Date();
     const todayStr = today.toISOString().replace(/[-:]/g, "").split(".")[0].slice(0, 8);
 
@@ -246,10 +247,22 @@ function PlannerScreen() {
       "END:VCALENDAR",
     ].join("\r\n");
 
-    Share.share({
-      message: `ICT Trading Mentor — Today's Routine\n\n${ROUTINE_ITEMS.map((item) => `• ${routineTimes[item.key] || DEFAULT_ROUTINE_TIMES[item.key]} — ${item.label}`).join("\n")}\n\nTrading Sessions:\n${SESSION_SCHEDULE.map((s) => `• ${s.name}: ${s.subtitle}`).join("\n")}\n\n[Calendar ICS Data]\n${ics}`,
-      title: "ICT Trading Routine",
-    }).catch(() => {});
+    try {
+      const file = new FSFile(FSPaths.cache, "ict-routine.ics");
+      file.write(ics);
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: "text/calendar",
+          dialogTitle: "Add to Calendar",
+          UTI: "com.apple.ical.ics",
+        });
+      } else {
+        Alert.alert("Sharing Not Available", "Calendar export is not supported on this device.");
+      }
+    } catch {
+      Alert.alert("Export Failed", "Could not write the calendar file.");
+    }
   }
 
   const sortedSchedule = [
@@ -335,7 +348,7 @@ function PlannerScreen() {
           </View>
           {!isRoutineComplete && (
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${(completedCount / 4) * 100}%` as any }]} />
+              <View style={[styles.progressFill, { width: `${(completedCount / 4) * 100}%` }]} />
             </View>
           )}
         </View>
@@ -603,7 +616,7 @@ function PlannerScreen() {
                   </View>
                   <View style={[styles.sessionBlock, { borderColor: item.color + "44", backgroundColor: item.color + "0A" }]}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Ionicons name={session.icon as any} size={14} color={item.color} />
+                      <Ionicons name={session.icon} size={14} color={item.color} />
                       <Text style={[styles.sessionBlockName, { color: item.color }]}>{item.label}</Text>
                       {isLive && (
                         <View style={[styles.liveTag, { backgroundColor: item.color }]}>
@@ -748,7 +761,7 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   statusText: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
   progressBar: { height: 4, backgroundColor: C.cardBorder, borderRadius: 2, marginTop: 10, overflow: "hidden" },
-  progressFill: { height: "100%" as any, backgroundColor: "#F59E0B", borderRadius: 2 },
+  progressFill: { height: "100%", backgroundColor: "#F59E0B", borderRadius: 2 },
   sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10, marginTop: 2 },
   card: { backgroundColor: C.backgroundSecondary, borderRadius: 16, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 22, overflow: "hidden" },
   divider: { height: 1, backgroundColor: C.cardBorder },

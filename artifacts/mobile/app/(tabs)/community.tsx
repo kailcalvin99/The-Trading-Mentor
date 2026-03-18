@@ -65,11 +65,13 @@ interface LeaderEntry {
   tradeCount?: number;
   winRate?: number;
   total?: number;
+  streak?: number;
 }
 
 interface Leaderboard {
   byTradeCount: LeaderEntry[];
   byWinRate: LeaderEntry[];
+  byStreak: LeaderEntry[];
 }
 
 const CATEGORIES = [
@@ -146,7 +148,7 @@ function HallOfFame() {
     return <View style={hofS.center}><ActivityIndicator size="large" color={C.accent} /></View>;
   }
 
-  if (!data || (data.byTradeCount.length === 0 && data.byWinRate.length === 0)) {
+  if (!data || (data.byTradeCount.length === 0 && data.byWinRate.length === 0 && data.byStreak.length === 0)) {
     return (
       <View style={hofS.center}>
         <Ionicons name="trophy-outline" size={44} color={C.textSecondary + "44"} />
@@ -196,6 +198,42 @@ function HallOfFame() {
               <View style={hofS.statBox}>
                 <Text style={[hofS.statValue, { color: C.accent }]}>{entry.winRate}%</Text>
                 <Text style={hofS.statLabel}>Win Rate</Text>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
+
+      {data.byStreak.length > 0 && (
+        <>
+          <View style={[hofS.sectionHeader, { marginTop: 20 }]}>
+            <Ionicons name="flame" size={16} color="#F97316" />
+            <Text style={[hofS.sectionTitle, { color: "#F97316" }]}>LONGEST WIN STREAK</Text>
+            <Text style={hofS.sectionSub}>Consecutive wins</Text>
+          </View>
+          {data.byStreak.map((entry, idx) => (
+            <View key={entry.userId} style={hofS.card}>
+              <View style={hofS.cardLeft}>
+                <RankBadge rank={idx + 1} />
+                <View style={hofS.avatarCircle}>
+                  <Text style={hofS.avatarText}>{entry.name.slice(0, 2).toUpperCase()}</Text>
+                </View>
+                <View>
+                  <View style={hofS.nameRow}>
+                    <Text style={hofS.entryName}>{entry.name}</Text>
+                    {entry.isFounder && (
+                      <View style={s.founderBadge}>
+                        <Ionicons name="diamond" size={8} color="#f59e0b" />
+                        <Text style={s.founderText}>#{entry.founderNumber}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={hofS.entrySub}>{entry.total} trades logged</Text>
+                </View>
+              </View>
+              <View style={hofS.statBox}>
+                <Text style={[hofS.statValue, { color: "#F97316" }]}>{entry.streak}</Text>
+                <Text style={hofS.statLabel}>Best Streak</Text>
               </View>
             </View>
           ))}
@@ -263,10 +301,23 @@ function CommunityScreen() {
   const [newCategory, setNewCategory] = useState("strategy-talk");
   const [replyBody, setReplyBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [subscribedCategories, setSubscribedCategories] = useState<string[]>([]);
 
   useFocusEffect(useCallback(() => {
     AsyncStorage.setItem(COMMUNITY_LAST_VISIT_KEY, Date.now().toString());
+    apiGet<{ subscribed: string[] }>("community/subscriptions")
+      .then((d) => setSubscribedCategories(d.subscribed))
+      .catch(() => {});
   }, []));
+
+  async function toggleSubscription(category: string) {
+    try {
+      const result = await apiPost<{ subscribed: boolean; category: string }>("community/subscriptions/toggle", { category });
+      setSubscribedCategories((prev) =>
+        result.subscribed ? [...prev, category] : prev.filter((c) => c !== category)
+      );
+    } catch {}
+  }
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -452,17 +503,34 @@ function CommunityScreen() {
         <HallOfFame />
       ) : (
         <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catBar} contentContainerStyle={{ paddingHorizontal: 12, gap: 6 }}>
-            {CATEGORIES.map((cat) => (
+          <View style={{ flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: C.cardBorder }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, maxHeight: 44 }} contentContainerStyle={{ paddingHorizontal: 12, gap: 6, alignItems: "center" }}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat.value}
+                  onPress={() => setActiveCategory(cat.value)}
+                  style={[s.catChip, activeCategory === cat.value && s.catChipActive]}
+                >
+                  {cat.value !== "all" && subscribedCategories.includes(cat.value) && (
+                    <Ionicons name="notifications" size={10} color={activeCategory === cat.value ? "#0A0A0F" : C.accent} />
+                  )}
+                  <Text style={[s.catChipText, activeCategory === cat.value && s.catChipTextActive]}>{cat.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {activeCategory !== "all" && (
               <TouchableOpacity
-                key={cat.value}
-                onPress={() => setActiveCategory(cat.value)}
-                style={[s.catChip, activeCategory === cat.value && s.catChipActive]}
+                style={s.subBell}
+                onPress={() => toggleSubscription(activeCategory)}
               >
-                <Text style={[s.catChipText, activeCategory === cat.value && s.catChipTextActive]}>{cat.label}</Text>
+                <Ionicons
+                  name={subscribedCategories.includes(activeCategory) ? "notifications" : "notifications-outline"}
+                  size={18}
+                  color={subscribedCategories.includes(activeCategory) ? C.accent : C.textSecondary}
+                />
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            )}
+          </View>
 
           {loading ? (
             <View style={s.center}>
@@ -576,7 +644,8 @@ const s = StyleSheet.create({
   backBtn: { padding: 4 },
   newPostBtn: { backgroundColor: C.accent, width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   catBar: { maxHeight: 44, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
-  catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: C.backgroundSecondary },
+  subBell: { paddingHorizontal: 12, paddingVertical: 10, borderLeftWidth: 1, borderLeftColor: C.cardBorder },
+  catChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: C.backgroundSecondary },
   catChipActive: { backgroundColor: C.accent },
   catChipText: { fontSize: 12, fontWeight: "600", color: C.textSecondary },
   catChipTextActive: { color: "#0A0A0F" },
