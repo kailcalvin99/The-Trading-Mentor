@@ -168,7 +168,7 @@ function loadPersistedState(stateKey: string): TourState {
 
 export function useTourGuide(userId?: string | number) {
   const stateKey = userId !== undefined ? makeStorageKey(userId, "state") : TOUR_STORAGE_KEY;
-  const autoShownKey = userId !== undefined ? makeStorageKey(userId, "auto-shown") : "ict-tour-auto-shown";
+  const autoShownKey = userId !== undefined ? makeStorageKey(userId, "auto-shown") : null;
 
   const [state, dispatch] = useReducer(tourReducer, undefined, () => loadPersistedState(stateKey));
 
@@ -179,18 +179,16 @@ export function useTourGuide(userId?: string | number) {
   }, [state, stateKey]);
 
   useEffect(() => {
-    const GENERIC_AUTO_SHOWN_KEY = "ict-tour-auto-shown";
-    const seen = localStorage.getItem(autoShownKey) || localStorage.getItem(GENERIC_AUTO_SHOWN_KEY);
+    if (autoShownKey === null) return undefined;
+    const seen = localStorage.getItem(autoShownKey);
     if (!seen && !state.visible && state.machineState === "IDLE" && state.completedSteps.length === 0) {
       const timer = setTimeout(() => {
         const stillEligible =
           !localStorage.getItem(autoShownKey) &&
-          !localStorage.getItem(GENERIC_AUTO_SHOWN_KEY) &&
           !state.visible &&
           state.machineState === "IDLE";
         if (stillEligible) {
           localStorage.setItem(autoShownKey, "1");
-          localStorage.setItem(GENERIC_AUTO_SHOWN_KEY, "1");
           dispatch({ type: "START_TOUR" });
         }
       }, 2000);

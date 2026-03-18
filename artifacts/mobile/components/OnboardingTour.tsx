@@ -101,21 +101,26 @@ export function useOnboardingTour() {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
     (async () => {
       try {
         const done = await AsyncStorage.getItem(TOUR_DONE_KEY);
         if (!done) {
-          await AsyncStorage.setItem(TOUR_DONE_KEY, "1");
-          setTimeout(() => setShouldShow(true), 1200);
+          timer = setTimeout(async () => {
+            try {
+              await AsyncStorage.setItem(TOUR_DONE_KEY, "1");
+            } catch {}
+            setShouldShow(true);
+          }, 1200);
         }
       } catch {}
       setChecked(true);
     })();
+    return () => clearTimeout(timer);
   }, []);
 
   async function completeTour() {
     setShouldShow(false);
-    await AsyncStorage.setItem(TOUR_DONE_KEY, "1");
   }
 
   return { shouldShow: checked && shouldShow, completeTour };
