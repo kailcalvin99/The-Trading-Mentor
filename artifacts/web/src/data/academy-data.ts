@@ -249,6 +249,18 @@ export const COURSE_CHAPTERS: Chapter[] = [
         takeaway: "A sweep is a fake move that grabs stop-losses, then price reverses. It's the bait before the real move. Always wait for the sweep BEFORE entering."
       },
       {
+        id: "ch3-4b",
+        title: "IDM — Inducement (The Trap Before the Move)",
+        chartImage: "chart-idm-inducement.png",
+        paragraphs: [
+          "IDM stands for Inducement — it's a trap that Smart Money sets for retail traders just before the real move. It looks like a breakout, but it's actually bait designed to get you into the wrong trade.",
+          "Here's how it works: in an uptrend, price creates a small swing low (a pullback). Retail traders see this as 'support' and place their buy stop orders just above it, expecting price to bounce. Smart Money knows those orders are there. Instead of bouncing, price dips below that swing low — triggering all those buy orders (filling the Smart Money's sell side). Then the real move down begins.",
+          "Think of IDM like a fishing lure. The small swing low (or high) is the lure. When price grabs it, retail traders think 'the move is starting!' — but they just got hooked. The real move comes AFTER the grab.",
+          "In practice: after a liquidity sweep (a larger move), watch for price to create a small fake swing in the opposite direction. That small swing is the IDM — the inducement. The real entry comes AFTER the IDM is taken out and the MSS confirms the direction. IDM often appears just before a beautiful FVG entry."
+        ],
+        takeaway: "IDM = Inducement — a fake mini-swing that tricks retail traders into the wrong side. The real move comes AFTER the IDM is swept. Always wait for IDM + MSS confirmation before entering."
+      },
+      {
         id: "ch3-5",
         title: "Optimal Trade Entry (OTE)",
         chartImage: "chart-ote.png",
@@ -692,7 +704,21 @@ export const GLOSSARY: GlossaryItem[] = [
     full: "Expensive vs Cheap Zone",
     color: "#EC4899",
     definition: "When you divide a price range at the 50% level: Premium is above 50% (expensive — sell here) and Discount is below 50% (cheap — buy here). Like shopping — buy on sale, sell when overpriced.",
-    tip: "For buys, make sure your entry is in Discount (below 50%). For sells, make sure it's in Premium (above 50%)."
+    tip: "For buys, make sure your entry is in Discount (below 50%). For sells, make sure it's in Premium (above 50%).",
+    advancedTerm: "Premium/Discount + Kill Zone Alignment",
+    advancedDefinition: "The Premium/Discount concept becomes most powerful when combined with Kill Zone timing. A discount zone that forms during the London open is much more powerful than one that forms mid-session. Look for price to come into a Discount zone (below 50%) DURING a Kill Zone for the highest-probability buy setups. For sells, Premium zone + Kill Zone = A+ opportunity.",
+    advancedTip: "Rule: Only buy in Discount (below 50%), only sell in Premium (above 50%). Breaking this rule is the #1 reason traders enter at the wrong time and get stopped out before the real move."
+  },
+  {
+    term: "IDM",
+    full: "Inducement",
+    color: "#F97316",
+    definition: "A fake mini-swing that Smart Money creates to trap retail traders into the wrong position. After a liquidity sweep, price makes a small move in the opposite direction (the IDM). This grabs retail buy/sell orders before the real move begins. You enter AFTER the IDM is taken out, confirmed by an MSS.",
+    tip: "Spot the IDM by looking for a small, weak swing after the main liquidity sweep. When that small swing gets taken out — that's your MSS signal to enter.",
+    advancedTerm: "IDM + FVG Entry",
+    advancedDefinition: "The most powerful IDM-based entries combine three elements: (1) A major liquidity sweep creates the initial move, (2) An IDM forms as a small counter-swing, (3) When the IDM is taken out, an FVG appears in the OTE zone. Entering on this FVG gives you the tightest stops and largest reward potential — you're entering right as Smart Money shows their hand.",
+    advancedTip: "After spotting an IDM, mark the high/low of the IDM candle. When price takes it out with an MSS candle, look immediately for the FVG that MSS created — that's your entry zone.",
+    requiredLessons: ["ch3-4", "ch3-4b", "ch3-2"]
   },
   {
     term: "Prop Firm",

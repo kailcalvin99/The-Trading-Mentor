@@ -8,3 +8,4 @@ export * from "./admin_settings";
 export * from "./community";
 export * from "./password_reset_tokens";
 export * from "./video_watched";
+export * from "./cooldown_events";

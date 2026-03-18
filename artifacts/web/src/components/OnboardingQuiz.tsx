@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronRight, CheckCircle2, GraduationCap } from "lucide-react";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type SkillLevel = "beginner" | "intermediate" | "advanced";
 
@@ -158,6 +159,7 @@ interface Props {
 }
 
 export default function OnboardingQuiz({ onComplete }: Props) {
+  const { setAppMode } = useAuth();
   const [step, setStep] = useState<"intro" | "questions" | "result">("intro");
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
@@ -175,6 +177,9 @@ export default function OnboardingQuiz({ onComplete }: Props) {
       localStorage.setItem(SKILL_LEVEL_KEY, level);
       localStorage.setItem(QUIZ_DONE_KEY, "true");
       applyLevelToAcademy(level);
+      if (level === "beginner") {
+        setAppMode("lite");
+      }
       setStep("result");
     }
   }
@@ -289,11 +294,15 @@ export default function OnboardingQuiz({ onComplete }: Props) {
                 <ul className="space-y-1.5">
                   <li className="flex items-start gap-2 text-sm text-foreground">
                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    Simplified sidebar — start with Dashboard, Academy, Planner, and Risk Shield
+                    Lite Mode activated — simplified interface with Dashboard, Academy, Risk Shield, and Journal
                   </li>
                   <li className="flex items-start gap-2 text-sm text-foreground">
                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                     Academy starts from Chapter 1: Trading Basics
+                  </li>
+                  <li className="flex items-start gap-2 text-sm text-foreground">
+                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    Switch to Full Mode anytime from Settings when you're ready
                   </li>
                 </ul>
               )}

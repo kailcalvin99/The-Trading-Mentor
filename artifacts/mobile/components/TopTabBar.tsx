@@ -56,19 +56,23 @@ const TAB_HREFS: Record<TabRoute, Href> = {
 
 const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "tracker", "journal", "community", "analytics", "subscription"];
 
+const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy", "tracker", "journal"];
+
 interface TopTabBarProps {
   pathname: string;
   onNavigate: (href: Href) => void;
   isAdmin?: boolean;
   tierLevel?: number;
+  appMode?: "full" | "lite";
 }
 
-export default function TopTabBar({ pathname, onNavigate, isAdmin = false, tierLevel = 0 }: TopTabBarProps) {
+export default function TopTabBar({ pathname, onNavigate, isAdmin = false, tierLevel = 0, appMode = "full" }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
 
+  const baseRoutes = appMode === "lite" ? LITE_TAB_ROUTES : BASE_TAB_ROUTES;
   const TAB_ROUTES: TabRoute[] = isAdmin
-    ? [...BASE_TAB_ROUTES, "admin"]
-    : BASE_TAB_ROUTES;
+    ? [...baseRoutes, "admin"]
+    : baseRoutes;
 
   const normalizedPath = pathname.replace(/^\/\(tabs\)\/?/, "/");
   const isSettingsActive = normalizedPath === "/settings";

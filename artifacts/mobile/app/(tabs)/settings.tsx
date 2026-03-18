@@ -314,7 +314,8 @@ const tpS = StyleSheet.create({
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, appMode, setAppMode } = useAuth();
+  const [currentAppMode, setCurrentAppMode] = useState<"full" | "lite">(appMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const { settings: notifSettings, requestPermission, updateSettings: updateNotifSettings } = useNotifications();
@@ -381,6 +382,11 @@ export default function SettingsScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleAppModeChange(mode: "full" | "lite") {
+    setCurrentAppMode(mode);
+    setAppMode(mode);
   }
 
   async function saveProfile() {
@@ -537,6 +543,52 @@ export default function SettingsScreen() {
                   {profile.isFounder ? " · Founder" : ""}
                 </Text>
               </View>
+            </View>
+          </View>
+        </View>
+
+        {/* App Mode */}
+        <View style={s.card}>
+          <CardHeader icon="options-outline" title="App Mode" />
+          <View style={s.section}>
+            <Text style={{ color: C.textSecondary, fontSize: 12, marginBottom: 12 }}>
+              Lite Mode shows only essential features. Full Mode unlocks everything.
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {(["lite", "full"] as const).map((mode) => {
+                const active = currentAppMode === mode;
+                return (
+                  <TouchableOpacity
+                    key={mode}
+                    onPress={() => handleAppModeChange(mode)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: active ? C.accent : C.cardBorder,
+                      backgroundColor: active ? C.accent + "20" : "transparent",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name={mode === "lite" ? "flash-outline" : "layers-outline"}
+                      size={18}
+                      color={active ? C.accent : C.textSecondary}
+                    />
+                    <Text
+                      style={{
+                        color: active ? C.accent : C.textSecondary,
+                        fontSize: 13,
+                        fontWeight: active ? "700" : "500",
+                        marginTop: 4,
+                      }}
+                    >
+                      {mode === "lite" ? "Lite" : "Full"}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </View>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -22,12 +22,23 @@ import {
 } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
 import type { Trade } from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const C = Colors.dark;
 
 const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
 const WIDE_BREAKPOINT = 768;
+
+const CHECKLIST_STORAGE_KEY = "ict-checklist-state";
+const CHECKLIST_TTL_HOURS = 4;
+const CHECKLIST_ITEMS = [
+  { id: "htf_bias", label: "HTF Bias confirmed on Daily", icon: "trending-up" as const },
+  { id: "kill_zone", label: "In a Kill Zone right now", icon: "time" as const },
+  { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", icon: "water" as const },
+  { id: "displacement_fvg", label: "Displacement with FVG or MSS", icon: "flash" as const },
+];
 
 const STOP_TRADING_RULES = [
   "You hit your max daily loss — you are DONE for today",
@@ -208,6 +219,7 @@ function computeMobileInsights(trades: Trade[]): MobileInsight[] {
 export default function RiskShieldScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
+  const { appMode } = useAuth();
 
   const [pointsAtRisk, setPointsAtRisk] = useState("");
   const [customBalance, setCustomBalance] = useState("");
@@ -217,6 +229,40 @@ export default function RiskShieldScreen() {
   const [setupBalance, setSetupBalance] = useState("");
   const [setupDailyPct, setSetupDailyPct] = useState("");
   const [setupTotalPct, setSetupTotalPct] = useState("");
+  const [checklistChecked, setChecklistChecked] = useState<Record<string, boolean>>({});
+  const allChecklistDone = CHECKLIST_ITEMS.every((item) => checklistChecked[item.id]);
+
+  useEffect(() => {
+    const checkTTL = () => {
+      AsyncStorage.getItem(CHECKLIST_STORAGE_KEY).then((raw) => {
+        if (!raw) return;
+        try {
+          const data = JSON.parse(raw);
+          const ageMs = Date.now() - (data.timestamp || 0);
+          if (ageMs > CHECKLIST_TTL_HOURS * 60 * 60 * 1000) {
+            AsyncStorage.removeItem(CHECKLIST_STORAGE_KEY);
+            setChecklistChecked({});
+            return;
+          }
+          setChecklistChecked(data.checked || {});
+        } catch { /* ignore */ }
+      });
+    };
+    checkTTL();
+    const interval = setInterval(checkTTL, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  function toggleChecklist(id: string) {
+    const next = { ...checklistChecked, [id]: !checklistChecked[id] };
+    setChecklistChecked(next);
+    AsyncStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify({ checked: next, timestamp: Date.now() }));
+  }
+
+  function resetChecklist() {
+    setChecklistChecked({});
+    AsyncStorage.removeItem(CHECKLIST_STORAGE_KEY);
+  }
 
   const { data: rawTrades } = useListTrades();
   const completedTrades = useMemo(() => {
@@ -388,9 +434,63 @@ export default function RiskShieldScreen() {
     </View>
   );
 
+  const checklistSection = appMode === "full" ? (
+    <View style={checklistStyles.container}>
+      <View style={checklistStyles.headerRow}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Ionicons name="clipboard-outline" size={18} color="#00C896" />
+          <Text style={checklistStyles.title}>Pre-Trade Checklist</Text>
+        </View>
+        {allChecklistDone && (
+          <TouchableOpacity onPress={resetChecklist}>
+            <Ionicons name="refresh" size={16} color={C.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+      <Text style={checklistStyles.subtitle}>Complete all 4 checks before using the calculator</Text>
+      <View style={{ backgroundColor: "rgba(245,158,11,0.1)", borderRadius: 10, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: "rgba(245,158,11,0.2)" }}>
+        <Text style={{ fontSize: 12, color: "#F59E0B", fontFamily: "Inter_600SemiBold" }}>Buy in Discount (below 50% of range) · Sell in Premium (above 50% of range)</Text>
+      </View>
+      {CHECKLIST_ITEMS.map((item) => (
+        <TouchableOpacity key={item.id} style={checklistStyles.item} onPress={() => toggleChecklist(item.id)}>
+          <View style={[checklistStyles.checkbox, checklistChecked[item.id] && checklistStyles.checkboxChecked]}>
+            {checklistChecked[item.id] && <Ionicons name="checkmark" size={14} color="#0A0A0F" />}
+          </View>
+          <Ionicons name={item.icon} size={16} color={checklistChecked[item.id] ? C.accent : C.textSecondary} />
+          <Text style={[checklistStyles.itemLabel, checklistChecked[item.id] && { color: C.text }]}>{item.label}</Text>
+        </TouchableOpacity>
+      ))}
+      {allChecklistDone && (
+        <View style={checklistStyles.unlocked}>
+          <Ionicons name="lock-open" size={14} color="#00C896" />
+          <Text style={checklistStyles.unlockedText}>Calculator unlocked — all checks passed</Text>
+        </View>
+      )}
+    </View>
+  ) : (
+    <View style={checklistStyles.container}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Ionicons name="lock-closed" size={16} color={C.textSecondary} />
+        <View>
+          <Text style={checklistStyles.title}>Pre-Trade Checklist</Text>
+          <Text style={{ fontSize: 12, color: C.textSecondary }}>Switch to Full Mode to unlock the 4-point checklist</Text>
+        </View>
+      </View>
+    </View>
+  );
+
   const rightColumn = (
     <View style={isWide ? { flex: 1 } : undefined}>
+      {checklistSection}
       <Text style={styles.sectionTitle2}>Position Size Calculator</Text>
+      {appMode === "full" && !allChecklistDone ? (
+        <View style={[styles.card, { opacity: 0.4 }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 24 }}>
+            <Ionicons name="lock-closed" size={20} color={C.textSecondary} />
+            <Text style={{ color: C.textSecondary, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>Complete the Pre-Trade Checklist first</Text>
+          </View>
+        </View>
+      ) : (
       <View style={styles.card}>
         <Text style={styles.calcSubtitle}>
           Figure out how many contracts to trade so you only risk 0.5%
@@ -476,6 +576,7 @@ export default function RiskShieldScreen() {
           </View>
         )}
       </View>
+      )}
     </View>
   );
 
@@ -1259,4 +1360,17 @@ const insightStyles = StyleSheet.create({
     color: C.textSecondary,
     marginTop: 2,
   },
+});
+
+const checklistStyles = StyleSheet.create({
+  container: { backgroundColor: C.backgroundSecondary, borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: "rgba(0,200,150,0.2)" },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  title: { fontSize: 16, fontFamily: "Inter_700Bold", color: C.text },
+  subtitle: { fontSize: 12, color: C.textSecondary, marginBottom: 12 },
+  item: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
+  checkboxChecked: { backgroundColor: C.accent, borderColor: C.accent },
+  itemLabel: { fontSize: 14, color: C.textSecondary, flex: 1 },
+  unlocked: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(0,200,150,0.2)" },
+  unlockedText: { fontSize: 12, color: "#00C896", fontFamily: "Inter_600SemiBold" },
 });

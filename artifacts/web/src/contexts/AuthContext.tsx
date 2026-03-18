@@ -9,6 +9,7 @@ interface UserData {
   role: string;
   isFounder: boolean;
   founderNumber: number | null;
+  appMode: "full" | "lite";
 }
 
 interface SubscriptionData {
@@ -38,6 +39,8 @@ interface AuthContextType {
   hasFeature: (feature: string) => boolean;
   tierLevel: number;
   isAdmin: boolean;
+  appMode: "full" | "lite";
+  setAppMode: (mode: "full" | "lite") => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -131,9 +134,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = user?.role === "admin";
   const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
+  const appMode: "full" | "lite" = user?.appMode ?? "full";
+
+  const setAppMode = useCallback(async (mode: "full" | "lite") => {
+    try {
+      const res = await fetch(`${API_BASE}/user/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ section: "appMode", data: { mode } }),
+      });
+      if (res.ok) {
+        setUser((prev) => prev ? { ...prev, appMode: mode } : null);
+      }
+    } catch {}
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, subscription, loading, login, register, logout, refreshUser, hasFeature, tierLevel, isAdmin }}>
+    <AuthContext.Provider value={{ user, subscription, loading, login, register, logout, refreshUser, hasFeature, tierLevel, isAdmin, appMode, setAppMode }}>
       {children}
     </AuthContext.Provider>
   );

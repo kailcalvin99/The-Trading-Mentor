@@ -52,6 +52,7 @@ const CHART_IMAGES: Record<string, number> = {
   "chart-liquidity-sweep.png": require("@/assets/images/chart-liquidity-sweep.png"),
   "chart-ote.png": require("@/assets/images/chart-ote.png"),
   "chart-killzone.png": require("@/assets/images/chart-killzone.png"),
+  "chart-idm-inducement.png": require("@/assets/images/chart-idm-inducement.png"),
   "chart-conservative-entry.png": require("@/assets/images/chart-conservative-entry.png"),
   "chart-silver-bullet.png": require("@/assets/images/chart-silver-bullet.png"),
   "chart-exit-criteria.png": require("@/assets/images/chart-exit-criteria.png"),

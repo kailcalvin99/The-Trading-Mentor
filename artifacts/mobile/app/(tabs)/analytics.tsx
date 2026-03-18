@@ -18,6 +18,7 @@ import { useListTrades } from "@workspace/api-client-react";
 import type { Trade } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
+import FullModeGate from "@/components/FullModeGate";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -136,7 +137,15 @@ function WinLossBarChart({ wins, losses, breakeven, width, height }: { wins: num
   );
 }
 
-export default function AnalyticsScreen() {
+export default function AnalyticsScreenGated() {
+  return (
+    <FullModeGate>
+      <AnalyticsScreen />
+    </FullModeGate>
+  );
+}
+
+function AnalyticsScreen() {
   const { user, subscription } = useAuth();
   const router = useRouter();
   const [expandedChart, setExpandedChart] = useState<"pnl" | "wlb" | null>(null);

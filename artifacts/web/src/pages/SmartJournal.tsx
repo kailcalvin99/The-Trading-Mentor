@@ -37,13 +37,15 @@ import {
   Sparkles,
   Loader2,
   Download,
+  Angry,
+  Repeat,
 } from "lucide-react";
 
 import type { Trade, CreateTradeBody } from "@workspace/api-client-react";
 import { recordTradeResult } from "@/components/CoolDownOverlay";
 import { dispatchAITrigger } from "@/hooks/useAITrigger";
 
-type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge";
+type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge" | "Angry" | "Overtrading";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
 type EntryMode = "conservative" | "aggressive";
 
@@ -81,6 +83,8 @@ const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: typ
   { tag: "Chased", label: "I entered late", color: "text-indigo-400", icon: TrendingUp },
   { tag: "Revenge", label: "I traded to get back losses", color: "text-orange-400", icon: AlertTriangle },
   { tag: "Greedy", label: "I held too long", color: "text-red-400", icon: Flame },
+  { tag: "Angry", label: "I traded while upset", color: "text-rose-400", icon: Angry },
+  { tag: "Overtrading", label: "I took too many trades", color: "text-purple-400", icon: Repeat },
 ];
 
 const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
@@ -174,7 +178,7 @@ function StressSliderControl({ value, onChange }: { value: number; onChange: (v:
 }
 
 export default function SmartJournal() {
-  const { tierLevel } = useAuth();
+  const { tierLevel, appMode } = useAuth();
   const { isRoutineComplete } = usePlanner();
   const { getNumber } = useAppConfig();
   const qc = useQueryClient();
@@ -189,6 +193,19 @@ export default function SmartJournal() {
   const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
   const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
   const [showSitOutWarning, setShowSitOutWarning] = useState(false);
+  const [showTiltCooldown, setShowTiltCooldown] = useState(() => {
+    const stored = localStorage.getItem("ict-tilt-cooldown-end");
+    if (stored) {
+      const end = parseInt(stored, 10);
+      if (end > Date.now()) return true;
+      localStorage.removeItem("ict-tilt-cooldown-end");
+    }
+    return false;
+  });
+  const [tiltCooldownEnd, setTiltCooldownEnd] = useState<number>(() => {
+    const stored = localStorage.getItem("ict-tilt-cooldown-end");
+    return stored ? parseInt(stored, 10) : 0;
+  });
 
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
@@ -404,6 +421,30 @@ export default function SmartJournal() {
       if (form.outcome === "win" || form.outcome === "loss") {
         recordTradeResult(form.outcome === "win", getNumber("consecutive_loss_threshold", 2));
       }
+      if (appMode === "full") {
+        const NEGATIVE_TAGS = ["FOMO", "Chased", "Revenge", "Greedy", "Angry", "Overtrading"];
+        const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+        const recentNegativeCount = allCompletedTrades.filter(
+          (t) =>
+            NEGATIVE_TAGS.includes(t.behaviorTag ?? "") &&
+            t.createdAt != null &&
+            new Date(t.createdAt).getTime() > twoHoursAgo
+        ).length;
+        const currentIsNegative = NEGATIVE_TAGS.includes(form.behaviorTag) ? 1 : 0;
+        if (recentNegativeCount + currentIsNegative >= 2) {
+          const cooldownMs = 5 * 60 * 1000;
+          const endTime = Date.now() + cooldownMs;
+          localStorage.setItem("ict-tilt-cooldown-end", String(endTime));
+          setTiltCooldownEnd(endTime);
+          setShowTiltCooldown(true);
+          fetch(`${API_BASE}/user/settings/cooldown-event`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ eventType: "tilt_cooldown", triggerTags: form.behaviorTag, durationSeconds: 300 }),
+          }).catch(() => {});
+        }
+      }
       qc.invalidateQueries({ queryKey: getListTradesQueryKey() });
       setShowForm(false);
       setEditingDraftId(null);
@@ -425,7 +466,7 @@ export default function SmartJournal() {
         toast({ title: "Error", description: "Could not save trade.", variant: "destructive" });
       }
     }
-  }, [form, editingDraftId, entryMode, allCriteriaMet, createTradeMut, deleteTradeMut, qc]);
+  }, [form, editingDraftId, entryMode, allCriteriaMet, createTradeMut, deleteTradeMut, qc, appMode]);
 
   const handleDelete = useCallback(async (id: number) => {
     try {
@@ -866,7 +907,7 @@ export default function SmartJournal() {
                   />
                 </div>
 
-                {/* Setup Score Badge */}
+                {appMode === "full" ? (
                 <div className={`flex items-center justify-between p-3 rounded-lg border ${scoreBorderColor(liveSetupScore)} ${scoreBgColor(liveSetupScore)}`}>
                   <div className="flex items-center gap-2">
                     <Target className={`h-4 w-4 ${scoreColor(liveSetupScore)}`} />
@@ -874,6 +915,12 @@ export default function SmartJournal() {
                   </div>
                   <span className={`text-lg font-bold ${scoreColor(liveSetupScore)}`}>{liveSetupScore}/100</span>
                 </div>
+                ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Setup Score and AI Coach available in Full Mode</span>
+                </div>
+                )}
 
                 {/* Save */}
                 <button
@@ -1015,7 +1062,7 @@ export default function SmartJournal() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          {trade.setupScore != null && (
+                          {appMode === "full" && trade.setupScore != null && (
                             <Badge variant="outline" className={`text-[10px] ${scoreColor(trade.setupScore)} ${scoreBorderColor(trade.setupScore)}`}>
                               {trade.setupScore}
                             </Badge>
@@ -1062,8 +1109,7 @@ export default function SmartJournal() {
                             <p className="text-sm text-muted-foreground italic">{notes}</p>
                           )}
 
-                          {/* Coach Feedback */}
-                          {(coachFeedback[trade.id] || coachLoading[trade.id] || coachError[trade.id] || coachUpgrade[trade.id] || trade.coachFeedback) && (
+                          {appMode === "full" && (coachFeedback[trade.id] || coachLoading[trade.id] || coachError[trade.id] || coachUpgrade[trade.id] || trade.coachFeedback) && (
                             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
                               <div className="flex items-center gap-1.5 mb-1.5">
                                 <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -1148,6 +1194,89 @@ export default function SmartJournal() {
         <Link to="/risk-disclosure" className="underline hover:text-muted-foreground transition-colors">Full Risk Disclosure</Link>
       </p>
     </div>
+    {showTiltCooldown && (
+      <TiltCooldownModal
+        endTime={tiltCooldownEnd}
+        onDismiss={() => {
+          setShowTiltCooldown(false);
+          localStorage.removeItem("ict-tilt-cooldown-end");
+        }}
+      />
+    )}
     </>
+  );
+}
+
+function TiltCooldownModal({ endTime, onDismiss }: { endTime: number; onDismiss: () => void }) {
+  const [remaining, setRemaining] = useState(Math.max(0, Math.ceil((endTime - Date.now()) / 1000)));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      setRemaining(left);
+      if (left <= 0) clearInterval(interval);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [endTime]);
+
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+  const canDismiss = remaining <= 0;
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-background/95 flex items-center justify-center p-6">
+      <div className="max-w-md w-full text-center space-y-6">
+        <div className="flex items-center justify-center">
+          <div className="h-24 w-24 rounded-full bg-orange-500/10 flex items-center justify-center">
+            <AlertTriangle className="h-12 w-12 text-orange-500" />
+          </div>
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Tilt Detected</h2>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            You've logged 2 or more emotional trades (FOMO, Chased, Revenge, or Greedy) in the last 2 hours.
+            Take a 5-minute break to reset before trading again.
+          </p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-6">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3 font-semibold">Cooldown Timer</p>
+          <div className="text-5xl font-mono font-bold text-orange-500">
+            {minutes}:{seconds.toString().padStart(2, "0")}
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 text-left space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Reset Suggestions</p>
+          <ul className="space-y-1.5 text-sm text-foreground">
+            <li className="flex items-start gap-2">
+              <Shield className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+              Step away from the screen completely
+            </li>
+            <li className="flex items-start gap-2">
+              <Shield className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+              Take 10 deep breaths (4 seconds in, 6 seconds out)
+            </li>
+            <li className="flex items-start gap-2">
+              <Shield className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+              Splash cold water on your face
+            </li>
+            <li className="flex items-start gap-2">
+              <Shield className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+              Review your trading plan before re-entering
+            </li>
+          </ul>
+        </div>
+        <button
+          onClick={canDismiss ? onDismiss : undefined}
+          disabled={!canDismiss}
+          className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${
+            canDismiss
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+          }`}
+        >
+          {canDismiss ? "I'm Ready — Back to Trading" : "Cooling down..."}
+        </button>
+      </div>
+    </div>
   );
 }

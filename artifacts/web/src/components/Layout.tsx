@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, ChevronLeft, Video } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, ChevronLeft, Video, Zap, Layers } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -236,8 +236,32 @@ function ShareModal({
   );
 }
 
+function ModeSwitcher({ collapsed, appMode, setAppMode }: { collapsed: boolean; appMode: "full" | "lite"; setAppMode: (m: "full" | "lite") => Promise<void> }) {
+  const isLite = appMode === "lite";
+
+  return (
+    <button
+      onClick={() => setAppMode(isLite ? "full" : "lite")}
+      title={collapsed ? (isLite ? "Switch to Full Mode" : "Switch to Lite Mode") : undefined}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left ${
+        isLite
+          ? "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
+          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+      }`}
+    >
+      {isLite ? <Zap className="h-5 w-5 shrink-0" /> : <Layers className="h-5 w-5 shrink-0" />}
+      {!collapsed && (
+        <div className="flex flex-col">
+          <span className="text-xs font-bold leading-tight">{isLite ? "Lite Mode" : "Full Mode"}</span>
+          <span className="text-[10px] opacity-60 leading-tight">{isLite ? "Tap for Full" : "Tap for Lite"}</span>
+        </div>
+      )}
+    </button>
+  );
+}
+
 export default function Layout() {
-  const { user, subscription, tierLevel, isAdmin, logout } = useAuth();
+  const { user, subscription, tierLevel, isAdmin, logout, appMode, setAppMode } = useAuth();
   const { config } = useAppConfig();
   const [showLockToast, setShowLockToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -257,10 +281,15 @@ export default function Layout() {
     return level ? SKILL_LEVEL_NUM[level] : SKILL_LEVEL_NUM["none"];
   }, []);
 
+  const LITE_MODE_ALLOWED = ["/dashboard", "/academy", "/risk-shield", "/journal"];
+
   const visibleNavItems = useMemo(() => {
-    if (skillLevelNum === SKILL_LEVEL_NUM["none"]) return navItems;
-    return navItems.filter((item) => item.minSkillLevel <= skillLevelNum);
-  }, [skillLevelNum]);
+    let items = skillLevelNum === SKILL_LEVEL_NUM["none"] ? navItems : navItems.filter((item) => item.minSkillLevel <= skillLevelNum);
+    if (appMode === "lite") {
+      items = items.filter((item) => LITE_MODE_ALLOWED.includes(item.to));
+    }
+    return items;
+  }, [skillLevelNum, appMode]);
 
   const isFreeUser = tierLevel === 0;
 
@@ -346,6 +375,8 @@ export default function Layout() {
         </nav>
 
         <div className="p-2 border-t border-sidebar-border space-y-1">
+          <ModeSwitcher collapsed={sidebarCollapsed} appMode={appMode} setAppMode={setAppMode} />
+
           <Link
             to="/pricing"
             title={sidebarCollapsed ? "Subscription" : undefined}

@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiGet, apiPost } from "@/lib/api";
 import Colors from "@/constants/colors";
+import FullModeGate from "@/components/FullModeGate";
 
 const C = Colors.dark;
 
@@ -99,7 +100,15 @@ function AuthorRow({ name, isFounder, founderNumber, role, time }: {
   );
 }
 
-export default function CommunityScreen() {
+export default function CommunityScreenGated() {
+  return (
+    <FullModeGate>
+      <CommunityScreen />
+    </FullModeGate>
+  );
+}
+
+function CommunityScreen() {
   const insets = useSafeAreaInsets();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);

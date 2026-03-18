@@ -20,10 +20,11 @@ import { usePlanner } from "@/contexts/PlannerContext";
 import { fireMobileAITrigger } from "@/lib/aiTrigger";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const C = Colors.dark;
 
-type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge";
+type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge" | "Angry" | "Overtrading";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
 type EntryMode = "conservative" | "aggressive";
 
@@ -49,6 +50,8 @@ const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: str
   { tag: "Chased", label: "I entered late", color: "#818CF8", icon: "trending-up-outline" },
   { tag: "Revenge", label: "I traded to get back losses", color: "#FB923C", icon: "alert-circle-outline" },
   { tag: "Greedy", label: "I held too long", color: "#EF4444", icon: "flame-outline" },
+  { tag: "Angry", label: "I traded while upset", color: "#F43F5E", icon: "sad-outline" },
+  { tag: "Overtrading", label: "I took too many trades", color: "#A78BFA", icon: "repeat-outline" },
 ];
 
 const EXIT_RULES = [
@@ -164,8 +167,11 @@ function StressSlider({ value, onChange }: { value: number; onChange: (v: number
   );
 }
 
+const TILT_COOLDOWN_KEY = "ict-tilt-cooldown-end";
+const NEGATIVE_TAGS = ["FOMO", "Chased", "Revenge", "Greedy", "Angry", "Overtrading"];
+
 export default function JournalScreen() {
-  const { user, subscription } = useAuth();
+  const { user, subscription, appMode } = useAuth();
   const router = useRouter();
   const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
   const { isRoutineComplete } = usePlanner();
@@ -180,6 +186,22 @@ export default function JournalScreen() {
   const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
   const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
   const [showSitOutWarning, setShowSitOutWarning] = useState(false);
+  const [showTiltCooldown, setShowTiltCooldown] = useState(false);
+  const [tiltCooldownEnd, setTiltCooldownEnd] = useState(0);
+
+  useEffect(() => {
+    AsyncStorage.getItem(TILT_COOLDOWN_KEY).then((stored) => {
+      if (stored) {
+        const end = parseInt(stored, 10);
+        if (end > Date.now()) {
+          setTiltCooldownEnd(end);
+          setShowTiltCooldown(true);
+        } else {
+          AsyncStorage.removeItem(TILT_COOLDOWN_KEY);
+        }
+      }
+    });
+  }, []);
 
   const { data: tradesData } = useListTrades();
   const trades = tradesData ?? [];
@@ -348,6 +370,28 @@ export default function JournalScreen() {
           setupScore: liveSetupScore,
         },
       });
+      if (appMode === "full") {
+        const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+        const recentNegativeCount = completedTrades.filter(
+          (t) =>
+            NEGATIVE_TAGS.includes(t.behaviorTag ?? "") &&
+            t.createdAt != null &&
+            new Date(t.createdAt).getTime() > twoHoursAgo
+        ).length;
+        const currentIsNegative = NEGATIVE_TAGS.includes(form.behaviorTag) ? 1 : 0;
+        if (recentNegativeCount + currentIsNegative >= 2) {
+          const endTime = Date.now() + 5 * 60 * 1000;
+          AsyncStorage.setItem(TILT_COOLDOWN_KEY, String(endTime));
+          setTiltCooldownEnd(endTime);
+          setShowTiltCooldown(true);
+          fetch(`${API_BASE}/user/settings/cooldown-event`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ eventType: "tilt_cooldown", triggerTags: form.behaviorTag, durationSeconds: 300 }),
+          }).catch(() => {});
+        }
+      }
       qc.invalidateQueries({ queryKey: [`/api/trades`] });
       setShowForm(false);
       setEditingDraftId(null);
@@ -359,7 +403,7 @@ export default function JournalScreen() {
     } catch {
       Alert.alert("Error", "Could not save trade");
     }
-  }, [form, editingDraftId, entryMode, allCriteriaMet, createTradeMut, deleteTradeMut, qc]);
+  }, [form, editingDraftId, entryMode, allCriteriaMet, createTradeMut, deleteTradeMut, qc, appMode]);
 
   const handleDelete = useCallback(async (id: number) => {
     Alert.alert("Delete Trade?", "This cannot be undone.", [
@@ -503,7 +547,7 @@ export default function JournalScreen() {
                   <View style={styles.tradeHeader}>
                     <Text style={styles.tradePair}>{trade.pair}</Text>
                     <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-                      {trade.setupScore != null && (
+                      {appMode === "full" && trade.setupScore != null && (
                         <View style={[styles.tagBadge, { backgroundColor: getScoreColor(trade.setupScore) + "20", borderColor: getScoreColor(trade.setupScore) }]}>
                           <Text style={[styles.tagText, { color: getScoreColor(trade.setupScore) }]}>{trade.setupScore}</Text>
                         </View>
@@ -553,7 +597,7 @@ export default function JournalScreen() {
 
                   {expanded && (
                     <View style={coachStyles.expandedSection}>
-                      {(feedback || loading) && (
+                      {appMode === "full" && (feedback || loading) && (
                         <View style={coachStyles.feedbackCard}>
                           <View style={coachStyles.feedbackHeader}>
                             <Ionicons name="sparkles" size={14} color={C.accent} />
@@ -564,6 +608,12 @@ export default function JournalScreen() {
                           ) : (
                             <Text style={coachStyles.feedbackText}>{feedback}</Text>
                           )}
+                        </View>
+                      )}
+                      {appMode === "lite" && (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.cardBorder }}>
+                          <Ionicons name="lock-closed" size={14} color={C.textSecondary} />
+                          <Text style={{ fontSize: 12, color: C.textSecondary }}>Setup Score & AI Coach available in Full Mode</Text>
                         </View>
                       )}
                       <View style={coachStyles.actionRow}>
@@ -782,7 +832,7 @@ export default function JournalScreen() {
               numberOfLines={4}
             />
 
-            {/* Setup Score Badge */}
+            {appMode === "full" ? (
             <View style={[scoreStyles.badge, { borderColor: getScoreColor(liveSetupScore) + "50", backgroundColor: getScoreColor(liveSetupScore) + "15" }]}>
               <View style={scoreStyles.badgeRow}>
                 <Ionicons name="speedometer-outline" size={16} color={getScoreColor(liveSetupScore)} />
@@ -790,6 +840,12 @@ export default function JournalScreen() {
               </View>
               <Text style={[scoreStyles.badgeValue, { color: getScoreColor(liveSetupScore) }]}>{liveSetupScore}/100</Text>
             </View>
+            ) : (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.cardBorder }}>
+              <Ionicons name="lock-closed" size={14} color={C.textSecondary} />
+              <Text style={{ fontSize: 12, color: C.textSecondary }}>Setup Score available in Full Mode</Text>
+            </View>
+            )}
 
             <TouchableOpacity style={[formStyles.submitBtn, !allCriteriaMet && { backgroundColor: C.cardBorder, opacity: 0.6 }]} onPress={handleSubmit} disabled={!allCriteriaMet}>
               <Text style={[formStyles.submitBtnText, !allCriteriaMet && { color: C.textSecondary }]}>
@@ -852,9 +908,89 @@ export default function JournalScreen() {
           </TouchableOpacity>
         </ScrollView>
       </Modal>
+      {showTiltCooldown && (
+        <TiltCooldownOverlay
+          endTime={tiltCooldownEnd}
+          onDismiss={() => {
+            setShowTiltCooldown(false);
+            AsyncStorage.removeItem(TILT_COOLDOWN_KEY);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
+
+function TiltCooldownOverlay({ endTime, onDismiss }: { endTime: number; onDismiss: () => void }) {
+  const [remaining, setRemaining] = useState(Math.max(0, Math.ceil((endTime - Date.now()) / 1000)));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      setRemaining(left);
+      if (left <= 0) clearInterval(interval);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [endTime]);
+
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+  const canDismiss = remaining <= 0;
+
+  return (
+    <Modal visible animationType="fade" transparent={false}>
+      <View style={tiltStyles.container}>
+        <View style={tiltStyles.iconCircle}>
+          <Ionicons name="alert-circle" size={48} color="#FB923C" />
+        </View>
+        <Text style={tiltStyles.title}>Tilt Detected</Text>
+        <Text style={tiltStyles.body}>
+          You've logged 2+ emotional trades in the last 2 hours. Take a 5-minute break to reset.
+        </Text>
+        <View style={tiltStyles.timerBox}>
+          <Text style={tiltStyles.timerLabel}>COOLDOWN TIMER</Text>
+          <Text style={tiltStyles.timer}>
+            {minutes}:{seconds.toString().padStart(2, "0")}
+          </Text>
+        </View>
+        <View style={tiltStyles.tips}>
+          <Text style={tiltStyles.tipsTitle}>RESET SUGGESTIONS</Text>
+          {["Step away from the screen", "Take 10 deep breaths", "Splash cold water on your face", "Review your trading plan"].map((tip, i) => (
+            <View key={i} style={tiltStyles.tipRow}>
+              <Ionicons name="shield-checkmark" size={14} color={C.accent} />
+              <Text style={tiltStyles.tipText}>{tip}</Text>
+            </View>
+          ))}
+        </View>
+        <TouchableOpacity
+          onPress={canDismiss ? onDismiss : undefined}
+          disabled={!canDismiss}
+          style={[tiltStyles.btn, !canDismiss && { opacity: 0.4 }]}
+        >
+          <Text style={tiltStyles.btnText}>
+            {canDismiss ? "I'm Ready — Back to Trading" : "Cooling down..."}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
+const tiltStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.background, justifyContent: "center", alignItems: "center", padding: 24 },
+  iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(251,146,60,0.1)", alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  title: { fontSize: 24, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 8 },
+  body: { fontSize: 14, color: C.textSecondary, textAlign: "center", lineHeight: 22, marginBottom: 24, maxWidth: 300 },
+  timerBox: { backgroundColor: C.backgroundSecondary, borderRadius: 16, padding: 20, alignItems: "center", marginBottom: 20, borderWidth: 1, borderColor: C.cardBorder },
+  timerLabel: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_600SemiBold", letterSpacing: 1, marginBottom: 8 },
+  timer: { fontSize: 48, fontFamily: "Inter_700Bold", color: "#FB923C" },
+  tips: { backgroundColor: C.backgroundSecondary, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 24, width: "100%" },
+  tipsTitle: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_600SemiBold", letterSpacing: 1, marginBottom: 10 },
+  tipRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  tipText: { fontSize: 14, color: C.text },
+  btn: { backgroundColor: C.accent, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, alignItems: "center", width: "100%" },
+  btnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+});
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },

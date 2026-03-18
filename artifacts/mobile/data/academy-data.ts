@@ -244,6 +244,18 @@ export const COURSE_CHAPTERS: Chapter[] = [
         takeaway: "A sweep is a fake move that grabs stop-losses, then price reverses. It's the bait before the real move. Always wait for the sweep BEFORE entering."
       },
       {
+        id: "ch3-4b",
+        title: "Inducement (IDM) — The Trap Before the Trap",
+        chartImage: "chart-idm-inducement.png",
+        paragraphs: [
+          "Inducement (IDM) is a smaller-scale liquidity grab that happens BEFORE the main sweep. Think of it as a 'mini fake-out' designed to lure early traders into bad positions before the real move begins.",
+          "After price creates a Market Structure Shift (MSS), it often doesn't immediately go to the FVG for your entry. Instead, it creates a small counter-move first — this is the Inducement. It tricks traders into thinking the MSS was fake, shaking them out before the real move continues.",
+          "IDM typically appears as a small high or low that forms during a pullback. Smart Money uses these small levels to grab liquidity from impatient traders. Once the IDM level is swept, the REAL entry (your FVG/OTE) becomes active.",
+          "In your checklist, IDM confirmation means: after the sweep and MSS, wait for any small counter-swing (the inducement) to get taken out. Once that mini-level is swept, price is cleared to move to your FVG entry. This extra patience filter dramatically reduces false entries."
+        ],
+        takeaway: "IDM = a mini fake-out within the pullback. Wait for it to get swept before entering at your FVG. It's an extra confirmation that Smart Money is clearing all the liquidity before the real move."
+      },
+      {
         id: "ch3-5",
         title: "Optimal Trade Entry (OTE)",
         chartImage: "chart-ote.png",
@@ -617,6 +629,13 @@ export const GLOSSARY: GlossaryItem[] = [
     image: "chart-liquidity-sweep.png",
     definition: "When price quickly pokes above a high or below a low to grab everyone's stop-loss orders, then snaps back the other way. It's like a broom sweeping up money before the real move starts.",
     tip: "A sweep of the London session low followed by a bullish MSS (Market Structure Shift) on NQ is a great long setup."
+  },
+  {
+    term: "IDM",
+    full: "Inducement",
+    color: "#A78BFA",
+    definition: "A smaller-scale liquidity grab that happens during a pullback, designed to lure early traders into bad positions before the real move continues. After a Market Structure Shift, price often creates a small counter-swing (IDM) before reaching your entry. Once the IDM level is swept, the real entry becomes active.",
+    tip: "When you see the MSS, don't jump in immediately. Wait for a small counter-move (the inducement) to get swept first. This extra patience filter keeps you out of false entries."
   },
   {
     term: "OTE",

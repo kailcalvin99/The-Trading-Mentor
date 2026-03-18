@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import WebView from "react-native-webview";
 import Colors from "@/constants/colors";
+import FullModeGate from "@/components/FullModeGate";
 import {
   VIDEO_CHAPTERS,
   ALL_VIDEOS,
@@ -308,7 +309,15 @@ const cardStyles = StyleSheet.create({
 
 const DIFFICULTIES: VideoDifficulty[] = ["Beginner", "Intermediate", "Advanced"];
 
-export default function VideosScreen() {
+export default function VideosScreenGated() {
+  return (
+    <FullModeGate>
+      <VideosScreen />
+    </FullModeGate>
+  );
+}
+
+function VideosScreen() {
   const [selectedChapter, setSelectedChapter] = useState<string>("all");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");

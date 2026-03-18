@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, propAccountTable } from "@workspace/db";
+import { db, usersTable, propAccountTable, cooldownEventsTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
 import { authRequired } from "../../middleware/auth";
 
@@ -182,10 +182,41 @@ router.patch("/", authRequired, async (req, res) => {
       return;
     }
 
-    res.status(400).json({ error: "Invalid section. Use 'profile', 'tradingDefaults', or 'riskRules'" });
+    if (section === "appMode") {
+      const { mode } = data;
+      if (mode !== "full" && mode !== "lite") {
+        res.status(400).json({ error: "Mode must be 'full' or 'lite'" });
+        return;
+      }
+      await db.update(usersTable).set({ appMode: mode }).where(eq(usersTable.id, userId));
+      res.json({ success: true, message: "App mode updated successfully" });
+      return;
+    }
+
+    res.status(400).json({ error: "Invalid section. Use 'profile', 'tradingDefaults', 'riskRules', or 'appMode'" });
   } catch (err) {
     console.error("Update user settings error:", err);
     res.status(500).json({ error: "Failed to update settings" });
+  }
+});
+
+router.post("/cooldown-event", authRequired, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const { eventType, triggerTags, durationSeconds } = req.body;
+    if (!eventType || typeof eventType !== "string") {
+      return res.status(400).json({ error: "eventType is required" });
+    }
+    await db.insert(cooldownEventsTable).values({
+      userId,
+      eventType,
+      triggerTags: triggerTags || null,
+      durationSeconds: durationSeconds || 300,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Log cooldown event error:", err);
+    res.status(500).json({ error: "Failed to log cooldown event" });
   }
 });
 

@@ -481,15 +481,16 @@ function SessionsLiveBoard() {
 
 
 function QuickNavCards() {
-  const { tierLevel } = useAuth();
+  const { tierLevel, appMode } = useAuth();
   const navigate = useNavigate();
+  const LITE_ROUTES = ["/academy", "/risk-shield", "/journal"];
   const cards = [
     { to: "/academy", label: "ICT Academy", desc: "39 lessons from zero to pro", icon: GraduationCap, color: "#818CF8", tier: 0 },
     { to: "/planner", label: "Daily Planner", desc: "Morning routine & session timers", icon: Calendar, color: "#00C896", tier: 0 },
     { to: "/risk-shield", label: "Risk Shield", desc: "Track drawdowns & position size", icon: Shield, color: "#EF4444", tier: 1 },
     { to: "/journal", label: "Smart Journal", desc: "Log trades & track win rate", icon: BookOpen, color: "#F59E0B", tier: 2 },
     { to: "/analytics", label: "Analytics", desc: "Performance charts & insights", icon: BarChart3, color: "#06B6D4", tier: 2 },
-  ];
+  ].filter((c) => appMode === "full" || LITE_ROUTES.includes(c.to));
 
   return (
     <div>

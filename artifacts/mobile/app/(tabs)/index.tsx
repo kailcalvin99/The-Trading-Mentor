@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { usePlanner } from "@/contexts/PlannerContext";
 import Colors from "@/constants/colors";
 import OnboardingTour, { useOnboardingTour } from "@/components/OnboardingTour";
+import FullModeGate from "@/components/FullModeGate";
 
 const C = Colors.dark;
 
@@ -56,7 +57,15 @@ const ROUTINE_ITEMS = [
   { key: "bias" as const, label: "Check the Big Picture Chart", icon: "trending-up-outline" as const, desc: "HTF (Higher Timeframe) — Is the market going up or down today?" },
 ];
 
-export default function PlannerScreen() {
+export default function PlannerScreenGated() {
+  return (
+    <FullModeGate>
+      <PlannerScreen />
+    </FullModeGate>
+  );
+}
+
+function PlannerScreen() {
   const {
     routineItems, isRoutineComplete, hasRedNews, toggleItem, toggleRedNews,
     customItems, addCustomItem, removeCustomItem, toggleCustomItem, snoozeCustomItem,

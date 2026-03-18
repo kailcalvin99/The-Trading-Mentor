@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function TabLayout() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, subscription } = useAuth();
+  const { user, subscription, appMode } = useAuth();
 
   const isAdmin = user?.role === "admin";
   const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
@@ -28,6 +28,7 @@ export default function TabLayout() {
         onNavigate={handleNavigate}
         isAdmin={isAdmin}
         tierLevel={tierLevel}
+        appMode={appMode}
       />
       <Tabs
         tabBar={() => null}
