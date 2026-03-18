@@ -347,6 +347,7 @@ export default function JournalScreen() {
       }
       const modeTag = entryMode === "conservative" ? "[Conservative]" : "[Silver Bullet]";
       const notesWithMode = form.notes ? `${modeTag} ${form.notes}` : modeTag;
+      const safeSetupScore = Number.isInteger(liveSetupScore) && !isNaN(liveSetupScore) ? liveSetupScore : 0;
       const result = await createTradeMut({
         data: {
           pair: form.pair,
@@ -360,7 +361,8 @@ export default function JournalScreen() {
           hasFvgConfirmation: form.hasFvgConfirmation ?? undefined,
           stressLevel: form.stressLevel,
           isDraft: false,
-          setupScore: liveSetupScore,
+          setupScore: safeSetupScore,
+          setupType: form.setupTypes.length > 0 ? form.setupTypes.join(", ") : undefined,
         },
       });
       if (appMode === "full") {
@@ -393,8 +395,18 @@ export default function JournalScreen() {
         setExpandedTradeId(result.id);
         fetchCoachFeedback(result.id);
       }
-    } catch {
-      Alert.alert("Error", "Could not save trade");
+    } catch (err: unknown) {
+      console.error("[handleSubmit] Could not save trade:", err);
+      let message = "Could not save trade";
+      if (err && typeof err === "object") {
+        const apiErr = err as { data?: { error?: string }; message?: string };
+        if (apiErr.data && typeof apiErr.data === "object" && typeof apiErr.data.error === "string") {
+          message = apiErr.data.error;
+        } else if (typeof apiErr.message === "string" && apiErr.message) {
+          message = apiErr.message;
+        }
+      }
+      Alert.alert("Error", message);
     }
   }, [form, editingDraftId, entryMode, allCriteriaMet, createTradeMut, deleteTradeMut, qc, appMode]);
 

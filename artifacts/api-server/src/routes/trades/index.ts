@@ -158,7 +158,8 @@ router.post("/", authRequired, tierRequired(2), async (req, res) => {
       .returning();
 
     res.status(201).json({ ...trade, riskPct: parseFloat(trade.riskPct) });
-  } catch {
+  } catch (err) {
+    console.error("[POST /trades] Failed to create trade:", err);
     res.status(500).json({ error: "Failed to create trade" });
   }
 });
