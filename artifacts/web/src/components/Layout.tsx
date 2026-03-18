@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, ChevronLeft, Video, Zap, Layers } from "lucide-react";
@@ -12,6 +12,8 @@ import { useTourGuideContext } from "@/contexts/TourGuideContext";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 const SIDEBAR_COLLAPSED_KEY = "ict-sidebar-collapsed";
+const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
+const COMMUNITY_POLL_INTERVAL = 3 * 60 * 1000;
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkillLevel: 0 },
@@ -42,6 +44,7 @@ function NavItem({
   userTier,
   onLockedClick,
   collapsed,
+  badge,
 }: {
   to: string;
   label: string;
@@ -50,6 +53,7 @@ function NavItem({
   userTier: number;
   onLockedClick: () => void;
   collapsed: boolean;
+  badge?: boolean;
 }) {
   const isLocked = requiredTier > userTier;
 
@@ -83,8 +87,16 @@ function NavItem({
         }`
       }
     >
-      <Icon className="h-5 w-5 shrink-0" />
+      <div className="relative shrink-0">
+        <Icon className="h-5 w-5" />
+        {badge && (
+          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border border-background" />
+        )}
+      </div>
       {!collapsed && <span>{label}</span>}
+      {!collapsed && badge && (
+        <span className="ml-auto w-2 h-2 rounded-full bg-red-500 shrink-0" />
+      )}
     </NavLink>
   );
 }
@@ -96,6 +108,7 @@ function MobileNavItem({
   requiredTier,
   userTier,
   onLockedClick,
+  badge,
 }: {
   to: string;
   mobileLabel: string;
@@ -103,6 +116,7 @@ function MobileNavItem({
   requiredTier: number;
   userTier: number;
   onLockedClick: () => void;
+  badge?: boolean;
 }) {
   const isLocked = requiredTier > userTier;
 
@@ -131,7 +145,12 @@ function MobileNavItem({
         }`
       }
     >
-      <Icon className="h-5 w-5" />
+      <div className="relative">
+        <Icon className="h-5 w-5" />
+        {badge && (
+          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border border-background" />
+        )}
+      </div>
       <span>{mobileLabel}</span>
     </NavLink>
   );
@@ -272,6 +291,8 @@ export default function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
   });
+  const [communityHasNew, setCommunityHasNew] = useState(false);
+  const communityPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { state: tourState, dispatch: tourDispatch, closeTour } = useTourGuideContext();
@@ -318,6 +339,32 @@ export default function Layout() {
       }
     }
   }, [location.pathname, tierLevel, isAdmin, navigate]);
+
+  useEffect(() => {
+    const onCommunityPage = location.pathname === "/community";
+
+    async function pollCommunityNew() {
+      if (onCommunityPage) {
+        setCommunityHasNew(false);
+        return;
+      }
+      try {
+        const stored = localStorage.getItem(COMMUNITY_LAST_VISIT_KEY);
+        const since = stored || new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+        const res = await fetch(`${API_BASE}/community/new-count?since=${encodeURIComponent(since)}`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setCommunityHasNew((data.count || 0) > 0);
+        }
+      } catch {}
+    }
+
+    pollCommunityNew();
+    communityPollRef.current = setInterval(pollCommunityNew, COMMUNITY_POLL_INTERVAL);
+    return () => {
+      if (communityPollRef.current) clearInterval(communityPollRef.current);
+    };
+  }, [location.pathname]);
 
   const handleOpenShare = useCallback(() => {
     setShowShare(true);
@@ -370,6 +417,7 @@ export default function Layout() {
               userTier={tierLevel}
               onLockedClick={handleLockedClick}
               collapsed={sidebarCollapsed}
+              badge={item.to === "/community" ? communityHasNew : undefined}
             />
           ))}
         </nav>
@@ -500,6 +548,7 @@ export default function Layout() {
               {...item}
               userTier={tierLevel}
               onLockedClick={handleLockedClick}
+              badge={item.to === "/community" ? communityHasNew : undefined}
             />
           ))}
         </nav>

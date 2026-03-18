@@ -13,9 +13,15 @@ import {
   BarChart3,
   Zap,
   Users,
+  Bell,
+  BellOff,
+  Medal,
+  Flame,
+  TrendingUp,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
+const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 
 const CATEGORIES = [
   { value: "all", label: "All Posts", icon: Users },
@@ -26,6 +32,8 @@ const CATEGORIES = [
   { value: "questions", label: "Questions", icon: HelpCircle },
   { value: "general", label: "General", icon: MessageSquare },
 ];
+
+const SUBSCRIBABLE_CATEGORIES = CATEGORIES.filter((c) => c.value !== "all");
 
 interface Post {
   id: number;
@@ -57,6 +65,23 @@ interface Reply {
 
 interface PostDetail extends Post {
   replies: Reply[];
+}
+
+interface LeaderboardEntry {
+  userId: number;
+  name: string;
+  isFounder: boolean;
+  founderNumber: number | null;
+  winRate?: number;
+  total?: number;
+  streak?: number;
+  tradeCount?: number;
+}
+
+interface Leaderboard {
+  byWinRate: LeaderboardEntry[];
+  byStreak: LeaderboardEntry[];
+  byTradeCount: LeaderboardEntry[];
 }
 
 function timeAgo(dateStr: string) {
@@ -112,11 +137,127 @@ function CategoryBadge({ category }: { category: string }) {
   );
 }
 
+function MedalIcon({ rank }: { rank: number }) {
+  if (rank === 1) return <span className="text-lg">🥇</span>;
+  if (rank === 2) return <span className="text-lg">🥈</span>;
+  if (rank === 3) return <span className="text-lg">🥉</span>;
+  return <span className="text-sm font-bold text-muted-foreground w-6 text-center">{rank}</span>;
+}
+
+const SORT_PARAM_MAP: Record<"winRate" | "streak" | "mostActive", string> = {
+  winRate: "byWinRate",
+  streak: "byStreak",
+  mostActive: "byTradeCount",
+};
+
+function HallOfFameTab() {
+  const [activeSubTab, setActiveSubTab] = useState<"winRate" | "streak" | "mostActive">("winRate");
+  const [rows, setRows] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    setRows([]);
+    const sortParam = SORT_PARAM_MAP[activeSubTab];
+    fetch(`${API_BASE}/community/leaderboard?sort=${sortParam}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data: Leaderboard) => {
+        if (activeSubTab === "winRate") setRows(data.byWinRate || []);
+        else if (activeSubTab === "streak") setRows(data.byStreak || []);
+        else setRows(data.byTradeCount || []);
+      })
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, [activeSubTab]);
+
+  const SUB_TABS = [
+    { key: "winRate" as const, label: "Win Rate", icon: TrendingUp },
+    { key: "streak" as const, label: "Win Streak", icon: Flame },
+    { key: "mostActive" as const, label: "Most Active", icon: Users },
+  ];
+
+  function getMetric(entry: LeaderboardEntry) {
+    if (activeSubTab === "winRate") return `${entry.winRate}% (${entry.total} trades)`;
+    if (activeSubTab === "streak") return `${entry.streak} streak`;
+    return `${entry.tradeCount} trades`;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1.5">
+        {SUB_TABS.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveSubTab(tab.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                activeSubTab === tab.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-3 w-3" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="text-center py-10 space-y-2">
+          <Trophy className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+          <p className="text-sm text-muted-foreground">No entries yet. Keep trading to appear here!</p>
+          <p className="text-xs text-muted-foreground">Minimum 3 completed trades required.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((entry, idx) => (
+            <div
+              key={entry.userId}
+              className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                idx === 0
+                  ? "bg-amber-500/5 border-amber-500/20"
+                  : idx === 1
+                  ? "bg-zinc-400/5 border-zinc-400/20"
+                  : idx === 2
+                  ? "bg-amber-700/5 border-amber-700/20"
+                  : "bg-card border-border"
+              }`}
+            >
+              <div className="w-7 flex justify-center shrink-0">
+                <MedalIcon rank={idx + 1} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-sm text-foreground truncate">{entry.name}</span>
+                  {entry.isFounder && (
+                    <span className="inline-flex items-center gap-0.5 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5 shrink-0">
+                      <Crown className="h-2.5 w-2.5 text-amber-500" />
+                      <span className="text-[9px] font-bold text-amber-500">#{entry.founderNumber}</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{getMetric(entry)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Community() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [showHallOfFame, setShowHallOfFame] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
   const [selectedPost, setSelectedPost] = useState<PostDetail | null>(null);
   const [newTitle, setNewTitle] = useState("");
@@ -124,6 +265,29 @@ export default function Community() {
   const [newCategory, setNewCategory] = useState("strategy-talk");
   const [replyBody, setReplyBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [subscribedCategories, setSubscribedCategories] = useState<string[]>([]);
+  const [togglingCategory, setTogglingCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem(COMMUNITY_LAST_VISIT_KEY, new Date().toISOString());
+  }, []);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      localStorage.setItem(COMMUNITY_LAST_VISIT_KEY, new Date().toISOString());
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/community/subscriptions`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data.subscribed)) setSubscribedCategories(data.subscribed);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -222,6 +386,29 @@ export default function Community() {
         }
       }
     } catch {}
+  }
+
+  async function toggleSubscription(category: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (togglingCategory === category) return;
+    setTogglingCategory(category);
+    try {
+      const res = await fetch(`${API_BASE}/community/subscriptions/toggle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ category }),
+      });
+      if (res.ok) {
+        const { subscribed } = await res.json();
+        setSubscribedCategories((prev) =>
+          subscribed ? [...prev, category] : prev.filter((c) => c !== category)
+        );
+      }
+    } catch {
+    } finally {
+      setTogglingCategory(null);
+    }
   }
 
   if (selectedPost) {
@@ -323,27 +510,71 @@ export default function Community() {
         </button>
       </div>
 
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-        {CATEGORIES.map((cat) => {
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide flex-wrap">
+        <button
+          onClick={() => { setActiveCategory("all"); setShowHallOfFame(false); }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+            !showHallOfFame && activeCategory === "all"
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Users className="h-3.5 w-3.5" />
+          All Posts
+        </button>
+
+        {SUBSCRIBABLE_CATEGORIES.map((cat) => {
           const Icon = cat.icon;
+          const isSubscribed = subscribedCategories.includes(cat.value);
+          const isActive = !showHallOfFame && activeCategory === cat.value;
           return (
-            <button
-              key={cat.value}
-              onClick={() => setActiveCategory(cat.value)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                activeCategory === cat.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {cat.label}
-            </button>
+            <div key={cat.value} className="relative flex items-center">
+              <button
+                onClick={() => { setActiveCategory(cat.value); setShowHallOfFame(false); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors pr-7 ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {cat.label}
+                {isSubscribed && (
+                  <span className="absolute top-0 right-5 w-2 h-2 rounded-full bg-primary border border-background" />
+                )}
+              </button>
+              <button
+                onClick={(e) => toggleSubscription(cat.value, e)}
+                disabled={togglingCategory === cat.value}
+                title={isSubscribed ? "Unsubscribe" : "Subscribe for notifications"}
+                className={`absolute right-1 p-0.5 rounded-full transition-colors ${
+                  isSubscribed
+                    ? "text-primary hover:text-primary/70"
+                    : "text-muted-foreground/50 hover:text-muted-foreground"
+                }`}
+              >
+                {isSubscribed ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+              </button>
+            </div>
           );
         })}
+
+        <button
+          onClick={() => setShowHallOfFame(true)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+            showHallOfFame
+              ? "bg-amber-500 text-white"
+              : "bg-secondary text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Trophy className="h-3.5 w-3.5" />
+          Hall of Fame
+        </button>
       </div>
 
-      {loading ? (
+      {showHallOfFame ? (
+        <HallOfFameTab />
+      ) : loading ? (
         <div className="flex justify-center py-16">
           <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>

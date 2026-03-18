@@ -23,6 +23,7 @@ import {
   Trophy,
   AlertTriangle,
   Activity,
+  Download,
   type LucideIcon,
 } from "lucide-react";
 import { usePlanner } from "@/contexts/PlannerContext";
@@ -44,23 +45,42 @@ interface PersonalTask {
   done: boolean;
 }
 
+interface KeyLevel {
+  price: string;
+  type: "support" | "resistance";
+}
+
 interface TradePlan {
   bias: string;
   pairsToWatch: string;
-  keyLevels: string;
+  keyLevels: KeyLevel[] | string;
   sessionFocus: string;
   maxTrades: string;
   riskPerTrade: string;
+}
+
+interface EntryChecklist {
+  htfBias: boolean;
+  liquiditySwept: boolean;
+  fvgPresent: boolean;
+  orderBlockIdentified: boolean;
+  premiumDiscountZone: boolean;
+  inKillzone: boolean;
 }
 
 interface DayData {
   tasks: PersonalTask[];
   notes: string;
   tradePlan: TradePlan;
+  entryChecklist?: EntryChecklist;
 }
 
 function getDayKey(date: Date) {
   return `planner_day_${date.toISOString().split("T")[0]}`;
+}
+
+function getEntryChecklistKey(date: Date) {
+  return `planner_entry_checklist_${date.toISOString().split("T")[0]}`;
 }
 
 function formatDate(date: Date) {
@@ -80,22 +100,56 @@ function formatDate(date: Date) {
 const DEFAULT_TRADE_PLAN: TradePlan = {
   bias: "",
   pairsToWatch: "",
-  keyLevels: "",
+  keyLevels: [],
   sessionFocus: "",
   maxTrades: "",
   riskPerTrade: "",
 };
 
+const DEFAULT_ENTRY_CHECKLIST: EntryChecklist = {
+  htfBias: false,
+  liquiditySwept: false,
+  fvgPresent: false,
+  orderBlockIdentified: false,
+  premiumDiscountZone: false,
+  inKillzone: false,
+};
+
+function migrateKeyLevels(keyLevels: KeyLevel[] | string): KeyLevel[] {
+  if (Array.isArray(keyLevels)) return keyLevels;
+  if (typeof keyLevels === "string" && keyLevels.trim()) {
+    return [{ price: keyLevels.trim(), type: "support" }];
+  }
+  return [];
+}
+
 function loadDayData(date: Date): DayData {
   try {
     const raw = localStorage.getItem(getDayKey(date));
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      parsed.tradePlan = parsed.tradePlan || { ...DEFAULT_TRADE_PLAN };
+      parsed.tradePlan.keyLevels = migrateKeyLevels(parsed.tradePlan.keyLevels);
+      return parsed;
+    }
   } catch {}
-  return { tasks: [], notes: "", tradePlan: { ...DEFAULT_TRADE_PLAN } };
+  return { tasks: [], notes: "", tradePlan: { ...DEFAULT_TRADE_PLAN, keyLevels: [] } };
 }
 
 function saveDayData(date: Date, data: DayData) {
   localStorage.setItem(getDayKey(date), JSON.stringify(data));
+}
+
+function loadEntryChecklist(date: Date): EntryChecklist {
+  try {
+    const raw = localStorage.getItem(getEntryChecklistKey(date));
+    if (raw) return { ...DEFAULT_ENTRY_CHECKLIST, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_ENTRY_CHECKLIST };
+}
+
+function saveEntryChecklist(date: Date, checklist: EntryChecklist) {
+  localStorage.setItem(getEntryChecklistKey(date), JSON.stringify(checklist));
 }
 
 interface TradeRecord {
@@ -147,19 +201,75 @@ function computeWinRate(trades: TradeRecord[], bias: string, sessionFocus: strin
   return { winRate: overallRate, trades: completed.length, message: `Overall win rate: ${overallRate}% across ${completed.length} trades` };
 }
 
+const SESSION_WINDOWS: Record<string, { start: string; end: string; label: string }> = {
+  "london": { start: "02:00", end: "05:00", label: "London Open" },
+  "silver-bullet": { start: "10:00", end: "11:00", label: "Silver Bullet" },
+  "new-york": { start: "09:30", end: "11:00", label: "NY Open" },
+};
+
+function exportToIcs(sessionFocus: string, date: Date) {
+  const session = SESSION_WINDOWS[sessionFocus] || SESSION_WINDOWS["new-york"];
+  const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
+  const startDT = `${dateStr}T${session.start.replace(":", "")}00Z`;
+  const endDT = `${dateStr}T${session.end.replace(":", "")}00Z`;
+  const uid = `ict-session-${dateStr}-${sessionFocus}@ict-trading`;
+
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//ICT Trading Mentor//EN",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTART:${startDT}`,
+    `DTEND:${endDT}`,
+    `SUMMARY:${session.label} - Trading Session`,
+    `DESCRIPTION:ICT ${session.label} trading window`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  const blob = new Blob([ics], { type: "text/calendar" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ict-session-${dateStr}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const ICT_ENTRY_CRITERIA = [
+  { key: "htfBias" as keyof EntryChecklist, label: "HTF Bias Confirmed" },
+  { key: "liquiditySwept" as keyof EntryChecklist, label: "Liquidity Swept" },
+  { key: "fvgPresent" as keyof EntryChecklist, label: "FVG Present" },
+  { key: "orderBlockIdentified" as keyof EntryChecklist, label: "Order Block Identified" },
+  { key: "premiumDiscountZone" as keyof EntryChecklist, label: "Premium/Discount Zone" },
+  { key: "inKillzone" as keyof EntryChecklist, label: "In Killzone" },
+];
+
+const SESSION_CARDS = [
+  { value: "london", label: "London Open", time: "2:00–5:00 AM EST", color: "bg-blue-500/10 border-blue-500/30 text-blue-400" },
+  { value: "silver-bullet", label: "Silver Bullet", time: "10:00–11:00 AM EST", color: "bg-amber-500/10 border-amber-500/30 text-amber-400" },
+  { value: "new-york", label: "NY Open", time: "9:30–11:00 AM EST", color: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" },
+];
+
 export default function DailyPlanner() {
   const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
   const { isFeatureEnabled } = useAppConfig();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dayData, setDayData] = useState<DayData>(() => loadDayData(new Date()));
+  const [entryChecklist, setEntryChecklist] = useState<EntryChecklist>(() => loadEntryChecklist(new Date()));
   const [newTask, setNewTask] = useState("");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [routineOpen, setRoutineOpen] = useState(true);
   const [tasksOpen, setTasksOpen] = useState(true);
   const [tradePlanOpen, setTradePlanOpen] = useState(true);
+  const [entryChecklistOpen, setEntryChecklistOpen] = useState(true);
+  const [scheduleOpen, setScheduleOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
   const [hallOfFameOpen, setHallOfFameOpen] = useState(false);
+  const [newLevelPrice, setNewLevelPrice] = useState("");
+  const [newLevelType, setNewLevelType] = useState<"support" | "resistance">("support");
   const taskInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -168,6 +278,7 @@ export default function DailyPlanner() {
 
   const isToday = selectedDate.toISOString().split("T")[0] === new Date().toISOString().split("T")[0];
 
+  const keyLevels = migrateKeyLevels(dayData.tradePlan.keyLevels);
   const winRateEstimate = computeWinRate(trades, dayData.tradePlan.bias, dayData.tradePlan.sessionFocus);
 
   useEffect(() => {
@@ -178,11 +289,17 @@ export default function DailyPlanner() {
 
   useEffect(() => {
     setDayData(loadDayData(selectedDate));
+    setEntryChecklist(loadEntryChecklist(selectedDate));
   }, [selectedDate]);
 
   const persist = useCallback((data: DayData) => {
     setDayData(data);
     saveDayData(selectedDate, data);
+  }, [selectedDate]);
+
+  const persistChecklist = useCallback((checklist: EntryChecklist) => {
+    setEntryChecklist(checklist);
+    saveEntryChecklist(selectedDate, checklist);
   }, [selectedDate]);
 
   function addTask() {
@@ -221,8 +338,21 @@ export default function DailyPlanner() {
     persist({ ...dayData, notes });
   }
 
-  function updateTradePlan(field: keyof TradePlan, value: string) {
+  function updateTradePlan(field: keyof TradePlan, value: string | KeyLevel[]) {
     persist({ ...dayData, tradePlan: { ...dayData.tradePlan, [field]: value } });
+  }
+
+  function addKeyLevel() {
+    const price = newLevelPrice.trim();
+    if (!price) return;
+    const levels = [...keyLevels, { price, type: newLevelType }];
+    updateTradePlan("keyLevels", levels);
+    setNewLevelPrice("");
+  }
+
+  function removeKeyLevel(idx: number) {
+    const levels = keyLevels.filter((_, i) => i !== idx);
+    updateTradePlan("keyLevels", levels);
   }
 
   function goDay(offset: number) {
@@ -233,6 +363,24 @@ export default function DailyPlanner() {
 
   const completedTasks = dayData.tasks.filter((t) => t.done).length;
   const totalTasks = dayData.tasks.length;
+
+  const timelineItems = [
+    ...routineConfig.map((item) => ({
+      id: `routine-${item.key}`,
+      label: item.label,
+      sublabel: item.desc,
+      done: routineItems[item.key] || false,
+      type: "routine" as const,
+    })),
+    ...SESSION_CARDS.map((s) => ({
+      id: `session-${s.value}`,
+      label: s.label,
+      sublabel: s.time,
+      done: dayData.tradePlan.sessionFocus === s.value,
+      type: "session" as const,
+      color: s.color,
+    })),
+  ];
 
   return (
     <>
@@ -397,43 +545,63 @@ export default function DailyPlanner() {
             {tradePlanOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
           {tradePlanOpen && (
-            <div className="mt-3 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1.5">
-                    <TrendingUp className="h-3 w-3" />
-                    Market Bias
-                  </label>
-                  <select
-                    value={dayData.tradePlan.bias}
-                    onChange={(e) => updateTradePlan("bias", e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  >
-                    <option value="">Select...</option>
-                    <option value="bullish">Bullish</option>
-                    <option value="bearish">Bearish</option>
-                    <option value="neutral">Neutral / Range</option>
-                    <option value="no-trade">No Trade Day</option>
-                  </select>
+            <div className="mt-3 space-y-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <TrendingUp className="h-3 w-3" />
+                  Market Bias
+                </label>
+                <div className="flex gap-2">
+                  {[
+                    { value: "bullish", label: "Bullish", activeClass: "bg-emerald-500 text-white border-emerald-500" },
+                    { value: "neutral", label: "Neutral", activeClass: "bg-amber-500 text-white border-amber-500" },
+                    { value: "bearish", label: "Bearish", activeClass: "bg-red-500 text-white border-red-500" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => updateTradePlan("bias", dayData.tradePlan.bias === opt.value ? "" : opt.value)}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all ${
+                        dayData.tradePlan.bias === opt.value
+                          ? opt.activeClass
+                          : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1.5">
-                    <Clock className="h-3 w-3" />
-                    Session Focus
-                  </label>
-                  <select
-                    value={dayData.tradePlan.sessionFocus}
-                    onChange={(e) => updateTradePlan("sessionFocus", e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  >
-                    <option value="">Select...</option>
-                    <option value="london">London Session</option>
-                    <option value="new-york">New York Session</option>
-                    <option value="london-ny-overlap">London/NY Overlap</option>
-                    <option value="asian">Asian Session</option>
-                    <option value="all">All Sessions</option>
-                  </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  Session Focus
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {SESSION_CARDS.map((s) => (
+                    <button
+                      key={s.value}
+                      onClick={() => updateTradePlan("sessionFocus", dayData.tradePlan.sessionFocus === s.value ? "" : s.value)}
+                      className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-center transition-all ${
+                        dayData.tradePlan.sessionFocus === s.value
+                          ? s.color
+                          : "bg-secondary border-border text-muted-foreground hover:border-foreground/30"
+                      }`}
+                    >
+                      <span className="text-xs font-bold leading-tight">{s.label}</span>
+                      <span className="text-[10px] opacity-70 leading-tight">{s.time}</span>
+                    </button>
+                  ))}
                 </div>
+                {dayData.tradePlan.sessionFocus && SESSION_WINDOWS[dayData.tradePlan.sessionFocus] && (
+                  <button
+                    onClick={() => exportToIcs(dayData.tradePlan.sessionFocus, selectedDate)}
+                    className="mt-2 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <Download className="h-3 w-3" />
+                    Export to Calendar (.ics)
+                  </button>
+                )}
               </div>
 
               <div>
@@ -448,14 +616,65 @@ export default function DailyPlanner() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Key Levels & Zones</label>
-                <textarea
-                  value={dayData.tradePlan.keyLevels}
-                  onChange={(e) => updateTradePlan("keyLevels", e.target.value)}
-                  placeholder="Note important support/resistance, order blocks, FVGs, liquidity pools..."
-                  rows={3}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
-                />
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Key Levels & Zones</label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newLevelPrice}
+                    onChange={(e) => setNewLevelPrice(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addKeyLevel()}
+                    placeholder="Price level..."
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  />
+                  <select
+                    value={newLevelType}
+                    onChange={(e) => setNewLevelType(e.target.value as "support" | "resistance")}
+                    className="bg-background border border-border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  >
+                    <option value="support">Support</option>
+                    <option value="resistance">Resistance</option>
+                  </select>
+                  <button
+                    onClick={addKeyLevel}
+                    disabled={!newLevelPrice.trim()}
+                    className="bg-primary text-primary-foreground rounded-lg px-3 py-2 hover:brightness-110 transition-all disabled:opacity-40"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                {keyLevels.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">No levels added yet.</p>
+                )}
+                <div className="relative pl-4">
+                  {keyLevels.length > 0 && (
+                    <div className="absolute left-1.5 top-0 bottom-0 w-0.5 bg-border rounded-full" />
+                  )}
+                  <div className="space-y-2">
+                    {keyLevels.map((level, idx) => (
+                      <div key={idx} className="flex items-center gap-2 group">
+                        <div
+                          className={`w-3 h-3 rounded-full shrink-0 -ml-1.5 border-2 border-background ${
+                            level.type === "support" ? "bg-emerald-500" : "bg-red-500"
+                          }`}
+                        />
+                        <span className="text-sm font-mono font-medium flex-1">{level.price}</span>
+                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+                          level.type === "support"
+                            ? "bg-emerald-500/10 text-emerald-400"
+                            : "bg-red-500/10 text-red-400"
+                        }`}>
+                          {level.type}
+                        </span>
+                        <button
+                          onClick={() => removeKeyLevel(idx)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive rounded transition-opacity"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -482,7 +701,7 @@ export default function DailyPlanner() {
               </div>
 
               {isFeatureEnabled("feature_win_rate_estimator") && winRateEstimate && (
-                <div className="mt-3 bg-primary/5 border border-primary/20 rounded-xl p-3">
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <Activity className="h-4 w-4 text-primary" />
                     <span className="text-xs font-bold text-primary">Win Rate Estimator</span>
@@ -505,6 +724,84 @@ export default function DailyPlanner() {
           )}
         </CardContent>
       </Card>
+
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <button onClick={() => setEntryChecklistOpen(!entryChecklistOpen)} className="flex items-center justify-between w-full">
+            <h2 className="font-semibold text-sm flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-purple-400" />
+              ICT Entry Criteria
+              <span className="text-xs text-muted-foreground">
+                {Object.values(entryChecklist).filter(Boolean).length}/{ICT_ENTRY_CRITERIA.length}
+              </span>
+            </h2>
+            {entryChecklistOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {entryChecklistOpen && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ICT_ENTRY_CRITERIA.map((item) => (
+                <label key={item.key} className="flex items-center gap-3 cursor-pointer p-2.5 rounded-lg hover:bg-secondary/50 transition-colors border border-border">
+                  <Checkbox
+                    checked={entryChecklist[item.key]}
+                    onCheckedChange={() => persistChecklist({ ...entryChecklist, [item.key]: !entryChecklist[item.key] })}
+                  />
+                  <span className={`text-sm font-medium ${entryChecklist[item.key] ? "text-primary line-through opacity-70" : ""}`}>
+                    {item.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {isToday && (
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <button onClick={() => setScheduleOpen(!scheduleOpen)} className="flex items-center justify-between w-full">
+              <h2 className="font-semibold text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4 text-cyan-400" />
+                Today's Schedule
+              </h2>
+              {scheduleOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {scheduleOpen && (
+              <div className="mt-3 relative pl-5">
+                <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-border rounded-full" />
+                <div className="space-y-3">
+                  {timelineItems.map((item) => (
+                    <div key={item.id} className="flex items-start gap-3">
+                      <div className={`w-3 h-3 rounded-full shrink-0 -ml-1.5 mt-0.5 border-2 border-background transition-colors ${
+                        item.done ? "bg-primary" : "bg-border"
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium leading-tight ${item.done ? "text-primary" : "text-foreground"}`}>
+                          {item.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{item.sublabel}</p>
+                      </div>
+                      {item.type === "routine" && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          item.done ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
+                        }`}>
+                          {item.done ? "Done" : "Routine"}
+                        </span>
+                      )}
+                      {item.type === "session" && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          item.done ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30" : "bg-secondary text-muted-foreground"
+                        }`}>
+                          {item.done ? "Selected" : "Session"}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-4">
         <CardContent className="p-4">
