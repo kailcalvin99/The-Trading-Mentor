@@ -179,15 +179,18 @@ export function useTourGuide(userId?: string | number) {
   }, [state, stateKey]);
 
   useEffect(() => {
-    const seen = localStorage.getItem(autoShownKey);
+    const GENERIC_AUTO_SHOWN_KEY = "ict-tour-auto-shown";
+    const seen = localStorage.getItem(autoShownKey) || localStorage.getItem(GENERIC_AUTO_SHOWN_KEY);
     if (!seen && !state.visible && state.machineState === "IDLE" && state.completedSteps.length === 0) {
       const timer = setTimeout(() => {
         const stillEligible =
           !localStorage.getItem(autoShownKey) &&
+          !localStorage.getItem(GENERIC_AUTO_SHOWN_KEY) &&
           !state.visible &&
           state.machineState === "IDLE";
         if (stillEligible) {
           localStorage.setItem(autoShownKey, "1");
+          localStorage.setItem(GENERIC_AUTO_SHOWN_KEY, "1");
           dispatch({ type: "START_TOUR" });
         }
       }, 2000);

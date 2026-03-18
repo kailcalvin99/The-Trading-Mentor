@@ -460,6 +460,12 @@ export default function AIAssistant() {
   }
 
   async function startConversation(): Promise<number | null> {
+    const wasNewUser = isNewUser;
+    if (wasNewUser) {
+      localStorage.setItem("ict-ai-welcomed", "1");
+      localStorage.setItem("ict-ai-tip-last", String(Date.now()));
+      setIsNewUser(false);
+    }
     try {
       const res = await fetch(`${API_BASE}/gemini/conversations`, {
         method: "POST",
@@ -471,15 +477,10 @@ export default function AIAssistant() {
         const data: Conversation = await res.json();
         setConversationId(data.id);
         const name = user?.name || "there";
-        const welcomeContent = isNewUser
+        const welcomeContent = wasNewUser
           ? `Welcome to the Inner Circle, ${name}. 🔑 You've just gained access to something most traders never find — a private AI mentor built exclusively for ICT methodology.\n\nOnly a select few traders learn what you're about to discover. Here's what's now at your fingertips:\n\n📚 **Master ICT Concepts** — FVGs, OTE, Kill Zones, MSS, liquidity sweeps — I break down the strategies that separate the elite from the crowd.\n\n🗺️ **Instant Navigation** — Say "take me to the Daily Planner" or "open my journal" and I'll take you there immediately.\n\n📝 **Log Trades Effortlessly** — Tell me "log a win on NQ" and I'll capture every detail in your Smart Journal.\n\n📊 **Elite Performance Analytics** — Ask "how's the team doing?" or "what's our win rate?" for an insider-level breakdown.\n\n📐 **Precision Position Sizing** — Say "I have a 10 point stop, how many contracts?" and I'll calculate your exact NQ/MNQ sizing.\n\n✅ **Morning Routine Mastery** — Tell me "mark my morning routine done" and I'll keep your discipline on track.\n\n💡 **Personal Trading Coach** — I'll hold you accountable to the 5 trading rules and give you the kind of feedback most traders pay thousands for.\n\nYou're in. Let's get to work — what would you like to start with?`
           : `Welcome back to the circle, ${name}. 🔑 Your mentor is ready. Ask me anything about ICT concepts, log a trade, check your analytics, size a position, or navigate the app. What are we working on today?`;
         setChatMessages([{ role: "assistant", content: welcomeContent }]);
-        if (isNewUser) {
-          localStorage.setItem("ict-ai-welcomed", "1");
-          localStorage.setItem("ict-ai-tip-last", String(Date.now()));
-          setIsNewUser(false);
-        }
         setShowHistory(false);
         fetchConversations();
         return data.id;
