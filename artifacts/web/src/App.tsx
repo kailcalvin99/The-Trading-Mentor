@@ -152,10 +152,19 @@ function FullModeGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function IndexRedirect() {
-  const seen = localStorage.getItem("ict-welcome-seen");
-  if (!seen) return <Navigate to="/welcome" replace />;
-  return <Navigate to="/dashboard" replace />;
+function IndexRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <Welcome />;
 }
 
 function App() {
@@ -167,6 +176,8 @@ function App() {
             <PlannerProvider>
             <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <Routes>
+                <Route index element={<IndexRoute />} />
+
                 <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
                 <Route path="signup" element={<PublicRoute><Signup /></PublicRoute>} />
 
@@ -180,7 +191,6 @@ function App() {
                 <Route path="reset-password" element={<OpenRoute><ResetPassword /></OpenRoute>} />
 
                 <Route element={<ProtectedRoute><TourGuideProvider><Layout /></TourGuideProvider></ProtectedRoute>}>
-                  <Route index element={<IndexRedirect />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="academy" element={<IctAcademy />} />
                   <Route path="planner" element={<FullModeGate><DailyPlanner /></FullModeGate>} />

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, AlertTriangle } from "lucide-react";
 import Logo from "@/components/Logo";
 
 export default function TermsOfService() {
@@ -7,11 +7,18 @@ export default function TermsOfService() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <Link to="/pricing" className="text-muted-foreground hover:text-foreground">
+          <Link to="/" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <Logo size={32} />
           <span className="text-lg font-bold text-foreground">Terms of Service</span>
+        </div>
+
+        <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm text-amber-600 dark:text-amber-400 mb-6">
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+          <span className="font-semibold">
+            Trading involves significant risk of loss and is not suitable for all investors. This tool is for educational and decision-support purposes only — not financial advice.
+          </span>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-8 space-y-6">
@@ -36,7 +43,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">2. Description of Service</h2>
               <p>
-                ICT Trading Mentor is a subscription-based educational platform that provides AI-powered trading mentorship, educational content, trade planning tools, risk management utilities, journaling features, and analytics. The Service is designed for educational purposes only and does not constitute financial advice, investment recommendations, or trading signals.
+                ICT Trading Mentor is a subscription-based educational platform that provides AI-powered trading mentorship, educational content, trade planning tools, risk management utilities, journaling features, and analytics. The Service is designed for educational and decision-support purposes only and does not constitute financial advice, investment recommendations, or trading signals.
               </p>
             </div>
 
@@ -65,7 +72,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">5. Refund Policy</h2>
               <p>
-                New subscribers may request a full refund within 7 days of their initial purchase. For complete details, please see our <Link to="/refund" className="text-primary hover:underline">Refund Policy</Link>.
+                New subscribers may request a full refund within 7 days of their initial purchase. For complete details — including the 24-hour drawdown lock feature and subscription cancellation terms — please see our <Link to="/refund" className="text-primary hover:underline">Refund Policy</Link>.
               </p>
             </div>
 

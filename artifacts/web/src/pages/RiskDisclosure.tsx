@@ -7,7 +7,7 @@ export default function RiskDisclosure() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <Link to="/pricing" className="text-muted-foreground hover:text-foreground">
+          <Link to="/" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <Logo size={32} />

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Shield } from "lucide-react";
+import { ArrowLeft, Shield, AlertTriangle } from "lucide-react";
 import Logo from "@/components/Logo";
 
 export default function RefundPolicy() {
@@ -7,11 +7,18 @@ export default function RefundPolicy() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <Link to="/pricing" className="text-muted-foreground hover:text-foreground">
+          <Link to="/" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <Logo size={32} />
           <span className="text-lg font-bold text-foreground">Refund Policy</span>
+        </div>
+
+        <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm text-amber-600 dark:text-amber-400 mb-6">
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+          <span className="font-semibold">
+            Trading involves significant risk of loss and is not suitable for all investors. This tool is for educational and decision-support purposes only — not financial advice.
+          </span>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-8 space-y-6">
@@ -35,10 +42,24 @@ export default function RefundPolicy() {
             </div>
 
             <div>
+              <h2 className="text-base font-semibold text-foreground mb-2">Subscription Cancellation</h2>
+              <p>
+                You may cancel your subscription at any time from your account settings or by contacting support. When you cancel, your subscription remains active until the end of the current billing period. You will not be charged again after cancellation, and no prorated refunds are issued for unused days in a billing period beyond the 7-day guarantee window.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-base font-semibold text-foreground mb-2">24-Hour Drawdown Lock</h2>
+              <p>
+                ICT Trading Mentor includes a Risk Shield feature that automatically locks your account from trading for 24 hours when your daily loss limit is reached. This lock is a safety feature — not a service outage — and does not affect your access to educational content, the AI mentor, the academy, or the journal during the lock period. Activation of the 24-hour drawdown lock does not constitute grounds for a refund, as the Service continues to function as intended.
+              </p>
+            </div>
+
+            <div>
               <h2 className="text-base font-semibold text-foreground mb-2">How to Request a Refund</h2>
               <p>
                 To request a refund, email us at <strong className="text-primary">support@ictmentor.com</strong> with your
-                account email and a brief reason for the request. We aim to process all refund requests within 3-5 business days.
+                account email and a brief reason for the request. We aim to process all refund requests within 3–5 business days.
               </p>
             </div>
 
@@ -58,6 +79,7 @@ export default function RefundPolicy() {
                 <li>Refund requests made after the 7-day window are not eligible.</li>
                 <li>Subsequent billing cycles (renewals) are not eligible for refund — you may cancel at any time to prevent future charges.</li>
                 <li>Accounts terminated for violating our Terms of Service are not eligible.</li>
+                <li>The 24-hour drawdown lock does not qualify as a service disruption for refund purposes.</li>
               </ul>
             </div>
 
