@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, communityPostsTable, communityRepliesTable, postLikesTable, usersTable } from "@workspace/db";
-import { eq, desc, and, sql, count } from "drizzle-orm";
+import { db, communityPostsTable, communityRepliesTable, postLikesTable, usersTable, tradesTable } from "@workspace/db";
+import { eq, desc, and, sql, count, isNotNull, gt } from "drizzle-orm";
 import { authRequired } from "../../middleware/auth";
 
 const router = Router();
@@ -235,6 +235,76 @@ router.post("/posts/:id/like", async (req, res) => {
   } catch (err) {
     console.error("POST /community/posts/:id/like error:", err);
     res.status(500).json({ error: "Failed to toggle like" });
+  }
+});
+
+router.get("/new-count", async (req, res) => {
+  try {
+    const since = req.query.since ? new Date(req.query.since as string) : new Date(Date.now() - 24 * 3600 * 1000);
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(communityPostsTable)
+      .where(gt(communityPostsTable.createdAt, since));
+    res.json({ count: total });
+  } catch {
+    res.json({ count: 0 });
+  }
+});
+
+router.get("/leaderboard", async (req, res) => {
+  try {
+    const byTradeCount = await db
+      .select({
+        userId: tradesTable.userId,
+        name: usersTable.name,
+        isFounder: usersTable.isFounder,
+        founderNumber: usersTable.founderNumber,
+        tradeCount: count(tradesTable.id),
+      })
+      .from(tradesTable)
+      .innerJoin(usersTable, eq(tradesTable.userId, usersTable.id))
+      .where(eq(tradesTable.isDraft, false))
+      .groupBy(tradesTable.userId, usersTable.name, usersTable.isFounder, usersTable.founderNumber)
+      .orderBy(desc(count(tradesTable.id)))
+      .limit(5);
+
+    const allTrades = await db
+      .select({
+        userId: tradesTable.userId,
+        name: usersTable.name,
+        isFounder: usersTable.isFounder,
+        founderNumber: usersTable.founderNumber,
+        outcome: tradesTable.outcome,
+      })
+      .from(tradesTable)
+      .innerJoin(usersTable, eq(tradesTable.userId, usersTable.id))
+      .where(and(eq(tradesTable.isDraft, false), isNotNull(tradesTable.outcome)));
+
+    const winRateMap: Record<number, { name: string; isFounder: boolean; founderNumber: number | null; wins: number; total: number }> = {};
+    for (const t of allTrades) {
+      if (!t.userId) continue;
+      if (!winRateMap[t.userId]) winRateMap[t.userId] = { name: t.name, isFounder: t.isFounder, founderNumber: t.founderNumber, wins: 0, total: 0 };
+      winRateMap[t.userId].total++;
+      if (t.outcome === "win") winRateMap[t.userId].wins++;
+    }
+
+    const byWinRate = Object.entries(winRateMap)
+      .filter(([, v]) => v.total >= 3)
+      .map(([userId, v]) => ({
+        userId: parseInt(userId),
+        name: v.name,
+        isFounder: v.isFounder,
+        founderNumber: v.founderNumber,
+        winRate: Math.round((v.wins / v.total) * 100),
+        total: v.total,
+      }))
+      .sort((a, b) => b.winRate - a.winRate)
+      .slice(0, 5);
+
+    res.json({ byTradeCount, byWinRate });
+  } catch (err) {
+    console.error("GET /community/leaderboard error:", err);
+    res.status(500).json({ error: "Failed to fetch leaderboard" });
   }
 });
 

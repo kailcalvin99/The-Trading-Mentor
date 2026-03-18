@@ -15,11 +15,15 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiGet, apiPost } from "@/lib/api";
 import Colors from "@/constants/colors";
 import FullModeGate from "@/components/FullModeGate";
 
 const C = Colors.dark;
+
+const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 
 interface Post {
   id: number;
@@ -51,6 +55,21 @@ interface Reply {
 
 interface PostDetail extends Post {
   replies: Reply[];
+}
+
+interface LeaderEntry {
+  userId: number;
+  name: string;
+  isFounder: boolean;
+  founderNumber: number | null;
+  tradeCount?: number;
+  winRate?: number;
+  total?: number;
+}
+
+interface Leaderboard {
+  byTradeCount: LeaderEntry[];
+  byWinRate: LeaderEntry[];
 }
 
 const CATEGORIES = [
@@ -100,6 +119,128 @@ function AuthorRow({ name, isFounder, founderNumber, role, time }: {
   );
 }
 
+function RankBadge({ rank }: { rank: number }) {
+  const colors = ["#F59E0B", "#94A3B8", "#CD7F32"];
+  const color = colors[rank - 1] ?? C.textSecondary;
+  const icon: keyof typeof Ionicons.glyphMap = rank === 1 ? "trophy" : "ribbon-outline";
+  return (
+    <View style={[hofS.rankBadge, { backgroundColor: color + "18", borderColor: color + "44" }]}>
+      <Ionicons name={icon} size={14} color={color} />
+      <Text style={[hofS.rankText, { color }]}>#{rank}</Text>
+    </View>
+  );
+}
+
+function HallOfFame() {
+  const [data, setData] = useState<Leaderboard | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiGet<Leaderboard>("community/leaderboard")
+      .then(setData)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <View style={hofS.center}><ActivityIndicator size="large" color={C.accent} /></View>;
+  }
+
+  if (!data || (data.byTradeCount.length === 0 && data.byWinRate.length === 0)) {
+    return (
+      <View style={hofS.center}>
+        <Ionicons name="trophy-outline" size={44} color={C.textSecondary + "44"} />
+        <Text style={hofS.emptyTitle}>Hall of Fame coming soon</Text>
+        <Text style={hofS.emptyText}>Keep trading and logging to appear here!</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+      <View style={hofS.heroBanner}>
+        <Ionicons name="trophy" size={28} color="#F59E0B" />
+        <View style={{ flex: 1 }}>
+          <Text style={hofS.heroTitle}>Hall of Fame</Text>
+          <Text style={hofS.heroSub}>Top traders by discipline & performance</Text>
+        </View>
+      </View>
+
+      {data.byWinRate.length > 0 && (
+        <>
+          <View style={hofS.sectionHeader}>
+            <Ionicons name="trending-up" size={16} color={C.accent} />
+            <Text style={hofS.sectionTitle}>HIGHEST WIN RATE</Text>
+            <Text style={hofS.sectionSub}>Min. 3 trades</Text>
+          </View>
+          {data.byWinRate.map((entry, idx) => (
+            <View key={entry.userId} style={hofS.card}>
+              <View style={hofS.cardLeft}>
+                <RankBadge rank={idx + 1} />
+                <View style={hofS.avatarCircle}>
+                  <Text style={hofS.avatarText}>{entry.name.slice(0, 2).toUpperCase()}</Text>
+                </View>
+                <View>
+                  <View style={hofS.nameRow}>
+                    <Text style={hofS.entryName}>{entry.name}</Text>
+                    {entry.isFounder && (
+                      <View style={s.founderBadge}>
+                        <Ionicons name="diamond" size={8} color="#f59e0b" />
+                        <Text style={s.founderText}>#{entry.founderNumber}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={hofS.entrySub}>{entry.total} trades logged</Text>
+                </View>
+              </View>
+              <View style={hofS.statBox}>
+                <Text style={[hofS.statValue, { color: C.accent }]}>{entry.winRate}%</Text>
+                <Text style={hofS.statLabel}>Win Rate</Text>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
+
+      {data.byTradeCount.length > 0 && (
+        <>
+          <View style={[hofS.sectionHeader, { marginTop: 20 }]}>
+            <Ionicons name="book" size={16} color="#818CF8" />
+            <Text style={[hofS.sectionTitle, { color: "#818CF8" }]}>MOST ACTIVE</Text>
+            <Text style={hofS.sectionSub}>Total journal entries</Text>
+          </View>
+          {data.byTradeCount.map((entry, idx) => (
+            <View key={entry.userId} style={hofS.card}>
+              <View style={hofS.cardLeft}>
+                <RankBadge rank={idx + 1} />
+                <View style={hofS.avatarCircle}>
+                  <Text style={hofS.avatarText}>{entry.name.slice(0, 2).toUpperCase()}</Text>
+                </View>
+                <View>
+                  <View style={hofS.nameRow}>
+                    <Text style={hofS.entryName}>{entry.name}</Text>
+                    {entry.isFounder && (
+                      <View style={s.founderBadge}>
+                        <Ionicons name="diamond" size={8} color="#f59e0b" />
+                        <Text style={s.founderText}>#{entry.founderNumber}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={hofS.entrySub}>Consistent logger</Text>
+                </View>
+              </View>
+              <View style={hofS.statBox}>
+                <Text style={[hofS.statValue, { color: "#818CF8" }]}>{entry.tradeCount}</Text>
+                <Text style={hofS.statLabel}>Trades</Text>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
 export default function CommunityScreenGated() {
   return (
     <FullModeGate>
@@ -114,6 +255,7 @@ function CommunityScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [showHallOfFame, setShowHallOfFame] = useState(false);
   const [selectedPost, setSelectedPost] = useState<PostDetail | null>(null);
   const [showNewPost, setShowNewPost] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -121,6 +263,10 @@ function CommunityScreen() {
   const [newCategory, setNewCategory] = useState("strategy-talk");
   const [replyBody, setReplyBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.setItem(COMMUNITY_LAST_VISIT_KEY, Date.now().toString());
+  }, []));
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -135,9 +281,11 @@ function CommunityScreen() {
   }, [activeCategory]);
 
   useEffect(() => {
-    setLoading(true);
-    fetchPosts();
-  }, [fetchPosts]);
+    if (!showHallOfFame) {
+      setLoading(true);
+      fetchPosts();
+    }
+  }, [fetchPosts, showHallOfFame]);
 
   async function openThread(postId: number) {
     try {
@@ -283,72 +431,86 @@ function CommunityScreen() {
       <View style={s.header}>
         <Text style={s.pageTitle}>Community</Text>
         <View style={{ flexDirection: "row", gap: 8 }}>
+          <TouchableOpacity
+            style={[s.newPostBtn, { backgroundColor: C.backgroundSecondary }, showHallOfFame && { borderWidth: 1, borderColor: "#F59E0B" }]}
+            onPress={() => setShowHallOfFame((v) => !v)}
+          >
+            <Ionicons name="trophy-outline" size={18} color={showHallOfFame ? "#F59E0B" : C.accent} />
+          </TouchableOpacity>
           <TouchableOpacity style={[s.newPostBtn, { backgroundColor: C.backgroundSecondary }]} onPress={handleShare}>
             <Ionicons name="share-outline" size={20} color={C.accent} />
           </TouchableOpacity>
-          <TouchableOpacity style={s.newPostBtn} onPress={() => setShowNewPost(true)}>
-            <Ionicons name="add" size={20} color="#0A0A0F" />
-          </TouchableOpacity>
+          {!showHallOfFame && (
+            <TouchableOpacity style={s.newPostBtn} onPress={() => setShowNewPost(true)}>
+              <Ionicons name="add" size={20} color="#0A0A0F" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catBar} contentContainerStyle={{ paddingHorizontal: 12, gap: 6 }}>
-        {CATEGORIES.map((cat) => (
-          <TouchableOpacity
-            key={cat.value}
-            onPress={() => setActiveCategory(cat.value)}
-            style={[s.catChip, activeCategory === cat.value && s.catChipActive]}
-          >
-            <Text style={[s.catChipText, activeCategory === cat.value && s.catChipTextActive]}>{cat.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {loading ? (
-        <View style={s.center}>
-          <ActivityIndicator size="large" color={C.accent} />
-        </View>
-      ) : posts.length === 0 ? (
-        <View style={s.center}>
-          <Ionicons name="chatbubbles-outline" size={40} color={C.textSecondary + "44"} />
-          <Text style={s.emptyText}>No posts yet</Text>
-        </View>
+      {showHallOfFame ? (
+        <HallOfFame />
       ) : (
-        <ScrollView
-          style={s.flex1}
-          contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); fetchPosts(); }}
-              tintColor={C.accent}
-            />
-          }
-        >
-          {posts.map((post) => (
-            <TouchableOpacity key={post.id} style={s.card} activeOpacity={0.7} onPress={() => openThread(post.id)}>
-              <View style={s.cardTop}>
-                <View style={s.catBadge}>
-                  <Text style={s.catBadgeText}>{CATEGORIES.find((c) => c.value === post.category)?.label || post.category}</Text>
-                </View>
-                <Text style={s.timeText}>{timeAgo(post.createdAt)}</Text>
-              </View>
-              <Text style={s.postTitle}>{post.title}</Text>
-              <AuthorRow name={post.authorName} isFounder={post.authorIsFounder} founderNumber={post.authorFounderNumber} role={post.authorRole} />
-              <Text style={s.postPreview} numberOfLines={2}>{post.body}</Text>
-              <View style={s.postActions}>
-                <TouchableOpacity style={s.actionBtn} onPress={() => toggleLike(post.id)}>
-                  <Ionicons name={post.liked ? "heart" : "heart-outline"} size={16} color={post.liked ? "#f87171" : C.textSecondary} />
-                  <Text style={[s.actionText, post.liked && { color: "#f87171" }]}>{post.likeCount}</Text>
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catBar} contentContainerStyle={{ paddingHorizontal: 12, gap: 6 }}>
+            {CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat.value}
+                onPress={() => setActiveCategory(cat.value)}
+                style={[s.catChip, activeCategory === cat.value && s.catChipActive]}
+              >
+                <Text style={[s.catChipText, activeCategory === cat.value && s.catChipTextActive]}>{cat.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {loading ? (
+            <View style={s.center}>
+              <ActivityIndicator size="large" color={C.accent} />
+            </View>
+          ) : posts.length === 0 ? (
+            <View style={s.center}>
+              <Ionicons name="chatbubbles-outline" size={40} color={C.textSecondary + "44"} />
+              <Text style={s.emptyText}>No posts yet</Text>
+            </View>
+          ) : (
+            <ScrollView
+              style={s.flex1}
+              contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => { setRefreshing(true); fetchPosts(); }}
+                  tintColor={C.accent}
+                />
+              }
+            >
+              {posts.map((post) => (
+                <TouchableOpacity key={post.id} style={s.card} activeOpacity={0.7} onPress={() => openThread(post.id)}>
+                  <View style={s.cardTop}>
+                    <View style={s.catBadge}>
+                      <Text style={s.catBadgeText}>{CATEGORIES.find((c) => c.value === post.category)?.label || post.category}</Text>
+                    </View>
+                    <Text style={s.timeText}>{timeAgo(post.createdAt)}</Text>
+                  </View>
+                  <Text style={s.postTitle}>{post.title}</Text>
+                  <AuthorRow name={post.authorName} isFounder={post.authorIsFounder} founderNumber={post.authorFounderNumber} role={post.authorRole} />
+                  <Text style={s.postPreview} numberOfLines={2}>{post.body}</Text>
+                  <View style={s.postActions}>
+                    <TouchableOpacity style={s.actionBtn} onPress={() => toggleLike(post.id)}>
+                      <Ionicons name={post.liked ? "heart" : "heart-outline"} size={16} color={post.liked ? "#f87171" : C.textSecondary} />
+                      <Text style={[s.actionText, post.liked && { color: "#f87171" }]}>{post.likeCount}</Text>
+                    </TouchableOpacity>
+                    <View style={s.actionBtn}>
+                      <Ionicons name="chatbubble-outline" size={14} color={C.textSecondary} />
+                      <Text style={s.actionText}>{post.replyCount}</Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
-                <View style={s.actionBtn}>
-                  <Ionicons name="chatbubble-outline" size={14} color={C.textSecondary} />
-                  <Text style={s.actionText}>{post.replyCount}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              ))}
+            </ScrollView>
+          )}
+        </>
       )}
 
       <Modal visible={showNewPost} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowNewPost(false)}>
@@ -450,4 +612,28 @@ const s = StyleSheet.create({
   postSubmitText: { fontSize: 14, fontWeight: "700", color: "#0A0A0F" },
   titleInput: { backgroundColor: C.card, borderWidth: 1, borderColor: C.cardBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, fontWeight: "600", color: C.text, marginBottom: 10 },
   bodyInput: { backgroundColor: C.card, borderWidth: 1, borderColor: C.cardBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: C.text, minHeight: 120 },
+});
+
+const hofS = StyleSheet.create({
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, padding: 32 },
+  emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: C.text, textAlign: "center" },
+  emptyText: { fontSize: 13, color: C.textSecondary, textAlign: "center", lineHeight: 20 },
+  heroBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#F59E0B18", borderRadius: 14, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: "#F59E0B44" },
+  heroTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text },
+  heroSub: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  sectionTitle: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.accent, letterSpacing: 1.2, flex: 1 },
+  sectionSub: { fontSize: 11, color: C.textSecondary },
+  card: { backgroundColor: C.backgroundSecondary, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: C.cardBorder, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  cardLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  rankBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  rankText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  avatarCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.accent + "20", alignItems: "center", justifyContent: "center" },
+  avatarText: { fontSize: 13, fontFamily: "Inter_700Bold", color: C.accent },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  entryName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text },
+  entrySub: { fontSize: 11, color: C.textSecondary, marginTop: 1 },
+  statBox: { alignItems: "flex-end" },
+  statValue: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  statLabel: { fontSize: 10, color: C.textSecondary, marginTop: 1 },
 });

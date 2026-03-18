@@ -74,6 +74,7 @@ interface TopTabBarProps {
   tierLevel?: number;
   appMode?: "full" | "lite";
   userName?: string;
+  communityBadge?: number;
 }
 
 function BottomSheet({
@@ -137,6 +138,7 @@ export default function TopTabBar({
   tierLevel = 0,
   appMode = "full",
   userName = "",
+  communityBadge = 0,
 }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
   const { colors: C } = useTheme();
@@ -235,6 +237,8 @@ export default function TopTabBar({
           const isLocked = !isAdmin && tierLevel < requiredTier;
           const color = isLocked ? C.textTertiary : isFocused ? C.accent : C.text;
 
+          const hasBadge = route === "community" && communityBadge > 0;
+
           return (
             <TouchableOpacity
               key={route}
@@ -258,8 +262,18 @@ export default function TopTabBar({
                   size={20}
                   color={color}
                 />
+                {hasBadge && (
+                  <View style={styles.badgeDot}>
+                    <Text style={styles.badgeText}>{communityBadge > 9 ? "9+" : communityBadge}</Text>
+                  </View>
+                )}
               </View>
               <Text style={[styles.menuLabel, { color }]}>{label}</Text>
+              {hasBadge && !isLocked && !isFocused && (
+                <View style={[styles.badgePill, { marginLeft: "auto" }]}>
+                  <Text style={styles.badgePillText}>{communityBadge > 99 ? "99+" : communityBadge} new</Text>
+                </View>
+              )}
               {isLocked && (
                 <Ionicons name="lock-closed-outline" size={14} color={C.textTertiary} style={{ marginLeft: "auto" }} />
               )}
@@ -406,6 +420,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "visible",
   },
   menuLabel: {
     fontSize: 15,
@@ -455,5 +470,35 @@ const styles = StyleSheet.create({
   profileItemLabel: {
     fontSize: 15,
     fontFamily: "Inter_500Medium",
+  },
+  badgeDot: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  badgePill: {
+    backgroundColor: "#EF444420",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "#EF444444",
+  },
+  badgePillText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: "#EF4444",
   },
 });
