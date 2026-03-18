@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import GraduationCelebration, { useGraduationCheck } from "@/components/GraduationCelebration";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -668,13 +668,21 @@ const FREE_LESSON_CAP = 5;
 function LearnView() {
   const { tierLevel } = useAuth();
   const isFree = tierLevel === 0;
-  const [swipeMode, setSwipeMode] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [swipeMode, setSwipeMode] = useState(() => searchParams.get("swipe") === "1");
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
 
   useEffect(() => {
     const interval = setInterval(() => setCompleted(getProgress()), 500);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("swipe") === "1") {
+      setSwipeMode(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
   const completedCount = COURSE_CHAPTERS.reduce(

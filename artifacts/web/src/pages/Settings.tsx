@@ -23,6 +23,7 @@ import {
   Brain,
   RotateCcw,
   Layers,
+  LayoutDashboard,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -541,6 +542,8 @@ export default function Settings() {
           </div>
         </div>
 
+        <DashboardWidgetsCard />
+
         <div className="bg-card border border-red-500/30 rounded-xl overflow-hidden">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-red-500/30">
             <Trash2 className="h-5 w-5 text-red-500" />
@@ -587,6 +590,101 @@ export default function Settings() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+const DASHBOARD_WIDGET_DEFS = [
+  { id: "mascot", label: "Mascot Greeting", desc: "ICT trading tip mascot at the top" },
+  { id: "slotmachine", label: "Daily Mission", desc: "Today's session, action and goal" },
+  { id: "sessions", label: "Market Sessions Clock", desc: "Live countdowns for each trading session" },
+  { id: "tradeplan", label: "Today's Trade Plan", desc: "Daily trade plan note, resets each day" },
+  { id: "notes", label: "Notes Scratch-pad", desc: "Persistent notes between sessions" },
+  { id: "checklist", label: "Pre-Trade Checklist", desc: "4-point ICT criteria before entering a trade" },
+  { id: "riskshield", label: "Risk Shield Mini-widget", desc: "Daily P&L, drawdown %, and position size shortcut" },
+  { id: "swipemode", label: "Start Swipe Mode", desc: "Quick-launch for flashcard review mode" },
+  { id: "achievements", label: "Achievement Badges", desc: "Your earned trading achievement badges" },
+] as const;
+
+type DashboardWidgetId = typeof DASHBOARD_WIDGET_DEFS[number]["id"];
+
+const DASHBOARD_DEFAULT_VISIBLE: Record<DashboardWidgetId, boolean> = {
+  mascot: true,
+  slotmachine: true,
+  sessions: true,
+  tradeplan: true,
+  notes: true,
+  checklist: true,
+  riskshield: true,
+  swipemode: true,
+  achievements: true,
+};
+
+function DashboardWidgetsCard() {
+  const [prefs, setPrefs] = useState<Record<DashboardWidgetId, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem("dashboard-widget-prefs-v2");
+      if (raw) {
+        return { ...DASHBOARD_DEFAULT_VISIBLE, ...JSON.parse(raw) };
+      }
+    } catch {}
+    return { ...DASHBOARD_DEFAULT_VISIBLE };
+  });
+
+  function toggleWidget(id: DashboardWidgetId) {
+    const next = { ...prefs, [id]: !prefs[id] };
+    setPrefs(next);
+    localStorage.setItem("dashboard-widget-prefs-v2", JSON.stringify(next));
+  }
+
+  function resetAll() {
+    setPrefs({ ...DASHBOARD_DEFAULT_VISIBLE });
+    localStorage.setItem("dashboard-widget-prefs-v2", JSON.stringify(DASHBOARD_DEFAULT_VISIBLE));
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+        <LayoutDashboard className="h-5 w-5 text-primary" />
+        <div>
+          <h2 className="text-sm font-bold text-foreground">Dashboard Widgets</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Choose which widgets appear on your dashboard</p>
+        </div>
+        <button
+          onClick={resetAll}
+          className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Reset all
+        </button>
+      </div>
+      <div className="px-5 py-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {DASHBOARD_WIDGET_DEFS.map(({ id, label, desc }) => (
+            <label
+              key={id}
+              className="flex items-start gap-3 p-3 rounded-xl border border-border cursor-pointer hover:bg-secondary/50 transition-colors select-none"
+            >
+              <div
+                onClick={() => toggleWidget(id)}
+                className={`w-9 h-5 rounded-full relative transition-colors duration-200 shrink-0 mt-0.5 ${
+                  prefs[id] ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <div
+                  className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                    prefs[id] ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </div>
+              <div onClick={() => toggleWidget(id)}>
+                <p className="text-sm font-medium text-foreground">{label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">Changes are saved automatically and applied immediately to your dashboard.</p>
       </div>
     </div>
   );

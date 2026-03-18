@@ -361,7 +361,6 @@ export function FreeSidebar() {
   return (
     <div className="space-y-4 p-4">
       <DailyStreak />
-      <SpinWheel />
       <AchievementBadges />
       <PremiumTeaser />
     </div>

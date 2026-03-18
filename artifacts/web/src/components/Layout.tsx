@@ -5,7 +5,7 @@ import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock,
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
-import { FreeSidebar, LockedFeatureOverlay, SpinWheelFloatingTrigger } from "@/components/CasinoElements";
+import { FreeSidebar } from "@/components/CasinoElements";
 import AIAssistant from "@/components/AIAssistant";
 import { TourGuide } from "@/components/TourGuide";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
@@ -284,7 +284,6 @@ export default function Layout() {
   const { config } = useAppConfig();
   const [showLockToast, setShowLockToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showCasinoSidebar, setShowCasinoSidebar] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
@@ -533,7 +532,6 @@ export default function Layout() {
                 <FreeSidebar />
               </div>
             )}
-            <SpinWheelFloatingTrigger hasSidebar={isFreeUser} />
           </div>
         </main>
 
