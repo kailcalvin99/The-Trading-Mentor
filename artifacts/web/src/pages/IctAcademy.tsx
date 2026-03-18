@@ -810,49 +810,6 @@ function LearnView() {
   );
 }
 
-const ACADEMY_API_BASE = import.meta.env.VITE_API_URL || "/api";
-
-function useAcademyWatchedVideos() {
-  const [watched, setWatched] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetch(`${ACADEMY_API_BASE}/videos/watched`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data.watchedIds)) setWatched(new Set(data.watchedIds));
-      })
-      .catch(() => {});
-  }, []);
-
-  const markWatched = useCallback(async (videoId: string) => {
-    setWatched((prev) => new Set([...prev, videoId]));
-    try {
-      await fetch(`${ACADEMY_API_BASE}/videos/watched`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId }),
-      });
-    } catch {}
-  }, []);
-
-  const unmarkWatched = useCallback(async (videoId: string) => {
-    setWatched((prev) => {
-      const next = new Set(prev);
-      next.delete(videoId);
-      return next;
-    });
-    try {
-      await fetch(`${ACADEMY_API_BASE}/videos/watched/${videoId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-    } catch {}
-  }, []);
-
-  return { watched, markWatched, unmarkWatched };
-}
-
 function ChapterAccordion({
   chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, isFree, chapterStartIdx,
 }: {
