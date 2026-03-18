@@ -31,6 +31,7 @@ const C = Colors.dark;
 const TRADE_PLAN_KEY = "dashboard-trade-plan";
 const NOTES_KEY = "dashboard-notes";
 const CHECKLIST_STORAGE_KEY = "ict-checklist-state";
+const CHECKLIST_TTL_MS = 4 * 60 * 60 * 1000;
 const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
 const PRE_TRADE_ITEMS = [
@@ -243,17 +244,26 @@ function PreTradeChecklistWidget() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    AsyncStorage.getItem(CHECKLIST_STORAGE_KEY).then((raw) => {
-      if (!raw) return;
-      try {
-        const data = JSON.parse(raw);
-        const today = new Date().toDateString();
-        if (data.date === today) setChecked(data.checked || {});
-        else setChecked({});
-      } catch {
-        setChecked({});
-      }
-    });
+    const load = () => {
+      AsyncStorage.getItem(CHECKLIST_STORAGE_KEY).then((raw) => {
+        if (!raw) return;
+        try {
+          const data = JSON.parse(raw);
+          const ageMs = Date.now() - (data.timestamp || 0);
+          if (ageMs > CHECKLIST_TTL_MS) {
+            AsyncStorage.removeItem(CHECKLIST_STORAGE_KEY);
+            setChecked({});
+          } else {
+            setChecked(data.checked || {});
+          }
+        } catch {
+          setChecked({});
+        }
+      });
+    };
+    load();
+    const interval = setInterval(load, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   async function toggle(id: string) {
@@ -261,7 +271,7 @@ function PreTradeChecklistWidget() {
     setChecked(next);
     await AsyncStorage.setItem(
       CHECKLIST_STORAGE_KEY,
-      JSON.stringify({ date: new Date().toDateString(), checked: next })
+      JSON.stringify({ checked: next, timestamp: Date.now() })
     );
   }
 
@@ -380,8 +390,8 @@ function SwipeModeCard() {
           <Ionicons name="school" size={28} color={C.accent} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.swipeTitle}>Start Learning Mode</Text>
-          <Text style={styles.swipeSubtitle}>Swipe through ICT lessons in the Academy</Text>
+          <Text style={styles.swipeTitle}>Start Swipe Mode</Text>
+          <Text style={styles.swipeSubtitle}>Flip through ICT lessons in the Academy</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={C.accent} />
       </View>
