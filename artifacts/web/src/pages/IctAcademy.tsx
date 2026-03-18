@@ -757,7 +757,6 @@ function LearnView() {
       >
         <Play className="h-6 w-6" />
         Start Swipe Mode
-        <span className="text-sm font-medium opacity-80 ml-1">TikTok-style</span>
       </button>
 
       <div className="h-2 bg-border rounded-full mb-8 overflow-hidden">

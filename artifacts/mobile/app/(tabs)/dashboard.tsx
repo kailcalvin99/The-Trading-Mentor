@@ -8,6 +8,7 @@ import {
   Modal,
   Platform,
   TextInput,
+  type DimensionValue,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,11 +17,14 @@ import { useRouter } from "expo-router";
 import Colors from "@/constants/colors";
 import { SlotMachineCard, useDailyGamification } from "@/components/DashboardGamification";
 import { useAuth } from "@/contexts/AuthContext";
+import { useGetPropAccount } from "@workspace/api-client-react";
 import {
   WIDGET_PREFS_KEY,
   DEFAULT_WIDGET_PREFS,
   type WidgetPrefs,
 } from "@/constants/dashboardWidgets";
+
+const TOUR_DONE_KEY = "mobile-onboarding-tour-done";
 
 const C = Colors.dark;
 
@@ -301,6 +305,20 @@ function PreTradeChecklistWidget() {
 
 function RiskShieldWidget() {
   const router = useRouter();
+  const { data: account } = useGetPropAccount();
+
+  const startingBalance = account?.startingBalance ?? 0;
+  const dailyLoss = account?.dailyLoss ?? 0;
+  const maxDailyLossPct = account?.maxDailyLossPct ?? 2;
+  const maxDrawdownPct = account?.maxTotalDrawdownPct ?? 10;
+  const balance = account?.currentBalance ?? startingBalance;
+  const dailyLossPct = startingBalance > 0 ? (dailyLoss / startingBalance) * 100 : 0;
+  const totalDrawdownPct = startingBalance > 0 ? ((startingBalance - balance) / startingBalance) * 100 : 0;
+  const hasData = startingBalance > 0;
+
+  const dailyColor = dailyLossPct >= maxDailyLossPct ? "#EF4444" : dailyLossPct >= maxDailyLossPct * 0.75 ? "#F59E0B" : "#00C896";
+  const drawdownColor = totalDrawdownPct >= maxDrawdownPct ? "#EF4444" : totalDrawdownPct >= maxDrawdownPct * 0.75 ? "#F59E0B" : "#818CF8";
+
   return (
     <TouchableOpacity
       style={[styles.card, styles.riskCard]}
@@ -312,23 +330,39 @@ function RiskShieldWidget() {
         <Text style={styles.cardLabel}>Risk Shield</Text>
         <Ionicons name="chevron-forward" size={14} color={C.textSecondary} style={{ marginLeft: "auto" }} />
       </View>
-      <Text style={styles.riskSubtitle}>
-        Tap to open your Risk Shield — track daily P&amp;L, drawdown limits, and position sizing
-      </Text>
-      <View style={styles.riskRow}>
-        <View style={styles.riskStat}>
-          <Ionicons name="trending-down-outline" size={18} color="#EF4444" />
-          <Text style={styles.riskStatLabel}>Daily P&amp;L</Text>
+      {!hasData ? (
+        <Text style={styles.riskSubtitle}>
+          Set up your prop account in the Risk Shield to track daily P&L and drawdown
+        </Text>
+      ) : (
+        <View style={styles.riskRow}>
+          <View style={styles.riskStat}>
+            <Text style={[styles.riskStatValue, { color: dailyColor }]}>
+              {dailyLossPct.toFixed(2)}%
+            </Text>
+            <Text style={styles.riskStatLabel}>Daily Loss</Text>
+            <Text style={styles.riskStatLimit}>Limit: {maxDailyLossPct}%</Text>
+          </View>
+          <View style={styles.riskDivider} />
+          <View style={styles.riskStat}>
+            <Text style={[styles.riskStatValue, { color: drawdownColor }]}>
+              {totalDrawdownPct.toFixed(2)}%
+            </Text>
+            <Text style={styles.riskStatLabel}>Drawdown</Text>
+            <Text style={styles.riskStatLimit}>Limit: {maxDrawdownPct}%</Text>
+          </View>
+          <View style={styles.riskDivider} />
+          <View style={styles.riskStat}>
+            <Text style={[styles.riskStatValue, { color: C.text }]}>
+              ${balance.toLocaleString()}
+            </Text>
+            <Text style={styles.riskStatLabel}>Balance</Text>
+            <Text style={styles.riskStatLimit}>
+              {balance >= startingBalance ? "+" : ""}{(balance - startingBalance).toLocaleString()}
+            </Text>
+          </View>
         </View>
-        <View style={styles.riskStat}>
-          <Ionicons name="stats-chart-outline" size={18} color="#F59E0B" />
-          <Text style={styles.riskStatLabel}>Drawdown</Text>
-        </View>
-        <View style={styles.riskStat}>
-          <Ionicons name="calculator-outline" size={18} color="#818CF8" />
-          <Text style={styles.riskStatLabel}>Position Size</Text>
-        </View>
-      </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -338,7 +372,7 @@ function SwipeModeCard() {
   return (
     <TouchableOpacity
       style={[styles.card, styles.swipeCard]}
-      onPress={() => router.navigate("/academy")}
+      onPress={() => router.navigate({ pathname: "/academy", params: { swipeMode: "1" } })}
       activeOpacity={0.85}
     >
       <View style={styles.swipeCardInner}>
@@ -417,6 +451,7 @@ function MissionModal({ visible, onClose }: { visible: boolean; onClose: () => v
 
 export default function DashboardScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
   const { xp, streak } = useDailyGamification();
   const level = Math.floor(xp / 100) + 1;
@@ -472,6 +507,19 @@ export default function DashboardScreen() {
               <Ionicons name="trophy-outline" size={18} color={C.textSecondary} />
             </TouchableOpacity>
 
+            {/* Tour restart icon */}
+            <TouchableOpacity
+              style={styles.headerIconBtn}
+              onPress={async () => {
+                await AsyncStorage.removeItem(TOUR_DONE_KEY);
+                router.navigate("/");
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel="Restart onboarding tour"
+            >
+              <Ionicons name="help-circle-outline" size={18} color={C.textSecondary} />
+            </TouchableOpacity>
+
             {/* Today's Mission gift icon */}
             {prefs.todaysMission && (
               <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowMission(true)} activeOpacity={0.7}>
@@ -484,7 +532,7 @@ export default function DashboardScreen() {
         {/* XP mini progress bar */}
         <View style={styles.xpBarRow}>
           <View style={styles.xpBarTrack}>
-            <View style={[styles.xpBarFill, { width: `${xpInLevel}%` as any }]} />
+            <View style={[styles.xpBarFill, { width: `${xpInLevel}%` as DimensionValue }]} />
           </View>
           <Text style={styles.xpBarText}>{xpInLevel}/100 XP</Text>
         </View>
@@ -698,20 +746,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: C.cardBorder,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 14,
-    gap: 0,
   },
   riskStat: {
     flex: 1,
     alignItems: "center",
-    gap: 4,
+    gap: 2,
+  },
+  riskStatValue: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
   },
   riskStatLabel: {
     fontSize: 10,
     color: C.textSecondary,
     fontFamily: "Inter_500Medium",
     textAlign: "center",
+  },
+  riskStatLimit: {
+    fontSize: 9,
+    color: C.textTertiary,
+    fontFamily: "Inter_400Regular",
+  },
+  riskDivider: {
+    width: 1,
+    backgroundColor: C.cardBorder,
+    marginHorizontal: 8,
   },
 
   swipeCard: {

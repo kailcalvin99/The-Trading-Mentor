@@ -19,6 +19,7 @@ import Colors from "@/constants/colors";
 import { fireMobileAITrigger, incrementMobileQuizFail, resetMobileQuizFail } from "@/lib/aiTrigger";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiGet, apiPut } from "@/lib/api";
+import { useLocalSearchParams } from "expo-router";
 import GraduationCelebration, { useGraduationCheck } from "@/components/GraduationCelebration";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import {
@@ -1001,10 +1002,17 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 export default function AcademyScreen() {
+  const { swipeMode: swipeModeParam } = useLocalSearchParams<{ swipeMode?: string }>();
   const [tab, setTab] = useState<Tab>("learn");
-  const [swipeMode, setSwipeMode] = useState(false);
+  const [swipeMode, setSwipeMode] = useState(swipeModeParam === "1");
   const { showCelebration, closeCelebration } = useGraduationCheck();
   const { openWithTopic } = useAIAssistant();
+
+  useEffect(() => {
+    if (swipeModeParam === "1") {
+      setSwipeMode(true);
+    }
+  }, [swipeModeParam]);
 
   function handleAskMentor(topic: string) {
     setSwipeMode(false);
