@@ -100,7 +100,7 @@ function AIGreetingCard() {
     <View style={styles.aiCard}>
       <View style={styles.aiHeader}>
         <Text style={styles.aiEmoji}>🤖</Text>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.aiGreeting}>{greeting}, {firstName}!</Text>
           <Text style={styles.aiSubtitle}>Ready to trade today?</Text>
         </View>
@@ -339,10 +339,11 @@ const styles = StyleSheet.create({
   aiCard: {
     backgroundColor: C.backgroundSecondary, borderRadius: 16, borderWidth: 1,
     borderColor: C.accent + "25", padding: 16, marginBottom: 14,
+    overflow: "hidden",
   },
-  aiHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
-  aiEmoji: { fontSize: 36 },
-  aiGreeting: { fontSize: 16, fontFamily: "Inter_700Bold", color: C.text },
+  aiHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12, flexShrink: 1 },
+  aiEmoji: { fontSize: 36, flexShrink: 0 },
+  aiGreeting: { fontSize: 16, fontFamily: "Inter_700Bold", color: C.text, flexShrink: 1 },
   aiSubtitle: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
   aiTipBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, backgroundColor: C.accent + "10", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: C.accent + "20" },
   aiTip: { flex: 1, fontSize: 13, color: C.text, lineHeight: 19 },
