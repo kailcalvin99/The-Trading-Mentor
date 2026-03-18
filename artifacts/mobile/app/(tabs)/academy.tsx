@@ -99,26 +99,30 @@ const PROGRESS_KEY = "ict-academy-progress";
 const SH = Dimensions.get("window").height;
 const ACADEMY_UNLOCKED_KEY = "ict-academy-unlocked";
 
-async function loadMergedProgress(): Promise<Set<string>> {
-  const local = await AsyncStorage.getItem(PROGRESS_KEY);
-  const localIds: string[] = local ? JSON.parse(local).filter(Boolean) : [];
-  try {
-    const data = await apiGet<{ lessonIds: string[] }>("academy/progress");
-    const serverIds: string[] = data.lessonIds || [];
-    const merged = Array.from(new Set([...localIds, ...serverIds]));
-    await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(merged));
-    if (merged.length > serverIds.length) {
-      saveProgressToServer(new Set(merged));
-    }
-    return new Set(merged);
-  } catch {
-    return new Set(localIds);
-  }
+async function loadLocalProgress(): Promise<Set<string>> {
+  const raw = await AsyncStorage.getItem(PROGRESS_KEY);
+  if (!raw) return new Set();
+  try { return new Set(JSON.parse(raw)); } catch { return new Set(); }
 }
 
 async function saveProgressToServer(ids: Set<string>): Promise<void> {
   try {
     await apiPut("academy/progress", { lessonIds: Array.from(ids) });
+  } catch {}
+}
+
+async function syncProgressFromServer(current: Set<string>, onUpdate: (merged: Set<string>) => void): Promise<void> {
+  try {
+    const data = await apiGet<{ lessonIds: string[] }>("academy/progress");
+    const serverIds: string[] = data.lessonIds || [];
+    const localIds = Array.from(current);
+    const mergedArr = Array.from(new Set([...localIds, ...serverIds]));
+    const merged = new Set(mergedArr);
+    await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(mergedArr));
+    if (mergedArr.length > serverIds.length) {
+      saveProgressToServer(merged);
+    }
+    onUpdate(merged);
   } catch {}
 }
 
@@ -149,10 +153,15 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
   const cardScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    loadMergedProgress().then((prog) => {
-      setCompleted(prog);
-      const first = allCards.findIndex((c) => !prog.has(c.lesson.id));
+    loadLocalProgress().then((local) => {
+      setCompleted(local);
+      const first = allCards.findIndex((c) => !local.has(c.lesson.id));
       setCurrentIdx(first >= 0 ? first : 0);
+      syncProgressFromServer(local, (merged) => {
+        setCompleted(merged);
+        const nextFirst = allCards.findIndex((c) => !merged.has(c.lesson.id));
+        if (nextFirst >= 0) setCurrentIdx((prev) => (prev === 0 ? nextFirst : prev));
+      });
     });
   }, []);
 
@@ -538,7 +547,10 @@ function LearnView({ onSwipeMode, onAskMentor }: { onSwipeMode: () => void; onAs
   const [completed, setCompleted] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadMergedProgress().then((prog) => setCompleted(prog));
+    loadLocalProgress().then((local) => {
+      setCompleted(local);
+      syncProgressFromServer(local, (merged) => setCompleted(merged));
+    });
   }, []);
 
   function toggleComplete(lessonId: string) {

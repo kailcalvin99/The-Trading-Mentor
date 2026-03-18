@@ -1,5 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { apiGet, apiPost, apiPatch, saveToken, deleteToken } from "@/lib/api";
+import { apiGet, apiPost, apiPatch, apiPut, saveToken, deleteToken } from "@/lib/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const ACADEMY_PROGRESS_KEY = "ict-academy-progress";
+
+async function prewarmAcademyProgress(): Promise<void> {
+  try {
+    const data = await apiGet<{ lessonIds: string[] }>("academy/progress");
+    const serverIds: string[] = data.lessonIds || [];
+    if (serverIds.length === 0) return;
+    const raw = await AsyncStorage.getItem(ACADEMY_PROGRESS_KEY);
+    const localIds: string[] = raw ? JSON.parse(raw).filter(Boolean) : [];
+    const merged = Array.from(new Set([...localIds, ...serverIds]));
+    await AsyncStorage.setItem(ACADEMY_PROGRESS_KEY, JSON.stringify(merged));
+    if (merged.length > serverIds.length) {
+      await apiPut("academy/progress", { lessonIds: merged });
+    }
+  } catch {}
+}
 
 interface AuthUser {
   id: number;
@@ -60,6 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSubscription(data.subscription ?? null);
       if (data.user?.appMode === "lite" || data.user?.appMode === "full") {
         setAppModeState(data.user.appMode);
+      }
+      if (data.user) {
+        prewarmAcademyProgress();
       }
     } catch {
       setUser(null);
