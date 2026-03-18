@@ -15,6 +15,7 @@ import {
   Share,
 } from "react-native";
 import * as ExpoSharing from "expo-sharing";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -22,6 +23,12 @@ import { apiGet, apiPatch, getBaseUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 import { useNotifications } from "@/contexts/NotificationContext";
+import {
+  WIDGET_PREFS_KEY,
+  WIDGET_CONFIG,
+  DEFAULT_WIDGET_PREFS,
+  type WidgetPrefs,
+} from "@/constants/dashboardWidgets";
 
 const C = Colors.dark;
 
@@ -345,9 +352,15 @@ export default function SettingsScreen() {
   const [showCurPw, setShowCurPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
+  const [widgetPrefs, setWidgetPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
 
   useEffect(() => {
     load();
+    AsyncStorage.getItem(WIDGET_PREFS_KEY).then((raw) => {
+      if (raw) {
+        try { setWidgetPrefs({ ...DEFAULT_WIDGET_PREFS, ...JSON.parse(raw) }); } catch {}
+      }
+    });
   }, []);
 
   async function load() {
@@ -590,6 +603,37 @@ export default function SettingsScreen() {
                 );
               })}
             </View>
+          </View>
+        </View>
+
+        {/* Edit Dashboard */}
+        <View style={s.card}>
+          <CardHeader icon="grid-outline" title="Dashboard Widgets" />
+          <View style={s.section}>
+            <Text style={{ color: C.textSecondary, fontSize: 12, marginBottom: 12 }}>
+              Toggle widgets on or off to customise your dashboard.
+            </Text>
+            {WIDGET_CONFIG.map((widget) => (
+              <View key={widget.key} style={s.toggleRow}>
+                <View style={[s.toggleIcon, { backgroundColor: C.backgroundTertiary }]}>
+                  <Ionicons name={widget.icon} size={18} color={C.accent} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={s.toggleLabel}>{widget.label}</Text>
+                  <Text style={s.toggleDesc}>{widget.desc}</Text>
+                </View>
+                <Switch
+                  value={widgetPrefs[widget.key]}
+                  onValueChange={async () => {
+                    const next = { ...widgetPrefs, [widget.key]: !widgetPrefs[widget.key] };
+                    setWidgetPrefs(next);
+                    await AsyncStorage.setItem(WIDGET_PREFS_KEY, JSON.stringify(next));
+                  }}
+                  trackColor={{ false: C.cardBorder, true: C.accent + "60" }}
+                  thumbColor={widgetPrefs[widget.key] ? C.accent : C.textSecondary}
+                />
+              </View>
+            ))}
           </View>
         </View>
 
@@ -1039,6 +1083,30 @@ const s = StyleSheet.create({
     color: C.textSecondary,
     textAlign: "center",
     marginTop: 4,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+  },
+  toggleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: C.text,
+    marginBottom: 2,
+  },
+  toggleDesc: {
+    fontSize: 11,
+    color: C.textSecondary,
   },
 });
 

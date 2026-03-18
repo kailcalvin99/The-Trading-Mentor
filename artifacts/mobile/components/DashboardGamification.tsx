@@ -35,8 +35,6 @@ const SLOT_GOALS = ["1 trade max", "Watch only", "Log in journal", "50-pt target
 
 const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
-const SPIN_DATE_KEY = "mobile-last-spin-date";
-const SPIN_RESULT_KEY = "mobile-spin-result";
 const XP_KEY = "mobile-total-xp";
 const STREAK_KEY = "mobile-login-streak";
 const LAST_LOGIN_KEY = "mobile-last-login-date";
@@ -128,94 +126,10 @@ export function XPLevelCard() {
   );
 }
 
-export function SpinWheelCard() {
-  const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  const [canSpin, setCanSpin] = useState(true);
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  const rotationRef = useRef(0);
-
-  useEffect(() => {
-    (async () => {
-      const lastSpin = await AsyncStorage.getItem(SPIN_DATE_KEY);
-      const today = new Date().toDateString();
-      if (lastSpin === today) {
-        setCanSpin(false);
-        setResult(await AsyncStorage.getItem(SPIN_RESULT_KEY));
-      }
-    })();
-  }, []);
-
-  function spin() {
-    if (!canSpin || spinning) return;
-    setSpinning(true);
-    setResult(null);
-
-    const randomIdx = Math.floor(Math.random() * DAILY_TIPS.length);
-    const targetRotation = rotationRef.current + 720 + (randomIdx * (360 / DAILY_TIPS.length));
-
-    Animated.timing(spinAnim, {
-      toValue: targetRotation,
-      duration: 2800,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(async () => {
-      rotationRef.current = targetRotation;
-      const tip = DAILY_TIPS[randomIdx];
-      setResult(tip);
-      setSpinning(false);
-      setCanSpin(false);
-      await AsyncStorage.setItem(SPIN_DATE_KEY, new Date().toDateString());
-      await AsyncStorage.setItem(SPIN_RESULT_KEY, tip);
-    });
-  }
-
-  const rotate = spinAnim.interpolate({
-    inputRange: [0, 360],
-    outputRange: ["0deg", "360deg"],
-  });
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Ionicons name="gift-outline" size={16} color={C.accent} />
-        <Text style={styles.cardTitle}>Daily Trading Tip</Text>
-      </View>
-
-      <View style={styles.wheelContainer}>
-        <Animated.View style={[styles.wheel, { transform: [{ rotate }] }]}>
-          <View style={styles.wheelInner}>
-            <Ionicons name="star" size={32} color={C.accent} />
-          </View>
-        </Animated.View>
-        <View style={styles.wheelPointer} />
-      </View>
-
-      {result ? (
-        <View style={styles.resultBox}>
-          <Text style={styles.resultText}>{result}</Text>
-        </View>
-      ) : (
-        <TouchableOpacity
-          style={[styles.spinBtn, (!canSpin || spinning) && styles.spinBtnDisabled]}
-          onPress={spin}
-          disabled={!canSpin || spinning}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.spinBtnText}>
-            {spinning ? "Spinning..." : canSpin ? "SPIN NOW!" : "Come back tomorrow!"}
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-}
-
 export function SlotMachineCard() {
   const [reelsStopped, setReelsStopped] = useState([false, false, false]);
   const [results, setResults] = useState(["", "", ""]);
   const [reelValues, setReelValues] = useState(["", "", ""]);
-  const spinAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
 
   const seed = dateSeed();
 
@@ -227,8 +141,6 @@ export function SlotMachineCard() {
 
     const intervals: ReturnType<typeof setInterval>[] = [];
     const stops: ReturnType<typeof setTimeout>[] = [];
-
-    intervals.forEach((_, i) => clearInterval(intervals[i]));
 
     const opts = [SLOT_SESSIONS, SLOT_ACTIONS, SLOT_GOALS];
 
@@ -389,61 +301,6 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 3,
-  },
-  wheelContainer: {
-    alignItems: "center",
-    marginBottom: 14,
-    position: "relative",
-  },
-  wheel: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: C.accent + "60",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: C.accent + "10",
-  },
-  wheelInner: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  wheelPointer: {
-    position: "absolute",
-    top: -4,
-    width: 10,
-    height: 10,
-    backgroundColor: C.accent,
-    transform: [{ rotate: "45deg" }],
-  },
-  resultBox: {
-    backgroundColor: C.accent + "15",
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: C.accent + "30",
-  },
-  resultText: {
-    fontSize: 13,
-    color: C.text,
-    fontWeight: "500",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  spinBtn: {
-    backgroundColor: C.accent,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  spinBtnDisabled: {
-    backgroundColor: C.cardBorder,
-  },
-  spinBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0A0A0F",
   },
   slotCard: {
     backgroundColor: C.backgroundSecondary,

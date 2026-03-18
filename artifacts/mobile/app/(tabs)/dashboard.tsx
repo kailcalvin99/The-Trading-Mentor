@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,32 +6,39 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  Switch,
   Platform,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Href, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import Colors from "@/constants/colors";
-import { XPLevelCard, SpinWheelCard, SlotMachineCard } from "@/components/DashboardGamification";
+import { SlotMachineCard, useDailyGamification } from "@/components/DashboardGamification";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  WIDGET_PREFS_KEY,
+  DEFAULT_WIDGET_PREFS,
+  type WidgetPrefs,
+} from "@/constants/dashboardWidgets";
 
 const C = Colors.dark;
 
-const WIDGET_PREFS_KEY = "dashboard-widget-prefs-v1";
+const TRADE_PLAN_KEY = "dashboard-trade-plan";
+const NOTES_KEY = "dashboard-notes";
+const CHECKLIST_STORAGE_KEY = "ict-checklist-state";
+const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
-interface WidgetPrefs {
-  spinWheel: boolean;
-  slotMachine: boolean;
-  aiGreeting: boolean;
+const PRE_TRADE_ITEMS = [
+  { id: "htf_bias", label: "HTF Bias confirmed on Daily", icon: "trending-up" as const },
+  { id: "kill_zone", label: "In a Kill Zone right now", icon: "time" as const },
+  { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", icon: "water" as const },
+  { id: "displacement_fvg", label: "Displacement with FVG or MSS", icon: "flash" as const },
+];
+
+function getTodayKey(base: string): string {
+  return `${base}-${new Date().toDateString()}`;
 }
-
-const DEFAULT_PREFS: WidgetPrefs = {
-  spinWheel: false,
-  slotMachine: false,
-  aiGreeting: false,
-};
 
 function getESTNow(): Date {
   const now = new Date();
@@ -55,7 +62,7 @@ interface Session {
   endH: number;
   endM: number;
   color: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
 }
 
 const SESSIONS: Session[] = [
@@ -64,29 +71,11 @@ const SESSIONS: Session[] = [
   { name: "London Open", subtitle: "2:00–5:00 AM EST", startH: 2, startM: 0, endH: 5, endM: 0, color: "#818CF8", icon: "globe" },
 ];
 
-const QUICK_NAV: Array<{ route: Href; label: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = [
-  { route: "/", label: "Planner", icon: "checkbox-outline", color: "#00C896" },
-  { route: "/academy", label: "Academy", icon: "school-outline", color: "#818CF8" },
-  { route: "/tracker", label: "Risk", icon: "shield-outline", color: "#EF4444" },
-  { route: "/journal", label: "Journal", icon: "book-outline", color: "#F59E0B" },
-  { route: "/community", label: "Social", icon: "people-outline", color: "#06B6D4" },
-  { route: "/analytics", label: "Analytics", icon: "bar-chart-outline", color: "#A855F7" },
-  { route: "/subscription", label: "Subscription", icon: "card-outline", color: "#F472B6" },
-  { route: "/settings", label: "Settings", icon: "settings-outline", color: "#94A3B8" },
-];
-
-const OPTIONAL_WIDGETS = [
-  { key: "spinWheel" as keyof WidgetPrefs, label: "Daily Spin Wheel", desc: "Spin for a daily trading tip", icon: "gift-outline" as keyof typeof Ionicons.glyphMap },
-  { key: "slotMachine" as keyof WidgetPrefs, label: "Slot Machine", desc: "Today's mission generator", icon: "trophy-outline" as keyof typeof Ionicons.glyphMap },
-  { key: "aiGreeting" as keyof WidgetPrefs, label: "AI Greeting", desc: "Personalized daily message", icon: "chatbubble-ellipses-outline" as keyof typeof Ionicons.glyphMap },
-];
-
 function AIGreetingCard() {
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-
   const tips = [
     "Always wait for the liquidity sweep before entering!",
     "The best setups happen at session opens — be ready!",
@@ -115,7 +104,6 @@ function AIGreetingCard() {
 
 function KillZoneCard() {
   const [, setTick] = useState(0);
-
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
@@ -123,7 +111,10 @@ function KillZoneCard() {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.cardLabel}>Kill Zone Countdowns</Text>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="time-outline" size={15} color="#F59E0B" />
+        <Text style={styles.cardLabel}>Kill Zone Countdowns</Text>
+      </View>
       {SESSIONS.map((session, idx) => {
         const estNow = getESTNow();
         const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
@@ -160,63 +151,264 @@ function KillZoneCard() {
   );
 }
 
-function QuickNavCard() {
-  const router = useRouter();
+function TradePlanWidget() {
+  const [text, setText] = useState("");
+  const [saved, setSaved] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(getTodayKey(TRADE_PLAN_KEY)).then((v) => {
+      if (v) setText(v);
+    });
+  }, []);
+
+  function handleChange(val: string) {
+    setText(val);
+    setSaved(false);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      await AsyncStorage.setItem(getTodayKey(TRADE_PLAN_KEY), val);
+      setSaved(true);
+    }, 800);
+  }
 
   return (
     <View style={styles.card}>
-      <Text style={styles.cardLabel}>Quick Navigation</Text>
-      <View style={styles.navGrid}>
-        {QUICK_NAV.map((item) => (
-          <TouchableOpacity
-            key={item.label}
-            style={styles.navItem}
-            onPress={() => router.navigate(item.route)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.navIcon, { backgroundColor: item.color + "18" }]}>
-              <Ionicons name={item.icon} size={22} color={item.color} />
-            </View>
-            <Text style={styles.navLabel}>{item.label}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="document-text-outline" size={15} color={C.accent} />
+        <Text style={styles.cardLabel}>Today's Trade Plan</Text>
+        {saved && <Text style={styles.savedText}>Saved</Text>}
       </View>
+      <TextInput
+        style={styles.textArea}
+        value={text}
+        onChangeText={handleChange}
+        placeholder={"Daily bias: Bullish / Bearish\nKey levels: \nSession target: \nEntry criteria: "}
+        placeholderTextColor={C.textTertiary}
+        multiline
+        numberOfLines={5}
+        textAlignVertical="top"
+      />
     </View>
   );
 }
 
-function EditModal({ visible, prefs, onClose, onToggle }: {
+function NotesWidget() {
+  const [text, setText] = useState("");
+  const [saved, setSaved] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(getTodayKey(NOTES_KEY)).then((v) => {
+      if (v) setText(v);
+    });
+  }, []);
+
+  function handleChange(val: string) {
+    setText(val);
+    setSaved(false);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      await AsyncStorage.setItem(getTodayKey(NOTES_KEY), val);
+      setSaved(true);
+    }, 800);
+  }
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="pencil-outline" size={15} color="#818CF8" />
+        <Text style={styles.cardLabel}>Quick Notes</Text>
+        {saved && <Text style={styles.savedText}>Saved</Text>}
+      </View>
+      <TextInput
+        style={styles.textArea}
+        value={text}
+        onChangeText={handleChange}
+        placeholder="Jot down any observations, reminders, or thoughts..."
+        placeholderTextColor={C.textTertiary}
+        multiline
+        numberOfLines={4}
+        textAlignVertical="top"
+      />
+    </View>
+  );
+}
+
+function PreTradeChecklistWidget() {
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    AsyncStorage.getItem(CHECKLIST_STORAGE_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        const today = new Date().toDateString();
+        if (data.date === today) setChecked(data.checked || {});
+        else setChecked({});
+      } catch {
+        setChecked({});
+      }
+    });
+  }, []);
+
+  async function toggle(id: string) {
+    const next = { ...checked, [id]: !checked[id] };
+    setChecked(next);
+    await AsyncStorage.setItem(
+      CHECKLIST_STORAGE_KEY,
+      JSON.stringify({ date: new Date().toDateString(), checked: next })
+    );
+  }
+
+  const allDone = PRE_TRADE_ITEMS.every((item) => checked[item.id]);
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="checkmark-circle-outline" size={15} color="#00C896" />
+        <Text style={styles.cardLabel}>Pre-Trade Checklist</Text>
+        {allDone && (
+          <View style={styles.unlockedBadge}>
+            <Text style={styles.unlockedBadgeText}>✓ Ready</Text>
+          </View>
+        )}
+      </View>
+      {PRE_TRADE_ITEMS.map((item) => (
+        <TouchableOpacity
+          key={item.id}
+          style={styles.checklistItem}
+          onPress={() => toggle(item.id)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.checkbox, checked[item.id] && styles.checkboxChecked]}>
+            {checked[item.id] && <Ionicons name="checkmark" size={12} color="#0A0A0F" />}
+          </View>
+          <Ionicons
+            name={item.icon}
+            size={14}
+            color={checked[item.id] ? C.accent : C.textSecondary}
+            style={{ marginRight: 6 }}
+          />
+          <Text style={[styles.checklistLabel, checked[item.id] && styles.checklistLabelDone]}>
+            {item.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+function RiskShieldWidget() {
+  const router = useRouter();
+  return (
+    <TouchableOpacity
+      style={[styles.card, styles.riskCard]}
+      onPress={() => router.navigate("/tracker")}
+      activeOpacity={0.85}
+    >
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="shield-checkmark-outline" size={15} color="#EF4444" />
+        <Text style={styles.cardLabel}>Risk Shield</Text>
+        <Ionicons name="chevron-forward" size={14} color={C.textSecondary} style={{ marginLeft: "auto" }} />
+      </View>
+      <Text style={styles.riskSubtitle}>
+        Tap to open your Risk Shield — track daily P&amp;L, drawdown limits, and position sizing
+      </Text>
+      <View style={styles.riskRow}>
+        <View style={styles.riskStat}>
+          <Ionicons name="trending-down-outline" size={18} color="#EF4444" />
+          <Text style={styles.riskStatLabel}>Daily P&amp;L</Text>
+        </View>
+        <View style={styles.riskStat}>
+          <Ionicons name="stats-chart-outline" size={18} color="#F59E0B" />
+          <Text style={styles.riskStatLabel}>Drawdown</Text>
+        </View>
+        <View style={styles.riskStat}>
+          <Ionicons name="calculator-outline" size={18} color="#818CF8" />
+          <Text style={styles.riskStatLabel}>Position Size</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function SwipeModeCard() {
+  const router = useRouter();
+  return (
+    <TouchableOpacity
+      style={[styles.card, styles.swipeCard]}
+      onPress={() => router.navigate("/academy")}
+      activeOpacity={0.85}
+    >
+      <View style={styles.swipeCardInner}>
+        <View style={styles.swipeIconBox}>
+          <Ionicons name="school" size={28} color={C.accent} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.swipeTitle}>Start Learning Mode</Text>
+          <Text style={styles.swipeSubtitle}>Swipe through ICT lessons in the Academy</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={C.accent} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function AchievementsModal({ visible, onClose, xp, streak }: {
   visible: boolean;
-  prefs: WidgetPrefs;
   onClose: () => void;
-  onToggle: (key: keyof WidgetPrefs) => void;
+  xp: number;
+  streak: number;
 }) {
+  const level = Math.floor(xp / 100) + 1;
+  const rankIdx = Math.min(Math.floor((level - 1) / 2), RANKS.length - 1);
+
+  const achievements = [
+    { icon: "flame", color: "#F59E0B", label: `${streak}-Day Streak`, done: streak >= 1 },
+    { icon: "star", color: C.accent, label: `Level ${level} — ${RANKS[rankIdx]}`, done: true },
+    { icon: "trophy", color: "#F59E0B", label: "7-Day Streak", done: streak >= 7 },
+    { icon: "medal", color: "#818CF8", label: "100 XP Milestone", done: xp >= 100 },
+    { icon: "ribbon", color: "#EF4444", label: "500 XP Legend", done: xp >= 500 },
+  ];
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose} />
       <View style={styles.modalSheet}>
         <View style={styles.modalHandle} />
-        <Text style={styles.modalTitle}>Edit Dashboard</Text>
-        <Text style={styles.modalSubtitle}>Toggle optional widgets on or off</Text>
-        {OPTIONAL_WIDGETS.map((widget) => (
-          <View key={widget.key} style={styles.widgetRow}>
-            <View style={[styles.widgetIcon, { backgroundColor: C.backgroundTertiary }]}>
-              <Ionicons name={widget.icon} size={20} color={C.accent} />
+        <Text style={styles.modalTitle}>Achievements</Text>
+        <Text style={styles.modalSubtitle}>Your trading milestones</Text>
+        {achievements.map((a, i) => (
+          <View key={i} style={styles.achievementRow}>
+            <View style={[styles.achieveIcon, { backgroundColor: a.color + "20" }]}>
+              <Ionicons name={a.icon as React.ComponentProps<typeof Ionicons>["name"]} size={20} color={a.color} />
             </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.widgetLabel}>{widget.label}</Text>
-              <Text style={styles.widgetDesc}>{widget.desc}</Text>
-            </View>
-            <Switch
-              value={prefs[widget.key]}
-              onValueChange={() => onToggle(widget.key)}
-              trackColor={{ false: C.cardBorder, true: C.accent + "60" }}
-              thumbColor={prefs[widget.key] ? C.accent : C.textSecondary}
-            />
+            <Text style={[styles.achieveLabel, !a.done && { color: C.textSecondary }]}>{a.label}</Text>
+            {a.done ? (
+              <Ionicons name="checkmark-circle" size={18} color="#00C896" />
+            ) : (
+              <Ionicons name="lock-closed" size={16} color={C.cardBorder} />
+            )}
           </View>
         ))}
         <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
-          <Text style={styles.doneBtnText}>Done</Text>
+          <Text style={styles.doneBtnText}>Close</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
+function MissionModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose} />
+      <View style={styles.modalSheet}>
+        <View style={styles.modalHandle} />
+        <SlotMachineCard />
+        <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
+          <Text style={styles.doneBtnText}>Got It!</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -224,68 +416,99 @@ function EditModal({ visible, prefs, onClose, onToggle }: {
 }
 
 export default function DashboardScreen() {
-  const [prefs, setPrefs] = useState<WidgetPrefs>(DEFAULT_PREFS);
-  const [editVisible, setEditVisible] = useState(false);
+  const { user } = useAuth();
+  const firstName = user?.name?.split(" ")?.[0] || "Trader";
+  const { xp, streak } = useDailyGamification();
+  const level = Math.floor(xp / 100) + 1;
+  const xpInLevel = xp % 100;
+
+  const [prefs, setPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [showMission, setShowMission] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(WIDGET_PREFS_KEY).then((raw) => {
       if (raw) {
         try {
-          setPrefs({ ...DEFAULT_PREFS, ...JSON.parse(raw) });
+          setPrefs({ ...DEFAULT_WIDGET_PREFS, ...JSON.parse(raw) });
         } catch {
         }
       }
     });
   }, []);
 
-  const toggleWidget = useCallback((key: keyof WidgetPrefs) => {
-    setPrefs((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      AsyncStorage.setItem(WIDGET_PREFS_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <EditModal
-        visible={editVisible}
-        prefs={prefs}
-        onClose={() => setEditVisible(false)}
-        onToggle={toggleWidget}
+      <AchievementsModal
+        visible={showAchievements}
+        onClose={() => setShowAchievements(false)}
+        xp={xp}
+        streak={streak}
       />
+      <MissionModal visible={showMission} onClose={() => setShowMission(false)} />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        {/* Header */}
+        {/* Compact Header */}
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerLeft}>
             <Text style={styles.title}>Dashboard</Text>
-            <Text style={styles.subtitle}>Your trading home base</Text>
+            <Text style={styles.subtitle}>Welcome back, {firstName}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.editBtn}
-            onPress={() => setEditVisible(true)}
-            activeOpacity={0.7}
-            accessibilityLabel="Edit Dashboard"
-          >
-            <Ionicons name="pencil" size={16} color={C.accent} />
-          </TouchableOpacity>
+          <View style={styles.headerIcons}>
+            {/* Level badge */}
+            <TouchableOpacity style={styles.headerBadge} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
+              <Ionicons name="star" size={13} color={C.accent} />
+              <Text style={styles.headerBadgeText}>Lv.{level}</Text>
+            </TouchableOpacity>
+
+            {/* Streak badge */}
+            <TouchableOpacity style={styles.headerBadge} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
+              <Ionicons name="flame" size={13} color={streak >= 7 ? "#EF4444" : "#F59E0B"} />
+              <Text style={[styles.headerBadgeText, { color: streak >= 7 ? "#EF4444" : "#F59E0B" }]}>{streak}d</Text>
+            </TouchableOpacity>
+
+            {/* Achievements icon */}
+            <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
+              <Ionicons name="trophy-outline" size={18} color={C.textSecondary} />
+            </TouchableOpacity>
+
+            {/* Today's Mission gift icon */}
+            {prefs.todaysMission && (
+              <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowMission(true)} activeOpacity={0.7}>
+                <Ionicons name="gift-outline" size={18} color="#F59E0B" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* Core Card 1: XP / Streak */}
-        <Text style={styles.sectionTitle}>Your Progress</Text>
-        <XPLevelCard />
+        {/* XP mini progress bar */}
+        <View style={styles.xpBarRow}>
+          <View style={styles.xpBarTrack}>
+            <View style={[styles.xpBarFill, { width: `${xpInLevel}%` as any }]} />
+          </View>
+          <Text style={styles.xpBarText}>{xpInLevel}/100 XP</Text>
+        </View>
 
-        {/* Core Card 2: Kill Zone Countdowns */}
+        {/* Kill Zone Countdowns — always shown */}
         <KillZoneCard />
 
-        {/* Core Card 3: Quick Nav */}
-        <QuickNavCard />
+        {/* Trade Plan */}
+        {prefs.tradePlan && <TradePlanWidget />}
 
-        {/* Optional Widgets */}
+        {/* Pre-Trade Checklist */}
+        {prefs.preTradeChecklist && <PreTradeChecklistWidget />}
+
+        {/* Risk Shield Mini */}
+        {prefs.riskShield && <RiskShieldWidget />}
+
+        {/* Swipe Mode Launcher */}
+        {prefs.swipeMode && <SwipeModeCard />}
+
+        {/* Notes */}
+        {prefs.notes && <NotesWidget />}
+
+        {/* AI Greeting */}
         {prefs.aiGreeting && <AIGreetingCard />}
-        {prefs.slotMachine && <SlotMachineCard />}
-        {prefs.spinWheel && <SpinWheelCard />}
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
@@ -298,27 +521,100 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 16 },
 
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 },
-  title: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.text },
-  subtitle: { fontSize: 13, color: C.textSecondary, marginTop: 2 },
-  editBtn: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder,
-    alignItems: "center", justifyContent: "center",
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  headerLeft: { flex: 1 },
+  title: { fontSize: 24, fontFamily: "Inter_700Bold", color: C.text },
+  subtitle: { fontSize: 12, color: C.textSecondary, marginTop: 1 },
+
+  headerIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  headerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  headerBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: C.accent,
+  },
+  headerIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  sectionTitle: {
-    fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary,
-    textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10, marginTop: 2,
+  xpBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+  xpBarTrack: {
+    flex: 1,
+    height: 3,
+    backgroundColor: C.cardBorder,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  xpBarFill: {
+    height: 3,
+    backgroundColor: C.accent,
+    borderRadius: 2,
+  },
+  xpBarText: {
+    fontSize: 10,
+    color: C.textTertiary,
+    fontFamily: "Inter_500Medium",
   },
 
   card: {
-    backgroundColor: C.backgroundSecondary, borderRadius: 16, borderWidth: 1,
-    borderColor: C.cardBorder, marginBottom: 14, overflow: "hidden",
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    marginBottom: 14,
+    overflow: "hidden",
+  },
+  cardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   cardLabel: {
-    fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary,
-    textTransform: "uppercase", letterSpacing: 1.2, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10,
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: C.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    flex: 1,
+  },
+  savedText: {
+    fontSize: 11,
+    color: "#00C896",
+    fontFamily: "Inter_500Medium",
   },
 
   sessionRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 12 },
@@ -331,42 +627,182 @@ const styles = StyleSheet.create({
   endedText: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
   countdownText: { fontSize: 13, fontFamily: "Inter_700Bold", color: C.text },
 
-  navGrid: { flexDirection: "row", flexWrap: "wrap", padding: 10, gap: 8 },
-  navItem: { width: "30%", alignItems: "center", padding: 10, borderRadius: 12, backgroundColor: C.backgroundTertiary },
-  navIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 6 },
-  navLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.text, textAlign: "center" },
+  textArea: {
+    backgroundColor: C.backgroundTertiary,
+    borderRadius: 10,
+    marginHorizontal: 14,
+    marginBottom: 14,
+    padding: 10,
+    fontSize: 13,
+    color: C.text,
+    fontFamily: "Inter_400Regular",
+    minHeight: 90,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+
+  checklistItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: C.cardBorder,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: C.accent,
+    borderColor: C.accent,
+  },
+  checklistLabel: {
+    flex: 1,
+    fontSize: 13,
+    color: C.textSecondary,
+    fontFamily: "Inter_400Regular",
+  },
+  checklistLabelDone: {
+    color: C.text,
+  },
+  unlockedBadge: {
+    backgroundColor: "#00C89620",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  unlockedBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#00C896",
+  },
+
+  riskCard: {
+    borderColor: "#EF444420",
+  },
+  riskSubtitle: {
+    fontSize: 12,
+    color: C.textSecondary,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    lineHeight: 18,
+  },
+  riskRow: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 0,
+  },
+  riskStat: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+  },
+  riskStatLabel: {
+    fontSize: 10,
+    color: C.textSecondary,
+    fontFamily: "Inter_500Medium",
+    textAlign: "center",
+  },
+
+  swipeCard: {
+    borderColor: C.accent + "30",
+  },
+  swipeCardInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    gap: 12,
+  },
+  swipeIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: C.accent + "15",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  swipeTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: C.text,
+    marginBottom: 2,
+  },
+  swipeSubtitle: {
+    fontSize: 12,
+    color: C.textSecondary,
+  },
 
   aiCard: {
-    backgroundColor: C.backgroundSecondary, borderRadius: 16, borderWidth: 1,
-    borderColor: C.accent + "25", padding: 16, marginBottom: 14,
-    overflow: "hidden",
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.accent + "25",
+    padding: 16,
+    marginBottom: 14,
   },
   aiHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12, flexShrink: 1 },
-  aiEmoji: { fontSize: 36, flexShrink: 0 },
-  aiGreeting: { fontSize: 16, fontFamily: "Inter_700Bold", color: C.text, flexShrink: 1 },
+  aiEmoji: { fontSize: 32, flexShrink: 0 },
+  aiGreeting: { fontSize: 15, fontFamily: "Inter_700Bold", color: C.text, flexShrink: 1 },
   aiSubtitle: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
-  aiTipBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, backgroundColor: C.accent + "10", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: C.accent + "20" },
+  aiTipBox: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    backgroundColor: C.accent + "10", borderRadius: 10, padding: 10,
+    borderWidth: 1, borderColor: C.accent + "20",
+  },
   aiTip: { flex: 1, fontSize: 13, color: C.text, lineHeight: 19 },
+
+  achievementRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+    gap: 12,
+  },
+  achieveIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  achieveLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: C.text,
+  },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
   modalSheet: {
-    backgroundColor: C.backgroundSecondary, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 20, paddingBottom: Platform.OS === "ios" ? 40 : 24,
-    borderTopWidth: 1, borderColor: C.cardBorder,
+    backgroundColor: C.backgroundSecondary,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    borderTopWidth: 1,
+    borderColor: C.cardBorder,
   },
   modalHandle: { width: 36, height: 4, backgroundColor: C.cardBorder, borderRadius: 2, alignSelf: "center", marginBottom: 18 },
   modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 4 },
   modalSubtitle: { fontSize: 13, color: C.textSecondary, marginBottom: 20 },
-  widgetRow: {
-    flexDirection: "row", alignItems: "center", paddingVertical: 14,
-    borderTopWidth: 1, borderTopColor: C.cardBorder,
-  },
-  widgetIcon: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  widgetLabel: { fontSize: 15, fontFamily: "Inter_500Medium", color: C.text, marginBottom: 2 },
-  widgetDesc: { fontSize: 12, color: C.textSecondary },
+
   doneBtn: {
-    marginTop: 20, backgroundColor: C.accent, borderRadius: 14,
-    paddingVertical: 14, alignItems: "center",
+    marginTop: 16,
+    backgroundColor: C.accent,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
   },
   doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 });
