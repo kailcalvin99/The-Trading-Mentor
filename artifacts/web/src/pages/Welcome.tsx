@@ -275,6 +275,49 @@ export default function Welcome() {
           </div>
         </section>
 
+        {/* ── Welcome Video ── */}
+        <section className="px-6 py-14 sm:py-20">
+          <div className="max-w-4xl mx-auto">
+            <p className="text-center text-xs font-bold uppercase tracking-widest text-primary mb-3">See It In Action</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-3">
+              Meet Your AI Trading Mentor
+            </h2>
+            <p className="text-center text-muted-foreground mb-8 max-w-xl mx-auto text-sm">
+              Watch a quick walkthrough of the platform and see exactly how ICT Trading Mentor helps you trade with structure and discipline.
+            </p>
+            <div
+              className="relative w-full bg-black rounded-2xl overflow-hidden shadow-2xl border border-border"
+              style={{ paddingBottom: "56.25%" }}
+            >
+              <video
+                src={`${import.meta.env.BASE_URL}tour-videos/welcome.mp4`}
+                controls
+                playsInline
+                preload="metadata"
+                className="absolute inset-0 w-full h-full object-contain bg-black"
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLVideoElement;
+                  target.style.display = "none";
+                  const fallback = target.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = "flex";
+                }}
+              />
+              <div
+                className="absolute inset-0 flex-col items-center justify-center bg-card text-center p-8"
+                style={{ display: "none" }}
+              >
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto mb-4">
+                  <svg className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                  </svg>
+                </div>
+                <p className="text-foreground font-semibold mb-1">Video Coming Soon</p>
+                <p className="text-muted-foreground text-sm">Upload <code className="text-primary text-xs">tour-videos/welcome.mp4</code> to display the welcome video here.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── How It Works ── */}
         <section id="how-it-works" className="px-6 py-16 sm:py-20">
           <div className="max-w-5xl mx-auto">

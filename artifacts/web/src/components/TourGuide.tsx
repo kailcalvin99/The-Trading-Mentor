@@ -226,10 +226,12 @@ interface TourGuideProps {
 
 const HEYGEN_ORIGIN = "https://app.heygen.com";
 const HEYGEN_SIGNAL_TIMEOUT_MS = 10_000;
+const BASE_URL = import.meta.env.BASE_URL ?? "/";
 
 export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   const navigate = useNavigate();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { config } = useAppConfig();
   const [videoLoading, setVideoLoading] = useState(false);
   const [videoError, setVideoError] = useState(false);
@@ -243,8 +245,15 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   const isLast = state.currentStep >= TOUR_STEPS.length - 1;
   const isFirst = state.currentStep === 0;
 
-  const videoId = config[`tour_video_${state.currentStep}`] || step?.videoId || "";
+  const adminOverrideId = config[`tour_video_${state.currentStep}`];
+  const videoId = adminOverrideId || step?.videoId || "";
   const heygenShareUrl = videoId ? `https://app.heygen.com/share/${videoId}` : "";
+
+  const localVideoSrc = !adminOverrideId && step?.videoSrc
+    ? `${BASE_URL}${step.videoSrc}`
+    : null;
+
+  const useLocalVideo = Boolean(localVideoSrc);
 
   function cancelSignalTimer() {
     if (signalTimerRef.current !== null) {
@@ -265,18 +274,31 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
 
   useEffect(() => {
     if (state.machineState === "PLAYING_VIDEO") {
-      heygenConfirmedRef.current = false;
-      cancelSignalTimer();
-      if (!videoId) {
-        setVideoLoading(false);
-        setVideoError(true);
-      } else {
+      setVideoError(false);
+      if (useLocalVideo) {
         setVideoLoading(true);
-        setVideoError(false);
+        cancelSignalTimer();
+      } else {
+        heygenConfirmedRef.current = false;
+        cancelSignalTimer();
+        if (!videoId) {
+          setVideoLoading(false);
+          setVideoError(true);
+        } else {
+          setVideoLoading(true);
+        }
       }
     }
     return () => { cancelSignalTimer(); };
-  }, [state.machineState, state.currentStep, videoId]);
+  }, [state.machineState, state.currentStep, videoId, useLocalVideo]);
+
+  useEffect(() => {
+    if (state.machineState !== "PLAYING_VIDEO" || !useLocalVideo) return;
+    const el = videoRef.current;
+    if (!el) return;
+    el.load();
+    el.play().catch(() => {});
+  }, [state.machineState, state.currentStep, useLocalVideo]);
 
   useEffect(() => {
     if (state.machineState === "NAVIGATING" && !navigatingRef.current) {
@@ -298,7 +320,7 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   }, [state.machineState, state.currentStep, dispatch]);
 
   useEffect(() => {
-    if (state.machineState !== "PLAYING_VIDEO") return;
+    if (state.machineState !== "PLAYING_VIDEO" || useLocalVideo) return;
 
     function handleMessage(e: MessageEvent) {
       if (e.origin !== HEYGEN_ORIGIN) return;
@@ -317,7 +339,7 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
     }
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [state.machineState, dispatch]);
+  }, [state.machineState, dispatch, useLocalVideo]);
 
   function handleClose() {
     dispatch({ type: "CLOSE_TOUR" });
@@ -411,7 +433,21 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
               className="relative w-full bg-black rounded-2xl overflow-hidden shadow-2xl"
               style={{ paddingBottom: "56.25%" }}
             >
-              {!videoError && (
+              {useLocalVideo && !videoError && (
+                <video
+                  ref={videoRef}
+                  key={localVideoSrc ?? undefined}
+                  src={localVideoSrc ?? undefined}
+                  controls
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-contain bg-black"
+                  onCanPlay={() => setVideoLoading(false)}
+                  onEnded={() => dispatch({ type: "VIDEO_ENDED" })}
+                  onError={() => { setVideoLoading(false); setVideoError(true); }}
+                />
+              )}
+
+              {!useLocalVideo && !videoError && (
                 <iframe
                   ref={iframeRef}
                   src={heygenShareUrl}
@@ -425,7 +461,7 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
               )}
 
               {videoLoading && !videoError && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 pointer-events-none">
                   <div className="h-10 w-10 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3" />
                   <p className="text-white/60 text-sm">Loading video...</p>
                 </div>
@@ -436,26 +472,22 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
                   <VideoOff className="h-12 w-12 text-white/30 mb-4" />
                   <p className="text-white font-semibold mb-1">{step.title}</p>
                   <p className="text-white/50 text-sm mb-6 max-w-sm">
-                    This video couldn't be embedded. Watch it directly on HeyGen, then continue the tour.
+                    This video couldn't be loaded. Click Continue to proceed to the next step.
                   </p>
-                  {heygenShareUrl && (
-                    <a
-                      href={heygenShareUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Watch on HeyGen
-                    </a>
-                  )}
+                  <button
+                    onClick={handleSkipVideo}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm"
+                  >
+                    <SkipForward className="h-4 w-4" />
+                    Continue
+                  </button>
                 </div>
               )}
             </div>
 
             <p className="text-center text-white/40 text-xs mt-3">
               {videoError
-                ? "Video couldn't load. Use 'Watch on HeyGen' above or click 'Continue' to proceed."
+                ? "Video couldn't load. Click 'Continue' above to proceed to the next step."
                 : "Video not advancing? Click 'Continue' above to proceed to the next step."}
             </p>
           </div>
