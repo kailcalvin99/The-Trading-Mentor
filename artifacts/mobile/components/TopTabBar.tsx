@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const TOUR_DONE_KEY = "mobile-onboarding-tour-done";
 
@@ -138,7 +139,8 @@ export default function TopTabBar({
   userName = "",
 }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
-  const { mode, colors: C, isDark, toggleTheme } = useTheme();
+  const { colors: C } = useTheme();
+  const { setAppMode } = useAuth();
   const router = useRouter();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -199,16 +201,14 @@ export default function TopTabBar({
 
           <View style={styles.rightRow}>
             <View style={styles.toggleRow}>
-              <Ionicons
-                name={isDark ? "moon" : "sunny"}
-                size={14}
-                color={isDark ? "#A78BFA" : "#FFB340"}
-              />
+              <Text style={[styles.toggleLabel, { color: appMode === "lite" ? C.accent : C.textSecondary }]}>
+                Lite
+              </Text>
               <Switch
-                value={!isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: "#3A3A55", true: "#D0F0E8" }}
-                thumbColor={isDark ? "#A78BFA" : "#00C896"}
+                value={appMode === "lite"}
+                onValueChange={(val) => setAppMode(val ? "lite" : "full")}
+                trackColor={{ false: "#3A3A55", true: "#00C896" + "60" }}
+                thumbColor={appMode === "lite" ? "#00C896" : "#55556A"}
                 ios_backgroundColor="#3A3A55"
                 style={styles.switch}
               />
@@ -343,6 +343,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+  },
+  toggleLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.3,
   },
   switch: {
     transform: Platform.OS === "ios" ? [{ scaleX: 0.75 }, { scaleY: 0.75 }] : [{ scaleX: 0.85 }, { scaleY: 0.85 }],
