@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import Colors from "@/constants/colors";
 import { SlotMachineCard, useDailyGamification } from "@/components/DashboardGamification";
 import { useAuth } from "@/contexts/AuthContext";
@@ -471,16 +471,20 @@ export default function DashboardScreen() {
   const [showAchievements, setShowAchievements] = useState(false);
   const [showMission, setShowMission] = useState(false);
 
-  useEffect(() => {
-    AsyncStorage.getItem(WIDGET_PREFS_KEY).then((raw) => {
-      if (raw) {
-        try {
-          setPrefs({ ...DEFAULT_WIDGET_PREFS, ...JSON.parse(raw) });
-        } catch {
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(WIDGET_PREFS_KEY).then((raw) => {
+        if (raw) {
+          try {
+            setPrefs({ ...DEFAULT_WIDGET_PREFS, ...JSON.parse(raw) });
+          } catch {
+          }
+        } else {
+          setPrefs(DEFAULT_WIDGET_PREFS);
         }
-      }
-    });
-  }, []);
+      });
+    }, [])
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
