@@ -304,7 +304,8 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   useEffect(() => {
     if (state.machineState === "NAVIGATING" && !navigatingRef.current) {
       navigatingRef.current = true;
-      const targetRoute = TOUR_STEPS[state.currentStep]?.targetRoute;
+      const nextStepIndex = state.currentStep + 1;
+      const targetRoute = TOUR_STEPS[nextStepIndex]?.targetRoute;
       if (targetRoute) {
         navigateRef.current(targetRoute);
       }
@@ -319,6 +320,15 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
     }
     return undefined;
   }, [state.machineState, state.currentStep, dispatch]);
+
+  useEffect(() => {
+    if (state.machineState === "INTRODUCING") {
+      const targetRoute = TOUR_STEPS[state.currentStep]?.targetRoute;
+      if (targetRoute) {
+        navigateRef.current(targetRoute, { replace: true });
+      }
+    }
+  }, [state.machineState, state.currentStep]);
 
   useEffect(() => {
     if (state.machineState !== "PLAYING_VIDEO" || useLocalVideo) return;
@@ -496,57 +506,56 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
       )}
 
       {state.machineState === "INTRODUCING" && (
-        <div className="fixed bottom-6 right-6 z-[99] w-full max-w-sm animate-in slide-in-from-bottom-4 fade-in duration-300">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-primary/5">
-              <div className="flex items-center gap-2">
+        <div className="fixed bottom-4 right-4 z-[99] w-64 animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-primary/5">
+              <div className="flex items-center gap-1.5">
                 <span
-                  className="text-2xl select-none"
-                  style={{ filter: "drop-shadow(0 0 8px hsl(165 100% 39% / 0.5))" }}
+                  className="text-base select-none"
+                  style={{ filter: "drop-shadow(0 0 6px hsl(165 100% 39% / 0.5))" }}
                 >
                   🤖
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-foreground">ICT Tour Guide</p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[10px] font-bold text-foreground">ICT Tour Guide</p>
+                  <p className="text-[9px] text-muted-foreground">
                     Step {state.currentStep + 1} of {TOUR_STEPS.length}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={handleToggleChecklist}
-                  className={`p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ${
+                  className={`p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors ${
                     state.checklistOpen ? "bg-secondary text-foreground" : ""
                   }`}
                   title="View progress checklist"
                 >
-                  <List className="h-4 w-4" />
+                  <List className="h-3 w-3" />
                 </button>
                 <button
                   onClick={handleClose}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   title="Close tour"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </button>
               </div>
             </div>
 
-            <div className="px-4 py-4">
-              <h3 className="text-sm font-bold text-foreground mb-2">{step.title}</h3>
+            <div className="px-3 py-2">
+              <h3 className="text-[10px] font-bold text-foreground mb-1.5 leading-tight">{step.title}</h3>
 
-              <div className="relative bg-secondary/50 border border-border rounded-xl p-3 mb-4">
-                <div className="absolute -top-2 left-5 w-3 h-3 bg-secondary/50 border-l border-t border-border rotate-45" />
-                <p className="text-xs text-foreground/80 leading-relaxed">{step.description}</p>
+              <div className="relative bg-secondary/50 border border-border rounded-lg p-2 mb-2">
+                <p className="text-[10px] text-foreground/80 leading-relaxed line-clamp-3">{step.description}</p>
               </div>
 
-              <div className="mb-4">
+              <div className="mb-2">
                 <div className="flex gap-0.5">
                   {TOUR_STEPS.map((_, i) => (
                     <div
                       key={i}
-                      className={`h-1 flex-1 rounded-full transition-all ${
+                      className={`h-0.5 flex-1 rounded-full transition-all ${
                         state.completedSteps.includes(i)
                           ? "bg-primary"
                           : i === state.currentStep
@@ -556,35 +565,32 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
                     />
                   ))}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {state.completedSteps.length} of {TOUR_STEPS.length} completed
-                </p>
               </div>
 
               <button
                 onClick={handlePlayVideo}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm mb-3"
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-opacity text-[10px] mb-2"
               >
-                <Play className="h-4 w-4 fill-current" />
+                <Play className="h-3 w-3 fill-current" />
                 Watch Video
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={handlePrev}
                   disabled={isFirst}
-                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <ChevronLeft className="h-3 w-3" />
                   Back
                 </button>
                 <div className="flex-1" />
                 <button
                   onClick={handleNext}
-                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                 >
                   {isLast ? "Finish" : "Skip"}
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <ChevronRight className="h-3 w-3" />
                 </button>
               </div>
             </div>
