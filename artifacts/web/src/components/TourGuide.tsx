@@ -250,7 +250,7 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   const heygenShareUrl = videoId ? `https://app.heygen.com/share/${videoId}` : "";
 
   const localVideoSrc = !adminOverrideId && step?.videoSrc
-    ? `${BASE_URL}${step.videoSrc}`
+    ? `${BASE_URL}${step.videoSrc.replace(/^\//, "")}`
     : null;
 
   const useLocalVideo = Boolean(localVideoSrc);
