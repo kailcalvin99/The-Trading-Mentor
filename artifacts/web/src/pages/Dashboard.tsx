@@ -1,37 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Flame, Star, Trophy, TrendingUp, Clock, Target, BarChart3, Shield,
-  Sparkles, HelpCircle,
+  TrendingUp, Clock, Target, BarChart3, Shield,
+  Sparkles,
   FileText, StickyNote, ClipboardCheck, CheckSquare, Square, ArrowRight,
-  Calculator, Layers,
+  Calculator, Layers, ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
-import { useTourGuideContext } from "@/contexts/TourGuideContext";
-
-const MASCOT_TIPS = [
-  "Always wait for the liquidity sweep before entering!",
-  "The best setups happen at session opens — be ready!",
-  "Never risk more than 1% on a single trade.",
-  "FVGs are your best friend — learn to spot them!",
-  "Patience is the most profitable trading skill.",
-  "Check the daily bias BEFORE looking at charts.",
-  "Silver Bullet window (10-11 AM) has the highest probability.",
-  "If you missed the move, DON'T chase it!",
-  "Your journal is your most powerful trading tool.",
-  "3 green days in a row? Time for a rest day.",
-  "The market rewards discipline, not aggression.",
-  "Always trade with the trend — the trend is your friend.",
-];
-
-const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
+import { useListTrades } from "@workspace/api-client-react";
 
 const SESSIONS = [
-  { name: "Asian", emoji: "🌏", startH: 20, startM: 0, endH: 24, endM: 0, color: "#818CF8", tip: "Low volatility — range-bound" },
-  { name: "London", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", tip: "Trend starts here" },
-  { name: "NY Open", emoji: "📈", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896", tip: "Main move begins" },
-  { name: "Silver Bullet", emoji: "🎯", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444", tip: "Highest probability" },
+  { name: "NY Open", emoji: "📈", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896", time: "9:30–10:00 AM EST" },
+  { name: "Silver Bullet", emoji: "🎯", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444", time: "10:00–11:00 AM EST" },
+  { name: "London Open", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", time: "2:00–5:00 AM EST" },
 ];
 
 const SLOT_SESSIONS = ["Silver Bullet 🎯", "NY Open 📈", "London 🌍", "Asian 🌏"];
@@ -46,6 +28,37 @@ const CHECKLIST_ITEMS = [
   { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", desc: "A liquidity sweep (stop hunt) or IDM (Inducement) has occurred on your entry timeframe." },
   { id: "displacement_fvg", label: "Displacement with FVG or MSS present", desc: "Big displacement candles created an FVG or MSS — Smart Money is behind this move." },
 ];
+
+const TRADE_PLAN_CHIPS = [
+  "Bullish bias",
+  "Bearish bias",
+  "Waiting for sweep",
+  "Silver Bullet only",
+  "No trade — red news",
+  "Targeting NY Open",
+];
+
+const QUICK_JOURNAL_KEY = "ict-quick-journal-notes";
+
+interface QuickNote {
+  id: string;
+  text: string;
+  timestamp: string;
+}
+
+function getQuickNotes(): QuickNote[] {
+  try {
+    const raw = localStorage.getItem(QUICK_JOURNAL_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveQuickNote(note: QuickNote) {
+  const notes = getQuickNotes();
+  notes.unshift(note);
+  const trimmed = notes.slice(0, 100);
+  localStorage.setItem(QUICK_JOURNAL_KEY, JSON.stringify(trimmed));
+}
 
 function getChecklistState(): { checked: Record<string, boolean>; timestamp: number } {
   try {
@@ -99,123 +112,64 @@ function dateSeed(): number {
   return Math.abs(hash);
 }
 
-function IctMascot() {
+function CompactGreetingRow() {
   const { user } = useAuth();
-  const [tipIdx, setTipIdx] = useState(0);
-  const [fadeIn, setFadeIn] = useState(true);
   const firstName = user?.name?.split(" ")[0] || "Trader";
+  const [, setTick] = useState(0);
+  const checklistDone = CHECKLIST_ITEMS.filter(
+    (item) => getChecklistState().checked[item.id]
+  ).length;
+  const checklistTotal = CHECKLIST_ITEMS.length;
+
+  const est = getESTNow();
+  const nowMins = est.getHours() * 60 + est.getMinutes();
+
+  const killZones = [
+    { name: "London Open", startH: 2, startM: 0, endH: 5, endM: 0 },
+    { name: "NY Open", startH: 9, startM: 30, endH: 10, endM: 0 },
+    { name: "Silver Bullet", startH: 10, startM: 0, endH: 11, endM: 0 },
+  ];
+
+  let dynamicLine = `Checklist: ${checklistDone}/${checklistTotal} complete`;
+
+  for (const kz of killZones) {
+    const startMins = kz.startH * 60 + kz.startM;
+    const endMins = kz.endH * 60 + kz.endM;
+    if (nowMins >= startMins && nowMins < endMins) {
+      dynamicLine = `${kz.name} is LIVE now`;
+      break;
+    }
+    const target = new Date(est);
+    target.setHours(kz.startH, kz.startM, 0, 0);
+    if (est < target) {
+      const msUntil = target.getTime() - est.getTime();
+      if (msUntil <= 60 * 60 * 1000) {
+        dynamicLine = `${kz.name} in ${formatCountdown(msUntil)}`;
+        break;
+      }
+    }
+  }
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setFadeIn(false);
-      setTimeout(() => {
-        setTipIdx((i) => (i + 1) % MASCOT_TIPS.length);
-        setFadeIn(true);
-      }, 400);
-    }, 8000);
-    return () => clearInterval(interval);
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
   }, []);
 
-  return (
-    <div className="relative bg-gradient-to-br from-primary/10 via-card to-primary/5 border border-primary/20 rounded-2xl p-6 overflow-hidden">
-      <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
-
-      <div className="flex items-start gap-5">
-        <div className="relative shrink-0">
-          <div
-            className="text-6xl select-none"
-            style={{
-              filter: "drop-shadow(0 0 20px hsl(165 100% 39% / 0.5))",
-              animation: "mascotBob 3s ease-in-out infinite",
-            }}
-          >
-            🤖
-          </div>
-          <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-[8px] font-bold px-1.5 py-0.5 rounded-full">
-            ICT
-          </div>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold text-foreground mb-1">
-            Hey {firstName}, ready to trade today?
-          </h2>
-          <div className="relative bg-card/60 border border-border rounded-xl p-3 mt-2">
-            <div className="absolute -left-2 top-3 w-3 h-3 bg-card/60 border-l border-b border-border rotate-45" />
-            <div className="flex items-start gap-2">
-              <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              <p
-                className={`text-sm text-foreground/80 transition-opacity duration-300 ${fadeIn ? "opacity-100" : "opacity-0"}`}
-              >
-                {MASCOT_TIPS[tipIdx]}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes mascotBob {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function GamificationHeaderBadges({ startTour }: { startTour: () => void }) {
-  const { streak, xp } = useDailyStreak();
-  const level = Math.floor(xp / 100) + 1;
-  const xpInLevel = xp % 100;
-  const rankIdx = Math.min(Math.floor((level - 1) / 2), RANKS.length - 1);
-  const rank = RANKS[rankIdx];
-
-  const badgeChecks = [
-    true, true,
-    streak >= 3,
-    localStorage.getItem("dashboard-visited") === "true",
-    streak >= 7,
-    localStorage.getItem("ict-academy-unlocked") === "true",
-    false, false,
-  ];
-  const earned = badgeChecks.filter(Boolean).length;
+  const greetingHour = est.getHours();
+  const timeGreeting = greetingHour < 12 ? "Good morning" : greetingHour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5" title={`Level ${level} — ${rank} · ${xpInLevel}/100 XP`}>
-        <Star className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-bold text-foreground">Lv {level}</span>
-        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-primary rounded-full transition-all duration-1000" style={{ width: `${xpInLevel}%` }} />
-        </div>
+    <div className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3">
+      <div className="flex items-center gap-2">
+        <span className="text-lg select-none">🤖</span>
+        <span className="text-sm font-semibold text-foreground">
+          {timeGreeting}, {firstName}
+        </span>
       </div>
-
-      <div
-        className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5"
-        title={`${streak}-day login streak`}
-      >
-        <Flame className={`h-3.5 w-3.5 ${streak >= 7 ? "text-red-500" : streak >= 3 ? "text-amber-500" : "text-amber-400"}`} />
-        <span className="text-xs font-bold text-foreground">{streak}d</span>
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span>{dynamicLine}</span>
       </div>
-
-      <div
-        className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5"
-        title={`${earned}/${badgeChecks.length} badges earned`}
-      >
-        <Trophy className="h-3.5 w-3.5 text-amber-500" />
-        <span className="text-xs font-bold text-foreground">{earned}/{badgeChecks.length}</span>
-      </div>
-
-      <button
-        onClick={startTour}
-        className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
-        title="Restart guided tour"
-      >
-        <HelpCircle className="h-3.5 w-3.5" />
-        <span className="text-xs font-medium">Tour</span>
-      </button>
     </div>
   );
 }
@@ -297,7 +251,7 @@ function SlotMachine() {
   );
 }
 
-function SessionsLiveBoard() {
+function SessionBannerStrip() {
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -309,65 +263,179 @@ function SessionsLiveBoard() {
   const nowMins = est.getHours() * 60 + est.getMinutes();
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-4">
-        <Clock className="h-5 w-5 text-primary" />
-        <h3 className="text-base font-bold text-foreground">Market Sessions</h3>
-        <span className="text-xs text-muted-foreground">
-          {est.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })} EST
-        </span>
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {SESSIONS.map((session) => {
-          const startMins = session.startH * 60 + session.startM;
-          const endMins = session.endH * 60 + session.endM;
-          const isLive = endMins > startMins
-            ? nowMins >= startMins && nowMins < endMins
-            : nowMins >= startMins || nowMins < endMins;
-          const isEnded = endMins > startMins
-            ? nowMins >= endMins
-            : nowMins >= endMins && nowMins < startMins;
+    <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+      {SESSIONS.map((session) => {
+        const startMins = session.startH * 60 + session.startM;
+        const endMins = session.endH * 60 + session.endM;
+        const isLive = endMins > startMins
+          ? nowMins >= startMins && nowMins < endMins
+          : nowMins >= startMins || nowMins < endMins;
+        const isEnded = endMins > startMins
+          ? nowMins >= endMins
+          : nowMins >= endMins && nowMins < startMins;
 
-          const target = new Date(est);
-          target.setHours(session.startH, session.startM, 0, 0);
-          if (!isLive && est >= target) target.setDate(target.getDate() + 1);
-          const msUntil = isLive ? 0 : target.getTime() - est.getTime();
-          const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
+        const target = new Date(est);
+        target.setHours(session.startH, session.startM, 0, 0);
+        if (!isLive && est >= target) target.setDate(target.getDate() + 1);
+        const msUntil = isLive ? 0 : target.getTime() - est.getTime();
+        const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
 
-          return (
-            <div
-              key={session.name}
-              className={`bg-card border rounded-xl p-4 transition-all ${
-                isLive ? "border-2" : "border-border"
-              }`}
-              style={isLive ? { borderColor: session.color } : undefined}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div
-                  className={`w-2.5 h-2.5 rounded-full ${isLive ? "animate-pulse" : ""}`}
-                  style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
-                />
-                <span className="text-sm font-bold text-foreground">{session.emoji} {session.name}</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground mb-2">{session.tip}</p>
-              {isLive ? (
-                <span
-                  className="text-xs font-bold px-2.5 py-1 rounded-full"
-                  style={{ backgroundColor: `${session.color}20`, color: session.color }}
-                >
-                  LIVE NOW
-                </span>
-              ) : isEnded ? (
-                <span className="text-xs text-muted-foreground font-medium">Ended</span>
-              ) : (
-                <span className={`text-xs font-medium ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
-                  {formatCountdown(msUntil)}
-                </span>
-              )}
+        return (
+          <div
+            key={session.name}
+            className={`flex-shrink-0 min-w-[160px] bg-card border rounded-2xl p-4 transition-all ${
+              isLive ? "border-2 shadow-sm" : "border-border"
+            }`}
+            style={isLive ? { borderColor: session.color, boxShadow: `0 0 12px ${session.color}30` } : undefined}
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <div
+                className={`w-2 h-2 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
+                style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
+              />
+              <span className="text-sm font-bold text-foreground">{session.emoji} {session.name}</span>
             </div>
-          );
-        })}
+            <p className="text-[11px] text-muted-foreground mb-2 leading-snug">{session.time}</p>
+            {isLive ? (
+              <span
+                className="text-xs font-bold px-2.5 py-1 rounded-full"
+                style={{ backgroundColor: `${session.color}20`, color: session.color }}
+              >
+                LIVE NOW
+              </span>
+            ) : isEnded ? (
+              <span className="text-xs text-muted-foreground font-medium">Ended</span>
+            ) : (
+              <span className={`text-xs font-mono font-medium ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
+                {formatCountdown(msUntil)}
+              </span>
+            )}
+          </div>
+        );
+      })}
+      <div className="flex items-center justify-center shrink-0 px-2 text-muted-foreground">
+        <ChevronRight className="h-4 w-4" />
       </div>
+    </div>
+  );
+}
+
+function StatsTickerStrip() {
+  const { data: apiTrades } = useListTrades();
+  const { streak } = useDailyStreak();
+
+  const trades = (apiTrades || []) as Array<{
+    outcome?: string | null;
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+  }>;
+
+  const today = new Date().toDateString();
+  const todayTrades = trades.filter((t) => {
+    if (t.isDraft) return false;
+    if (!t.createdAt) return false;
+    return new Date(t.createdAt).toDateString() === today;
+  });
+
+  const todayCompleted = todayTrades.filter((t) => t.outcome === "win" || t.outcome === "loss");
+  const todayWins = todayCompleted.filter((t) => t.outcome === "win").length;
+  const todayWinRate = todayCompleted.length > 0 ? Math.round((todayWins / todayCompleted.length) * 100) : null;
+
+  const todayPnL = todayTrades.reduce((sum, t) => {
+    const v = parseFloat(String(t.pnl ?? "0"));
+    return sum + (isNaN(v) ? 0 : v);
+  }, 0);
+
+  const hasTodayTrades = todayTrades.length > 0;
+  const pnlColor = todayPnL > 0 ? "text-emerald-400" : todayPnL < 0 ? "text-red-400" : "text-muted-foreground";
+
+  const pills = [
+    {
+      label: "Today's P&L",
+      value: hasTodayTrades ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—",
+      color: hasTodayTrades ? pnlColor : "text-muted-foreground",
+      bg: hasTodayTrades && todayPnL > 0 ? "bg-emerald-500/10 border-emerald-500/20" : hasTodayTrades && todayPnL < 0 ? "bg-red-500/10 border-red-500/20" : "bg-secondary border-border",
+    },
+    {
+      label: "Win Rate",
+      value: todayWinRate !== null ? `${todayWinRate}%` : "—",
+      color: todayWinRate !== null && todayWinRate >= 50 ? "text-emerald-400" : todayWinRate !== null ? "text-amber-400" : "text-muted-foreground",
+      bg: todayWinRate !== null && todayWinRate >= 50 ? "bg-emerald-500/10 border-emerald-500/20" : todayWinRate !== null ? "bg-amber-500/10 border-amber-500/20" : "bg-secondary border-border",
+    },
+    {
+      label: "Trades",
+      value: todayCompleted.length > 0 ? String(todayCompleted.length) : "—",
+      color: "text-foreground",
+      bg: "bg-secondary border-border",
+    },
+    {
+      label: "Login Streak",
+      value: `${streak}d`,
+      color: streak >= 7 ? "text-red-400" : streak >= 3 ? "text-amber-400" : "text-muted-foreground",
+      bg: streak >= 3 ? "bg-amber-500/10 border-amber-500/20" : "bg-secondary border-border",
+    },
+  ];
+
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+      {pills.map((pill) => (
+        <div
+          key={pill.label}
+          className={`flex-shrink-0 flex items-center gap-2 border rounded-full px-3 py-1.5 ${pill.bg}`}
+        >
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">{pill.label}</span>
+          <span className={`text-xs font-bold whitespace-nowrap ${pill.color}`}>{pill.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function QuickJournalWidget() {
+  const [text, setText] = useState("");
+  const [saved, setSaved] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleLog() {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const note: QuickNote = {
+      id: `qn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      text: trimmed,
+      timestamp: new Date().toISOString(),
+    };
+    saveQuickNote(note);
+    setText("");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    inputRef.current?.focus();
+  }
+
+  return (
+    <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2.5">
+      <StickyNote className="h-4 w-4 text-amber-500 shrink-0" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleLog()}
+        placeholder="Quick note for today..."
+        className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none min-w-0"
+        maxLength={500}
+      />
+      {saved ? (
+        <span className="text-xs text-emerald-400 font-semibold whitespace-nowrap shrink-0">Saved ✓</span>
+      ) : (
+        <button
+          onClick={handleLog}
+          disabled={!text.trim()}
+          className="text-xs font-semibold bg-primary text-primary-foreground px-3 py-1 rounded-lg hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
+        >
+          Log
+        </button>
+      )}
     </div>
   );
 }
@@ -381,12 +449,30 @@ function TradePlanWidget() {
     localStorage.setItem(storageKey, e.target.value);
   }
 
+  function appendChip(phrase: string) {
+    const sep = value && !value.endsWith(" ") && !value.endsWith("\n") ? " " : "";
+    const next = value + sep + phrase + ". ";
+    setValue(next);
+    localStorage.setItem(storageKey, next);
+  }
+
   return (
     <div className="bg-card border border-border rounded-2xl p-5">
       <div className="flex items-center gap-2 mb-3">
         <FileText className="h-5 w-5 text-primary" />
         <h3 className="text-base font-bold text-foreground">Today's Trade Plan</h3>
         <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold ml-auto">DAILY</span>
+      </div>
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 mb-3">
+        {TRADE_PLAN_CHIPS.map((chip) => (
+          <button
+            key={chip}
+            onClick={() => appendChip(chip)}
+            className="flex-shrink-0 text-[11px] font-medium bg-secondary hover:bg-secondary/70 border border-border rounded-full px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+          >
+            {chip}
+          </button>
+        ))}
       </div>
       <textarea
         value={value}
@@ -685,7 +771,6 @@ function loadWidgetPrefs(): Record<WidgetId, boolean> {
 export default function Dashboard() {
   const { tierLevel } = useAuth();
   const isFreeUser = tierLevel === 0;
-  const { startTour } = useTourGuideContext();
   const [widgetPrefs, setWidgetPrefs] = useState<Record<WidgetId, boolean>>(loadWidgetPrefs);
 
   useEffect(() => {
@@ -707,17 +792,16 @@ export default function Dashboard() {
   const visible = widgetPrefs;
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6 pb-24">
-      <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-        <div className="flex-1 min-w-0">
-          {visible.mascot && <IctMascot />}
-        </div>
-      </div>
+    <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4 pb-24">
+      {visible.mascot && <CompactGreetingRow />}
 
-      <GamificationHeaderBadges startTour={startTour} />
+      {visible.sessions && <SessionBannerStrip />}
+
+      <StatsTickerStrip />
+
+      <QuickJournalWidget />
 
       {visible.slotmachine && <SlotMachine />}
-      {visible.sessions && <SessionsLiveBoard />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {visible.tradeplan && <TradePlanWidget />}

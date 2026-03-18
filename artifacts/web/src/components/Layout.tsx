@@ -1,14 +1,54 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, ChevronLeft, Video, Zap, Layers } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, ChevronLeft, Video, Zap, Layers, Flame, Star } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
-import { FreeSidebar } from "@/components/CasinoElements";
+import { FreeSidebar, useDailyStreak } from "@/components/CasinoElements";
 import AIAssistant from "@/components/AIAssistant";
 import { TourGuide } from "@/components/TourGuide";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
+
+const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
+
+function HeaderGamificationBadges() {
+  const { streak, xp } = useDailyStreak();
+  const level = Math.floor(xp / 100) + 1;
+  const xpInLevel = xp % 100;
+  const rankIdx = Math.min(Math.floor((level - 1) / 2), RANKS.length - 1);
+  const rank = RANKS[rankIdx];
+
+  const badgeChecks = [
+    true, true,
+    streak >= 3,
+    localStorage.getItem("dashboard-visited") === "true",
+    streak >= 7,
+    localStorage.getItem("ict-academy-unlocked") === "true",
+    false, false,
+  ];
+  const earned = badgeChecks.filter(Boolean).length;
+
+  return (
+    <div className="flex items-center gap-1.5 ml-auto">
+      <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1" title={`Level ${level} — ${rank} · ${xpInLevel}/100 XP`}>
+        <Star className="h-3 w-3 text-primary" />
+        <span className="text-[10px] font-bold text-foreground">Lv {level}</span>
+        <div className="w-10 h-1 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full transition-all duration-1000" style={{ width: `${xpInLevel}%` }} />
+        </div>
+      </div>
+      <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1" title={`${streak}-day login streak`}>
+        <Flame className={`h-3 w-3 ${streak >= 7 ? "text-red-500" : streak >= 3 ? "text-amber-500" : "text-amber-400"}`} />
+        <span className="text-[10px] font-bold text-foreground">{streak}d</span>
+      </div>
+      <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1" title={`${earned}/8 badges earned`}>
+        <Trophy className="h-3 w-3 text-amber-500" />
+        <span className="text-[10px] font-bold text-foreground">{earned}/8</span>
+      </div>
+    </div>
+  );
+}
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 const SIDEBAR_COLLAPSED_KEY = "ict-sidebar-collapsed";
@@ -519,6 +559,7 @@ export default function Layout() {
       <div className="flex flex-col flex-1 min-w-0">
         <div className="hidden md:flex items-center gap-3 px-4 py-2 border-b border-border bg-sidebar shrink-0">
           <AIAssistant />
+          <HeaderGamificationBadges />
         </div>
 
         <main className="flex-1 overflow-auto relative">

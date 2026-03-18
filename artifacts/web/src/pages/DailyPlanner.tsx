@@ -17,10 +17,8 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  RotateCcw,
   ArrowLeft,
   ArrowRight,
-  Trophy,
   AlertTriangle,
   Activity,
   Download,
@@ -32,11 +30,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import CoolDownOverlay, { FailureAnalysis } from "@/components/CoolDownOverlay";
-import HallOfFame, { recordDisciplinedDay, getDisciplineStats } from "@/components/HallOfFame";
+import { recordDisciplinedDay } from "@/components/HallOfFame";
 import { useListTrades } from "@workspace/api-client-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  Droplets, Wind, Newspaper, BarChart3, CheckCircle2, Target, Clock, Activity, Trophy, AlertTriangle,
+  Droplets, Wind, Newspaper, BarChart3, CheckCircle2, Target, Clock, Activity, AlertTriangle,
 };
 
 interface PersonalTask {
@@ -247,9 +245,9 @@ const ICT_ENTRY_CRITERIA = [
 ];
 
 const SESSION_CARDS = [
-  { value: "london", label: "London Open", time: "2:00–5:00 AM EST", color: "bg-blue-500/10 border-blue-500/30 text-blue-400" },
-  { value: "silver-bullet", label: "Silver Bullet", time: "10:00–11:00 AM EST", color: "bg-amber-500/10 border-amber-500/30 text-amber-400" },
-  { value: "new-york", label: "NY Open", time: "9:30–11:00 AM EST", color: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" },
+  { value: "london", label: "London Open", time: "2:00-5:00 AM EST", color: "bg-blue-500/10 border-blue-500/30 text-blue-400" },
+  { value: "silver-bullet", label: "Silver Bullet", time: "10:00-11:00 AM EST", color: "bg-amber-500/10 border-amber-500/30 text-amber-400" },
+  { value: "new-york", label: "NY Open", time: "9:30-11:00 AM EST", color: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" },
 ];
 
 export default function DailyPlanner() {
@@ -261,13 +259,9 @@ export default function DailyPlanner() {
   const [newTask, setNewTask] = useState("");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
-  const [routineOpen, setRoutineOpen] = useState(true);
-  const [tasksOpen, setTasksOpen] = useState(true);
   const [tradePlanOpen, setTradePlanOpen] = useState(true);
   const [entryChecklistOpen, setEntryChecklistOpen] = useState(true);
-  const [scheduleOpen, setScheduleOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
-  const [hallOfFameOpen, setHallOfFameOpen] = useState(false);
   const [newLevelPrice, setNewLevelPrice] = useState("");
   const [newLevelType, setNewLevelType] = useState<"support" | "resistance">("support");
   const taskInputRef = useRef<HTMLInputElement>(null);
@@ -364,24 +358,6 @@ export default function DailyPlanner() {
   const completedTasks = dayData.tasks.filter((t) => t.done).length;
   const totalTasks = dayData.tasks.length;
 
-  const timelineItems = [
-    ...routineConfig.map((item) => ({
-      id: `routine-${item.key}`,
-      label: item.label,
-      sublabel: item.desc,
-      done: routineItems[item.key] || false,
-      type: "routine" as const,
-    })),
-    ...SESSION_CARDS.map((s) => ({
-      id: `session-${s.value}`,
-      label: s.label,
-      sublabel: s.time,
-      done: dayData.tradePlan.sessionFocus === s.value,
-      type: "session" as const,
-      color: s.color,
-    })),
-  ];
-
   return (
     <>
     <CoolDownOverlay />
@@ -411,23 +387,20 @@ export default function DailyPlanner() {
         Plan your trading day. Complete your routine, set your goals, and stay disciplined.
       </p>
 
-      {isToday && (
-        <Card className={`mb-4 ${isRoutineComplete ? "border-primary/30" : ""}`}>
-          <CardContent className="p-4">
-            <button onClick={() => setRoutineOpen(!routineOpen)} className="flex items-center justify-between w-full">
-              <h2 className="font-semibold text-sm flex items-center gap-2">
+      <Card className="mb-4">
+        <CardContent className="p-4 space-y-0">
+          {isToday && (
+            <>
+              <div className="flex items-center gap-2 mb-3">
                 <CheckCircle2 className={`h-4 w-4 ${isRoutineComplete ? "text-primary" : "text-muted-foreground"}`} />
-                Morning Routine
+                <h2 className="font-semibold text-sm">Morning Routine</h2>
                 {isRoutineComplete && (
                   <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
                     Done
                   </span>
                 )}
-              </h2>
-              {routineOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {routineOpen && (
-              <div className="mt-3 space-y-2">
+              </div>
+              <div className="space-y-2 mb-4">
                 <p className="text-xs text-muted-foreground mb-2">
                   Finish all steps to unlock trade logging in the Smart Journal.
                 </p>
@@ -447,91 +420,142 @@ export default function DailyPlanner() {
                   );
                 })}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <button onClick={() => setTasksOpen(!tasksOpen)} className="flex items-center justify-between w-full">
-            <h2 className="font-semibold text-sm flex items-center gap-2">
-              <ListTodo className="h-4 w-4 text-blue-400" />
-              My Tasks
-              {totalTasks > 0 && (
-                <span className="text-xs text-muted-foreground">
-                  {completedTasks}/{totalTasks}
-                </span>
-              )}
-            </h2>
-            {tasksOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-          </button>
-          {tasksOpen && (
-            <div className="mt-3">
-              <div className="flex gap-2 mb-3">
-                <input
-                  ref={taskInputRef}
-                  type="text"
-                  value={newTask}
-                  onChange={(e) => setNewTask(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addTask()}
-                  placeholder="Add a task..."
-                  className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                />
-                <button onClick={addTask} className="bg-primary text-primary-foreground rounded-lg px-3 py-2 hover:brightness-110 transition-all" disabled={!newTask.trim()}>
-                  <Plus className="h-4 w-4" />
-                </button>
+              <div className="border-t border-border my-4" />
+            </>
+          )}
+
+          {isToday && (
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="h-4 w-4 text-cyan-400" />
+                <h2 className="font-semibold text-sm">Session Schedule</h2>
+              </div>
+              <div className="relative pl-5 mb-4">
+                <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-border rounded-full" />
+                <div className="space-y-3">
+                  {routineConfig.map((item) => {
+                    const done = routineItems[item.key] || false;
+                    return (
+                      <div key={`timeline-routine-${item.key}`} className="flex items-start gap-3">
+                        <div className={`w-3 h-3 rounded-full shrink-0 -ml-1.5 mt-0.5 border-2 border-background transition-colors ${
+                          done ? "bg-primary" : "bg-border"
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium leading-tight ${done ? "text-primary" : "text-foreground"}`}>
+                            {item.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          done ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
+                        }`}>
+                          {done ? "Done" : "Routine"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {SESSION_CARDS.map((s) => {
+                    const isSelected = dayData.tradePlan.sessionFocus === s.value;
+                    return (
+                      <div key={`timeline-session-${s.value}`} className="flex items-start gap-3">
+                        <div className={`w-3 h-3 rounded-full shrink-0 -ml-1.5 mt-0.5 border-2 border-background transition-colors ${
+                          isSelected ? "bg-primary" : "bg-border"
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium leading-tight ${isSelected ? "text-primary" : "text-foreground"}`}>
+                            {s.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{s.time}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          isSelected ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30" : "bg-secondary text-muted-foreground"
+                        }`}>
+                          {isSelected ? "Selected" : "Session"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              {dayData.tasks.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">No tasks yet. Add your first task above.</p>
-              )}
+              <div className="border-t border-border my-4" />
+            </>
+          )}
 
-              <div className="space-y-1">
-                {dayData.tasks.map((task) => (
-                  <div key={task.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/50 transition-colors group">
-                    <Checkbox checked={task.done} onCheckedChange={() => toggleTask(task.id)} className="shrink-0" />
-                    {editingTaskId === task.id ? (
-                      <div className="flex-1 flex gap-2">
-                        <input
-                          ref={editInputRef}
-                          type="text"
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingTaskId(null); }}
-                          className="flex-1 bg-background border border-primary/50 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-                        />
-                        <button onClick={saveEdit} className="text-primary hover:text-primary/80">
-                          <Save className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 mb-3">
+            <ListTodo className="h-4 w-4 text-blue-400" />
+            <h2 className="font-semibold text-sm">My Tasks</h2>
+            {totalTasks > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {completedTasks}/{totalTasks}
+              </span>
+            )}
+          </div>
+          <div>
+            <div className="flex gap-2 mb-3">
+              <input
+                ref={taskInputRef}
+                type="text"
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addTask()}
+                placeholder="Add a task..."
+                className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+              />
+              <button onClick={addTask} className="bg-primary text-primary-foreground rounded-lg px-3 py-2 hover:brightness-110 transition-all" disabled={!newTask.trim()}>
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+
+            {dayData.tasks.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">No tasks yet. Add your first task above.</p>
+            )}
+
+            <div className="space-y-1">
+              {dayData.tasks.map((task) => (
+                <div key={task.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/50 transition-colors group">
+                  <Checkbox checked={task.done} onCheckedChange={() => toggleTask(task.id)} className="shrink-0" />
+                  {editingTaskId === task.id ? (
+                    <div className="flex-1 flex gap-2">
+                      <input
+                        ref={editInputRef}
+                        type="text"
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingTaskId(null); }}
+                        className="flex-1 bg-background border border-primary/50 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                      <button onClick={saveEdit} className="text-primary hover:text-primary/80">
+                        <Save className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className={`flex-1 text-sm ${task.done ? "line-through text-muted-foreground" : ""}`}>{task.text}</span>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                        <button onClick={() => startEdit(task)} className="p-1 text-muted-foreground hover:text-foreground rounded">
+                          <Edit3 className="h-3 w-3" />
+                        </button>
+                        <button onClick={() => deleteTask(task.id)} className="p-1 text-muted-foreground hover:text-destructive rounded">
+                          <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
-                    ) : (
-                      <>
-                        <span className={`flex-1 text-sm ${task.done ? "line-through text-muted-foreground" : ""}`}>{task.text}</span>
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                          <button onClick={() => startEdit(task)} className="p-1 text-muted-foreground hover:text-foreground rounded">
-                            <Edit3 className="h-3 w-3" />
-                          </button>
-                          <button onClick={() => deleteTask(task.id)} className="p-1 text-muted-foreground hover:text-destructive rounded">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {totalTasks > 0 && (
-                <div className="mt-3 h-1.5 bg-border rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all duration-500"
-                    style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
-                  />
+                    </>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
-          )}
+
+            {totalTasks > 0 && (
+              <div className="mt-3 h-1.5 bg-border rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-500"
+                  style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
+                />
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -755,54 +779,6 @@ export default function DailyPlanner() {
         </CardContent>
       </Card>
 
-      {isToday && (
-        <Card className="mb-4">
-          <CardContent className="p-4">
-            <button onClick={() => setScheduleOpen(!scheduleOpen)} className="flex items-center justify-between w-full">
-              <h2 className="font-semibold text-sm flex items-center gap-2">
-                <Clock className="h-4 w-4 text-cyan-400" />
-                Today's Schedule
-              </h2>
-              {scheduleOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {scheduleOpen && (
-              <div className="mt-3 relative pl-5">
-                <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-border rounded-full" />
-                <div className="space-y-3">
-                  {timelineItems.map((item) => (
-                    <div key={item.id} className="flex items-start gap-3">
-                      <div className={`w-3 h-3 rounded-full shrink-0 -ml-1.5 mt-0.5 border-2 border-background transition-colors ${
-                        item.done ? "bg-primary" : "bg-border"
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium leading-tight ${item.done ? "text-primary" : "text-foreground"}`}>
-                          {item.label}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{item.sublabel}</p>
-                      </div>
-                      {item.type === "routine" && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                          item.done ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
-                        }`}>
-                          {item.done ? "Done" : "Routine"}
-                        </span>
-                      )}
-                      {item.type === "session" && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                          item.done ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30" : "bg-secondary text-muted-foreground"
-                        }`}>
-                          {item.done ? "Selected" : "Session"}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       <Card className="mb-4">
         <CardContent className="p-4">
           <button onClick={() => setNotesOpen(!notesOpen)} className="flex items-center justify-between w-full">
@@ -828,30 +804,6 @@ export default function DailyPlanner() {
           )}
         </CardContent>
       </Card>
-
-      {isFeatureEnabled("feature_hall_of_fame") && (
-        <Card className="mb-4">
-          <CardContent className="p-4">
-            <button onClick={() => setHallOfFameOpen(!hallOfFameOpen)} className="flex items-center justify-between w-full">
-              <h2 className="font-semibold text-sm flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-amber-400" />
-                Hall of Fame
-                {getDisciplineStats().currentStreak > 0 && (
-                  <span className="text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">
-                    {getDisciplineStats().currentStreak} day streak
-                  </span>
-                )}
-              </h2>
-              {hallOfFameOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {hallOfFameOpen && (
-              <div className="mt-3">
-                <HallOfFame />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
     </>
   );
