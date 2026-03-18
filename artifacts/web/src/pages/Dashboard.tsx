@@ -1,14 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  TrendingUp, Target, BarChart3, Shield,
+  TrendingUp, BarChart3, Shield,
   Sparkles,
-  FileText, StickyNote, ClipboardCheck, CheckSquare, Square, ArrowRight,
-  Calculator, Layers,
+  FileText, StickyNote, ClipboardCheck, CheckSquare, Square,
+  Target, Settings, X,
+  CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
 import { useListTrades } from "@workspace/api-client-react";
+import { usePlanner } from "@/contexts/PlannerContext";
+import { useGetPropAccount } from "@workspace/api-client-react";
+import { DASHBOARD_WIDGETS, useDashboardWidgets } from "@/hooks/useDashboardWidgets";
+import type { LucideIcon } from "lucide-react";
 
 const SESSIONS = [
   { name: "London", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", time: "2:00–5:00 AM EST" },
@@ -30,13 +35,13 @@ const CHECKLIST_ITEMS = [
   { id: "displacement_fvg", label: "Displacement with FVG or MSS present", desc: "Big displacement candles created an FVG or MSS — Smart Money is behind this move." },
 ];
 
-const TRADE_PLAN_CHIPS = [
-  "Bullish bias",
-  "Bearish bias",
-  "Waiting for sweep",
-  "Silver Bullet only",
-  "No trade — red news",
-  "Targeting NY Open",
+const TRADE_BIAS_CHIPS = [
+  { id: "bullish", label: "Bullish bias", color: "#00C896" },
+  { id: "bearish", label: "Bearish bias", color: "#EF4444" },
+  { id: "waiting", label: "Waiting for sweep", color: "#F59E0B" },
+  { id: "silver_bullet", label: "Silver Bullet only", color: "#818CF8" },
+  { id: "no_trade", label: "No trade — red news", color: "#6B7280" },
+  { id: "targeting_ny", label: "Targeting NY Open", color: "#00C896" },
 ];
 
 const QUICK_JOURNAL_KEY = "ict-quick-journal-notes";
@@ -113,6 +118,37 @@ function dateSeed(): number {
   return Math.abs(hash);
 }
 
+function WidgetHeader({
+  icon: Icon,
+  title,
+  editLink,
+  editLabel = "Edit ↗",
+  badge,
+}: {
+  icon: LucideIcon;
+  title: string;
+  editLink?: string;
+  editLabel?: string;
+  badge?: React.ReactNode;
+}) {
+  const navigate = useNavigate();
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <Icon className="h-4 w-4 text-primary shrink-0" />
+      <h3 className="text-sm font-bold text-foreground flex-1">{title}</h3>
+      {badge}
+      {editLink && (
+        <button
+          onClick={() => navigate(editLink)}
+          className="text-[10px] text-primary hover:text-primary/80 font-medium shrink-0 transition-colors"
+        >
+          {editLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function CompactGreetingRow() {
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")[0] || "Trader";
@@ -163,7 +199,7 @@ function SlotMachine() {
   }, [seed]);
 
   return (
-    <div className="bg-gradient-to-b from-amber-500/5 to-card border border-amber-500/20 rounded-2xl p-6">
+    <div className="bg-gradient-to-b from-amber-500/5 to-card border border-amber-500/20 rounded-2xl p-5">
       <div className="flex items-center gap-2 mb-4">
         <Target className="h-5 w-5 text-amber-500" />
         <h3 className="text-base font-bold text-foreground">Today's Mission</h3>
@@ -218,7 +254,8 @@ function SlotMachine() {
   );
 }
 
-function KillZoneStrip() {
+function KillZoneStripWidget() {
+  const navigate = useNavigate();
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -230,61 +267,540 @@ function KillZoneStrip() {
   const nowMins = est.getHours() * 60 + est.getMinutes();
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide" style={{ height: 48 }}>
-      {SESSIONS.map((session) => {
-        const startMins = session.startH * 60 + session.startM;
-        const endMins = session.endH * 60 + session.endM;
-        const isLive = endMins > startMins
-          ? nowMins >= startMins && nowMins < endMins
-          : nowMins >= startMins || nowMins < endMins;
-        const isEnded = endMins > startMins
-          ? nowMins >= endMins
-          : nowMins >= endMins && nowMins < startMins;
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <WidgetHeader
+        icon={Target}
+        title="Kill Zones"
+        editLink="/planner"
+        editLabel="Planner ↗"
+      />
+      <div
+        className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide cursor-pointer"
+        style={{ height: 52 }}
+        onClick={() => navigate("/planner")}
+      >
+        {SESSIONS.map((session) => {
+          const startMins = session.startH * 60 + session.startM;
+          const endMins = session.endH * 60 + session.endM;
+          const isLive = endMins > startMins
+            ? nowMins >= startMins && nowMins < endMins
+            : nowMins >= startMins || nowMins < endMins;
+          const isEnded = endMins > startMins
+            ? nowMins >= endMins
+            : nowMins >= endMins && nowMins < startMins;
 
-        const target = new Date(est);
-        target.setHours(session.startH, session.startM, 0, 0);
-        if (!isLive && est >= target) target.setDate(target.getDate() + 1);
-        const msUntil = isLive ? 0 : target.getTime() - est.getTime();
-        const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
+          const target = new Date(est);
+          target.setHours(session.startH, session.startM, 0, 0);
+          if (!isLive && est >= target) target.setDate(target.getDate() + 1);
+          const msUntil = isLive ? 0 : target.getTime() - est.getTime();
+          const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
 
-        return (
-          <div
-            key={session.name}
-            className={`flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border rounded-xl transition-all ${
-              isLive ? "border-2" : "border-border"
-            }`}
-            style={isLive ? { borderColor: session.color, boxShadow: `0 0 8px ${session.color}25` } : undefined}
-          >
+          return (
             <div
-              className={`w-1.5 h-1.5 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
-              style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
-            />
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-bold text-foreground whitespace-nowrap leading-tight">{session.emoji} {session.name}</span>
-              <span className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight">{session.time}</span>
+              key={session.name}
+              className={`flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border rounded-xl transition-all ${
+                isLive ? "border-2" : "border-border"
+              }`}
+              style={isLive ? { borderColor: session.color, boxShadow: `0 0 8px ${session.color}25` } : undefined}
+            >
+              <div
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
+                style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
+              />
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-foreground whitespace-nowrap leading-tight">{session.emoji} {session.name}</span>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight">{session.time}</span>
+              </div>
+              {isLive ? (
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-1"
+                  style={{ backgroundColor: `${session.color}20`, color: session.color }}
+                >
+                  LIVE
+                </span>
+              ) : isEnded ? (
+                <span className="text-[10px] text-muted-foreground font-medium shrink-0 ml-1">Ended</span>
+              ) : (
+                <span className={`text-[10px] font-mono font-medium shrink-0 ml-1 ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
+                  {formatCountdown(msUntil)}
+                </span>
+              )}
             </div>
-            {isLive ? (
-              <span
-                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-1"
-                style={{ backgroundColor: `${session.color}20`, color: session.color }}
-              >
-                LIVE
-              </span>
-            ) : isEnded ? (
-              <span className="text-[10px] text-muted-foreground font-medium shrink-0 ml-1">Ended</span>
-            ) : (
-              <span className={`text-[10px] font-mono font-medium shrink-0 ml-1 ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
-                {formatCountdown(msUntil)}
-              </span>
-            )}
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MorningRoutineWidget() {
+  const navigate = useNavigate();
+  const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
+
+  const doneCount = routineConfig.filter((item) => routineItems[item.key]).length;
+  const totalCount = routineConfig.length;
+  const pct = totalCount > 0 ? doneCount / totalCount : 0;
+
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - pct);
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <WidgetHeader
+        icon={CheckCircle2}
+        title="Morning Routine"
+        editLink="/planner"
+        editLabel="Planner ↗"
+        badge={
+          isRoutineComplete ? (
+            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">Done ✓</span>
+          ) : undefined
+        }
+      />
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0">
+          <svg width="52" height="52" viewBox="0 0 52 52">
+            <circle cx="26" cy="26" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+            <circle
+              cx="26"
+              cy="26"
+              r={radius}
+              fill="none"
+              stroke={isRoutineComplete ? "#00C896" : "#818CF8"}
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              style={{ transform: "rotate(-90deg)", transformOrigin: "center", transition: "stroke-dashoffset 0.4s ease" }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-[11px] font-bold text-foreground">{doneCount}/{totalCount}</span>
           </div>
-        );
-      })}
+        </div>
+        <div className="flex-1 space-y-1.5">
+          {routineConfig.map((item) => {
+            const done = routineItems[item.key];
+            return (
+              <label
+                key={item.key}
+                className="flex items-center gap-2 cursor-pointer group"
+                onClick={(e) => { e.preventDefault(); toggleItem(item.key); }}
+              >
+                <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors border ${
+                  done ? "bg-primary border-primary" : "border-border group-hover:border-primary/50"
+                }`}>
+                  {done && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
+                </div>
+                <span className={`text-xs leading-tight ${done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                  {item.label}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreTradeChecklistWidget() {
+  const navigate = useNavigate();
+  const [checked, setChecked] = useState<Record<string, boolean>>(() => getChecklistState().checked);
+  const [ttlAnchor, setTtlAnchor] = useState(() => getChecklistState().timestamp);
+  const allChecked = CHECKLIST_ITEMS.every((item) => checked[item.id]);
+  const doneCount = Object.values(checked).filter(Boolean).length;
+
+  useEffect(() => {
+    if (ttlAnchor <= 0) return;
+    const expiresAt = ttlAnchor + CHECKLIST_TTL_HOURS * 60 * 60 * 1000;
+    const msLeft = expiresAt - Date.now();
+    if (msLeft <= 0) {
+      setChecked({});
+      setTtlAnchor(0);
+      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setChecked({});
+      setTtlAnchor(0);
+      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
+    }, msLeft);
+    return () => clearTimeout(timer);
+  }, [ttlAnchor]);
+
+  function toggle(id: string) {
+    const next = { ...checked, [id]: !checked[id] };
+    setChecked(next);
+    saveChecklistState(next);
+    if (ttlAnchor <= 0) setTtlAnchor(Date.now());
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <WidgetHeader
+        icon={ClipboardCheck}
+        title="Pre-Trade Checklist"
+        editLink="/planner"
+        editLabel="Planner ↗"
+        badge={
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${allChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
+            {doneCount}/{CHECKLIST_ITEMS.length}
+          </span>
+        }
+      />
+      <div className="space-y-1.5">
+        {CHECKLIST_ITEMS.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => toggle(item.id)}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all text-left ${
+              checked[item.id]
+                ? "bg-emerald-500/10 border-emerald-500/30"
+                : "bg-secondary/30 border-border hover:border-emerald-500/30"
+            }`}
+          >
+            {checked[item.id]
+              ? <CheckSquare className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              : <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+            <span className={`text-xs font-medium ${checked[item.id] ? "text-emerald-400" : "text-foreground"}`}>
+              {item.label}
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className={`mt-2.5 rounded-lg border px-3 py-2 text-center text-xs font-bold transition-all ${
+        allChecked
+          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+          : "bg-secondary/30 border-border text-muted-foreground"
+      }`}>
+        {allChecked ? "✓ Ready to Trade" : "Not Ready"}
+      </div>
+    </div>
+  );
+}
+
+const PLANNER_DAY_KEY_PREFIX = "planner_day_";
+
+function getTodayPlannerKey() {
+  return `${PLANNER_DAY_KEY_PREFIX}${new Date().toISOString().split("T")[0]}`;
+}
+
+interface TodayTradePlan {
+  bias: string;
+  pairsToWatch: string;
+  sessionFocus: string;
+  maxTrades: string;
+}
+
+function loadTodayTradePlan(): TodayTradePlan {
+  try {
+    const raw = localStorage.getItem(getTodayPlannerKey());
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed.tradePlan || {};
+    }
+  } catch {}
+  return { bias: "", pairsToWatch: "", sessionFocus: "", maxTrades: "" };
+}
+
+function saveTodayBias(bias: string) {
+  try {
+    const key = getTodayPlannerKey();
+    const raw = localStorage.getItem(key);
+    const data = raw ? JSON.parse(raw) : { tasks: [], notes: "", tradePlan: {} };
+    data.tradePlan = { ...data.tradePlan, bias };
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+}
+
+function TradePlanWidget() {
+  const navigate = useNavigate();
+  const [plan, setPlan] = useState<TodayTradePlan>(() => loadTodayTradePlan());
+
+  useEffect(() => {
+    const handleStorage = () => setPlan(loadTodayTradePlan());
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  const activeBiasChip = TRADE_BIAS_CHIPS.find((c) =>
+    plan.bias?.toLowerCase().includes(c.id.replace("_", " ")) ||
+    plan.bias?.toLowerCase().includes(c.label.toLowerCase().split(" ")[0])
+  );
+
+  function tapBias(chip: typeof TRADE_BIAS_CHIPS[0]) {
+    const newBias = plan.bias === chip.label ? "" : chip.label;
+    setPlan((prev) => ({ ...prev, bias: newBias }));
+    saveTodayBias(newBias);
+  }
+
+  const hasPlan = plan.bias || plan.pairsToWatch || plan.sessionFocus || plan.maxTrades;
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <WidgetHeader
+        icon={FileText}
+        title="Today's Trade Plan"
+        editLink="/planner"
+        editLabel="Edit ↗"
+      />
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {TRADE_BIAS_CHIPS.map((chip) => {
+          const isActive = plan.bias === chip.label;
+          return (
+            <button
+              key={chip.id}
+              onClick={() => tapBias(chip)}
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-all whitespace-nowrap"
+              style={{
+                borderColor: isActive ? chip.color : "var(--border)",
+                color: isActive ? chip.color : "var(--muted-foreground)",
+                backgroundColor: isActive ? `${chip.color}15` : "transparent",
+              }}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
+      </div>
+      {hasPlan ? (
+        <div className="space-y-1.5">
+          {plan.bias && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-16 shrink-0">Bias</span>
+              <span
+                className="text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{ color: activeBiasChip?.color || "var(--foreground)", backgroundColor: `${activeBiasChip?.color || "#666"}15` }}
+              >
+                {plan.bias}
+              </span>
+            </div>
+          )}
+          {plan.pairsToWatch && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-16 shrink-0">Pairs</span>
+              <span className="text-xs text-foreground">{plan.pairsToWatch}</span>
+            </div>
+          )}
+          {plan.sessionFocus && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-16 shrink-0">Session</span>
+              <span className="text-xs text-foreground">{plan.sessionFocus}</span>
+            </div>
+          )}
+          {plan.maxTrades && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-16 shrink-0">Max trades</span>
+              <span className="text-xs text-foreground">{plan.maxTrades}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Tap a bias chip above or go to Planner to set today's plan.</p>
+      )}
+    </div>
+  );
+}
+
+function RiskShieldMiniWidget() {
+  const navigate = useNavigate();
+  const { data: account } = useGetPropAccount();
+
+  const startingBalance = account?.startingBalance ?? 0;
+  const dailyLoss = account?.dailyLoss ?? 0;
+  const maxDailyLossPct = account?.maxDailyLossPct ?? 2;
+  const maxDrawdownPct = account?.maxTotalDrawdownPct ?? 10;
+  const balance = account?.currentBalance ?? startingBalance;
+  const dailyLossPct = startingBalance > 0 ? (dailyLoss / startingBalance) * 100 : 0;
+  const totalDrawdownPct = startingBalance > 0 ? ((startingBalance - balance) / startingBalance) * 100 : 0;
+  const hasData = startingBalance > 0;
+
+  const dailyColor = dailyLossPct >= maxDailyLossPct ? "#EF4444" : dailyLossPct >= maxDailyLossPct * 0.75 ? "#F59E0B" : "#00C896";
+  const drawdownColor = totalDrawdownPct >= maxDrawdownPct ? "#EF4444" : totalDrawdownPct >= maxDrawdownPct * 0.75 ? "#F59E0B" : "#00C896";
+
+  const [accountSizeInput, setAccountSizeInput] = useState(
+    startingBalance > 0 ? String(startingBalance) : ""
+  );
+  const [riskPctInput, setRiskPctInput] = useState("1");
+  const [slPointsInput, setSlPointsInput] = useState("10");
+
+  const acctSize = parseFloat(accountSizeInput) || 0;
+  const riskPct = parseFloat(riskPctInput) || 1;
+  const slPoints = parseFloat(slPointsInput) || 0;
+  const dollarRisk = acctSize > 0 ? (acctSize * riskPct) / 100 : null;
+  const contractCount = dollarRisk !== null && slPoints > 0 ? dollarRisk / slPoints : null;
+
+  return (
+    <div className="bg-card border border-red-500/20 rounded-2xl p-4">
+      <WidgetHeader
+        icon={Shield}
+        title="Risk Shield"
+        editLink="/risk-shield"
+        editLabel="Full Shield ↗"
+      />
+      {hasData && (
+        <div className="space-y-3 mb-4">
+          <div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>Daily Loss</span>
+              <span style={{ color: dailyColor }}>{dailyLossPct.toFixed(2)}% / {maxDailyLossPct}% limit</span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min((dailyLossPct / maxDailyLossPct) * 100, 100)}%`, backgroundColor: dailyColor }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>Drawdown</span>
+              <span style={{ color: drawdownColor }}>{totalDrawdownPct.toFixed(2)}% / {maxDrawdownPct}% limit</span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min((totalDrawdownPct / maxDrawdownPct) * 100, 100)}%`, backgroundColor: drawdownColor }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compact position sizer */}
+      <div className="rounded-xl border border-border bg-secondary/30 p-3">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Quick Position Sizer</p>
+        <div className="flex items-center gap-2 mb-2">
+          <div className="flex-1 min-w-0">
+            <label className="text-[10px] text-muted-foreground block mb-1">Account ($)</label>
+            <input
+              type="number"
+              value={accountSizeInput}
+              onChange={(e) => setAccountSizeInput(e.target.value)}
+              placeholder={startingBalance > 0 ? String(startingBalance) : "50000"}
+              className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div style={{ width: 60 }}>
+            <label className="text-[10px] text-muted-foreground block mb-1">Risk %</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="5"
+              value={riskPctInput}
+              onChange={(e) => setRiskPctInput(e.target.value)}
+              className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div style={{ width: 60 }}>
+            <label className="text-[10px] text-muted-foreground block mb-1">SL (pts)</label>
+            <input
+              type="number"
+              step="1"
+              min="1"
+              value={slPointsInput}
+              onChange={(e) => setSlPointsInput(e.target.value)}
+              className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="10"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className={`flex items-center justify-between rounded-lg px-2.5 py-2 ${dollarRisk !== null ? "bg-primary/10 border border-primary/20" : "bg-card border border-border"}`}>
+            <span className="text-[10px] text-muted-foreground">$ Risk</span>
+            <span className="text-sm font-bold text-primary">
+              {dollarRisk !== null ? `$${dollarRisk.toFixed(0)}` : "—"}
+            </span>
+          </div>
+          <div className={`flex items-center justify-between rounded-lg px-2.5 py-2 ${contractCount !== null ? "bg-primary/10 border border-primary/20" : "bg-card border border-border"}`}>
+            <span className="text-[10px] text-muted-foreground">Contracts</span>
+            <span className="text-sm font-bold text-primary">
+              {contractCount !== null ? (contractCount < 0.1 ? contractCount.toFixed(2) : contractCount.toFixed(1)) : "—"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickJournalWidget() {
+  const navigate = useNavigate();
+  const [text, setText] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [recentNotes, setRecentNotes] = useState<QuickNote[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setRecentNotes(getQuickNotes().slice(0, 2));
+  }, []);
+
+  function handleLog() {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const note: QuickNote = {
+      id: `qn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      text: trimmed,
+      timestamp: new Date().toISOString(),
+    };
+    saveQuickNote(note);
+    setRecentNotes(getQuickNotes().slice(0, 2));
+    setText("");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    inputRef.current?.focus();
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <WidgetHeader
+        icon={StickyNote}
+        title="Quick Journal"
+        editLink="/journal"
+        editLabel="Open Journal ↗"
+      />
+      <div className="flex items-center gap-2 mb-3">
+        <input
+          ref={inputRef}
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleLog()}
+          placeholder="Quick note for today..."
+          className="flex-1 bg-secondary/40 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary min-w-0"
+          maxLength={500}
+        />
+        {saved ? (
+          <span className="text-xs text-emerald-400 font-semibold whitespace-nowrap shrink-0">Saved ✓</span>
+        ) : (
+          <button
+            onClick={handleLog}
+            disabled={!text.trim()}
+            className="text-xs font-semibold bg-primary text-primary-foreground px-3 py-2 rounded-lg hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
+          >
+            Log
+          </button>
+        )}
+      </div>
+      {recentNotes.length > 0 && (
+        <div className="space-y-1.5">
+          {recentNotes.map((note) => (
+            <div key={note.id} className="flex items-start gap-2 text-[10px] text-muted-foreground">
+              <span className="shrink-0 mt-0.5">·</span>
+              <span className="line-clamp-1">{note.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function StatsTickerStrip() {
+  const navigate = useNavigate();
   const { data: apiTrades } = useListTrades();
   const { streak } = useDailyStreak();
 
@@ -334,7 +850,7 @@ function StatsTickerStrip() {
       bg: "bg-secondary border-border",
     },
     {
-      label: "Login Streak",
+      label: "Streak",
       value: `${streak}d`,
       color: streak >= 7 ? "text-red-400" : streak >= 3 ? "text-amber-400" : "text-muted-foreground",
       bg: streak >= 3 ? "bg-amber-500/10 border-amber-500/20" : "bg-secondary border-border",
@@ -342,400 +858,92 @@ function StatsTickerStrip() {
   ];
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
-      {pills.map((pill) => (
-        <div
-          key={pill.label}
-          className={`flex-shrink-0 flex items-center gap-2 border rounded-full px-3 py-1.5 ${pill.bg}`}
-        >
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">{pill.label}</span>
-          <span className={`text-xs font-bold whitespace-nowrap ${pill.color}`}>{pill.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function QuickJournalWidget() {
-  const [text, setText] = useState("");
-  const [saved, setSaved] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  function handleLog() {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    const note: QuickNote = {
-      id: `qn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      text: trimmed,
-      timestamp: new Date().toISOString(),
-    };
-    saveQuickNote(note);
-    setText("");
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    inputRef.current?.focus();
-  }
-
-  return (
-    <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2.5">
-      <StickyNote className="h-4 w-4 text-amber-500 shrink-0" />
-      <input
-        ref={inputRef}
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleLog()}
-        placeholder="Quick note for today..."
-        className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none min-w-0"
-        maxLength={500}
-      />
-      {saved ? (
-        <span className="text-xs text-emerald-400 font-semibold whitespace-nowrap shrink-0">Saved ✓</span>
-      ) : (
-        <button
-          onClick={handleLog}
-          disabled={!text.trim()}
-          className="text-xs font-semibold bg-primary text-primary-foreground px-3 py-1 rounded-lg hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
-        >
-          Log
-        </button>
-      )}
-    </div>
-  );
-}
-
-function TradePlanWidget() {
-  const storageKey = "dashboard-trade-plan-" + new Date().toDateString();
-  const [value, setValue] = useState(() => localStorage.getItem(storageKey) || "");
-
-  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setValue(e.target.value);
-    localStorage.setItem(storageKey, e.target.value);
-  }
-
-  function appendChip(phrase: string) {
-    const sep = value && !value.endsWith(" ") && !value.endsWith("\n") ? " " : "";
-    const next = value + sep + phrase + ". ";
-    setValue(next);
-    localStorage.setItem(storageKey, next);
-  }
-
-  return (
-    <div className="bg-card border border-border rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <FileText className="h-5 w-5 text-primary" />
-        <h3 className="text-base font-bold text-foreground">Today's Trade Plan</h3>
-        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold ml-auto">DAILY</span>
-      </div>
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 mb-3">
-        {TRADE_PLAN_CHIPS.map((chip) => (
-          <button
-            key={chip}
-            onClick={() => appendChip(chip)}
-            className="flex-shrink-0 text-[11px] font-medium bg-secondary hover:bg-secondary/70 border border-border rounded-full px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+    <div className="flex items-center gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide flex-1 min-w-0">
+        {pills.map((pill) => (
+          <div
+            key={pill.label}
+            className={`flex-shrink-0 flex items-center gap-2 border rounded-full px-3 py-1.5 ${pill.bg}`}
           >
-            {chip}
-          </button>
-        ))}
-      </div>
-      <textarea
-        value={value}
-        onChange={handleChange}
-        placeholder="Write your trade plan for today — bias, key levels, sessions to watch, max risk..."
-        rows={5}
-        className="w-full bg-secondary/40 border border-border rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed"
-      />
-      <p className="text-[10px] text-muted-foreground mt-2">Auto-saved · Resets each day</p>
-    </div>
-  );
-}
-
-function NotesWidget() {
-  const [value, setValue] = useState(() => localStorage.getItem("dashboard-notes") || "");
-
-  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setValue(e.target.value);
-    localStorage.setItem("dashboard-notes", e.target.value);
-  }
-
-  return (
-    <div className="bg-card border border-border rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <StickyNote className="h-5 w-5 text-amber-500" />
-        <h3 className="text-base font-bold text-foreground">Notes</h3>
-        <span className="text-[10px] text-muted-foreground ml-auto">Scratch-pad</span>
-      </div>
-      <textarea
-        value={value}
-        onChange={handleChange}
-        placeholder="Quick notes, observations, reminders..."
-        rows={4}
-        className="w-full bg-secondary/40 border border-border rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed"
-      />
-      <p className="text-[10px] text-muted-foreground mt-2">Auto-saved · Persists between sessions</p>
-    </div>
-  );
-}
-
-function PreTradeChecklistWidget() {
-  const [checked, setChecked] = useState<Record<string, boolean>>(() => getChecklistState().checked);
-  const [ttlAnchor, setTtlAnchor] = useState(() => getChecklistState().timestamp);
-  const allChecked = CHECKLIST_ITEMS.every((item) => checked[item.id]);
-
-  useEffect(() => {
-    if (ttlAnchor <= 0) return;
-    const expiresAt = ttlAnchor + CHECKLIST_TTL_HOURS * 60 * 60 * 1000;
-    const msLeft = expiresAt - Date.now();
-    if (msLeft <= 0) {
-      setChecked({});
-      setTtlAnchor(0);
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setChecked({});
-      setTtlAnchor(0);
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-    }, msLeft);
-    return () => clearTimeout(timer);
-  }, [ttlAnchor]);
-
-  function toggle(id: string) {
-    const next = { ...checked, [id]: !checked[id] };
-    setChecked(next);
-    saveChecklistState(next);
-    if (ttlAnchor <= 0) setTtlAnchor(Date.now());
-  }
-
-  function reset() {
-    setChecked({});
-    setTtlAnchor(0);
-    localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-  }
-
-  const doneCount = Object.values(checked).filter(Boolean).length;
-
-  return (
-    <div className="bg-card border border-emerald-500/30 rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <ClipboardCheck className="h-5 w-5 text-emerald-500" />
-        <h3 className="text-base font-bold text-foreground">Pre-Trade Checklist</h3>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-auto ${allChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
-          {doneCount}/{CHECKLIST_ITEMS.length}
-        </span>
-        <button onClick={reset} className="text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-          Reset
-        </button>
-      </div>
-      <div className="space-y-2">
-        {CHECKLIST_ITEMS.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => toggle(item.id)}
-            className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${
-              checked[item.id]
-                ? "bg-emerald-500/10 border-emerald-500/30"
-                : "bg-secondary/30 border-border hover:border-emerald-500/30"
-            }`}
-          >
-            {checked[item.id]
-              ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-              : <Square className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
-            <div>
-              <div className={`text-sm font-semibold ${checked[item.id] ? "text-emerald-400" : "text-foreground"}`}>
-                {item.label}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
-            </div>
-          </button>
-        ))}
-      </div>
-      <div className={`mt-3 rounded-xl border p-2.5 text-center text-xs font-bold transition-all ${
-        allChecked
-          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-          : "bg-secondary/30 border-border text-muted-foreground"
-      }`}>
-        {allChecked ? "✓ All criteria met — you're ready to trade" : `${doneCount} / ${CHECKLIST_ITEMS.length} criteria met`}
-      </div>
-      <p className="text-[10px] text-muted-foreground mt-2">Resets after 4 hours · Synced with Risk Shield</p>
-    </div>
-  );
-}
-
-const API_BASE = import.meta.env.VITE_API_URL || "/api";
-
-interface PropAccountData {
-  startingBalance: number;
-  currentBalance: number;
-  dailyLoss: number;
-  maxDailyLossPct: number;
-  maxTotalDrawdownPct: number;
-}
-
-function RiskShieldMiniWidget() {
-  const navigate = useNavigate();
-  const [account, setAccount] = useState<PropAccountData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/prop/account`, { credentials: "include" })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setAccount(data); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  const dailyLossPct = account && account.startingBalance > 0
-    ? (account.dailyLoss / account.startingBalance) * 100
-    : null;
-  const drawdownPct = account && account.startingBalance > 0
-    ? ((account.startingBalance - account.currentBalance) / account.startingBalance) * 100
-    : null;
-  const dailyPnL = account ? -account.dailyLoss : null;
-
-  const pnlColor = dailyPnL === null ? "text-muted-foreground" : dailyPnL >= 0 ? "text-emerald-400" : "text-red-400";
-  const drawdownColor = drawdownPct === null ? "text-muted-foreground"
-    : drawdownPct < (account?.maxTotalDrawdownPct ?? 10) * 0.5 ? "text-emerald-400"
-    : drawdownPct < (account?.maxTotalDrawdownPct ?? 10) * 0.75 ? "text-amber-400"
-    : "text-red-400";
-
-  return (
-    <div className="bg-card border border-red-500/20 rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Shield className="h-5 w-5 text-red-500" />
-        <h3 className="text-base font-bold text-foreground">Risk Shield</h3>
-        <button
-          onClick={() => navigate("/risk-shield")}
-          className="ml-auto text-[10px] text-primary hover:underline font-medium"
-        >
-          Open full view →
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-4">
-          <div className="h-5 w-5 border-2 border-border border-t-primary rounded-full animate-spin" />
-        </div>
-      ) : account ? (
-        <>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="bg-secondary/40 rounded-xl p-3 text-center">
-              <TrendingUp className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Daily P&L</p>
-              <p className={`text-lg font-bold ${pnlColor}`}>
-                {dailyPnL === null ? "—" : `${dailyPnL >= 0 ? "+" : ""}$${Math.abs(dailyPnL).toFixed(0)}`}
-              </p>
-            </div>
-            <div className="bg-secondary/40 rounded-xl p-3 text-center">
-              <BarChart3 className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Drawdown</p>
-              <p className={`text-lg font-bold ${drawdownColor}`}>
-                {drawdownPct === null ? "—" : `${drawdownPct.toFixed(1)}%`}
-              </p>
-            </div>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">{pill.label}</span>
+            <span className={`text-xs font-bold whitespace-nowrap ${pill.color}`}>{pill.value}</span>
           </div>
-          {dailyLossPct !== null && account && (
-            <div className="mb-3">
-              <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-                <span>Daily loss used</span>
-                <span>{dailyLossPct.toFixed(1)}% / {account.maxDailyLossPct}% limit</span>
-              </div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min((dailyLossPct / account.maxDailyLossPct) * 100, 100)}%`,
-                    backgroundColor: dailyLossPct >= account.maxDailyLossPct ? "#EF4444" : dailyLossPct >= account.maxDailyLossPct * 0.75 ? "#F59E0B" : "#00C896",
-                  }}
-                />
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <p className="text-xs text-muted-foreground text-center py-2 mb-3">
-          Set up your account in Risk Shield to track P&L and drawdown here.
-        </p>
-      )}
-
+        ))}
+      </div>
       <button
-        onClick={() => navigate("/risk-shield")}
-        className="w-full flex items-center justify-center gap-2 bg-secondary/60 hover:bg-secondary border border-border rounded-xl py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => navigate("/analytics")}
+        className="text-[10px] text-primary hover:text-primary/80 font-medium shrink-0 whitespace-nowrap transition-colors"
       >
-        <Calculator className="h-4 w-4" />
-        Position Size Calculator
+        Analytics ↗
       </button>
     </div>
   );
 }
 
-function SwipeModeCard() {
-  const navigate = useNavigate();
+function CustomizeDrawer({
+  open,
+  onClose,
+  prefs,
+  onToggle,
+}: {
+  open: boolean;
+  onClose: () => void;
+  prefs: Record<string, boolean>;
+  onToggle: (id: string) => void;
+}) {
+  if (!open) return null;
 
   return (
-    <div
-      className="relative overflow-hidden bg-gradient-to-br from-primary/15 via-primary/5 to-card border border-primary/30 rounded-2xl p-6 cursor-pointer group hover:border-primary/50 transition-all"
-      onClick={() => navigate("/academy?swipe=1")}
-    >
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center group-hover:bg-primary/30 transition-colors">
-          <Layers className="h-6 w-6 text-primary" />
+    <>
+      <div
+        className="fixed inset-0 bg-black/60 z-40 animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-3xl p-6 animate-in slide-in-from-bottom duration-300 max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Customize Dashboard</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Toggle widgets on or off</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl hover:bg-secondary transition-colors"
+          >
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
         </div>
-        <div>
-          <h3 className="text-base font-bold text-foreground">Swipe Mode</h3>
-          <p className="text-xs text-muted-foreground">ICT Academy flashcards</p>
+        <div className="space-y-3">
+          {DASHBOARD_WIDGETS.map((widget) => {
+            const enabled = prefs[widget.id] !== false;
+            return (
+              <div key={widget.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                <span className="text-sm font-medium text-foreground">{widget.label}</span>
+                <button
+                  onClick={() => onToggle(widget.id)}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                    enabled ? "bg-primary" : "bg-muted"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                      enabled ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            );
+          })}
         </div>
-        <ArrowRight className="h-5 w-5 text-primary ml-auto group-hover:translate-x-1 transition-transform" />
       </div>
-      <p className="text-sm text-foreground/70">
-        Review ICT concepts in a quick swipe format. Perfect for daily review before your session.
-      </p>
-    </div>
+    </>
   );
-}
-
-const WIDGET_DEFS = [
-  { id: "mascot", label: "Mascot Greeting" },
-  { id: "slotmachine", label: "Daily Mission" },
-  { id: "sessions", label: "Market Sessions Clock" },
-  { id: "tradeplan", label: "Today's Trade Plan" },
-  { id: "notes", label: "Notes Scratch-pad" },
-  { id: "checklist", label: "Pre-Trade Checklist" },
-  { id: "riskshield", label: "Risk Shield Mini-widget" },
-  { id: "swipemode", label: "Start Swipe Mode" },
-  { id: "achievements", label: "Achievement Badges" },
-] as const;
-
-type WidgetId = typeof WIDGET_DEFS[number]["id"];
-
-const DEFAULT_VISIBLE: Record<WidgetId, boolean> = {
-  mascot: true,
-  slotmachine: true,
-  sessions: true,
-  tradeplan: true,
-  notes: true,
-  checklist: true,
-  riskshield: true,
-  swipemode: true,
-  achievements: true,
-};
-
-function loadWidgetPrefs(): Record<WidgetId, boolean> {
-  try {
-    const raw = localStorage.getItem("dashboard-widget-prefs-v2");
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<Record<WidgetId, boolean>>;
-      return { ...DEFAULT_VISIBLE, ...parsed };
-    }
-  } catch {}
-  return { ...DEFAULT_VISIBLE };
 }
 
 export default function Dashboard() {
   const { tierLevel } = useAuth();
   const isFreeUser = tierLevel === 0;
-  const [widgetPrefs, setWidgetPrefs] = useState<Record<WidgetId, boolean>>(loadWidgetPrefs);
+  const { prefs, toggle, isEnabled } = useDashboardWidgets();
+  const [showCustomize, setShowCustomize] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("dashboard-visited")) {
@@ -743,47 +951,57 @@ export default function Dashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      if (e.key === "dashboard-widget-prefs-v2") {
-        setWidgetPrefs(loadWidgetPrefs());
-      }
-    }
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  const visible = widgetPrefs;
-
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4 pb-24">
-      <KillZoneStrip />
+    <>
+      <CustomizeDrawer
+        open={showCustomize}
+        onClose={() => setShowCustomize(false)}
+        prefs={prefs}
+        onToggle={toggle}
+      />
+      <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+          <button
+            onClick={() => setShowCustomize(true)}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl px-3 py-2 transition-colors"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Customize
+          </button>
+        </div>
 
-      {visible.mascot && <CompactGreetingRow />}
+        <div className="space-y-4">
+          {isEnabled("killzone") && <KillZoneStripWidget />}
+          <CompactGreetingRow />
+          {isEnabled("stats") && <StatsTickerStrip />}
+          <SlotMachine />
 
-      <StatsTickerStrip />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {isEnabled("morningroutine") && <MorningRoutineWidget />}
+            {isEnabled("checklist") && <PreTradeChecklistWidget />}
+          </div>
 
-      <QuickJournalWidget />
+          {isEnabled("tradeplan") && <TradePlanWidget />}
 
-      {visible.slotmachine && <SlotMachine />}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {isEnabled("riskshield") && <RiskShieldMiniWidget />}
+            {isEnabled("quickjournal") && <QuickJournalWidget />}
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {visible.tradeplan && <TradePlanWidget />}
-        {visible.notes && <NotesWidget />}
+          {!isFreeUser && <AchievementBadges />}
+        </div>
+
+        {isFreeUser && (
+          <div className="mt-4">
+            <PremiumTeaser
+              title="UNLOCK PREMIUM TOOLS"
+              description="Upgrade to access the <strong>Smart Journal</strong> to log and analyze every trade, plus <strong>Analytics</strong> with performance charts, win-rate tracking, and AI-powered insights."
+              buttonText="See Plans"
+            />
+          </div>
+        )}
       </div>
-
-      {visible.checklist && <PreTradeChecklistWidget />}
-      {visible.riskshield && <RiskShieldMiniWidget />}
-      {visible.swipemode && <SwipeModeCard />}
-      {visible.achievements && !isFreeUser && <AchievementBadges />}
-
-      {isFreeUser && (
-        <PremiumTeaser
-          title="UNLOCK PREMIUM TOOLS"
-          description="Upgrade to access the <strong>Smart Journal</strong> to log and analyze every trade, plus <strong>Analytics</strong> with performance charts, win-rate tracking, and AI-powered insights."
-          buttonText="See Plans"
-        />
-      )}
-    </div>
+    </>
   );
 }

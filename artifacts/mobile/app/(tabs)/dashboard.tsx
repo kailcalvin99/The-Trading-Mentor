@@ -9,6 +9,7 @@ import {
   Platform,
   TextInput,
   Image,
+  Switch,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -19,21 +20,29 @@ import { useRouter, useFocusEffect } from "expo-router";
 import Colors from "@/constants/colors";
 import { SlotMachineCard, useDailyGamification } from "@/components/DashboardGamification";
 import { useAuth } from "@/contexts/AuthContext";
-import { useGetPropAccount } from "@workspace/api-client-react";
+import { useGetPropAccount, useListTrades } from "@workspace/api-client-react";
+import { usePlanner } from "@/contexts/PlannerContext";
 import {
   WIDGET_PREFS_KEY,
   DEFAULT_WIDGET_PREFS,
+  WIDGET_CONFIG,
   type WidgetPrefs,
 } from "@/constants/dashboardWidgets";
 
-const TOUR_DONE_KEY = "mobile-onboarding-tour-done";
+const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; label: string; icon: React.ComponentProps<typeof Ionicons>["name"] }> = [
+  { key: "water", label: "Drink water", icon: "water-outline" },
+  { key: "breathing", label: "5-min breathing", icon: "leaf-outline" },
+  { key: "news", label: "Check news", icon: "newspaper-outline" },
+  { key: "bias", label: "Set daily bias", icon: "trending-up-outline" },
+];
 
 const C = Colors.dark;
 
-const TRADE_PLAN_KEY = "dashboard-trade-plan";
+const TRADE_PLAN_KEY = "daily_trade_plan_v1";
 const NOTES_KEY = "dashboard-notes";
 const CHECKLIST_STORAGE_KEY = "ict-checklist-state";
 const CHECKLIST_TTL_MS = 4 * 60 * 60 * 1000;
+const QUICK_JOURNAL_KEY = "ict-quick-journal-notes";
 const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
 const PRE_TRADE_ITEMS = [
@@ -79,6 +88,17 @@ const SESSIONS: Session[] = [
   { name: "London Close", subtitle: "11 AM–12 PM EST", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8", icon: "time" },
 ];
 
+const STOCK_AVATARS_MOBILE = [
+  { id: "bull", emoji: "🐂", label: "Bull" },
+  { id: "bear", emoji: "🐻", label: "Bear" },
+  { id: "chart", emoji: "📈", label: "Chart" },
+  { id: "candle", emoji: "🕯️", label: "Candle" },
+  { id: "rocket", emoji: "🚀", label: "Rocket" },
+  { id: "shield", emoji: "🛡️", label: "Shield" },
+  { id: "flame", emoji: "🔥", label: "Flame" },
+  { id: "crown", emoji: "👑", label: "Crown" },
+];
+
 function AIGreetingCard() {
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
@@ -111,6 +131,7 @@ function AIGreetingCard() {
 }
 
 function KillZoneStrip() {
+  const router = useRouter();
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
@@ -118,88 +139,285 @@ function KillZoneStrip() {
   }, []);
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.kzStrip} contentContainerStyle={styles.kzStripContent}>
-      {SESSIONS.map((session) => {
-        const estNow = getESTNow();
-        const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
-        const startMins = session.startH * 60 + session.startM;
-        const endMins = session.endH * 60 + session.endM;
-        const isLive = nowMins >= startMins && nowMins < endMins;
-        const isEnded = nowMins >= endMins;
+    <View>
+      <View style={styles.widgetHeaderRow}>
+        <Ionicons name="time-outline" size={14} color={C.accent} />
+        <Text style={styles.widgetHeaderLabel}>Kill Zones</Text>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7}>
+          <Text style={styles.editLink}>Planner ↗</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.kzStrip} contentContainerStyle={styles.kzStripContent}>
+        {SESSIONS.map((session) => {
+          const estNow = getESTNow();
+          const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
+          const startMins = session.startH * 60 + session.startM;
+          const endMins = session.endH * 60 + session.endM;
+          const isLive = nowMins >= startMins && nowMins < endMins;
+          const isEnded = nowMins >= endMins;
 
-        const target = new Date(estNow);
-        target.setHours(session.startH, session.startM, 0, 0);
-        if (!isLive && estNow >= target) target.setDate(target.getDate() + 1);
-        const msUntil = isLive ? 0 : target.getTime() - estNow.getTime();
-        const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
+          const target = new Date(estNow);
+          target.setHours(session.startH, session.startM, 0, 0);
+          if (!isLive && estNow >= target) target.setDate(target.getDate() + 1);
+          const msUntil = isLive ? 0 : target.getTime() - estNow.getTime();
+          const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
 
-        return (
-          <View
-            key={session.name}
-            style={[
-              styles.kzCard,
-              isLive && { borderColor: session.color, borderWidth: 1.5, shadowColor: session.color, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
-            ]}
-          >
-            <View style={styles.kzCardRow1}>
-              <View style={[styles.kzDot, { backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : C.cardBorder }]} />
-              <Text style={[styles.kzName, isLive && { color: session.color }]} numberOfLines={1}>{session.name}</Text>
-              {isLive ? (
-                <View style={[styles.kzBadge, { backgroundColor: session.color + "30" }]}>
-                  <Text style={[styles.kzBadgeText, { color: session.color }]}>LIVE</Text>
-                </View>
-              ) : isEnded ? (
-                <Text style={styles.kzEnded}>Done</Text>
-              ) : (
-                <Text style={[styles.kzCountdown, isNear && { color: "#F59E0B" }]}>{formatCountdown(msUntil)}</Text>
-              )}
+          return (
+            <View
+              key={session.name}
+              style={[
+                styles.kzCard,
+                isLive && { borderColor: session.color, borderWidth: 1.5, shadowColor: session.color, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
+              ]}
+            >
+              <View style={styles.kzCardRow1}>
+                <View style={[styles.kzDot, { backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : C.cardBorder }]} />
+                <Text style={[styles.kzName, isLive && { color: session.color }]} numberOfLines={1}>{session.name}</Text>
+                {isLive ? (
+                  <View style={[styles.kzBadge, { backgroundColor: session.color + "30" }]}>
+                    <Text style={[styles.kzBadgeText, { color: session.color }]}>LIVE</Text>
+                  </View>
+                ) : isEnded ? (
+                  <Text style={styles.kzEnded}>Done</Text>
+                ) : (
+                  <Text style={[styles.kzCountdown, isNear && { color: "#F59E0B" }]}>{formatCountdown(msUntil)}</Text>
+                )}
+              </View>
+              <Text style={styles.kzSub} numberOfLines={1}>{session.subtitle}</Text>
             </View>
-            <Text style={styles.kzSub} numberOfLines={1}>{session.subtitle}</Text>
-          </View>
-        );
-      })}
-    </ScrollView>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
-function TradePlanWidget() {
-  const [text, setText] = useState("");
-  const [saved, setSaved] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+function StatsStripWidget() {
+  const router = useRouter();
+  const { data: apiTrades } = useListTrades();
+  const { streak } = useDailyGamification();
+  const trades = (apiTrades || []) as Array<{
+    outcome?: string | null;
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+  }>;
 
-  useEffect(() => {
-    AsyncStorage.getItem(getTodayKey(TRADE_PLAN_KEY)).then((v) => {
-      if (v) setText(v);
+  const today = new Date().toDateString();
+  const todayTrades = trades.filter((t) => {
+    if (t.isDraft) return false;
+    if (!t.createdAt) return false;
+    return new Date(t.createdAt).toDateString() === today;
+  });
+  const todayCompleted = todayTrades.filter((t) => t.outcome === "win" || t.outcome === "loss");
+  const todayWins = todayCompleted.filter((t) => t.outcome === "win").length;
+  const winRate = todayCompleted.length > 0 ? Math.round((todayWins / todayCompleted.length) * 100) : null;
+  const todayPnL = todayTrades.reduce((sum, t) => {
+    const v = parseFloat(String(t.pnl ?? "0"));
+    return sum + (isNaN(v) ? 0 : v);
+  }, 0);
+
+  const stats = [
+    {
+      label: "Today P&L",
+      value: todayTrades.length > 0 ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—",
+      color: todayPnL > 0 ? "#00C896" : todayPnL < 0 ? "#EF4444" : C.textSecondary,
+    },
+    {
+      label: "Win Rate",
+      value: winRate !== null ? `${winRate}%` : "—",
+      color: winRate !== null && winRate >= 50 ? "#00C896" : winRate !== null ? "#F59E0B" : C.textSecondary,
+    },
+    {
+      label: "Trades",
+      value: todayCompleted.length > 0 ? String(todayCompleted.length) : "—",
+      color: C.text,
+    },
+    {
+      label: "Streak",
+      value: `${streak}d`,
+      color: streak >= 7 ? "#EF4444" : streak >= 3 ? "#F59E0B" : C.textSecondary,
+    },
+  ];
+
+  return (
+    <View style={styles.card}>
+      <View style={[styles.cardHeaderRow, { paddingBottom: 10 }]}>
+        <Ionicons name="stats-chart-outline" size={14} color={C.accent} />
+        <Text style={styles.cardLabel}>Today's Stats</Text>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/analytics" })} activeOpacity={0.7}>
+          <Text style={styles.editLink}>Analytics ↗</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.statsRow}>
+        {stats.map((s, i) => (
+          <React.Fragment key={s.label}>
+            {i > 0 && <View style={styles.statDivider} />}
+            <View style={styles.statPill}>
+              <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
+            </View>
+          </React.Fragment>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function MorningRoutineWidget() {
+  const router = useRouter();
+  const { routineItems, isRoutineComplete, toggleItem } = usePlanner();
+
+  const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
+  const totalCount = ROUTINE_DISPLAY.length;
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="sunny-outline" size={14} color="#F59E0B" />
+        <Text style={styles.cardLabel}>Morning Routine</Text>
+        {isRoutineComplete && (
+          <View style={styles.doneBadge}>
+            <Text style={styles.doneBadgeText}>Done ✓</Text>
+          </View>
+        )}
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+          <Text style={styles.editLink}>Planner ↗</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.routineContent}>
+        <View style={styles.routineRing}>
+          <Text style={styles.routineRingText}>{doneCount}/{totalCount}</Text>
+          <Text style={styles.routineRingLabel}>done</Text>
+        </View>
+        <View style={{ flex: 1, gap: 6 }}>
+          {ROUTINE_DISPLAY.map((item) => {
+            const done = routineItems[item.key];
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={styles.routineItem}
+                onPress={() => toggleItem(item.key)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.routineCheckbox, done && styles.routineCheckboxDone]}>
+                  {done && <Ionicons name="checkmark" size={10} color="#0A0A0F" />}
+                </View>
+                <Text style={[styles.routineItemLabel, done && styles.routineItemLabelDone]} numberOfLines={1}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const PLANNER_BIAS_CHIPS: Array<{ key: "bull" | "neutral" | "bear"; label: string; icon: string; color: string }> = [
+  { key: "bull", label: "Bullish", icon: "📈", color: "#00C896" },
+  { key: "neutral", label: "Neutral", icon: "➡️", color: "#F59E0B" },
+  { key: "bear", label: "Bearish", icon: "📉", color: "#EF4444" },
+];
+
+function TradePlanWidget() {
+  const router = useRouter();
+  const [selectedBias, setSelectedBias] = useState<"bull" | "neutral" | "bear" | null>(null);
+  const [targetSession, setTargetSession] = useState<string | null>(null);
+  const [keyLevels, setKeyLevels] = useState<Array<{ id: string; price: string; label?: string }>>([]);
+
+  const loadPlan = useCallback(() => {
+    AsyncStorage.getItem(TRADE_PLAN_KEY).then((v) => {
+      if (v) {
+        try {
+          const parsed = JSON.parse(v);
+          setSelectedBias(parsed.bias || null);
+          setTargetSession(parsed.targetSession || null);
+          setKeyLevels(Array.isArray(parsed.keyLevels) ? parsed.keyLevels.slice(0, 3) : []);
+        } catch {}
+      }
     });
   }, []);
 
-  function handleChange(val: string) {
-    setText(val);
-    setSaved(false);
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      await AsyncStorage.setItem(getTodayKey(TRADE_PLAN_KEY), val);
-      setSaved(true);
-    }, 800);
+  useFocusEffect(loadPlan);
+
+  async function tapBias(key: "bull" | "neutral" | "bear") {
+    const newBias = selectedBias === key ? null : key;
+    setSelectedBias(newBias);
+    const existing = await AsyncStorage.getItem(TRADE_PLAN_KEY);
+    let data: Record<string, unknown> = {};
+    if (existing) {
+      try { data = JSON.parse(existing); } catch {}
+    }
+    data.bias = newBias;
+    await AsyncStorage.setItem(TRADE_PLAN_KEY, JSON.stringify(data));
   }
+
+  const activeChip = PLANNER_BIAS_CHIPS.find((c) => c.key === selectedBias);
 
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
         <Ionicons name="document-text-outline" size={15} color={C.accent} />
         <Text style={styles.cardLabel}>Today's Trade Plan</Text>
-        {saved && <Text style={styles.savedText}>Saved</Text>}
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+          <Text style={styles.editLink}>Edit ↗</Text>
+        </TouchableOpacity>
       </View>
-      <TextInput
-        style={styles.textArea}
-        value={text}
-        onChangeText={handleChange}
-        placeholder={"Daily bias: Bullish / Bearish\nKey levels: \nSession target: \nEntry criteria: "}
-        placeholderTextColor={C.textTertiary}
-        multiline
-        numberOfLines={5}
-        textAlignVertical="top"
-      />
+
+      <View style={styles.biasChipsRow}>
+        {PLANNER_BIAS_CHIPS.map((chip) => {
+          const isActive = selectedBias === chip.key;
+          return (
+            <TouchableOpacity
+              key={chip.key}
+              style={[
+                styles.biasChip,
+                isActive && { borderColor: chip.color, backgroundColor: chip.color + "18" },
+              ]}
+              onPress={() => tapBias(chip.key)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.biasChipEmoji}>{chip.icon}</Text>
+              <Text style={[styles.biasChipText, isActive && { color: chip.color }]}>{chip.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={styles.biasSummary}>
+        {selectedBias && activeChip ? (
+          <>
+            <View style={[styles.biasBadge, { backgroundColor: activeChip.color + "20" }]}>
+              <Text style={[styles.biasBadgeText, { color: activeChip.color }]}>
+                {activeChip.icon} {activeChip.label} Bias
+              </Text>
+            </View>
+            {targetSession ? (
+              <Text style={styles.planDetailText}>Session: {targetSession}</Text>
+            ) : null}
+            {keyLevels.length > 0 ? (
+              <View style={styles.keyLevelsRow}>
+                <Text style={[styles.planDetailText, { marginBottom: 3 }]}>Key Levels:</Text>
+                {keyLevels.map((kl) => (
+                  <View key={kl.id} style={styles.keyLevelChip}>
+                    <Text style={styles.keyLevelText}>
+                      {kl.label ? `${kl.label}: ` : ""}{kl.price}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7}>
+                <Text style={[styles.planDetailText, { color: C.accent }]}>Add key levels in Planner →</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        ) : (
+          <Text style={styles.planDetailText}>Tap a bias chip or open Planner to set today's plan.</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -246,7 +464,89 @@ function NotesWidget() {
   );
 }
 
+function QuickJournalWidget() {
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [recentNotes, setRecentNotes] = useState<Array<{ id: string; text: string; timestamp: string }>>([]);
+
+  const loadNotes = useCallback(async () => {
+    const raw = await AsyncStorage.getItem(QUICK_JOURNAL_KEY);
+    if (raw) {
+      try {
+        const notes = JSON.parse(raw);
+        setRecentNotes(notes.slice(0, 2));
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotes();
+  }, []);
+
+  async function handleLog() {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const note = {
+      id: `qn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      text: trimmed,
+      timestamp: new Date().toISOString(),
+    };
+    const raw = await AsyncStorage.getItem(QUICK_JOURNAL_KEY);
+    const notes = raw ? JSON.parse(raw) : [];
+    notes.unshift(note);
+    await AsyncStorage.setItem(QUICK_JOURNAL_KEY, JSON.stringify(notes.slice(0, 100)));
+    setText("");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    loadNotes();
+  }
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="pencil-outline" size={14} color="#F59E0B" />
+        <Text style={styles.cardLabel}>Quick Journal</Text>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/journal" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+          <Text style={styles.editLink}>Open Journal ↗</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.journalInputRow}>
+        <TextInput
+          style={styles.journalInput}
+          value={text}
+          onChangeText={setText}
+          onSubmitEditing={handleLog}
+          placeholder="Quick note for today..."
+          placeholderTextColor={C.textTertiary}
+          returnKeyType="done"
+          maxLength={500}
+        />
+        {saved ? (
+          <Text style={styles.journalSaved}>Saved ✓</Text>
+        ) : (
+          <TouchableOpacity
+            style={[styles.journalLogBtn, !text.trim() && { opacity: 0.4 }]}
+            onPress={handleLog}
+            disabled={!text.trim()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.journalLogBtnText}>Log</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {recentNotes.map((note) => (
+        <View key={note.id} style={styles.journalNote}>
+          <Text style={styles.journalNoteDot}>·</Text>
+          <Text style={styles.journalNoteText} numberOfLines={1}>{note.text}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function PreTradeChecklistWidget() {
+  const router = useRouter();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -282,17 +582,21 @@ function PreTradeChecklistWidget() {
   }
 
   const allDone = PRE_TRADE_ITEMS.every((item) => checked[item.id]);
+  const doneCount = PRE_TRADE_ITEMS.filter((item) => checked[item.id]).length;
 
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
         <Ionicons name="checkmark-circle-outline" size={15} color="#00C896" />
         <Text style={styles.cardLabel}>Pre-Trade Checklist</Text>
-        {allDone && (
-          <View style={styles.unlockedBadge}>
-            <Text style={styles.unlockedBadgeText}>✓ Ready</Text>
-          </View>
-        )}
+        <View style={[styles.checklistBadge, allDone && styles.checklistBadgeDone]}>
+          <Text style={[styles.checklistBadgeText, allDone && styles.checklistBadgeTextDone]}>
+            {doneCount}/{PRE_TRADE_ITEMS.length}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7} style={{ marginLeft: 4 }}>
+          <Text style={styles.editLink}>Planner ↗</Text>
+        </TouchableOpacity>
       </View>
       {PRE_TRADE_ITEMS.map((item) => (
         <TouchableOpacity
@@ -315,6 +619,11 @@ function PreTradeChecklistWidget() {
           </Text>
         </TouchableOpacity>
       ))}
+      <View style={[styles.checklistStatusBar, allDone && styles.checklistStatusBarDone]}>
+        <Text style={[styles.checklistStatusText, allDone && styles.checklistStatusTextDone]}>
+          {allDone ? "✓ Ready to Trade" : "Not Ready"}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -335,22 +644,27 @@ function RiskShieldWidget() {
   const dailyColor = dailyLossPct >= maxDailyLossPct ? "#EF4444" : dailyLossPct >= maxDailyLossPct * 0.75 ? "#F59E0B" : "#00C896";
   const drawdownColor = totalDrawdownPct >= maxDrawdownPct ? "#EF4444" : totalDrawdownPct >= maxDrawdownPct * 0.75 ? "#F59E0B" : "#818CF8";
 
+  const [accountSizeInput, setAccountSizeInput] = useState(
+    startingBalance > 0 ? String(Math.round(startingBalance)) : ""
+  );
+  const [riskPctInput, setRiskPctInput] = useState("1");
+  const [slPointsInput, setSlPointsInput] = useState("10");
+  const acctSize = parseFloat(accountSizeInput) || 0;
+  const riskPct = parseFloat(riskPctInput) || 1;
+  const slPtsNum = parseFloat(slPointsInput) || 0;
+  const dollarRisk = acctSize > 0 ? (acctSize * riskPct) / 100 : null;
+  const contractCount = dollarRisk !== null && slPtsNum > 0 ? dollarRisk / slPtsNum : null;
+
   return (
-    <TouchableOpacity
-      style={[styles.card, styles.riskCard]}
-      onPress={() => router.navigate("/tracker")}
-      activeOpacity={0.85}
-    >
+    <View style={[styles.card, styles.riskCard]}>
       <View style={styles.cardHeaderRow}>
         <Ionicons name="shield-checkmark-outline" size={15} color="#EF4444" />
         <Text style={styles.cardLabel}>Risk Shield</Text>
-        <Ionicons name="chevron-forward" size={14} color={C.textSecondary} style={{ marginLeft: "auto" }} />
+        <TouchableOpacity onPress={() => router.navigate("/tracker")} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+          <Text style={styles.editLink}>Full Shield ↗</Text>
+        </TouchableOpacity>
       </View>
-      {!hasData ? (
-        <Text style={styles.riskSubtitle}>
-          Set up your prop account in the Risk Shield to track daily P&L and drawdown
-        </Text>
-      ) : (
+      {hasData && (
         <View style={styles.riskRow}>
           <View style={styles.riskStat}>
             <Text style={[styles.riskStatValue, { color: dailyColor }]}>
@@ -379,7 +693,60 @@ function RiskShieldWidget() {
           </View>
         </View>
       )}
-    </TouchableOpacity>
+      {/* Compact position sizer */}
+      <View style={styles.posSizer}>
+        <Text style={styles.posSizerTitle}>Quick Position Sizer</Text>
+        <View style={styles.posSizerRow}>
+          <View style={styles.posSizerField}>
+            <Text style={styles.posSizerLabel}>Account ($)</Text>
+            <TextInput
+              style={styles.posSizerInput}
+              value={accountSizeInput}
+              onChangeText={setAccountSizeInput}
+              placeholder={startingBalance > 0 ? String(Math.round(startingBalance)) : "50000"}
+              placeholderTextColor={C.textTertiary}
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={[styles.posSizerField, { width: 70 }]}>
+            <Text style={styles.posSizerLabel}>Risk %</Text>
+            <TextInput
+              style={styles.posSizerInput}
+              value={riskPctInput}
+              onChangeText={setRiskPctInput}
+              keyboardType="numeric"
+              placeholder="1"
+              placeholderTextColor={C.textTertiary}
+            />
+          </View>
+          <View style={[styles.posSizerField, { width: 70 }]}>
+            <Text style={styles.posSizerLabel}>SL (pts)</Text>
+            <TextInput
+              style={styles.posSizerInput}
+              value={slPointsInput}
+              onChangeText={setSlPointsInput}
+              keyboardType="numeric"
+              placeholder="10"
+              placeholderTextColor={C.textTertiary}
+            />
+          </View>
+        </View>
+        <View style={styles.posSizerResultRow}>
+          <View style={[styles.posSizerResult, { flex: 1 }, dollarRisk !== null && { borderColor: C.accent + "30", backgroundColor: C.accent + "10" }]}>
+            <Text style={styles.posSizerResultLabel}>$ Risk</Text>
+            <Text style={[styles.posSizerResultValue, dollarRisk !== null && { color: C.accent }]}>
+              {dollarRisk !== null ? `$${dollarRisk.toFixed(0)}` : "—"}
+            </Text>
+          </View>
+          <View style={[styles.posSizerResult, { flex: 1 }, contractCount !== null && { borderColor: C.accent + "30", backgroundColor: C.accent + "10" }]}>
+            <Text style={styles.posSizerResultLabel}>Contracts</Text>
+            <Text style={[styles.posSizerResultValue, contractCount !== null && { color: C.accent }]}>
+              {contractCount !== null ? (contractCount < 0.1 ? contractCount.toFixed(2) : contractCount.toFixed(1)) : "—"}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -465,16 +832,61 @@ function MissionModal({ visible, onClose }: { visible: boolean; onClose: () => v
   );
 }
 
-const STOCK_AVATARS_MOBILE = [
-  { id: "bull", emoji: "🐂", label: "Bull" },
-  { id: "bear", emoji: "🐻", label: "Bear" },
-  { id: "chart", emoji: "📈", label: "Chart" },
-  { id: "candle", emoji: "🕯️", label: "Candle" },
-  { id: "rocket", emoji: "🚀", label: "Rocket" },
-  { id: "shield", emoji: "🛡️", label: "Shield" },
-  { id: "flame", emoji: "🔥", label: "Flame" },
-  { id: "crown", emoji: "👑", label: "Crown" },
-];
+function CustomizeModal({
+  visible,
+  onClose,
+  prefs,
+  onToggle,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  prefs: WidgetPrefs;
+  onToggle: (key: keyof WidgetPrefs) => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose} />
+      <View style={[styles.modalSheet, { maxHeight: "80%" }]}>
+        <View style={styles.modalHandle} />
+        <View style={styles.customizeHeader}>
+          <View>
+            <Text style={styles.modalTitle}>Customize Dashboard</Text>
+            <Text style={styles.modalSubtitle}>Toggle widgets on or off</Text>
+          </View>
+          <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
+            <Ionicons name="close" size={22} color={C.textSecondary} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {WIDGET_CONFIG.map((widget, i) => (
+            <View
+              key={widget.key}
+              style={[
+                styles.customizeRow,
+                i < WIDGET_CONFIG.length - 1 && { borderBottomWidth: 1, borderBottomColor: C.cardBorder + "60" },
+              ]}
+            >
+              <View style={styles.customizeIconBox}>
+                <Ionicons name={widget.icon} size={18} color={C.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.customizeLabel}>{widget.label}</Text>
+                <Text style={styles.customizeDesc}>{widget.desc}</Text>
+              </View>
+              <Switch
+                value={prefs[widget.key]}
+                onValueChange={() => onToggle(widget.key)}
+                trackColor={{ false: C.cardBorder, true: C.accent + "60" }}
+                thumbColor={prefs[widget.key] ? C.accent : C.textTertiary}
+                ios_backgroundColor={C.cardBorder}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
 
 export default function DashboardScreen() {
   const { user, setAvatarUrl } = useAuth();
@@ -486,8 +898,8 @@ export default function DashboardScreen() {
 
   const [prefs, setPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
   const [showAchievements, setShowAchievements] = useState(false);
-  const [showMission, setShowMission] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showCustomize, setShowCustomize] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -504,6 +916,12 @@ export default function DashboardScreen() {
     }, [])
   );
 
+  async function toggleWidget(key: keyof WidgetPrefs) {
+    const next = { ...prefs, [key]: !prefs[key] };
+    setPrefs(next);
+    await AsyncStorage.setItem(WIDGET_PREFS_KEY, JSON.stringify(next));
+  }
+
   const avatarUrl = user?.avatarUrl;
   const initials = user?.name?.charAt(0)?.toUpperCase() || "?";
 
@@ -515,7 +933,12 @@ export default function DashboardScreen() {
         xp={xp}
         streak={streak}
       />
-      <MissionModal visible={showMission} onClose={() => setShowMission(false)} />
+      <CustomizeModal
+        visible={showCustomize}
+        onClose={() => setShowCustomize(false)}
+        prefs={prefs}
+        onToggle={toggleWidget}
+      />
 
       {/* Avatar Picker Modal */}
       <Modal visible={showAvatarPicker} transparent animationType="slide" onRequestClose={() => setShowAvatarPicker(false)}>
@@ -601,10 +1024,12 @@ export default function DashboardScreen() {
         </View>
       </Modal>
 
-      {/* Kill Zone Strip — pinned at top before scroll */}
-      <View style={styles.kzStripWrapper}>
-        <KillZoneStrip />
-      </View>
+      {/* Kill Zone Strip — toggleable via customize, pinned at top */}
+      {prefs.killZone && (
+        <View style={styles.kzStripWrapper}>
+          <KillZoneStrip />
+        </View>
+      )}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         {/* Compact Header — single slim row ~40px */}
@@ -634,35 +1059,41 @@ export default function DashboardScreen() {
               <Text style={[styles.headerBadgeText, { color: streak >= 7 ? "#EF4444" : "#F59E0B" }]}>{streak}d</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.headerBadge} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
-              <Ionicons name="trophy" size={13} color="#F59E0B" />
+            <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCustomize(true)} activeOpacity={0.7}>
+              <Ionicons name="settings-outline" size={16} color={C.textSecondary} />
             </TouchableOpacity>
-
-            {prefs.todaysMission && (
-              <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowMission(true)} activeOpacity={0.7}>
-                <Ionicons name="gift-outline" size={16} color="#F59E0B" />
-              </TouchableOpacity>
-            )}
           </View>
         </View>
 
-        {/* Trade Plan */}
-        {prefs.tradePlan && <TradePlanWidget />}
+        {/* AI Greeting — always-on, top of feed */}
+        <AIGreetingCard />
+
+        {/* Stats Strip */}
+        {prefs.stats && <StatsStripWidget />}
+
+        {/* Today's Mission — always-on slot machine card */}
+        <SlotMachineCard />
+
+        {/* Morning Routine */}
+        {prefs.morningRoutine && <MorningRoutineWidget />}
 
         {/* Pre-Trade Checklist */}
         {prefs.preTradeChecklist && <PreTradeChecklistWidget />}
 
+        {/* Trade Plan */}
+        {prefs.tradePlan && <TradePlanWidget />}
+
         {/* Risk Shield Mini */}
         {prefs.riskShield && <RiskShieldWidget />}
+
+        {/* Quick Journal */}
+        {prefs.quickJournal && <QuickJournalWidget />}
 
         {/* Swipe Mode Launcher */}
         {prefs.swipeMode && <SwipeModeCard />}
 
         {/* Notes */}
         {prefs.notes && <NotesWidget />}
-
-        {/* AI Greeting */}
-        {prefs.aiGreeting && <AIGreetingCard />}
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
@@ -702,6 +1133,26 @@ const styles = StyleSheet.create({
   kzBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold" },
   kzEnded: { fontSize: 9, color: C.textSecondary, marginLeft: "auto" },
   kzCountdown: { fontSize: 9, fontFamily: "Inter_700Bold", color: C.text, marginLeft: "auto" },
+
+  widgetHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  widgetHeaderLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: C.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    flex: 1,
+  },
+  editLink: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: C.accent,
+  },
 
   header: {
     flexDirection: "row",
@@ -854,6 +1305,268 @@ const styles = StyleSheet.create({
     borderColor: C.cardBorder,
   },
 
+  biasChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  biasChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: "transparent",
+  },
+  biasChipEmoji: {
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  biasChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: C.textSecondary,
+  },
+  keyLevelsRow: {
+    gap: 4,
+  },
+  keyLevelChip: {
+    backgroundColor: "#818CF815",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "#818CF830",
+    alignSelf: "flex-start",
+  },
+  keyLevelText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#818CF8",
+  },
+  biasSummary: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 4,
+  },
+  biasBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 4,
+  },
+  biasBadgeText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
+  planDetailText: {
+    fontSize: 11,
+    color: C.textSecondary,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 16,
+  },
+
+  statsRow: {
+    flexDirection: "row",
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 0,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: C.cardBorder,
+    marginVertical: 2,
+  },
+  statPill: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: C.text,
+  },
+  statLabel: {
+    fontSize: 9,
+    color: C.textSecondary,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+
+  routineContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 14,
+  },
+  routineRing: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 3,
+    borderColor: C.accent + "40",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: C.backgroundTertiary,
+    flexShrink: 0,
+  },
+  routineRingText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: C.accent,
+  },
+  routineRingLabel: {
+    fontSize: 8,
+    color: C.textSecondary,
+    fontFamily: "Inter_400Regular",
+  },
+  routineItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 3,
+  },
+  routineCheckbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: C.cardBorder,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  routineCheckboxDone: {
+    backgroundColor: C.accent,
+    borderColor: C.accent,
+  },
+  routineItemLabel: {
+    fontSize: 12,
+    color: C.textSecondary,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+  },
+  routineItemLabelDone: {
+    color: C.textTertiary,
+    textDecorationLine: "line-through",
+  },
+  doneBadge: {
+    backgroundColor: C.accent + "20",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  doneBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: C.accent,
+  },
+
+  journalInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+  },
+  journalInput: {
+    flex: 1,
+    backgroundColor: C.backgroundTertiary,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: C.text,
+    fontFamily: "Inter_400Regular",
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  journalSaved: {
+    fontSize: 11,
+    color: "#00C896",
+    fontFamily: "Inter_600SemiBold",
+    flexShrink: 0,
+  },
+  journalLogBtn: {
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    flexShrink: 0,
+  },
+  journalLogBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: "#0A0A0F",
+  },
+  journalNote: {
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingBottom: 6,
+  },
+  journalNoteDot: {
+    fontSize: 12,
+    color: C.textSecondary,
+  },
+  journalNoteText: {
+    flex: 1,
+    fontSize: 11,
+    color: C.textSecondary,
+    fontFamily: "Inter_400Regular",
+  },
+
+  checklistBadge: {
+    backgroundColor: C.backgroundTertiary,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  checklistBadgeDone: {
+    backgroundColor: "#00C89620",
+    borderColor: "#00C89640",
+  },
+  checklistBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: C.textSecondary,
+  },
+  checklistBadgeTextDone: {
+    color: "#00C896",
+  },
+  checklistStatusBar: {
+    marginHorizontal: 14,
+    marginBottom: 14,
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: "center",
+    backgroundColor: C.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  checklistStatusBarDone: {
+    backgroundColor: "#00C89615",
+    borderColor: "#00C89630",
+  },
+  checklistStatusText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: C.textSecondary,
+  },
+  checklistStatusTextDone: {
+    color: "#00C896",
+  },
+
   checklistItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -940,6 +1653,74 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
 
+  posSizer: {
+    marginHorizontal: 14,
+    marginBottom: 14,
+    backgroundColor: C.backgroundTertiary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    padding: 12,
+  },
+  posSizerTitle: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    color: C.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  posSizerRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  posSizerField: {
+    flex: 1,
+  },
+  posSizerLabel: {
+    fontSize: 9,
+    color: C.textSecondary,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 4,
+  },
+  posSizerInput: {
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    fontSize: 12,
+    color: C.text,
+    fontFamily: "Inter_400Regular",
+  },
+  posSizerResultRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  posSizerResult: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  posSizerResultLabel: {
+    fontSize: 10,
+    color: C.textSecondary,
+    fontFamily: "Inter_400Regular",
+  },
+  posSizerResultValue: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: C.textSecondary,
+  },
+
   swipeCard: {
     borderColor: C.accent + "30",
   },
@@ -1007,6 +1788,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_500Medium",
     color: C.text,
+  },
+
+  customizeHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  customizeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    gap: 12,
+  },
+  customizeIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: C.accent + "15",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  customizeLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: C.text,
+  },
+  customizeDesc: {
+    fontSize: 11,
+    color: C.textSecondary,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
   },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },

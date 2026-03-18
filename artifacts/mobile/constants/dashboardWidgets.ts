@@ -4,23 +4,27 @@ import { Ionicons } from "@expo/vector-icons";
 export const WIDGET_PREFS_KEY = "dashboard-widget-prefs-v2";
 
 export interface WidgetPrefs {
-  todaysMission: boolean;
   tradePlan: boolean;
   notes: boolean;
   preTradeChecklist: boolean;
   riskShield: boolean;
   swipeMode: boolean;
-  aiGreeting: boolean;
+  morningRoutine: boolean;
+  stats: boolean;
+  quickJournal: boolean;
+  killZone: boolean;
 }
 
 export const DEFAULT_WIDGET_PREFS: WidgetPrefs = {
-  todaysMission: true,
   tradePlan: true,
   notes: false,
   preTradeChecklist: true,
   riskShield: true,
   swipeMode: true,
-  aiGreeting: false,
+  morningRoutine: true,
+  stats: true,
+  quickJournal: true,
+  killZone: true,
 };
 
 export const WIDGET_CONFIG: Array<{
@@ -29,11 +33,13 @@ export const WIDGET_CONFIG: Array<{
   desc: string;
   icon: ComponentProps<typeof Ionicons>["name"];
 }> = [
-  { key: "todaysMission", label: "Today's Mission", desc: "Daily mission generator", icon: "gift-outline" },
-  { key: "tradePlan", label: "Trade Plan", desc: "Today's trade plan notes", icon: "document-text-outline" },
-  { key: "notes", label: "Quick Notes", desc: "Scratch-pad notes", icon: "pencil-outline" },
+  { key: "killZone", label: "Kill Zone Strip", desc: "Session countdown timers", icon: "time-outline" },
+  { key: "stats", label: "Stats Strip", desc: "Today's P&L, win rate, streak", icon: "stats-chart-outline" },
+  { key: "morningRoutine", label: "Morning Routine", desc: "Progress ring & checklist", icon: "sunny-outline" },
   { key: "preTradeChecklist", label: "Pre-Trade Checklist", desc: "4-point readiness check", icon: "checkmark-circle-outline" },
+  { key: "tradePlan", label: "Trade Plan", desc: "Today's bias & key levels", icon: "document-text-outline" },
   { key: "riskShield", label: "Risk Shield", desc: "Daily P&L and drawdown", icon: "shield-outline" },
+  { key: "quickJournal", label: "Quick Journal", desc: "Log a quick note to journal", icon: "pencil-outline" },
+  { key: "notes", label: "Quick Notes", desc: "Scratch-pad notes", icon: "create-outline" },
   { key: "swipeMode", label: "Swipe Mode Launcher", desc: "Launch academy lessons", icon: "school-outline" },
-  { key: "aiGreeting", label: "AI Greeting", desc: "Personalized daily message", icon: "chatbubble-ellipses-outline" },
 ];
