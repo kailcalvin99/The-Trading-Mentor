@@ -18,6 +18,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { PlannerProvider } from "@/contexts/PlannerContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -76,19 +77,21 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <NotificationProvider>
-              <PlannerProvider>
-                <AIAssistantProvider>
-                  <GestureHandlerRootView>
-                    <KeyboardProvider>
-                      <AuthGuard>
-                        <RootLayoutNav />
-                      </AuthGuard>
-                    </KeyboardProvider>
-                  </GestureHandlerRootView>
-                </AIAssistantProvider>
-              </PlannerProvider>
-            </NotificationProvider>
+            <ThemeProvider>
+              <NotificationProvider>
+                <PlannerProvider>
+                  <AIAssistantProvider>
+                    <GestureHandlerRootView>
+                      <KeyboardProvider>
+                        <AuthGuard>
+                          <RootLayoutNav />
+                        </AuthGuard>
+                      </KeyboardProvider>
+                    </GestureHandlerRootView>
+                  </AIAssistantProvider>
+                </PlannerProvider>
+              </NotificationProvider>
+            </ThemeProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>

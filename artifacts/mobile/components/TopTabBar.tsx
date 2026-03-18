@@ -1,29 +1,40 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Href } from "expo-router";
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Href, useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Colors from "@/constants/colors";
+import { useTheme } from "@/contexts/ThemeContext";
+
+const TOUR_DONE_KEY = "mobile-onboarding-tour-done";
 
 const REQUIRED_TIER: Partial<Record<string, number>> = {
   journal: 2,
   analytics: 2,
 };
 
-const C = Colors.dark;
-
 const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selected: keyof typeof Ionicons.glyphMap }> = {
   dashboard:    { default: "home-outline",        selected: "home" },
-  index:        { default: "checkbox-outline",    selected: "checkbox" },
+  index:        { default: "calendar-outline",    selected: "calendar" },
   academy:      { default: "school-outline",      selected: "school" },
   videos:       { default: "play-circle-outline", selected: "play-circle" },
   tracker:      { default: "shield-outline",      selected: "shield" },
   journal:      { default: "book-outline",        selected: "book" },
+  tags:         { default: "pricetag-outline",    selected: "pricetag" },
   community:    { default: "people-outline",      selected: "people" },
   analytics:    { default: "bar-chart-outline",   selected: "bar-chart" },
-  subscription: { default: "card-outline",        selected: "card" },
-  admin:        { default: "shield-half-outline", selected: "shield-half" },
 };
 
 const TAB_LABELS: Record<string, string> = {
@@ -33,13 +44,12 @@ const TAB_LABELS: Record<string, string> = {
   videos:       "Videos",
   tracker:      "Risk",
   journal:      "Journal",
+  tags:         "Tags",
   community:    "Social",
   analytics:    "Analytics",
-  subscription: "Subscription",
-  admin:        "Admin",
 };
 
-type TabRoute = "dashboard" | "index" | "academy" | "videos" | "tracker" | "journal" | "community" | "analytics" | "subscription" | "admin";
+type TabRoute = "dashboard" | "index" | "academy" | "videos" | "tracker" | "journal" | "tags" | "community" | "analytics";
 
 const TAB_HREFS: Record<TabRoute, Href> = {
   dashboard:    "/dashboard",
@@ -48,15 +58,13 @@ const TAB_HREFS: Record<TabRoute, Href> = {
   videos:       "/videos",
   tracker:      "/tracker",
   journal:      "/journal",
+  tags:         "/tags",
   community:    "/community",
   analytics:    "/analytics",
-  subscription: "/subscription",
-  admin:        "/admin",
 };
 
-const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "tracker", "journal", "community", "analytics", "subscription"];
-
-const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy", "tracker", "journal"];
+const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "tracker", "journal", "tags", "community", "analytics"];
+const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy", "tracker", "journal", "tags"];
 
 interface TopTabBarProps {
   pathname: string;
@@ -64,147 +72,383 @@ interface TopTabBarProps {
   isAdmin?: boolean;
   tierLevel?: number;
   appMode?: "full" | "lite";
+  userName?: string;
 }
 
-export default function TopTabBar({ pathname, onNavigate, isAdmin = false, tierLevel = 0, appMode = "full" }: TopTabBarProps) {
+function BottomSheet({
+  visible,
+  onClose,
+  children,
+  C,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  C: typeof Colors.dark;
+}) {
   const insets = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(400)).current;
+  const bgAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 200 }),
+        Animated.timing(bgAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 400, duration: 200, useNativeDriver: true }),
+        Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: false }),
+      ]).start();
+    }
+  }, [visible]);
+
+  const backdropColor = bgAnim.interpolate({ inputRange: [0, 1], outputRange: ["rgba(0,0,0,0)", "rgba(0,0,0,0.6)"] });
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: backdropColor }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+      <Animated.View
+        style={[
+          styles.sheetContainer,
+          {
+            backgroundColor: C.backgroundSecondary,
+            borderTopColor: C.cardBorder,
+            paddingBottom: insets.bottom + 12,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <View style={[styles.sheetHandle, { backgroundColor: C.cardBorder }]} />
+        {children}
+      </Animated.View>
+    </Modal>
+  );
+}
+
+export default function TopTabBar({
+  pathname,
+  onNavigate,
+  isAdmin = false,
+  tierLevel = 0,
+  appMode = "full",
+  userName = "",
+}: TopTabBarProps) {
+  const insets = useSafeAreaInsets();
+  const { mode, colors: C, isDark, toggleTheme } = useTheme();
+  const router = useRouter();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const baseRoutes = appMode === "lite" ? LITE_TAB_ROUTES : BASE_TAB_ROUTES;
-  const TAB_ROUTES: TabRoute[] = isAdmin
-    ? [...baseRoutes, "admin"]
-    : baseRoutes;
+  const TAB_ROUTES: TabRoute[] = baseRoutes;
 
   const normalizedPath = pathname.replace(/^\/\(tabs\)\/?/, "/");
-  const isSettingsActive = normalizedPath === "/settings";
+
   const activeRoute: TabRoute | undefined = TAB_ROUTES.find(
     (route) => normalizedPath === TAB_HREFS[route]
   );
 
+  const activeLabel = activeRoute ? TAB_LABELS[activeRoute] : "ICT Mentor";
+
+  function navigate(href: Href) {
+    setMenuOpen(false);
+    setProfileOpen(false);
+    setTimeout(() => onNavigate(href), 80);
+  }
+
+  async function handleTourRestart() {
+    setProfileOpen(false);
+    await AsyncStorage.removeItem(TOUR_DONE_KEY);
+    setTimeout(() => router.navigate("/"), 200);
+  }
+
+  const initials = userName
+    ? userName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
+    : "U";
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.row}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.bar}
-          bounces={false}
-          style={{ flex: 1 }}
-        >
-          {TAB_ROUTES.map((route) => {
-            const isFocused = activeRoute === route;
-            const icons = TAB_ICONS[route];
-            const label = TAB_LABELS[route];
-            const requiredTier = REQUIRED_TIER[route] ?? 0;
-            const isLocked = !isAdmin && tierLevel < requiredTier;
-            const color = isLocked ? C.cardBorder : isFocused ? C.accent : C.tabIconDefault;
+    <>
+      <View
+        style={[
+          styles.container,
+          {
+            paddingTop: insets.top,
+            backgroundColor: C.backgroundSecondary,
+            borderBottomColor: C.cardBorder,
+          },
+        ]}
+      >
+        <View style={styles.bar}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => setMenuOpen(true)}
+            accessibilityLabel="Open navigation menu"
+            accessibilityRole="button"
+          >
+            <Ionicons name="menu" size={24} color={C.text} />
+          </TouchableOpacity>
 
-            return (
-              <Pressable
-                key={route}
-                onPress={() => onNavigate(TAB_HREFS[route])}
-                style={styles.tab}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isFocused }}
-                accessibilityLabel={label}
-              >
-                <View style={styles.iconWrapper}>
-                  <Ionicons
-                    name={isFocused ? icons.selected : icons.default}
-                    size={20}
-                    color={color}
-                  />
-                  {isLocked && (
-                    <View style={styles.lockBadge}>
-                      <Ionicons name="lock-closed" size={8} color={C.cardBorder} />
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.label, { color }]}>{label}</Text>
-                {isFocused && <View style={[styles.indicator, { backgroundColor: C.accent }]} />}
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        <Pressable
-          onPress={() => onNavigate("/settings" as Href)}
-          style={styles.pinnedTab}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: isSettingsActive }}
-          accessibilityLabel="Settings"
-        >
-          <Ionicons
-            name={isSettingsActive ? "settings" : "settings-outline"}
-            size={20}
-            color={isSettingsActive ? C.accent : C.tabIconDefault}
-          />
-          <Text style={[styles.label, { color: isSettingsActive ? C.accent : C.tabIconDefault }]}>
-            Settings
+          <Text style={[styles.activeLabel, { color: C.text }]} numberOfLines={1}>
+            {activeLabel}
           </Text>
-          {isSettingsActive && <View style={[styles.indicator, { backgroundColor: C.accent }]} />}
-        </Pressable>
+
+          <View style={styles.rightRow}>
+            <View style={styles.toggleRow}>
+              <Ionicons
+                name={isDark ? "moon" : "sunny"}
+                size={14}
+                color={isDark ? "#A78BFA" : "#FFB340"}
+              />
+              <Switch
+                value={!isDark}
+                onValueChange={toggleTheme}
+                trackColor={{ false: "#3A3A55", true: "#D0F0E8" }}
+                thumbColor={isDark ? "#A78BFA" : "#00C896"}
+                ios_backgroundColor="#3A3A55"
+                style={styles.switch}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.avatar, { backgroundColor: C.accent + "25", borderColor: C.accent + "50" }]}
+              onPress={() => setProfileOpen(true)}
+              accessibilityLabel="Open profile menu"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.avatarText, { color: C.accent }]}>{initials}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-    </View>
+
+      <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} C={C}>
+        <Text style={[styles.sheetTitle, { color: C.textSecondary }]}>NAVIGATION</Text>
+        {TAB_ROUTES.map((route) => {
+          const isFocused = activeRoute === route;
+          const icons = TAB_ICONS[route];
+          const label = TAB_LABELS[route];
+          const requiredTier = REQUIRED_TIER[route] ?? 0;
+          const isLocked = !isAdmin && tierLevel < requiredTier;
+          const color = isLocked ? C.textTertiary : isFocused ? C.accent : C.text;
+
+          return (
+            <TouchableOpacity
+              key={route}
+              onPress={() => !isLocked && navigate(TAB_HREFS[route])}
+              style={[
+                styles.menuItem,
+                isFocused && { backgroundColor: C.accent + "15" },
+                { borderColor: isFocused ? C.accent + "30" : "transparent" },
+              ]}
+              accessibilityRole="menuitem"
+              accessibilityState={{ selected: isFocused }}
+            >
+              <View
+                style={[
+                  styles.menuIconBox,
+                  { backgroundColor: isFocused ? C.accent + "20" : C.backgroundTertiary },
+                ]}
+              >
+                <Ionicons
+                  name={isFocused ? icons.selected : icons.default}
+                  size={20}
+                  color={color}
+                />
+              </View>
+              <Text style={[styles.menuLabel, { color }]}>{label}</Text>
+              {isLocked && (
+                <Ionicons name="lock-closed-outline" size={14} color={C.textTertiary} style={{ marginLeft: "auto" }} />
+              )}
+              {isFocused && (
+                <Ionicons name="chevron-forward" size={14} color={C.accent} style={{ marginLeft: "auto" }} />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </BottomSheet>
+
+      <BottomSheet visible={profileOpen} onClose={() => setProfileOpen(false)} C={C}>
+        <View style={styles.profileHeader}>
+          <View style={[styles.profileAvatarLarge, { backgroundColor: C.accent + "20", borderColor: C.accent + "40" }]}>
+            <Text style={[styles.profileAvatarText, { color: C.accent }]}>{initials}</Text>
+          </View>
+          <View>
+            <Text style={[styles.profileName, { color: C.text }]}>{userName || "Trader"}</Text>
+            <Text style={[styles.profileSub, { color: C.textSecondary }]}>ICT Trading Mentor</Text>
+          </View>
+        </View>
+        <View style={[styles.profileDivider, { backgroundColor: C.cardBorder }]} />
+
+        {[
+          { icon: "card-outline" as const, label: "Subscription", href: "/subscription" as Href },
+          { icon: "settings-outline" as const, label: "Settings", href: "/settings" as Href },
+          ...(isAdmin ? [{ icon: "shield-half-outline" as const, label: "Admin Panel", href: "/admin" as Href }] : []),
+        ].map(({ icon, label, href }) => (
+          <TouchableOpacity
+            key={label}
+            onPress={() => navigate(href)}
+            style={styles.profileItem}
+          >
+            <Ionicons name={icon} size={20} color={C.textSecondary} />
+            <Text style={[styles.profileItemLabel, { color: C.text }]}>{label}</Text>
+            <Ionicons name="chevron-forward" size={16} color={C.textTertiary} style={{ marginLeft: "auto" }} />
+          </TouchableOpacity>
+        ))}
+
+        <TouchableOpacity onPress={handleTourRestart} style={styles.profileItem}>
+          <Ionicons name="help-circle-outline" size={20} color={C.textSecondary} />
+          <Text style={[styles.profileItemLabel, { color: C.text }]}>Help & Tour</Text>
+          <Ionicons name="chevron-forward" size={16} color={C.textTertiary} style={{ marginLeft: "auto" }} />
+        </TouchableOpacity>
+      </BottomSheet>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: C.backgroundSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: C.cardBorder,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "stretch",
+    zIndex: 10,
   },
   bar: {
-    flexDirection: "row",
     height: 52,
-    paddingHorizontal: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    gap: 8,
   },
-  tab: {
+  iconBtn: {
+    width: 36,
+    height: 36,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 14,
-    gap: 2,
-    position: "relative",
+    borderRadius: 8,
   },
-  iconWrapper: {
-    position: "relative",
+  activeLabel: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.2,
   },
-  lockBadge: {
-    position: "absolute",
-    bottom: -2,
-    right: -4,
-    backgroundColor: C.backgroundSecondary,
-    borderRadius: 6,
-    width: 12,
-    height: 12,
+  rightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  switch: {
+    transform: Platform.OS === "ios" ? [{ scaleX: 0.75 }, { scaleY: 0.75 }] : [{ scaleX: 0.85 }, { scaleY: 0.85 }],
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
-  label: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 0.1,
+  avatarText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
   },
-  indicator: {
+
+  sheetContainer: {
     position: "absolute",
     bottom: 0,
-    left: 8,
-    right: 8,
-    height: 2,
-    borderRadius: 1,
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 8,
+    paddingHorizontal: 16,
   },
-  pinnedTab: {
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  sheetTitle: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1.2,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 4,
+    borderWidth: 1,
+  },
+  menuIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 14,
-    gap: 2,
-    position: "relative",
-    borderLeftWidth: 1,
-    borderLeftColor: C.cardBorder,
-    height: 52,
+  },
+  menuLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+  },
+
+  profileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingHorizontal: 4,
+    paddingBottom: 16,
+    paddingTop: 4,
+  },
+  profileAvatarLarge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileAvatarText: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+  },
+  profileName: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  profileSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  profileDivider: {
+    height: 1,
+    marginBottom: 12,
+  },
+  profileItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 4,
+  },
+  profileItemLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
   },
 });

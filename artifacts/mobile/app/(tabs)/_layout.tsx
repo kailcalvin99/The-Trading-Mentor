@@ -29,6 +29,7 @@ export default function TabLayout() {
         isAdmin={isAdmin}
         tierLevel={tierLevel}
         appMode={appMode}
+        userName={user?.name ?? ""}
       />
       <Tabs
         tabBar={() => null}
@@ -59,6 +60,10 @@ export default function TabLayout() {
         <Tabs.Screen
           name="journal"
           options={{ title: "Journal" }}
+        />
+        <Tabs.Screen
+          name="tags"
+          options={{ title: "Tags" }}
         />
         <Tabs.Screen
           name="community"
