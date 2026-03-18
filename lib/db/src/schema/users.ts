@@ -17,6 +17,7 @@ export const usersTable = pgTable("users", {
   appMode: text("app_mode").notNull().default("full"),
   lastLoginAt: timestamp("last_login_at"),
   webhookToken: uuid("webhook_token").default(sql`gen_random_uuid()`),
+  academyProgress: text("academy_progress"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

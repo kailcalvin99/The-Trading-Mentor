@@ -891,22 +891,24 @@ export default function JournalScreen() {
       </Modal>
 
       {/* Monk Mode Modal */}
-      <Modal visible={showMonk} animationType="fade" statusBarTranslucent>
-        <ScrollView style={{ flex: 1, backgroundColor: "#050505" }} contentContainerStyle={monkStyles.overlay}>
-          <Text style={monkStyles.title}>⚡ MONK MODE</Text>
-          <Text style={monkStyles.sub}>Stay focused. Follow your plan.</Text>
-          <View style={monkStyles.rulesCard}>
-            {EXIT_RULES.map((r, i) => (
-              <View key={i} style={monkStyles.ruleRow}>
-                <View style={monkStyles.bullet} />
-                <Text style={monkStyles.ruleText}>{r}</Text>
-              </View>
-            ))}
-          </View>
-          <TouchableOpacity style={monkStyles.closeBtn} onPress={() => setShowMonk(false)}>
-            <Text style={monkStyles.closeBtnText}>Exit Monk Mode</Text>
-          </TouchableOpacity>
-        </ScrollView>
+      <Modal visible={showMonk} animationType="fade" statusBarTranslucent onRequestClose={() => setShowMonk(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#050505" }} edges={["bottom"]}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={monkStyles.overlay}>
+            <Text style={monkStyles.title}>⚡ MONK MODE</Text>
+            <Text style={monkStyles.sub}>Stay focused. Follow your plan.</Text>
+            <View style={monkStyles.rulesCard}>
+              {EXIT_RULES.map((r, i) => (
+                <View key={i} style={monkStyles.ruleRow}>
+                  <View style={monkStyles.bullet} />
+                  <Text style={monkStyles.ruleText}>{r}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity style={monkStyles.closeBtn} onPress={() => setShowMonk(false)}>
+              <Text style={monkStyles.closeBtnText}>Exit Monk Mode</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
       {showTiltCooldown && (
         <TiltCooldownOverlay

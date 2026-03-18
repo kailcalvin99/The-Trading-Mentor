@@ -11,6 +11,7 @@ import userSettingsRouter from "./user-settings";
 import communityRouter from "./community";
 import leaderboardRouter from "./leaderboard";
 import videosRouter from "./videos";
+import academyRouter from "./academy";
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -25,5 +26,6 @@ router.use("/webhook", webhookRouter);
 router.use("/community", communityRouter);
 router.use("/leaderboard", leaderboardRouter);
 router.use("/videos", videosRouter);
+router.use("/academy", academyRouter);
 
 export default router;

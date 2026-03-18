@@ -793,41 +793,43 @@ export default function RiskShieldScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showMonkMode} animationType="fade" statusBarTranslucent>
-        <ScrollView style={{ flex: 1, backgroundColor: "#050505" }} contentContainerStyle={monkStyles.overlay}>
-          <View style={monkStyles.header}>
-            <Text style={monkStyles.title}>FOCUS MODE</Text>
-            <Text style={monkStyles.subtitle}>
-              Your profit and loss is hidden — stay focused on the process
-            </Text>
-          </View>
+      <Modal visible={showMonkMode} animationType="fade" statusBarTranslucent onRequestClose={() => setShowMonkMode(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#050505" }} edges={["bottom"]}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={monkStyles.overlay}>
+            <View style={monkStyles.header}>
+              <Text style={monkStyles.title}>FOCUS MODE</Text>
+              <Text style={monkStyles.subtitle}>
+                Your profit and loss is hidden — stay focused on the process
+              </Text>
+            </View>
 
-          <View style={monkStyles.rulesCard}>
-            <Text style={monkStyles.rulesTitle}>EXIT RULES</Text>
-            {EXIT_RULES.map((rule, i) => (
-              <View key={i} style={monkStyles.ruleRow}>
-                <View style={monkStyles.ruleBullet} />
-                <Text style={monkStyles.ruleText}>{rule}</Text>
-              </View>
-            ))}
-          </View>
+            <View style={monkStyles.rulesCard}>
+              <Text style={monkStyles.rulesTitle}>EXIT RULES</Text>
+              {EXIT_RULES.map((rule, i) => (
+                <View key={i} style={monkStyles.ruleRow}>
+                  <View style={monkStyles.ruleBullet} />
+                  <Text style={monkStyles.ruleText}>{rule}</Text>
+                </View>
+              ))}
+            </View>
 
-          <View style={monkStyles.mindsetCard}>
-            <Text style={monkStyles.mindsetTitle}>MINDSET ANCHOR</Text>
-            <Text style={monkStyles.mindsetText}>
-              "I follow my plan, not my emotions. My job is to take the
-              right setup. If I do that, the results will come."
-            </Text>
-          </View>
+            <View style={monkStyles.mindsetCard}>
+              <Text style={monkStyles.mindsetTitle}>MINDSET ANCHOR</Text>
+              <Text style={monkStyles.mindsetText}>
+                "I follow my plan, not my emotions. My job is to take the
+                right setup. If I do that, the results will come."
+              </Text>
+            </View>
 
-          <TouchableOpacity
-            style={monkStyles.exitBtn}
-            onPress={() => setShowMonkMode(false)}
-          >
-            <Ionicons name="eye-outline" size={18} color="#0A0A0F" />
-            <Text style={monkStyles.exitBtnText}>Exit Focus Mode</Text>
-          </TouchableOpacity>
-        </ScrollView>
+            <TouchableOpacity
+              style={monkStyles.exitBtn}
+              onPress={() => setShowMonkMode(false)}
+            >
+              <Ionicons name="eye-outline" size={18} color="#0A0A0F" />
+              <Text style={monkStyles.exitBtnText}>Exit Focus Mode</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );

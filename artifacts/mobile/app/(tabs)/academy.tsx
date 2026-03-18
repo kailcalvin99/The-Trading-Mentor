@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { fireMobileAITrigger, incrementMobileQuizFail, resetMobileQuizFail } from "@/lib/aiTrigger";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiGet, apiPut } from "@/lib/api";
 import GraduationCelebration, { useGraduationCheck } from "@/components/GraduationCelebration";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import {
@@ -98,6 +99,25 @@ const PROGRESS_KEY = "ict-academy-progress";
 const SH = Dimensions.get("window").height;
 const ACADEMY_UNLOCKED_KEY = "ict-academy-unlocked";
 
+async function loadMergedProgress(): Promise<Set<string>> {
+  const local = await AsyncStorage.getItem(PROGRESS_KEY);
+  const localIds: string[] = local ? JSON.parse(local).filter(Boolean) : [];
+  try {
+    const data = await apiGet<{ lessonIds: string[] }>("academy/progress");
+    const merged = Array.from(new Set([...localIds, ...(data.lessonIds || [])]));
+    await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(merged));
+    return new Set(merged);
+  } catch {
+    return new Set(localIds);
+  }
+}
+
+async function saveProgressToServer(ids: Set<string>): Promise<void> {
+  try {
+    await apiPut("academy/progress", { lessonIds: Array.from(ids) });
+  } catch {}
+}
+
 function getAllCards(): { lesson: Lesson; chapter: Chapter; globalIdx: number }[] {
   const cards: { lesson: Lesson; chapter: Chapter; globalIdx: number }[] = [];
   let idx = 0;
@@ -125,15 +145,10 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
   const cardScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    AsyncStorage.getItem(PROGRESS_KEY).then((raw) => {
-      if (raw) {
-        try {
-          const prog = new Set<string>(JSON.parse(raw));
-          setCompleted(prog);
-          const first = allCards.findIndex((c) => !prog.has(c.lesson.id));
-          setCurrentIdx(first >= 0 ? first : 0);
-        } catch {}
-      }
+    loadMergedProgress().then((prog) => {
+      setCompleted(prog);
+      const first = allCards.findIndex((c) => !prog.has(c.lesson.id));
+      setCurrentIdx(first >= 0 ? first : 0);
     });
   }, []);
 
@@ -152,6 +167,7 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
     next.add(lesson.id);
     setCompleted(next);
     await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify([...next]));
+    saveProgressToServer(next);
 
     if (next.size >= totalCards) {
       await AsyncStorage.setItem(ACADEMY_UNLOCKED_KEY, "true");
@@ -518,11 +534,7 @@ function LearnView({ onSwipeMode, onAskMentor }: { onSwipeMode: () => void; onAs
   const [completed, setCompleted] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    AsyncStorage.getItem(PROGRESS_KEY).then((raw) => {
-      if (raw) {
-        try { setCompleted(new Set(JSON.parse(raw))); } catch {}
-      }
-    });
+    loadMergedProgress().then((prog) => setCompleted(prog));
   }, []);
 
   function toggleComplete(lessonId: string) {
@@ -531,6 +543,7 @@ function LearnView({ onSwipeMode, onAskMentor }: { onSwipeMode: () => void; onAs
     else next.add(lessonId);
     setCompleted(next);
     AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify([...next]));
+    saveProgressToServer(next);
     const allIds = COURSE_CHAPTERS.flatMap((ch) => ch.lessons.map((l) => l.id));
     const allDone = allIds.every((id) => next.has(id));
     if (allDone) {
