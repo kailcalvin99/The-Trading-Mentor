@@ -54,13 +54,6 @@ const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: str
   { tag: "Overtrading", label: "I took too many trades", color: "#A78BFA", icon: "repeat-outline" },
 ];
 
-const EXIT_RULES = [
-  "Keep your stop loss where you set it — no exceptions",
-  "Don't move your stop to breakeven too early",
-  "Wait for price to reach your target — don't exit early",
-  "Get out if the market turns against you (MSS — Market Structure Shift)",
-];
-
 const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
 
 const SETUP_TYPES = ["FVG", "Order Block", "Liquidity Sweep", "Turtle Soup", "BOS/CHoCH"] as const;
@@ -177,7 +170,7 @@ export default function JournalScreen() {
   const { isRoutineComplete } = usePlanner();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [showMonk, setShowMonk] = useState(false);
+  const [isMonkMode, setIsMonkMode] = useState(false);
   const [form, setForm] = useState<TradeFormData>({ ...DEFAULT_FORM });
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
   const [entryMode, setEntryMode] = useState<EntryMode>("conservative");
@@ -448,11 +441,19 @@ export default function JournalScreen() {
         {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>Smart Journal</Text>
-          <TouchableOpacity style={styles.monkBtn} onPress={() => setShowMonk(true)}>
-            <Ionicons name="eye-off-outline" size={16} color={C.accent} />
-            <Text style={styles.monkBtnText}>Monk</Text>
+          <TouchableOpacity style={[styles.monkBtn, isMonkMode && { backgroundColor: C.accent + "20", borderColor: C.accent }]} onPress={() => setIsMonkMode((prev) => !prev)}>
+            <Ionicons name={isMonkMode ? "eye-outline" : "eye-off-outline"} size={16} color={C.accent} />
+            <Text style={styles.monkBtnText}>{isMonkMode ? "Exit Monk" : "Monk Mode"}</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Monk Mode Banner */}
+        {isMonkMode && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, backgroundColor: C.accent + "18", borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: C.accent + "44" }}>
+            <Ionicons name="eye-off" size={14} color={C.accent} />
+            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.accent, flex: 1 }}>MONK MODE — Outcomes hidden. Focus on process, not results.</Text>
+          </View>
+        )}
 
         {/* Routine Lockout Banner */}
         {!isRoutineComplete && (
@@ -469,15 +470,15 @@ export default function JournalScreen() {
             <Text style={styles.statLabel}>Trades</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: C.accent }]}>{winRate}%</Text>
+            <Text style={[styles.statValue, { color: C.accent }]}>{isMonkMode ? "—" : `${winRate}%`}</Text>
             <Text style={styles.statLabel}>Win Rate</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: "#F59E0B" }]}>{fomoCount}</Text>
+            <Text style={[styles.statValue, { color: "#F59E0B" }]}>{isMonkMode ? "—" : fomoCount}</Text>
             <Text style={styles.statLabel}>FOMO</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: "#00C896" }]}>{disciplinedCount}</Text>
+            <Text style={[styles.statValue, { color: "#00C896" }]}>{isMonkMode ? "—" : disciplinedCount}</Text>
             <Text style={styles.statLabel}>Disciplined</Text>
           </View>
         </View>
@@ -557,7 +558,7 @@ export default function JournalScreen() {
                           <Text style={[styles.tagText, { color: tag.color }]}>{tag.tag}</Text>
                         </View>
                       )}
-                      {trade.outcome && (
+                      {trade.outcome && !isMonkMode && (
                         <View style={[styles.outcomeBadge, { backgroundColor: isWin ? "#00C89620" : isLoss ? "#EF444420" : "#444", borderColor: isWin ? "#00C896" : isLoss ? "#EF4444" : "#666" }]}>
                           <Text style={[styles.outcomeText, { color: isWin ? "#00C896" : isLoss ? "#EF4444" : C.textSecondary }]}>
                             {trade.outcome.toUpperCase()}
@@ -890,26 +891,6 @@ export default function JournalScreen() {
         </View>
       </Modal>
 
-      {/* Monk Mode Modal */}
-      <Modal visible={showMonk} animationType="fade" statusBarTranslucent onRequestClose={() => setShowMonk(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#050505" }} edges={["bottom"]}>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={monkStyles.overlay}>
-            <Text style={monkStyles.title}>⚡ MONK MODE</Text>
-            <Text style={monkStyles.sub}>Stay focused. Follow your plan.</Text>
-            <View style={monkStyles.rulesCard}>
-              {EXIT_RULES.map((r, i) => (
-                <View key={i} style={monkStyles.ruleRow}>
-                  <View style={monkStyles.bullet} />
-                  <Text style={monkStyles.ruleText}>{r}</Text>
-                </View>
-              ))}
-            </View>
-            <TouchableOpacity style={monkStyles.closeBtn} onPress={() => setShowMonk(false)}>
-              <Text style={monkStyles.closeBtnText}>Exit Monk Mode</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
       {showTiltCooldown && (
         <TiltCooldownOverlay
           endTime={tiltCooldownEnd}
@@ -1111,17 +1092,6 @@ const coachStyles = StyleSheet.create({
   dateText: { fontSize: 11, color: C.textSecondary },
 });
 
-const monkStyles = StyleSheet.create({
-  overlay: { flexGrow: 1, backgroundColor: "#050505", justifyContent: "center", padding: 24 },
-  title: { fontSize: 30, fontFamily: "Inter_700Bold", color: C.text, textAlign: "center", marginBottom: 6 },
-  sub: { fontSize: 14, color: C.textSecondary, textAlign: "center", marginBottom: 32 },
-  rulesCard: { backgroundColor: "#0F1A14", borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.accent + "44", marginBottom: 24 },
-  ruleRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 14 },
-  bullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.accent, marginTop: 8 },
-  ruleText: { flex: 1, fontSize: 16, color: C.text, lineHeight: 26 },
-  closeBtn: { backgroundColor: C.accent, borderRadius: 16, padding: 18, alignItems: "center" },
-  closeBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
-});
 
 const ecStyles = StyleSheet.create({
   modeRow: { flexDirection: "row", gap: 8, marginBottom: 16 },

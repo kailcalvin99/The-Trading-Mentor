@@ -48,24 +48,18 @@ const STOP_TRADING_RULES = [
   "Come back tomorrow with a fresh start",
 ];
 
-const EXIT_RULES = [
-  "Keep your stop loss where you set it — no exceptions",
-  "Don't move your stop to breakeven too early",
-  "Wait for price to reach your target — don't exit early",
-  "Get out right away if the market turns against you (MSS — Market Structure Shift)",
-  "Only have one trade open at a time — don't add to a losing trade",
-];
-
 function GaugeMeter({
   value,
   max,
   label,
   color,
+  hidden = false,
 }: {
   value: number;
   max: number;
   label: string;
   color: string;
+  hidden?: boolean;
 }) {
   const pct = Math.min(value / max, 1);
   return (
@@ -73,18 +67,18 @@ function GaugeMeter({
       <View style={gaugeStyles.header}>
         <Text style={gaugeStyles.label}>{label}</Text>
         <Text style={[gaugeStyles.value, { color }]}>
-          {value.toFixed(2)}%
+          {hidden ? "·····" : `${value.toFixed(2)}%`}
         </Text>
       </View>
       <View style={gaugeStyles.track}>
         <View
           style={[
             gaugeStyles.fill,
-            { width: `${pct * 100}%`, backgroundColor: color },
+            { width: hidden ? "0%" : `${pct * 100}%`, backgroundColor: color },
           ]}
         />
       </View>
-      <Text style={gaugeStyles.max}>Limit: {max}%</Text>
+      <Text style={gaugeStyles.max}>{hidden ? "Limit: ·····" : `Limit: ${max}%`}</Text>
     </View>
   );
 }
@@ -224,7 +218,7 @@ export default function RiskShieldScreen() {
   const [pointsAtRisk, setPointsAtRisk] = useState("");
   const [customBalance, setCustomBalance] = useState("");
   const [lossInput, setLossInput] = useState("");
-  const [showMonkMode, setShowMonkMode] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
   const [showAccountSetup, setShowAccountSetup] = useState(false);
   const [setupBalance, setSetupBalance] = useState("");
   const [setupDailyPct, setSetupDailyPct] = useState("");
@@ -381,26 +375,28 @@ export default function RiskShieldScreen() {
             { color: isStopTrading ? "#FF4444" : C.accent },
           ]}
         >
-          ${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+          {isFocusMode ? "$ ·····" : `$${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
         </Text>
         <Text style={styles.cardSub}>
-          Starting: ${startingBalance.toLocaleString()}
+          {isFocusMode ? "Starting: ·····" : `Starting: $${startingBalance.toLocaleString()}`}
         </Text>
       </View>
 
       <View style={[styles.card, isStopTrading && styles.cardRed]}>
         <GaugeMeter
-          value={dailyLossPct}
+          value={isFocusMode ? 0 : dailyLossPct}
           max={maxDailyLoss}
           label="Daily Drawdown (Lost Today)"
-          color={dailyGaugeColor}
+          color={isFocusMode ? C.cardBorder : dailyGaugeColor}
+          hidden={isFocusMode}
         />
         <View style={styles.divider} />
         <GaugeMeter
-          value={totalLossPct}
+          value={isFocusMode ? 0 : totalLossPct}
           max={maxTotalLoss}
           label="Total Drawdown (Lost Overall)"
-          color={totalGaugeColor}
+          color={isFocusMode ? C.cardBorder : totalGaugeColor}
+          hidden={isFocusMode}
         />
       </View>
 
@@ -595,6 +591,13 @@ export default function RiskShieldScreen() {
         </View>
       )}
 
+      {isFocusMode && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: C.accent + "18", borderBottomWidth: 1, borderBottomColor: C.accent + "44" }}>
+          <Ionicons name="eye-off" size={14} color={C.accent} />
+          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.accent, flex: 1 }}>FOCUS MODE — P&L hidden to reduce emotional bias</Text>
+        </View>
+      )}
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
@@ -621,15 +624,15 @@ export default function RiskShieldScreen() {
               <Text style={styles.settingsBtnText}>Account</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.monkBtn}
-              onPress={() => setShowMonkMode(true)}
+              style={[styles.monkBtn, isFocusMode && { backgroundColor: C.accent + "20", borderColor: C.accent }]}
+              onPress={() => setIsFocusMode((prev) => !prev)}
             >
               <Ionicons
-                name="eye-off-outline"
+                name={isFocusMode ? "eye-outline" : "eye-off-outline"}
                 size={16}
                 color={C.accent}
               />
-              <Text style={styles.monkBtnText}>Focus Mode</Text>
+              <Text style={styles.monkBtnText}>{isFocusMode ? "Show P&L" : "Focus Mode"}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -793,44 +796,6 @@ export default function RiskShieldScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showMonkMode} animationType="fade" statusBarTranslucent onRequestClose={() => setShowMonkMode(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#050505" }} edges={["bottom"]}>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={monkStyles.overlay}>
-            <View style={monkStyles.header}>
-              <Text style={monkStyles.title}>FOCUS MODE</Text>
-              <Text style={monkStyles.subtitle}>
-                Your profit and loss is hidden — stay focused on the process
-              </Text>
-            </View>
-
-            <View style={monkStyles.rulesCard}>
-              <Text style={monkStyles.rulesTitle}>EXIT RULES</Text>
-              {EXIT_RULES.map((rule, i) => (
-                <View key={i} style={monkStyles.ruleRow}>
-                  <View style={monkStyles.ruleBullet} />
-                  <Text style={monkStyles.ruleText}>{rule}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={monkStyles.mindsetCard}>
-              <Text style={monkStyles.mindsetTitle}>MINDSET ANCHOR</Text>
-              <Text style={monkStyles.mindsetText}>
-                "I follow my plan, not my emotions. My job is to take the
-                right setup. If I do that, the results will come."
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={monkStyles.exitBtn}
-              onPress={() => setShowMonkMode(false)}
-            >
-              <Ionicons name="eye-outline" size={18} color="#0A0A0F" />
-              <Text style={monkStyles.exitBtnText}>Exit Focus Mode</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -1205,88 +1170,6 @@ const setupStyles = StyleSheet.create({
   },
 });
 
-const monkStyles = StyleSheet.create({
-  overlay: {
-    flexGrow: 1,
-    backgroundColor: "#050505",
-    padding: 24,
-    justifyContent: "center",
-  },
-  header: { alignItems: "center", marginBottom: 32 },
-  title: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-    color: C.text,
-    marginBottom: 6,
-  },
-  subtitle: { fontSize: 14, color: C.textSecondary },
-  rulesCard: {
-    backgroundColor: "#0F1A14",
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: C.accent + "44",
-    marginBottom: 16,
-  },
-  rulesTitle: {
-    fontSize: 11,
-    fontFamily: "Inter_700Bold",
-    color: C.accent,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    marginBottom: 16,
-  },
-  ruleRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 12,
-  },
-  ruleBullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: C.accent,
-    marginTop: 7,
-  },
-  ruleText: { flex: 1, fontSize: 15, color: C.text, lineHeight: 24 },
-  mindsetCard: {
-    backgroundColor: "#111",
-    borderRadius: 14,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    marginBottom: 32,
-  },
-  mindsetTitle: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    color: C.textSecondary,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    marginBottom: 10,
-  },
-  mindsetText: {
-    fontSize: 14,
-    color: C.textSecondary,
-    lineHeight: 23,
-    fontStyle: "italic",
-  },
-  exitBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: C.accent,
-    borderRadius: 16,
-    padding: 18,
-  },
-  exitBtnText: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: "#0A0A0F",
-  },
-});
 
 const insightStyles = StyleSheet.create({
   section: {
