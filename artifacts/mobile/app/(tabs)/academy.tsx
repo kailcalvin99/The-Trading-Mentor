@@ -206,16 +206,21 @@ function SwipeMode({ onExit, onAskMentor }: SwipeModeProps) {
     });
   }
 
+  const goNextRef = useRef(goNext);
+  const goPrevRef = useRef(goPrev);
+  goNextRef.current = goNext;
+  goPrevRef.current = goPrev;
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 10 && Math.abs(gs.dy) > Math.abs(gs.dx),
       onPanResponderMove: (_, gs) => translateY.setValue(gs.dy),
       onPanResponderRelease: (_, gs) => {
         if (gs.dy < -60) {
-          goNext();
+          goNextRef.current();
           Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }).start();
         } else if (gs.dy > 60) {
-          goPrev();
+          goPrevRef.current();
           Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }).start();
         } else {
           Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
