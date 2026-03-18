@@ -382,7 +382,7 @@ function SwipeModeCard() {
   return (
     <TouchableOpacity
       style={[styles.card, styles.swipeCard]}
-      onPress={() => router.navigate("/swipe-mode" as any)}
+      onPress={() => router.navigate({ pathname: "/swipe-mode" })}
       activeOpacity={0.85}
     >
       <View style={styles.swipeCardInner}>

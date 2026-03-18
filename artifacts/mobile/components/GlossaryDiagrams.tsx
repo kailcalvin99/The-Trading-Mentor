@@ -141,7 +141,7 @@ export function OrderBlockDiagram() {
       <Bar left={54} bottom={38} height={28} color={bear} border />
       <Wick left={60} bottom={66} height={12} color={ob} />
       <Zone left={52} bottom={34} right={100} height={32} color={ob} />
-      <View style={{ position: "absolute", left: 52, bottom: 34, right: 100, height: 32, borderWidth: 1, borderColor: ob, borderRadius: 3, borderStyle: "dashed" as any }} />
+      <View style={{ position: "absolute", left: 52, bottom: 34, right: 100, height: 32, borderWidth: 1, borderColor: ob, borderRadius: 3, borderStyle: "dashed" }} />
       <Label left={136} bottom={42} text="OB" color={ob} size={10} />
       <Bar left={78} bottom={24} height={22} color={bear} />
       <Bar left={98} bottom={14} height={20} color={bear} />
