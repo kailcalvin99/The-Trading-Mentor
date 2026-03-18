@@ -139,6 +139,7 @@ function PlannerScreen() {
   const [editingTimeKey, setEditingTimeKey] = useState<string | null>(null);
   const [editingTimeVal, setEditingTimeVal] = useState("");
   const [newLevelInput, setNewLevelInput] = useState("");
+  const [newLevelType, setNewLevelType] = useState<"support" | "resistance">("support");
   const [newItemText, setNewItemText] = useState("");
   const [, setTick] = useState(0);
   const { shouldShow: showTour, completeTour } = useOnboardingTour();
@@ -168,8 +169,13 @@ function PlannerScreen() {
   }, []);
 
   const saveTime = useCallback((key: string, value: string) => {
+    const valid = /^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(value.trim());
+    if (!valid) {
+      Alert.alert("Invalid Time", "Use format like 7:30 AM or 10:00 PM");
+      return;
+    }
     setRoutineTimes((prev) => {
-      const updated = { ...prev, [key]: value };
+      const updated = { ...prev, [key]: value.trim() };
       AsyncStorage.setItem(ROUTINE_TIMES_KEY, JSON.stringify(updated));
       return updated;
     });
@@ -186,8 +192,7 @@ function PlannerScreen() {
   function handleAddLevel() {
     const trimmed = newLevelInput.trim();
     if (!trimmed) return;
-    const type = plan.bias === "bear" ? "resistance" : "support";
-    const level: KeyLevel = { id: Date.now().toString(), price: trimmed, type };
+    const level: KeyLevel = { id: Date.now().toString(), price: trimmed, type: newLevelType };
     savePlan({ ...plan, keyLevels: [...plan.keyLevels, level] });
     setNewLevelInput("");
   }
@@ -414,16 +419,14 @@ function PlannerScreen() {
               onSubmitEditing={handleAddLevel}
               returnKeyType="done"
             />
-            {plan.bias && (
-              <TouchableOpacity
-                style={styles.levelTypeToggle}
-                onPress={() => savePlan({ ...plan, keyLevels: plan.keyLevels })}
-              >
-                <Text style={{ fontSize: 10, color: plan.bias === "bear" ? "#EF4444" : "#00C896", fontFamily: "Inter_600SemiBold" }}>
-                  {plan.bias === "bear" ? "RES" : "SUP"}
-                </Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.levelTypeToggle, { backgroundColor: newLevelType === "resistance" ? "#EF444415" : "#00C89615", borderColor: newLevelType === "resistance" ? "#EF444444" : "#00C89644" }]}
+              onPress={() => setNewLevelType((t) => t === "support" ? "resistance" : "support")}
+            >
+              <Text style={{ fontSize: 10, color: newLevelType === "resistance" ? "#EF4444" : "#00C896", fontFamily: "Inter_700Bold" }}>
+                {newLevelType === "resistance" ? "RES" : "SUP"}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.levelAddBtn, !newLevelInput.trim() && { opacity: 0.4 }]}
               onPress={handleAddLevel}
