@@ -72,7 +72,7 @@ export default function TagsScreen() {
     }
   }, []);
 
-  useFocusEffect(load);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   function initDefaults() {
     const defaults: TagEntry[] = PRESET_TAGS.map((t) => ({
