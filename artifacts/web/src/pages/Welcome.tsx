@@ -142,13 +142,24 @@ const FAQS = [
 export default function Welcome() {
   const [annual, setAnnual] = useState(false);
   const [tiers, setTiers] = useState<Tier[]>([]);
+  const [tiersError, setTiersError] = useState(false);
+  const [tiersLoading, setTiersLoading] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/subscriptions/tiers`)
-      .then((r) => r.json())
-      .then((data) => setTiers(data.tiers || []))
-      .catch(() => {});
+      .then((r) => {
+        if (!r.ok) throw new Error("fetch failed");
+        return r.json();
+      })
+      .then((data) => {
+        setTiers(data.tiers || []);
+        setTiersLoading(false);
+      })
+      .catch(() => {
+        setTiersError(true);
+        setTiersLoading(false);
+      });
   }, []);
 
   function getMonthlyEquivalent(tier: Tier) {
@@ -361,11 +372,30 @@ export default function Welcome() {
               </span>
             </div>
 
-            {tiers.length === 0 ? (
+            {tiersLoading ? (
               <div className="grid gap-6 sm:grid-cols-3">
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="bg-card border border-border rounded-2xl p-7 animate-pulse h-64" />
                 ))}
+              </div>
+            ) : tiersError ? (
+              <div className="text-center py-10">
+                <p className="text-muted-foreground text-sm mb-4">
+                  Pricing information is temporarily unavailable. Please try refreshing.
+                </p>
+                <button
+                  onClick={() => {
+                    setTiersError(false);
+                    setTiersLoading(true);
+                    fetch(`${API_BASE}/subscriptions/tiers`)
+                      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+                      .then((data) => { setTiers(data.tiers || []); setTiersLoading(false); })
+                      .catch(() => { setTiersError(true); setTiersLoading(false); });
+                  }}
+                  className="text-sm text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
+                >
+                  Retry
+                </button>
               </div>
             ) : (
               <div className="grid gap-6 sm:grid-cols-3">
