@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Shield, BookOpen, Calendar, Brain, CheckCircle2, AlertTriangle,
-  ArrowRight, ChevronDown, Star, Zap, Crown, Check, Mail,
+  ArrowRight, ChevronDown, Star, Zap, Crown, Check, Mail, Menu, X,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 
@@ -145,6 +145,19 @@ export default function Welcome() {
   const [tiersError, setTiersError] = useState(false);
   const [tiersLoading, setTiersLoading] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMenuOpen]);
 
   useEffect(() => {
     fetch(`${API_BASE}/subscriptions/tiers`)
@@ -179,89 +192,82 @@ export default function Welcome() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <Logo size={30} />
-          <span className="font-bold text-foreground text-sm sm:text-base">ICT Trading Mentor</span>
-        </div>
-        <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-          <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-          <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
-          <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-          <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
-        </nav>
-        <div className="flex items-center gap-3">
-          <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:inline">
-            Log In
-          </Link>
-          <Link
-            to="/signup"
-            className="text-sm bg-primary text-primary-foreground font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+      <header ref={menuRef} className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
+        <div className="px-6 py-3 flex items-center justify-between">
+          {/* Hamburger button */}
+          <button
+            onClick={() => setIsMenuOpen((v) => !v)}
+            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={isMenuOpen}
+            className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted transition-colors text-foreground"
           >
-            Sign Up Free
-          </Link>
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+
+          {/* Desktop nav links (hidden on mobile) */}
+          <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
+            <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
+            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+            <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
+          </nav>
+
+          {/* Auth buttons — desktop only; mobile uses the hamburger menu */}
+          <div className="hidden sm:flex items-center gap-3">
+            <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Log In
+            </Link>
+            <Link
+              to="/signup"
+              className="text-sm bg-primary text-primary-foreground font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+            >
+              Sign Up Free
+            </Link>
+          </div>
+        </div>
+
+        {/* Slide-down mobile/hamburger menu */}
+        <div
+          className="overflow-hidden transition-all duration-300 ease-in-out"
+          style={{ maxHeight: isMenuOpen ? "320px" : "0px", opacity: isMenuOpen ? 1 : 0 }}
+        >
+          <nav className="flex flex-col border-t border-border px-6 py-4 gap-1">
+            {[
+              { label: "Features", href: "#features" },
+              { label: "How It Works", href: "#how-it-works" },
+              { label: "Pricing", href: "#pricing" },
+              { label: "FAQ", href: "#faq" },
+            ].map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsMenuOpen(false)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2.5 border-b border-border/50 last:border-0"
+              >
+                {item.label}
+              </a>
+            ))}
+            <div className="flex flex-col gap-2 pt-3">
+              <Link
+                to="/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="text-sm text-center text-muted-foreground hover:text-foreground transition-colors py-2.5 border border-border rounded-lg"
+              >
+                Log In
+              </Link>
+              <Link
+                to="/signup"
+                onClick={() => setIsMenuOpen(false)}
+                className="text-sm text-center bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-lg hover:opacity-90 transition-opacity"
+              >
+                Sign Up Free
+              </Link>
+            </div>
+          </nav>
         </div>
       </header>
 
       <main className="flex-1">
-        {/* ── Hero ── */}
-        <section className="relative overflow-hidden px-6 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center">
-          {/* Background gradient */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(0,200,150,0.15),transparent)]" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_60%,hsl(240,20%,5%))]" />
-            {/* Subtle grid */}
-            <div
-              className="absolute inset-0 opacity-[0.04]"
-              style={{
-                backgroundImage:
-                  "linear-gradient(hsl(var(--border)) 1px,transparent 1px),linear-gradient(to right,hsl(var(--border)) 1px,transparent 1px)",
-                backgroundSize: "60px 60px",
-              }}
-            />
-          </div>
-
-          <div className="relative max-w-4xl mx-auto">
-            {/* Eyebrow badge */}
-            <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-full px-4 py-1.5 text-xs font-semibold text-primary mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              ICT Methodology · Decision-Support Tool
-            </div>
-
-            <h1 className="text-4xl sm:text-6xl font-extrabold text-foreground mb-5 leading-tight tracking-tight">
-              Trade Smarter.<br />
-              <span className="text-primary">Protect Your Capital.</span>
-            </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground mb-3 max-w-2xl mx-auto leading-relaxed">
-              ICT Trading Mentor gives futures traders the structure, discipline, and guardrails they need to stop blowing accounts and start building real consistency.
-            </p>
-            <p className="text-sm text-muted-foreground/70 mb-10 max-w-xl mx-auto">
-              Educational tool only — not financial advice. Free to start, no credit card required.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-              <Link
-                to="/signup"
-                className="flex items-center gap-2 bg-primary text-primary-foreground font-bold px-8 py-3.5 rounded-xl hover:opacity-90 transition-all text-base shadow-[0_0_24px_rgba(0,200,150,0.3)]"
-              >
-                Get Started Free
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-              <a
-                href="#pricing"
-                className="flex items-center gap-2 bg-secondary border border-border text-foreground font-semibold px-8 py-3.5 rounded-xl hover:bg-secondary/80 transition-colors text-base"
-              >
-                View Pricing
-              </a>
-            </div>
-
-            {/* Risk disclaimer */}
-            <div className="inline-flex items-start gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3 text-xs text-amber-500 text-left max-w-2xl">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{DISCLAIMER}</span>
-            </div>
-          </div>
-        </section>
 
         {/* ── Stat strip ── */}
         <section className="border-y border-border bg-card/40 px-6 py-8">
