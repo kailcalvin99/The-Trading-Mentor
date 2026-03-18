@@ -193,10 +193,37 @@ router.patch("/", authRequired, async (req, res) => {
       return;
     }
 
-    res.status(400).json({ error: "Invalid section. Use 'profile', 'tradingDefaults', 'riskRules', or 'appMode'" });
+    if (section === "avatar") {
+      const { avatarUrl } = data;
+      if (avatarUrl !== null && typeof avatarUrl !== "string") {
+        res.status(400).json({ error: "avatarUrl must be a string or null" });
+        return;
+      }
+      await db.update(usersTable).set({ avatarUrl: avatarUrl || null }).where(eq(usersTable.id, userId));
+      res.json({ success: true, message: "Avatar updated successfully" });
+      return;
+    }
+
+    res.status(400).json({ error: "Invalid section. Use 'profile', 'tradingDefaults', 'riskRules', 'appMode', or 'avatar'" });
   } catch (err) {
     console.error("Update user settings error:", err);
     res.status(500).json({ error: "Failed to update settings" });
+  }
+});
+
+router.patch("/avatar", authRequired, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const { avatarUrl } = req.body;
+    if (avatarUrl !== undefined && avatarUrl !== null && typeof avatarUrl !== "string") {
+      res.status(400).json({ error: "avatarUrl must be a string or null" });
+      return;
+    }
+    await db.update(usersTable).set({ avatarUrl: avatarUrl || null }).where(eq(usersTable.id, userId));
+    res.json({ success: true, message: "Avatar updated successfully" });
+  } catch (err) {
+    console.error("Update avatar error:", err);
+    res.status(500).json({ error: "Failed to update avatar" });
   }
 });
 

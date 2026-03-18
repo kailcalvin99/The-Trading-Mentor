@@ -10,6 +10,7 @@ interface UserData {
   isFounder: boolean;
   founderNumber: number | null;
   appMode: "full" | "lite";
+  avatarUrl: string | null;
 }
 
 interface SubscriptionData {
@@ -41,6 +42,7 @@ interface AuthContextType {
   isAdmin: boolean;
   appMode: "full" | "lite";
   setAppMode: (mode: "full" | "lite") => Promise<void>;
+  setAvatarUrl: (url: string | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -150,8 +152,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
+  const setAvatarUrl = useCallback(async (url: string | null) => {
+    try {
+      const res = await fetch(`${API_BASE}/user-settings/avatar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ avatarUrl: url }),
+      });
+      if (res.ok) {
+        setUser((prev) => prev ? { ...prev, avatarUrl: url } : null);
+      }
+    } catch {}
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, subscription, loading, login, register, logout, refreshUser, hasFeature, tierLevel, isAdmin, appMode, setAppMode }}>
+    <AuthContext.Provider value={{ user, subscription, loading, login, register, logout, refreshUser, hasFeature, tierLevel, isAdmin, appMode, setAppMode, setAvatarUrl }}>
       {children}
     </AuthContext.Provider>
   );

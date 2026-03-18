@@ -27,6 +27,7 @@ interface AuthUser {
   isFounder: boolean;
   founderNumber: number | null;
   appMode?: "full" | "lite";
+  avatarUrl?: string | null;
 }
 
 interface AuthSubscription {
@@ -40,6 +41,7 @@ interface AuthContextValue {
   loading: boolean;
   appMode: "full" | "lite";
   setAppMode: (mode: "full" | "lite") => void;
+  setAvatarUrl: (url: string | null) => Promise<void>;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -61,6 +63,7 @@ const AuthContext = createContext<AuthContextValue>({
   loading: true,
   appMode: "full",
   setAppMode: () => {},
+  setAvatarUrl: async () => {},
   refresh: async () => {},
   logout: async () => {},
 });
@@ -97,6 +100,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
+  const setAvatarUrl = useCallback(async (url: string | null) => {
+    setUser((prev) => prev ? { ...prev, avatarUrl: url } : null);
+    try {
+      await apiPatch("user-settings/avatar", { avatarUrl: url });
+    } catch {}
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await apiPost("auth/logout", {});
@@ -111,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   return (
-    <AuthContext.Provider value={{ user, subscription, loading, appMode, setAppMode, refresh, logout }}>
+    <AuthContext.Provider value={{ user, subscription, loading, appMode, setAppMode, setAvatarUrl, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   );

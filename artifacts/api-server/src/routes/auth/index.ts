@@ -207,6 +207,7 @@ router.get("/me", authRequired, async (req, res) => {
         isFounder: user.isFounder,
         founderNumber: user.founderNumber,
         appMode: user.appMode || "full",
+        avatarUrl: user.avatarUrl || null,
       },
       subscription: subscription[0] || null,
     });

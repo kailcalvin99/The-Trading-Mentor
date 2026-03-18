@@ -8,8 +8,10 @@ import {
   Modal,
   Platform,
   TextInput,
-  type DimensionValue,
+  Image,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -71,9 +73,10 @@ interface Session {
 }
 
 const SESSIONS: Session[] = [
-  { name: "NY Open", subtitle: "9:30 AM EST", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896", icon: "trending-up" },
-  { name: "Silver Bullet", subtitle: "10:00–11:00 AM EST", startH: 10, startM: 0, endH: 11, endM: 0, color: "#F59E0B", icon: "flash" },
-  { name: "London Open", subtitle: "2:00–5:00 AM EST", startH: 2, startM: 0, endH: 5, endM: 0, color: "#818CF8", icon: "globe" },
+  { name: "London", subtitle: "2:00–5:00 AM EST", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", icon: "globe" },
+  { name: "NY Open", subtitle: "9:30–10:00 AM EST", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896", icon: "trending-up" },
+  { name: "Silver Bullet", subtitle: "10:00–11:00 AM EST", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444", icon: "flash" },
+  { name: "London Close", subtitle: "11 AM–12 PM EST", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8", icon: "time" },
 ];
 
 function AIGreetingCard() {
@@ -107,7 +110,7 @@ function AIGreetingCard() {
   );
 }
 
-function KillZoneCard() {
+function KillZoneStrip() {
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
@@ -115,12 +118,8 @@ function KillZoneCard() {
   }, []);
 
   return (
-    <View style={styles.card}>
-      <View style={styles.cardHeaderRow}>
-        <Ionicons name="time-outline" size={15} color="#F59E0B" />
-        <Text style={styles.cardLabel}>Kill Zone Countdowns</Text>
-      </View>
-      {SESSIONS.map((session, idx) => {
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.kzStrip} contentContainerStyle={styles.kzStripContent}>
+      {SESSIONS.map((session) => {
         const estNow = getESTNow();
         const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
         const startMins = session.startH * 60 + session.startM;
@@ -132,27 +131,34 @@ function KillZoneCard() {
         target.setHours(session.startH, session.startM, 0, 0);
         if (!isLive && estNow >= target) target.setDate(target.getDate() + 1);
         const msUntil = isLive ? 0 : target.getTime() - estNow.getTime();
+        const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
 
         return (
-          <View key={session.name} style={[styles.sessionRow, idx > 0 && styles.sessionBorder]}>
-            <View style={[styles.sessionDot, { backgroundColor: isLive ? session.color : isEnded ? "#333" : C.cardBorder }]} />
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={[styles.sessionName, { color: isLive ? session.color : C.text }]}>{session.name}</Text>
-              <Text style={styles.sessionSub}>{session.subtitle}</Text>
+          <View
+            key={session.name}
+            style={[
+              styles.kzCard,
+              isLive && { borderColor: session.color, borderWidth: 1.5, shadowColor: session.color, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
+            ]}
+          >
+            <View style={styles.kzCardRow1}>
+              <View style={[styles.kzDot, { backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : C.cardBorder }]} />
+              <Text style={[styles.kzName, isLive && { color: session.color }]} numberOfLines={1}>{session.name}</Text>
+              {isLive ? (
+                <View style={[styles.kzBadge, { backgroundColor: session.color + "30" }]}>
+                  <Text style={[styles.kzBadgeText, { color: session.color }]}>LIVE</Text>
+                </View>
+              ) : isEnded ? (
+                <Text style={styles.kzEnded}>Done</Text>
+              ) : (
+                <Text style={[styles.kzCountdown, isNear && { color: "#F59E0B" }]}>{formatCountdown(msUntil)}</Text>
+              )}
             </View>
-            {isLive ? (
-              <View style={[styles.liveBadge, { backgroundColor: session.color }]}>
-                <Text style={styles.liveBadgeText}>LIVE</Text>
-              </View>
-            ) : isEnded ? (
-              <Text style={styles.endedText}>ENDED</Text>
-            ) : (
-              <Text style={styles.countdownText}>{formatCountdown(msUntil)}</Text>
-            )}
+            <Text style={styles.kzSub} numberOfLines={1}>{session.subtitle}</Text>
           </View>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -459,8 +465,19 @@ function MissionModal({ visible, onClose }: { visible: boolean; onClose: () => v
   );
 }
 
+const STOCK_AVATARS_MOBILE = [
+  { id: "bull", emoji: "🐂", label: "Bull" },
+  { id: "bear", emoji: "🐻", label: "Bear" },
+  { id: "chart", emoji: "📈", label: "Chart" },
+  { id: "candle", emoji: "🕯️", label: "Candle" },
+  { id: "rocket", emoji: "🚀", label: "Rocket" },
+  { id: "shield", emoji: "🛡️", label: "Shield" },
+  { id: "flame", emoji: "🔥", label: "Flame" },
+  { id: "crown", emoji: "👑", label: "Crown" },
+];
+
 export default function DashboardScreen() {
-  const { user } = useAuth();
+  const { user, setAvatarUrl } = useAuth();
   const router = useRouter();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
   const { xp, streak } = useDailyGamification();
@@ -470,6 +487,7 @@ export default function DashboardScreen() {
   const [prefs, setPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showMission, setShowMission] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -486,6 +504,9 @@ export default function DashboardScreen() {
     }, [])
   );
 
+  const avatarUrl = user?.avatarUrl;
+  const initials = user?.name?.charAt(0)?.toUpperCase() || "?";
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <AchievementsModal
@@ -496,63 +517,134 @@ export default function DashboardScreen() {
       />
       <MissionModal visible={showMission} onClose={() => setShowMission(false)} />
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        {/* Compact Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.title}>Dashboard</Text>
-            <Text style={styles.subtitle}>Welcome back, {firstName}</Text>
+      {/* Avatar Picker Modal */}
+      <Modal visible={showAvatarPicker} transparent animationType="slide" onRequestClose={() => setShowAvatarPicker(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAvatarPicker(false)} />
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>Choose Avatar</Text>
+          <Text style={styles.modalSubtitle}>Pick a trading avatar or upload your photo</Text>
+          <View style={styles.avatarGrid}>
+            {STOCK_AVATARS_MOBILE.map((av) => (
+              <TouchableOpacity
+                key={av.id}
+                style={[styles.avatarOption, avatarUrl === av.emoji && styles.avatarOptionSelected]}
+                onPress={async () => {
+                  await setAvatarUrl(av.emoji);
+                  setShowAvatarPicker(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.avatarEmoji}>{av.emoji}</Text>
+                <Text style={styles.avatarLabel}>{av.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
+          <View style={styles.uploadRow}>
+            <TouchableOpacity
+              style={styles.uploadPhotoBtn}
+              activeOpacity={0.7}
+              onPress={async () => {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== "granted") return;
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: "images",
+                  allowsEditing: true,
+                  aspect: [1, 1],
+                  quality: 0.8,
+                });
+                if (!result.canceled && result.assets[0]) {
+                  const manipulated = await ImageManipulator.manipulateAsync(
+                    result.assets[0].uri,
+                    [{ resize: { width: 200, height: 200 } }],
+                    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+                  );
+                  const dataUrl = `data:image/jpeg;base64,${manipulated.base64}`;
+                  await setAvatarUrl(dataUrl);
+                  setShowAvatarPicker(false);
+                }
+              }}
+            >
+              <Ionicons name="image-outline" size={16} color={C.accent} />
+              <Text style={styles.uploadPhotoBtnText}>Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.uploadPhotoBtn}
+              activeOpacity={0.7}
+              onPress={async () => {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== "granted") return;
+                const result = await ImagePicker.launchCameraAsync({
+                  allowsEditing: true,
+                  aspect: [1, 1],
+                  quality: 0.8,
+                });
+                if (!result.canceled && result.assets[0]) {
+                  const manipulated = await ImageManipulator.manipulateAsync(
+                    result.assets[0].uri,
+                    [{ resize: { width: 200, height: 200 } }],
+                    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+                  );
+                  const dataUrl = `data:image/jpeg;base64,${manipulated.base64}`;
+                  await setAvatarUrl(dataUrl);
+                  setShowAvatarPicker(false);
+                }
+              }}
+            >
+              <Ionicons name="camera-outline" size={16} color={C.accent} />
+              <Text style={styles.uploadPhotoBtnText}>Camera</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.doneBtn} onPress={() => setShowAvatarPicker(false)}>
+            <Text style={styles.doneBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Kill Zone Strip — pinned at top before scroll */}
+      <View style={styles.kzStripWrapper}>
+        <KillZoneStrip />
+      </View>
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        {/* Compact Header — single slim row ~40px */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.avatarBtn} onPress={() => setShowAvatarPicker(true)} activeOpacity={0.7}>
+            {avatarUrl ? (
+              avatarUrl.startsWith("data:") || avatarUrl.startsWith("http") ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarBtnImage} />
+              ) : (
+                <Text style={styles.avatarBtnEmoji}>{avatarUrl}</Text>
+              )
+            ) : (
+              <Text style={styles.avatarBtnInitial}>{initials}</Text>
+            )}
+          </TouchableOpacity>
+
+          <Text style={styles.headerGreeting} numberOfLines={1}>Hi, {user?.name?.split(" ")[0] || "Trader"}</Text>
+
           <View style={styles.headerIcons}>
-            {/* Level badge */}
             <TouchableOpacity style={styles.headerBadge} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
               <Ionicons name="star" size={13} color={C.accent} />
               <Text style={styles.headerBadgeText}>Lv.{level}</Text>
             </TouchableOpacity>
 
-            {/* Streak badge */}
             <TouchableOpacity style={styles.headerBadge} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
               <Ionicons name="flame" size={13} color={streak >= 7 ? "#EF4444" : "#F59E0B"} />
               <Text style={[styles.headerBadgeText, { color: streak >= 7 ? "#EF4444" : "#F59E0B" }]}>{streak}d</Text>
             </TouchableOpacity>
 
-            {/* Achievements icon */}
-            <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
-              <Ionicons name="trophy-outline" size={18} color={C.textSecondary} />
+            <TouchableOpacity style={styles.headerBadge} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
+              <Ionicons name="trophy" size={13} color="#F59E0B" />
             </TouchableOpacity>
 
-            {/* Tour restart icon */}
-            <TouchableOpacity
-              style={styles.headerIconBtn}
-              onPress={async () => {
-                await AsyncStorage.removeItem(TOUR_DONE_KEY);
-                router.navigate("/");
-              }}
-              activeOpacity={0.7}
-              accessibilityLabel="Restart onboarding tour"
-            >
-              <Ionicons name="help-circle-outline" size={18} color={C.textSecondary} />
-            </TouchableOpacity>
-
-            {/* Today's Mission gift icon */}
             {prefs.todaysMission && (
               <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowMission(true)} activeOpacity={0.7}>
-                <Ionicons name="gift-outline" size={18} color="#F59E0B" />
+                <Ionicons name="gift-outline" size={16} color="#F59E0B" />
               </TouchableOpacity>
             )}
           </View>
         </View>
-
-        {/* XP mini progress bar */}
-        <View style={styles.xpBarRow}>
-          <View style={styles.xpBarTrack}>
-            <View style={[styles.xpBarFill, { width: `${xpInLevel}%` as DimensionValue }]} />
-          </View>
-          <Text style={styles.xpBarText}>{xpInLevel}/100 XP</Text>
-        </View>
-
-        {/* Kill Zone Countdowns — always shown */}
-        <KillZoneCard />
 
         {/* Trade Plan */}
         {prefs.tradePlan && <TradePlanWidget />}
@@ -583,15 +675,108 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 16 },
 
+  kzStripWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: C.cardBorder,
+  },
+  kzStrip: { height: 44 },
+  kzStripContent: { gap: 6, paddingRight: 6, alignItems: "center" },
+  kzCard: {
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 105,
+    justifyContent: "center",
+    gap: 1,
+  },
+  kzCardRow1: { flexDirection: "row", alignItems: "center", gap: 4 },
+  kzSub: { fontSize: 8, color: C.textSecondary, fontFamily: "Inter_400Regular", marginLeft: 10 },
+  kzDot: { width: 6, height: 6, borderRadius: 3 },
+  kzName: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.text },
+  kzBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1, marginLeft: "auto" },
+  kzBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold" },
+  kzEnded: { fontSize: 9, color: C.textSecondary, marginLeft: "auto" },
+  kzCountdown: { fontSize: 9, fontFamily: "Inter_700Bold", color: C.text, marginLeft: "auto" },
+
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    height: 40,
+    marginBottom: 12,
+    gap: 8,
   },
-  headerLeft: { flex: 1 },
-  title: { fontSize: 24, fontFamily: "Inter_700Bold", color: C.text },
-  subtitle: { fontSize: 12, color: C.textSecondary, marginTop: 1 },
+  headerGreeting: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: C.text,
+    flex: 1,
+  },
+
+  avatarBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: C.accent + "20",
+    borderWidth: 1,
+    borderColor: C.accent + "40",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: "auto",
+  },
+  avatarBtnImage: { width: 32, height: 32, borderRadius: 16 },
+  avatarBtnEmoji: { fontSize: 18, lineHeight: 22 },
+  avatarBtnInitial: { fontSize: 14, fontFamily: "Inter_700Bold", color: C.accent },
+  uploadRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+  },
+  uploadPhotoBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: C.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: C.accent + "40",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  uploadPhotoBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: C.accent,
+  },
+
+  avatarGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  avatarOption: {
+    width: 70,
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    backgroundColor: C.backgroundTertiary,
+  },
+  avatarOptionSelected: {
+    borderColor: C.accent,
+    backgroundColor: C.accent + "15",
+  },
+  avatarEmoji: { fontSize: 28, marginBottom: 4 },
+  avatarLabel: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_500Medium" },
 
   headerIcons: {
     flexDirection: "row",
@@ -625,30 +810,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  xpBarRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-  },
-  xpBarTrack: {
-    flex: 1,
-    height: 3,
-    backgroundColor: C.cardBorder,
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  xpBarFill: {
-    height: 3,
-    backgroundColor: C.accent,
-    borderRadius: 2,
-  },
-  xpBarText: {
-    fontSize: 10,
-    color: C.textTertiary,
-    fontFamily: "Inter_500Medium",
-  },
-
   card: {
     backgroundColor: C.backgroundSecondary,
     borderRadius: 16,
@@ -678,16 +839,6 @@ const styles = StyleSheet.create({
     color: "#00C896",
     fontFamily: "Inter_500Medium",
   },
-
-  sessionRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 12 },
-  sessionBorder: { borderTopWidth: 1, borderTopColor: C.cardBorder },
-  sessionDot: { width: 10, height: 10, borderRadius: 5 },
-  sessionName: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 1 },
-  sessionSub: { fontSize: 11, color: C.textSecondary },
-  liveBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  liveBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
-  endedText: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
-  countdownText: { fontSize: 13, fontFamily: "Inter_700Bold", color: C.text },
 
   textArea: {
     backgroundColor: C.backgroundTertiary,

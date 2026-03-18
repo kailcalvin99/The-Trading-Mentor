@@ -319,11 +319,43 @@ function ModeSwitcher({ collapsed, appMode, setAppMode }: { collapsed: boolean; 
   );
 }
 
+const STOCK_AVATARS = [
+  { id: "bull", emoji: "🐂", label: "Bull" },
+  { id: "bear", emoji: "🐻", label: "Bear" },
+  { id: "chart", emoji: "📈", label: "Chart" },
+  { id: "candle", emoji: "🕯️", label: "Candle" },
+  { id: "rocket", emoji: "🚀", label: "Rocket" },
+  { id: "shield", emoji: "🛡️", label: "Shield" },
+  { id: "flame", emoji: "🔥", label: "Flame" },
+  { id: "crown", emoji: "👑", label: "Crown" },
+];
+
+function resizeImageToBase64(file: File, maxSize = 200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("No canvas context")); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 export default function Layout() {
-  const { user, subscription, tierLevel, isAdmin, logout, appMode, setAppMode } = useAuth();
+  const { user, subscription, tierLevel, isAdmin, logout, appMode, setAppMode, setAvatarUrl } = useAuth();
   const { config } = useAppConfig();
   const [showLockToast, setShowLockToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
@@ -517,8 +549,16 @@ export default function Layout() {
               title={sidebarCollapsed ? (user?.name || "Account") : undefined}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full text-left"
             >
-              <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <User className="h-3 w-3 text-primary" />
+              <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden border border-border">
+                {user?.avatarUrl ? (
+                  user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
+                    <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-base leading-none">{user.avatarUrl}</span>
+                  )
+                ) : (
+                  <span className="text-xs font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "?"}</span>
+                )}
               </div>
               {!sidebarCollapsed && <span className="truncate flex-1">{user?.name}</span>}
               {!sidebarCollapsed && user?.isFounder && <Crown className="h-3 w-3 text-amber-500" />}
@@ -527,7 +567,7 @@ export default function Layout() {
 
             {showUserMenu && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowAvatarPicker(false); }} />
                 <div className="absolute bottom-full left-0 mb-1 w-full bg-card border border-border rounded-lg shadow-xl z-50 py-1">
                   <div className="px-3 py-2 border-b border-border">
                     <p className="text-xs font-medium text-foreground">{user?.name}</p>
@@ -543,8 +583,55 @@ export default function Layout() {
                     </p>
                   </div>
                   <button
+                    onClick={() => { setShowAvatarPicker((v) => !v); }}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
+                  >
+                    <User className="h-4 w-4" />
+                    Change Avatar
+                  </button>
+                  {showAvatarPicker && (
+                    <div className="px-3 pb-2 border-t border-border">
+                      <p className="text-[10px] text-muted-foreground pt-2 mb-2">Pick a trading avatar:</p>
+                      <div className="grid grid-cols-4 gap-1 mb-2">
+                        {STOCK_AVATARS.map((av) => (
+                          <button
+                            key={av.id}
+                            onClick={async () => {
+                              await setAvatarUrl(av.emoji);
+                              setShowAvatarPicker(false);
+                              setShowUserMenu(false);
+                            }}
+                            className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-all hover:bg-secondary text-center ${user?.avatarUrl === av.emoji ? "border-primary bg-primary/10" : "border-border"}`}
+                          >
+                            <span className="text-xl">{av.emoji}</span>
+                            <span className="text-[9px] text-muted-foreground">{av.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <label className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                        <User className="h-3.5 w-3.5 shrink-0" />
+                        Upload Photo
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              const dataUrl = await resizeImageToBase64(file);
+                              await setAvatarUrl(dataUrl);
+                              setShowAvatarPicker(false);
+                              setShowUserMenu(false);
+                            } catch {}
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                  <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 w-full text-left"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 w-full text-left border-t border-border"
                   >
                     <LogOut className="h-4 w-4" />
                     Sign Out
@@ -557,7 +644,7 @@ export default function Layout() {
       </aside>
 
       <div className="flex flex-col flex-1 min-w-0">
-        <div className="hidden md:flex items-center gap-3 px-4 py-2 border-b border-border bg-sidebar shrink-0">
+        <div className="hidden md:flex items-center gap-3 px-4 py-1 border-b border-border bg-sidebar shrink-0">
           <AIAssistant />
           <HeaderGamificationBadges />
         </div>

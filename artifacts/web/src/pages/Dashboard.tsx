@@ -1,19 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  TrendingUp, Clock, Target, BarChart3, Shield,
+  TrendingUp, Target, BarChart3, Shield,
   Sparkles,
   FileText, StickyNote, ClipboardCheck, CheckSquare, Square, ArrowRight,
-  Calculator, Layers, ChevronRight,
+  Calculator, Layers,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
 import { useListTrades } from "@workspace/api-client-react";
 
 const SESSIONS = [
+  { name: "London", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", time: "2:00–5:00 AM EST" },
   { name: "NY Open", emoji: "📈", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896", time: "9:30–10:00 AM EST" },
   { name: "Silver Bullet", emoji: "🎯", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444", time: "10:00–11:00 AM EST" },
-  { name: "London Open", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", time: "2:00–5:00 AM EST" },
+  { name: "London Close", emoji: "🔔", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8", time: "11:00 AM–12:00 PM EST" },
 ];
 
 const SLOT_SESSIONS = ["Silver Bullet 🎯", "NY Open 📈", "London 🌍", "Asian 🌏"];
@@ -115,46 +116,12 @@ function dateSeed(): number {
 function CompactGreetingRow() {
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")[0] || "Trader";
-  const [, setTick] = useState(0);
   const checklistDone = CHECKLIST_ITEMS.filter(
     (item) => getChecklistState().checked[item.id]
   ).length;
   const checklistTotal = CHECKLIST_ITEMS.length;
 
   const est = getESTNow();
-  const nowMins = est.getHours() * 60 + est.getMinutes();
-
-  const killZones = [
-    { name: "London Open", startH: 2, startM: 0, endH: 5, endM: 0 },
-    { name: "NY Open", startH: 9, startM: 30, endH: 10, endM: 0 },
-    { name: "Silver Bullet", startH: 10, startM: 0, endH: 11, endM: 0 },
-  ];
-
-  let dynamicLine = `Checklist: ${checklistDone}/${checklistTotal} complete`;
-
-  for (const kz of killZones) {
-    const startMins = kz.startH * 60 + kz.startM;
-    const endMins = kz.endH * 60 + kz.endM;
-    if (nowMins >= startMins && nowMins < endMins) {
-      dynamicLine = `${kz.name} is LIVE now`;
-      break;
-    }
-    const target = new Date(est);
-    target.setHours(kz.startH, kz.startM, 0, 0);
-    if (est < target) {
-      const msUntil = target.getTime() - est.getTime();
-      if (msUntil <= 60 * 60 * 1000) {
-        dynamicLine = `${kz.name} in ${formatCountdown(msUntil)}`;
-        break;
-      }
-    }
-  }
-
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-
   const greetingHour = est.getHours();
   const timeGreeting = greetingHour < 12 ? "Good morning" : greetingHour < 17 ? "Good afternoon" : "Good evening";
 
@@ -168,7 +135,7 @@ function CompactGreetingRow() {
       </div>
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span>{dynamicLine}</span>
+        <span>Checklist: {checklistDone}/{checklistTotal}</span>
       </div>
     </div>
   );
@@ -251,7 +218,7 @@ function SlotMachine() {
   );
 }
 
-function SessionBannerStrip() {
+function KillZoneStrip() {
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -263,7 +230,7 @@ function SessionBannerStrip() {
   const nowMins = est.getHours() * 60 + est.getMinutes();
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+    <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide" style={{ height: 48 }}>
       {SESSIONS.map((session) => {
         const startMins = session.startH * 60 + session.startM;
         const endMins = session.endH * 60 + session.endM;
@@ -283,39 +250,36 @@ function SessionBannerStrip() {
         return (
           <div
             key={session.name}
-            className={`flex-shrink-0 min-w-[160px] bg-card border rounded-2xl p-4 transition-all ${
-              isLive ? "border-2 shadow-sm" : "border-border"
+            className={`flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border rounded-xl transition-all ${
+              isLive ? "border-2" : "border-border"
             }`}
-            style={isLive ? { borderColor: session.color, boxShadow: `0 0 12px ${session.color}30` } : undefined}
+            style={isLive ? { borderColor: session.color, boxShadow: `0 0 8px ${session.color}25` } : undefined}
           >
-            <div className="flex items-center gap-2 mb-1.5">
-              <div
-                className={`w-2 h-2 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
-                style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
-              />
-              <span className="text-sm font-bold text-foreground">{session.emoji} {session.name}</span>
+            <div
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
+              style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
+            />
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-foreground whitespace-nowrap leading-tight">{session.emoji} {session.name}</span>
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight">{session.time}</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mb-2 leading-snug">{session.time}</p>
             {isLive ? (
               <span
-                className="text-xs font-bold px-2.5 py-1 rounded-full"
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-1"
                 style={{ backgroundColor: `${session.color}20`, color: session.color }}
               >
-                LIVE NOW
+                LIVE
               </span>
             ) : isEnded ? (
-              <span className="text-xs text-muted-foreground font-medium">Ended</span>
+              <span className="text-[10px] text-muted-foreground font-medium shrink-0 ml-1">Ended</span>
             ) : (
-              <span className={`text-xs font-mono font-medium ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
+              <span className={`text-[10px] font-mono font-medium shrink-0 ml-1 ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
                 {formatCountdown(msUntil)}
               </span>
             )}
           </div>
         );
       })}
-      <div className="flex items-center justify-center shrink-0 px-2 text-muted-foreground">
-        <ChevronRight className="h-4 w-4" />
-      </div>
     </div>
   );
 }
@@ -793,9 +757,9 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4 pb-24">
-      {visible.mascot && <CompactGreetingRow />}
+      <KillZoneStrip />
 
-      {visible.sessions && <SessionBannerStrip />}
+      {visible.mascot && <CompactGreetingRow />}
 
       <StatsTickerStrip />
 

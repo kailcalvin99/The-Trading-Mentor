@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "expo-file-system": "^55.0.10",
+    "expo-image-manipulator": "^55.0.11",
     "expo-notifications": "~0.29.14",
     "expo-secure-store": "^55.0.8",
     "expo-sharing": "^55.0.11",
