@@ -86,6 +86,7 @@ function NavItem({
   onLockedClick,
   collapsed,
   badge,
+  onClick,
 }: {
   to: string;
   label: string;
@@ -95,13 +96,14 @@ function NavItem({
   onLockedClick: () => void;
   collapsed: boolean;
   badge?: boolean;
+  onClick?: () => void;
 }) {
   const isLocked = requiredTier > userTier;
 
   if (isLocked) {
     return (
       <button
-        onClick={onLockedClick}
+        onClick={() => { onLockedClick(); onClick?.(); }}
         title={collapsed ? label : undefined}
         className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground/40 cursor-not-allowed w-full text-left group relative"
       >
@@ -120,6 +122,7 @@ function NavItem({
       to={to}
       end
       title={collapsed ? label : undefined}
+      onClick={onClick}
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
           isActive
@@ -478,30 +481,15 @@ export default function Layout() {
 
         <nav className="flex flex-col gap-1 p-2 flex-1">
           {visibleNavItems.map((item) => (
-            <NavLink
+            <NavItem
               key={item.to}
-              to={item.to}
-              end
+              {...item}
+              userTier={tierLevel}
+              onLockedClick={handleLockedClick}
+              collapsed={false}
+              badge={item.to === "/community" ? communityHasNew : undefined}
               onClick={closeDrawer}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                }`
-              }
-            >
-              <div className="relative shrink-0">
-                <item.icon className="h-5 w-5" />
-                {item.to === "/community" && communityHasNew && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border border-background" />
-                )}
-              </div>
-              <span>{item.label}</span>
-              {item.to === "/community" && communityHasNew && (
-                <span className="ml-auto w-2 h-2 rounded-full bg-red-500 shrink-0" />
-              )}
-            </NavLink>
+            />
           ))}
         </nav>
 
