@@ -10,7 +10,6 @@ import {
   TextInput,
   Image,
   Switch,
-  Alert,
   PanResponder,
   Animated,
 } from "react-native";
@@ -35,7 +34,6 @@ import {
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
 import { registerAvatarPickerListener, unregisterAvatarPickerListener } from "@/lib/avatarPickerBus";
-import { useTodaySchedule, ROUTINE_ITEMS as SCHEDULE_ROUTINE_ITEMS, SESSION_SCHEDULE, parseTimeToMinutes } from "@/hooks/useTodaySchedule";
 
 const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; why: string }> = [
   { key: "water", label: "Drink water", icon: "water-outline", why: "Dehydration reduces focus and decision-making quality." },
@@ -50,7 +48,6 @@ const C = Colors.dark;
 
 const TRADE_PLAN_KEY = "daily_trade_plan_v1";
 const NOTES_KEY = "dashboard-notes";
-const CUSTOM_SCHEDULE_ITEMS_KEY = "custom_schedule_items_v1";
 const CHECKLIST_STORAGE_KEY = "ict-checklist-state";
 const CHECKLIST_TTL_MS = 4 * 60 * 60 * 1000;
 const QUICK_JOURNAL_KEY = "ict-quick-journal-notes";
@@ -131,341 +128,55 @@ function AIGreetingCard() {
 }
 
 
-interface CustomScheduleItem {
-  id: string;
-  time: string;
-  label: string;
-  checked: boolean;
-}
-
 function TodayScheduleWidget() {
-  const { routineItems, toggleItem, hasRedNews, toggleRedNews } = usePlanner();
-  const { routineTimes, loadTimes, saveTime, sortedSchedule } = useTodaySchedule(routineItems);
-  const [editingTimeKey, setEditingTimeKey] = useState<string | null>(null);
-  const [editingTimeVal, setEditingTimeVal] = useState("");
-  const [customItems, setCustomItems] = useState<CustomScheduleItem[]>([]);
-  const [addingAfterIdx, setAddingAfterIdx] = useState<number | null>(null);
-  const [newTime, setNewTime] = useState("");
-  const [newLabel, setNewLabel] = useState("");
-  const [, setTick] = useState(0);
+  const router = useRouter();
+  const { routineItems } = usePlanner();
 
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadTimes();
-      AsyncStorage.getItem(CUSTOM_SCHEDULE_ITEMS_KEY).then((raw) => {
-        if (raw) {
-          try { setCustomItems(JSON.parse(raw)); } catch {}
-        }
-      });
-    }, [loadTimes])
-  );
-
-  async function saveCustomItems(items: CustomScheduleItem[]) {
-    setCustomItems(items);
-    await AsyncStorage.setItem(CUSTOM_SCHEDULE_ITEMS_KEY, JSON.stringify(items));
-  }
-
-  function addCustomItem(afterIdx: number) {
-    const trimmedTime = newTime.trim();
-    const trimmedLabel = newLabel.trim();
-    if (!trimmedLabel) {
-      setAddingAfterIdx(null);
-      setNewTime("");
-      setNewLabel("");
-      return;
-    }
-    const newItem: CustomScheduleItem = {
-      id: `cs_${Date.now()}`,
-      time: trimmedTime || "12:00 PM",
-      label: trimmedLabel,
-      checked: false,
-    };
-    const updated = [...customItems, newItem];
-    saveCustomItems(updated);
-    setAddingAfterIdx(null);
-    setNewTime("");
-    setNewLabel("");
-  }
-
-  function toggleCustomItem(id: string) {
-    const updated = customItems.map((ci) => ci.id === id ? { ...ci, checked: !ci.checked } : ci);
-    saveCustomItems(updated);
-  }
-
-  function removeCustomItem(id: string) {
-    saveCustomItems(customItems.filter((ci) => ci.id !== id));
-  }
-
-  const allItems = [
-    ...sortedSchedule.map((s, idx) => ({ ...s, _sortKey: s.mins, _srcType: "schedule" as const, _srcIdx: idx })),
-    ...customItems.map((ci) => ({
-      id: ci.id,
-      label: ci.label,
-      timeStr: ci.time,
-      mins: parseTimeToMinutes(ci.time),
-      checked: ci.checked,
-      type: "custom" as const,
-      color: "#818CF8",
-      icon: "star-outline" as React.ComponentProps<typeof Ionicons>["name"],
-      desc: "",
-      _sortKey: parseTimeToMinutes(ci.time),
-      _srcType: "custom" as const,
-      _srcIdx: 0,
-    })),
-  ].sort((a, b) => a._sortKey - b._sortKey);
+  const total = ROUTINE_DISPLAY.length;
+  const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
+  const allDone = doneCount === total;
 
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
         <Ionicons name="calendar-outline" size={14} color={C.accent} />
-        <Text style={styles.cardLabel}>Today's Schedule</Text>
-      </View>
-
-      {allItems.map((item, idx) => {
-        const isRoutine = item.type === "routine";
-        const isSession = item.type === "session";
-        const isCustom = item.type === "custom";
-
-        const routineItemDef = isRoutine ? SCHEDULE_ROUTINE_ITEMS.find((r) => r.key === item.id) : null;
-        const sessionDef = isSession ? SESSION_SCHEDULE.find((s) => s.name === item.id) : null;
-
-        const estNow = getESTNow();
-        const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
-        let isLive = false;
-        let isEnded = false;
-        let msUntil = 0;
-        if (isSession && sessionDef) {
-          const startMins = sessionDef.startH * 60 + sessionDef.startM;
-          const endMins = sessionDef.endH * 60 + sessionDef.endM;
-          isLive = nowMins >= startMins && nowMins < endMins;
-          isEnded = nowMins >= endMins;
-          const target = new Date(estNow);
-          target.setHours(sessionDef.startH, sessionDef.startM, 0, 0);
-          if (!isLive && estNow >= target) target.setDate(target.getDate() + 1);
-          msUntil = isLive ? 0 : target.getTime() - estNow.getTime();
-        }
-
-        return (
-          <View key={item.id + idx}>
-            {idx > 0 && <View style={styles.divider} />}
-            <View style={styles.scheduleRow}>
-              <View style={styles.scheduleTimeCol}>
-                {(isRoutine || isCustom) && editingTimeKey === item.id ? (
-                  <TextInput
-                    style={styles.timeEditInput}
-                    value={editingTimeVal}
-                    onChangeText={setEditingTimeVal}
-                    onBlur={() => {
-                      if (editingTimeVal.trim()) {
-                        if (isRoutine) {
-                          saveTime(item.id, editingTimeVal.trim());
-                        } else {
-                          const updated = customItems.map((ci) => ci.id === item.id ? { ...ci, time: editingTimeVal.trim() } : ci);
-                          saveCustomItems(updated);
-                        }
-                      }
-                      setEditingTimeKey(null);
-                    }}
-                    autoFocus
-                    returnKeyType="done"
-                    onSubmitEditing={() => {
-                      if (editingTimeVal.trim()) {
-                        if (isRoutine) {
-                          saveTime(item.id, editingTimeVal.trim());
-                        } else {
-                          const updated = customItems.map((ci) => ci.id === item.id ? { ...ci, time: editingTimeVal.trim() } : ci);
-                          saveCustomItems(updated);
-                        }
-                      }
-                      setEditingTimeKey(null);
-                    }}
-                  />
-                ) : (
-                  <TouchableOpacity
-                    onPress={(isRoutine || isCustom) ? () => { setEditingTimeKey(item.id); setEditingTimeVal(item.timeStr); } : undefined}
-                    activeOpacity={(isRoutine || isCustom) ? 0.7 : 1}
-                  >
-                    <Text style={styles.scheduleTime}>{isSession ? item.timeStr.replace(/ EST.*/, "") : item.timeStr}</Text>
-                  </TouchableOpacity>
-                )}
-                <View style={[styles.timelineDot, { backgroundColor: isLive ? item.color : item.checked ? C.accent : C.cardBorder }]} />
-                {idx < allItems.length - 1 && <View style={styles.timelineLine} />}
-              </View>
-
-              {isRoutine && routineItemDef && (
-                <TouchableOpacity
-                  style={styles.scheduleContent}
-                  onPress={() => {
-                    toggleItem(routineItemDef.key);
-                    if (routineItemDef.key === "news" && !routineItems.news) {
-                      setTimeout(() => {
-                        Alert.alert(
-                          "Red Folder News?",
-                          "Are there any high-impact Red folder events today?",
-                          [
-                            { text: "No Red News", style: "cancel" },
-                            { text: "Yes — Red Active", style: "destructive", onPress: () => { if (!hasRedNews) toggleRedNews(); } },
-                          ]
-                        );
-                      }, 300);
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                    <View style={[styles.scheduleCheckbox, item.checked && { backgroundColor: C.accent, borderColor: C.accent }]}>
-                      {item.checked && <Ionicons name="checkmark" size={11} color="#0A0A0F" />}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.scheduleLabel, item.checked && styles.scheduleLabelDone]}>{item.label}</Text>
-                      <Text style={styles.scheduleDesc}>{item.desc}</Text>
-                    </View>
-                    <Ionicons name={routineItemDef.icon} size={16} color={item.checked ? C.accent : C.textSecondary} />
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              {isSession && sessionDef && (
-                <View style={[styles.sessionBlock, { borderColor: item.color + "44", backgroundColor: item.color + "0A" }]}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Ionicons name={sessionDef.icon} size={14} color={item.color} />
-                    <Text style={[styles.sessionBlockName, { color: item.color }]}>{item.label}</Text>
-                    {isLive && (
-                      <View style={[styles.liveTag, { backgroundColor: item.color }]}>
-                        <Text style={styles.liveTagText}>LIVE</Text>
-                      </View>
-                    )}
-                    {isEnded && <Text style={styles.endedTag}>ENDED</Text>}
-                  </View>
-                  <Text style={styles.sessionBlockSub}>{sessionDef.subtitle}</Text>
-                  {!isLive && !isEnded && (
-                    <Text style={[styles.sessionCountdown, { color: item.color }]}>{formatCountdown(msUntil)}</Text>
-                  )}
-                </View>
-              )}
-
-              {isCustom && (
-                <View style={[styles.scheduleContent, { flexDirection: "row", alignItems: "center", gap: 8 }]}>
-                  <TouchableOpacity
-                    onPress={() => toggleCustomItem(item.id)}
-                    activeOpacity={0.7}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}
-                  >
-                    <View style={[styles.scheduleCheckbox, item.checked && { backgroundColor: C.accent, borderColor: C.accent }]}>
-                      {item.checked && <Ionicons name="checkmark" size={11} color="#0A0A0F" />}
-                    </View>
-                    <Text style={[styles.scheduleLabel, item.checked && styles.scheduleLabelDone]} numberOfLines={1}>{item.label}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => removeCustomItem(item.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-
-            {isRoutine && routineItemDef?.key === "news" && routineItems.news && (
-              <View style={styles.redNewsToggle}>
-                <Ionicons name="alert-circle-outline" size={16} color="#FF9999" />
-                <Text style={styles.redNewsLabel}>Red folder news today?</Text>
-                <Switch
-                  value={hasRedNews}
-                  onValueChange={toggleRedNews}
-                  trackColor={{ false: C.cardBorder, true: "rgba(255,68,68,0.5)" }}
-                  thumbColor={hasRedNews ? "#FF4444" : C.textSecondary}
-                  style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
-                />
-              </View>
-            )}
-
-            {/* "+" add button after this row */}
-            {addingAfterIdx === idx ? (
-              <View style={styles.addScheduleInlineRow}>
-                <TextInput
-                  style={styles.addScheduleTimeInput}
-                  placeholder="Time (e.g. 9:00 AM)"
-                  placeholderTextColor={C.textTertiary}
-                  value={newTime}
-                  onChangeText={setNewTime}
-                />
-                <TextInput
-                  style={styles.addScheduleLabelInput}
-                  placeholder="Label"
-                  placeholderTextColor={C.textTertiary}
-                  value={newLabel}
-                  onChangeText={setNewLabel}
-                  autoFocus
-                  returnKeyType="done"
-                  onSubmitEditing={() => addCustomItem(idx)}
-                />
-                <TouchableOpacity onPress={() => addCustomItem(idx)} style={styles.addScheduleConfirmBtn}>
-                  <Ionicons name="checkmark" size={16} color="#0A0A0F" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => { setAddingAfterIdx(null); setNewTime(""); setNewLabel(""); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close" size={16} color={C.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.addScheduleBtn}
-                onPress={() => { setAddingAfterIdx(idx); setNewTime(""); setNewLabel(""); }}
-                activeOpacity={0.6}
-              >
-                <View style={styles.addScheduleBtnInner}>
-                  <View style={styles.addScheduleLine} />
-                  <Ionicons name="add-circle-outline" size={14} color={C.textTertiary} />
-                  <View style={styles.addScheduleLine} />
-                </View>
-              </TouchableOpacity>
-            )}
+        <Text style={styles.cardLabel}>Routine Progress</Text>
+        {allDone && (
+          <View style={styles.doneBadge}>
+            <Text style={styles.doneBadgeText}>Done ✓</Text>
           </View>
-        );
-      })}
-
-      {/* Final + button if no items or at end */}
-      {addingAfterIdx === allItems.length ? (
-        <View style={styles.addScheduleInlineRow}>
-          <TextInput
-            style={styles.addScheduleTimeInput}
-            placeholder="Time (e.g. 9:00 AM)"
-            placeholderTextColor={C.textTertiary}
-            value={newTime}
-            onChangeText={setNewTime}
-          />
-          <TextInput
-            style={styles.addScheduleLabelInput}
-            placeholder="Label"
-            placeholderTextColor={C.textTertiary}
-            value={newLabel}
-            onChangeText={setNewLabel}
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={() => addCustomItem(allItems.length)}
-          />
-          <TouchableOpacity onPress={() => addCustomItem(allItems.length)} style={styles.addScheduleConfirmBtn}>
-            <Ionicons name="checkmark" size={16} color="#0A0A0F" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setAddingAfterIdx(null); setNewTime(""); setNewLabel(""); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="close" size={16} color={C.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      ) : (
+        )}
         <TouchableOpacity
-          style={[styles.addScheduleBtn, { paddingBottom: 10 }]}
-          onPress={() => { setAddingAfterIdx(allItems.length); setNewTime(""); setNewLabel(""); }}
-          activeOpacity={0.6}
+          onPress={() => router.navigate({ pathname: "/(tabs)" })}
+          activeOpacity={0.7}
+          style={{ marginLeft: "auto" }}
         >
-          <View style={styles.addScheduleBtnInner}>
-            <View style={styles.addScheduleLine} />
-            <Ionicons name="add-circle-outline" size={14} color={C.textTertiary} />
-            <View style={styles.addScheduleLine} />
-          </View>
+          <Text style={styles.editLink}>Go to Planner ↗</Text>
         </TouchableOpacity>
-      )}
+      </View>
+      <View style={styles.routineContent}>
+        <View style={[styles.routineRing, allDone && { borderColor: "#00C896" }]}>
+          <Text style={[styles.routineRingText, allDone && { color: "#00C896" }]}>{doneCount}/{total}</Text>
+          <Text style={styles.routineRingLabel}>done</Text>
+        </View>
+        <View style={{ flex: 1, gap: 6 }}>
+          {ROUTINE_DISPLAY.map((item) => {
+            const done = routineItems[item.key];
+            return (
+              <View key={item.key} style={styles.routineItem}>
+                <Ionicons
+                  name={done ? "checkmark-circle" : "ellipse-outline"}
+                  size={14}
+                  color={done ? "#00C896" : C.textTertiary}
+                />
+                <Text style={[styles.routineItemLabel, done && styles.routineItemLabelDone]} numberOfLines={1}>
+                  {item.label}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
     </View>
   );
 }
@@ -2054,34 +1765,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
 
-  scheduleRow: { flexDirection: "row", alignItems: "flex-start", paddingLeft: 14, paddingRight: 14, paddingVertical: 10 },
-  scheduleTimeCol: { width: 70, alignItems: "flex-end", paddingRight: 14, position: "relative" },
-  scheduleTime: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textAlign: "right", marginBottom: 4 },
-  timeEditInput: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.accent, textAlign: "right", borderBottomWidth: 1, borderBottomColor: C.accent, paddingVertical: 0, minWidth: 60 },
-  timelineDot: { width: 8, height: 8, borderRadius: 4, alignSelf: "flex-end", marginBottom: 0 },
-  timelineLine: { position: "absolute", bottom: -20, right: 17, width: 2, height: 20, backgroundColor: C.cardBorder },
-  scheduleContent: { flex: 1, paddingLeft: 12 },
-  scheduleCheckbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
-  scheduleLabel: { fontSize: 14, fontFamily: "Inter_500Medium", color: C.text },
-  scheduleLabelDone: { color: C.textSecondary, textDecorationLine: "line-through" as const },
-  scheduleDesc: { fontSize: 11, color: C.textSecondary, marginTop: 1 },
-  sessionBlock: { flex: 1, paddingLeft: 12, borderLeftWidth: 2, paddingVertical: 6, borderRadius: 4 },
-  sessionBlockName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  sessionBlockSub: { fontSize: 11, color: C.textSecondary, marginTop: 1 },
-  sessionCountdown: { fontSize: 12, fontFamily: "Inter_700Bold", marginTop: 4 },
-  liveTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  liveTagText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
-  endedTag: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
-  redNewsToggle: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingBottom: 12, paddingLeft: 96 },
-  redNewsLabel: { flex: 1, fontSize: 13, color: "#FF9999" },
-  addScheduleBtn: { paddingHorizontal: 14, paddingTop: 2 },
-  addScheduleBtnInner: { flexDirection: "row", alignItems: "center", gap: 8 },
-  addScheduleLine: { flex: 1, height: 1, backgroundColor: C.cardBorder + "60" },
-  addScheduleInlineRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: C.backgroundTertiary },
-  addScheduleTimeInput: { width: 100, fontSize: 11, color: C.text, fontFamily: "Inter_500Medium", borderBottomWidth: 1, borderBottomColor: C.cardBorder, paddingVertical: 4 },
-  addScheduleLabelInput: { flex: 1, fontSize: 13, color: C.text, fontFamily: "Inter_500Medium", borderBottomWidth: 1, borderBottomColor: C.cardBorder, paddingVertical: 4 },
-  addScheduleConfirmBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.accent, alignItems: "center", justifyContent: "center" },
-  divider: { height: 1, backgroundColor: C.cardBorder },
 
   widgetHeaderRow: {
     flexDirection: "row",
