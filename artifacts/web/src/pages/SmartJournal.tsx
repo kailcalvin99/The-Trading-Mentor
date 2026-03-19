@@ -297,6 +297,23 @@ export default function SmartJournal() {
   const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
   const [coachError, setCoachError] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    const raw = localStorage.getItem("planner_journal_draft");
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw);
+      localStorage.removeItem("planner_journal_draft");
+      setForm((prev) => ({
+        ...prev,
+        pair: draft.pair || prev.pair,
+        notes: draft.notes || prev.notes,
+        sideDirection: draft.bias === "bullish" ? "BUY" : draft.bias === "bearish" ? "SELL" : prev.sideDirection,
+      }));
+      setShowForm(true);
+      toast({ title: "Plan loaded", description: "Your pre-trade plan has been loaded into the journal form." });
+    } catch {}
+  }, []);
   const [coachUpgrade, setCoachUpgrade] = useState<Record<number, boolean>>({});
 
   async function fetchCoachFeedback(tradeId: number) {

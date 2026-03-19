@@ -217,6 +217,23 @@ export default function JournalScreen() {
     });
   }, []);
 
+  useEffect(() => {
+    AsyncStorage.getItem("planner_journal_draft").then((raw) => {
+      if (!raw) return;
+      try {
+        const draft = JSON.parse(raw);
+        AsyncStorage.removeItem("planner_journal_draft");
+        setForm((prev) => ({
+          ...prev,
+          pair: draft.pair || prev.pair,
+          notes: [draft.notes || "", draft.voiceNoteUri ? `[Voice note: ${draft.voiceNoteUri}]` : ""].filter(Boolean).join("\n"),
+        }));
+        setShowForm(true);
+        Alert.alert("Plan Loaded", "Your pre-trade plan has been loaded into the journal form.");
+      } catch {}
+    });
+  }, []);
+
   const { data: tradesData } = useListTrades();
   const trades = tradesData ?? [];
   const { mutateAsync: createTradeMut } = useCreateTrade();

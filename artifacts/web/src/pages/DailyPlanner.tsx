@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Droplets,
@@ -22,16 +23,21 @@ import {
   AlertTriangle,
   Activity,
   Download,
+  Mic,
+  MicOff,
+  Send,
+  Lock,
   type LucideIcon,
 } from "lucide-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import ProbabilityMeter from "@/components/ProbabilityMeter";
 
 import CoolDownOverlay, { FailureAnalysis } from "@/components/CoolDownOverlay";
 import { recordDisciplinedDay } from "@/components/HallOfFame";
-import { useListTrades } from "@workspace/api-client-react";
+import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Droplets, Wind, Newspaper, BarChart3, CheckCircle2, Target, Clock, Activity, AlertTriangle,
@@ -46,6 +52,7 @@ interface PersonalTask {
 interface KeyLevel {
   price: string;
   type: "support" | "resistance";
+  label?: string;
 }
 
 interface TradePlan {
@@ -55,6 +62,10 @@ interface TradePlan {
   sessionFocus: string;
   maxTrades: string;
   riskPerTrade: string;
+  strategy: "" | "conservative" | "aggressive";
+  stopLossTicks: string;
+  selectedAsset: string;
+  voiceNote: string;
 }
 
 interface EntryChecklist {
@@ -64,6 +75,8 @@ interface EntryChecklist {
   orderBlockIdentified: boolean;
   premiumDiscountZone: boolean;
   inKillzone: boolean;
+  noRedNews: boolean;
+  manipulationPhase: boolean;
 }
 
 interface DayData {
@@ -72,6 +85,26 @@ interface DayData {
   tradePlan: TradePlan;
   entryChecklist?: EntryChecklist;
 }
+
+const TICK_DATA: Record<string, { tick: number; miniValue: number; microValue: number; label: string }> = {
+  NQ:  { tick: 0.25, miniValue: 5.00,  microValue: 0.50, label: "NQ" },
+  ES:  { tick: 0.25, miniValue: 12.50, microValue: 1.25, label: "ES" },
+  GC:  { tick: 0.10, miniValue: 10.00, microValue: 1.00, label: "GC (Gold)" },
+  CL:  { tick: 0.01, miniValue: 10.00, microValue: 1.00, label: "CL (Crude)" },
+  MNQ: { tick: 0.25, miniValue: 0.50,  microValue: 0.50, label: "MNQ" },
+  MES: { tick: 0.25, miniValue: 1.25,  microValue: 1.25, label: "MES" },
+  MGC: { tick: 0.10, miniValue: 1.00,  microValue: 1.00, label: "MGC" },
+  MCL: { tick: 0.01, miniValue: 1.00,  microValue: 1.00, label: "MCL" },
+};
+
+const PRESET_LEVELS = [
+  { label: "PDH", type: "resistance" as const, desc: "Prev Day High" },
+  { label: "PDL", type: "support" as const, desc: "Prev Day Low" },
+  { label: "Midnight Open", type: "support" as const, desc: "Midnight Open" },
+  { label: "NWOG", type: "support" as const, desc: "New Week Opening Gap" },
+  { label: "ODL", type: "support" as const, desc: "Opening Day Low" },
+  { label: "ODH", type: "resistance" as const, desc: "Opening Day High" },
+];
 
 function getDayKey(date: Date) {
   return `planner_day_${date.toISOString().split("T")[0]}`;
@@ -102,6 +135,10 @@ const DEFAULT_TRADE_PLAN: TradePlan = {
   sessionFocus: "",
   maxTrades: "",
   riskPerTrade: "",
+  strategy: "",
+  stopLossTicks: "",
+  selectedAsset: "NQ",
+  voiceNote: "",
 };
 
 const DEFAULT_ENTRY_CHECKLIST: EntryChecklist = {
@@ -111,6 +148,8 @@ const DEFAULT_ENTRY_CHECKLIST: EntryChecklist = {
   orderBlockIdentified: false,
   premiumDiscountZone: false,
   inKillzone: false,
+  noRedNews: false,
+  manipulationPhase: false,
 };
 
 function migrateKeyLevels(keyLevels: KeyLevel[] | string): KeyLevel[] {
@@ -126,7 +165,7 @@ function loadDayData(date: Date): DayData {
     const raw = localStorage.getItem(getDayKey(date));
     if (raw) {
       const parsed = JSON.parse(raw);
-      parsed.tradePlan = parsed.tradePlan || { ...DEFAULT_TRADE_PLAN };
+      parsed.tradePlan = { ...DEFAULT_TRADE_PLAN, ...(parsed.tradePlan || {}) };
       parsed.tradePlan.keyLevels = migrateKeyLevels(parsed.tradePlan.keyLevels);
       return parsed;
     }
@@ -242,6 +281,8 @@ const ICT_ENTRY_CRITERIA = [
   { key: "orderBlockIdentified" as keyof EntryChecklist, label: "Order Block Identified" },
   { key: "premiumDiscountZone" as keyof EntryChecklist, label: "Premium/Discount Zone" },
   { key: "inKillzone" as keyof EntryChecklist, label: "In Killzone" },
+  { key: "noRedNews" as keyof EntryChecklist, label: "No Red News" },
+  { key: "manipulationPhase" as keyof EntryChecklist, label: "Manipulation Phase Confirmed" },
 ];
 
 const SESSION_CARDS = [
@@ -250,7 +291,30 @@ const SESSION_CARDS = [
   { value: "new-york", label: "NY Open", time: "9:30-11:00 AM EST", color: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" },
 ];
 
+type SpeechRecognitionInstance = {
+  lang: string;
+  interimResults: boolean;
+  onresult: ((e: SpeechRecognitionEvent) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionEvent = {
+  results: { [key: number]: { [key: number]: { transcript: string } } };
+  resultIndex: number;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognitionInstance;
+    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+  }
+}
+
 export default function DailyPlanner() {
+  const navigate = useNavigate();
   const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
   const { isFeatureEnabled } = useAppConfig();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -264,16 +328,62 @@ export default function DailyPlanner() {
   const [notesOpen, setNotesOpen] = useState(true);
   const [newLevelPrice, setNewLevelPrice] = useState("");
   const [newLevelType, setNewLevelType] = useState<"support" | "resistance">("support");
+  const [haltDismissed, setHaltDismissed] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [sendModalOpen, setSendModalOpen] = useState(false);
   const taskInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   const { data: apiTrades } = useListTrades();
   const trades = (apiTrades || []) as TradeRecord[];
+  const { data: propAccount } = useGetPropAccount();
 
   const isToday = selectedDate.toISOString().split("T")[0] === new Date().toISOString().split("T")[0];
-
   const keyLevels = migrateKeyLevels(dayData.tradePlan.keyLevels);
   const winRateEstimate = computeWinRate(trades, dayData.tradePlan.bias, dayData.tradePlan.sessionFocus);
+
+  const maxDailyLossPctVal = propAccount?.maxDailyLossPct ?? 2;
+  const propStartingBalance = propAccount?.startingBalance ?? 50000;
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayClosedPnL = trades
+    .filter((t) => {
+      if (t.isDraft || (t.outcome !== "win" && t.outcome !== "loss")) return false;
+      const tradeDate = t.createdAt ? new Date(t.createdAt).toISOString().split("T")[0] : "";
+      return tradeDate === todayStr;
+    })
+    .reduce((sum, t) => {
+      const pnl = (t as { pnl?: number }).pnl ?? 0;
+      return sum + pnl;
+    }, 0);
+  const dailyLossPct = propStartingBalance > 0 ? (Math.abs(Math.min(todayClosedPnL, 0)) / propStartingBalance) * 100 : 0;
+  const isDailyHalted = isToday && dailyLossPct >= maxDailyLossPctVal;
+  const showHaltBanner = isDailyHalted && !haltDismissed;
+
+  const bias = dayData.tradePlan.bias;
+  const biasSelected = bias === "bullish" || bias === "bearish";
+
+  const probScore = (() => {
+    let score = 0;
+    if (biasSelected) score++;
+    if (dayData.tradePlan.sessionFocus) score++;
+    if (keyLevels.length >= 1) score++;
+    if (entryChecklist.htfBias) score++;
+    if (entryChecklist.fvgPresent || entryChecklist.orderBlockIdentified) score++;
+    if (entryChecklist.manipulationPhase) score++;
+    if (entryChecklist.noRedNews) score++;
+    if (dayData.tradePlan.strategy === "conservative" || dayData.tradePlan.strategy === "aggressive") score++;
+    const sl = parseFloat(dayData.tradePlan.stopLossTicks);
+    if (!isNaN(sl) && sl > 0) score++;
+    if (dayData.tradePlan.pairsToWatch.trim()) score++;
+    return score * 10;
+  })();
+
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setSpeechSupported(!!SR);
+  }, []);
 
   useEffect(() => {
     if (isRoutineComplete) {
@@ -284,6 +394,7 @@ export default function DailyPlanner() {
   useEffect(() => {
     setDayData(loadDayData(selectedDate));
     setEntryChecklist(loadEntryChecklist(selectedDate));
+    setHaltDismissed(false);
   }, [selectedDate]);
 
   const persist = useCallback((data: DayData) => {
@@ -344,9 +455,27 @@ export default function DailyPlanner() {
     setNewLevelPrice("");
   }
 
+  function addPresetLevel(preset: typeof PRESET_LEVELS[0]) {
+    const existing = keyLevels.findIndex((l) => l.label === preset.label);
+    if (existing !== -1) {
+      updateTradePlan("keyLevels", keyLevels.filter((_, i) => i !== existing));
+    } else {
+      updateTradePlan("keyLevels", [...keyLevels, { price: "", type: preset.type, label: preset.label }]);
+      setTimeout(() => {
+        const inputs = document.querySelectorAll<HTMLInputElement>('[data-level-price]');
+        if (inputs.length > 0) inputs[inputs.length - 1].focus();
+      }, 50);
+    }
+  }
+
   function removeKeyLevel(idx: number) {
     const levels = keyLevels.filter((_, i) => i !== idx);
     updateTradePlan("keyLevels", levels);
+  }
+
+  function updateKeyLevelPrice(idx: number, price: string) {
+    const updated = keyLevels.map((l, i) => i === idx ? { ...l, price } : l);
+    updateTradePlan("keyLevels", updated);
   }
 
   function goDay(offset: number) {
@@ -355,12 +484,66 @@ export default function DailyPlanner() {
     setSelectedDate(d);
   }
 
+  function startVoiceNote() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = "en-US";
+    rec.interimResults = false;
+    rec.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = e.results[e.resultIndex][0].transcript;
+      const newNote = dayData.tradePlan.voiceNote
+        ? dayData.tradePlan.voiceNote + " " + transcript
+        : transcript;
+      updateTradePlan("voiceNote", newNote);
+    };
+    rec.onerror = () => setIsListening(false);
+    rec.onend = () => setIsListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setIsListening(true);
+  }
+
+  function stopVoiceNote() {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+  }
+
+  function handleSendToJournal() {
+    setSendModalOpen(true);
+  }
+
   const completedTasks = dayData.tasks.filter((t) => t.done).length;
   const totalTasks = dayData.tasks.length;
+
+  const selectedAsset = dayData.tradePlan.selectedAsset || "NQ";
+  const tickInfo = TICK_DATA[selectedAsset];
+  const accountBalance = propStartingBalance || 50000;
+  const riskPct = dayData.tradePlan.strategy === "conservative" ? 0.5 : dayData.tradePlan.strategy === "aggressive" ? 1.0 : 0.5;
+  const stopTicks = parseFloat(dayData.tradePlan.stopLossTicks) || 0;
+  const contracts = stopTicks > 0 && tickInfo ? Math.floor((accountBalance * riskPct / 100) / (stopTicks * tickInfo.miniValue) * 10) / 10 : 0;
 
   return (
     <>
     <CoolDownOverlay />
+
+    {showHaltBanner && (
+      <div className="w-full bg-red-900/80 border-b border-red-500/50 px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">⛔</span>
+          <span className="text-red-200 font-semibold text-sm">
+            Trading Halted — Daily loss limit reached. Protect your capital.
+          </span>
+        </div>
+        <button
+          onClick={() => setHaltDismissed(true)}
+          className="text-red-400 hover:text-red-200 text-xs font-medium shrink-0"
+        >
+          Dismiss
+        </button>
+      </div>
+    )}
+
     <div className="p-6 max-w-3xl mx-auto pb-20">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -381,6 +564,10 @@ export default function DailyPlanner() {
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>
+      </div>
+
+      <div className="flex justify-center mb-6">
+        <ProbabilityMeter score={probScore} />
       </div>
 
       <p className="text-muted-foreground mb-6 text-sm">
@@ -596,215 +783,499 @@ export default function DailyPlanner() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                  <Clock className="h-3 w-3" />
-                  Session Focus
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {SESSION_CARDS.map((s) => (
-                    <button
-                      key={s.value}
-                      onClick={() => updateTradePlan("sessionFocus", dayData.tradePlan.sessionFocus === s.value ? "" : s.value)}
-                      className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-center transition-all ${
-                        dayData.tradePlan.sessionFocus === s.value
-                          ? s.color
-                          : "bg-secondary border-border text-muted-foreground hover:border-foreground/30"
-                      }`}
-                    >
-                      <span className="text-xs font-bold leading-tight">{s.label}</span>
-                      <span className="text-[10px] opacity-70 leading-tight">{s.time}</span>
-                    </button>
-                  ))}
+              {!biasSelected && (
+                <div className="relative rounded-xl border border-border overflow-hidden">
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center gap-1">
+                    <Lock className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground font-medium">Select your Bias above to unlock tools</span>
+                  </div>
+                  <div className="p-4 opacity-30 pointer-events-none select-none">
+                    <p className="text-sm text-muted-foreground">Strategy · Session Focus · Key Levels · Position Sizer</p>
+                  </div>
                 </div>
-                {dayData.tradePlan.sessionFocus && SESSION_WINDOWS[dayData.tradePlan.sessionFocus] && (
-                  <button
-                    onClick={() => exportToIcs(dayData.tradePlan.sessionFocus, selectedDate)}
-                    className="mt-2 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
-                  >
-                    <Download className="h-3 w-3" />
-                    Export to Calendar (.ics)
-                  </button>
-                )}
-              </div>
+              )}
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Pairs / Instruments to Watch</label>
-                <input
-                  type="text"
-                  value={dayData.tradePlan.pairsToWatch}
-                  onChange={(e) => updateTradePlan("pairsToWatch", e.target.value)}
-                  placeholder="e.g. NQ, ES, EUR/USD, GBP/USD..."
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Key Levels & Zones</label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newLevelPrice}
-                    onChange={(e) => setNewLevelPrice(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addKeyLevel()}
-                    placeholder="Price level..."
-                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  />
-                  <select
-                    value={newLevelType}
-                    onChange={(e) => setNewLevelType(e.target.value as "support" | "resistance")}
-                    className="bg-background border border-border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  >
-                    <option value="support">Support</option>
-                    <option value="resistance">Resistance</option>
-                  </select>
-                  <button
-                    onClick={addKeyLevel}
-                    disabled={!newLevelPrice.trim()}
-                    className="bg-primary text-primary-foreground rounded-lg px-3 py-2 hover:brightness-110 transition-all disabled:opacity-40"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-                {keyLevels.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-2">No levels added yet.</p>
-                )}
-                <div className="relative pl-4">
-                  {keyLevels.length > 0 && (
-                    <div className="absolute left-1.5 top-0 bottom-0 w-0.5 bg-border rounded-full" />
-                  )}
-                  <div className="space-y-2">
-                    {keyLevels.map((level, idx) => (
-                      <div key={idx} className="flex items-center gap-2 group">
-                        <div
-                          className={`w-3 h-3 rounded-full shrink-0 -ml-1.5 border-2 border-background ${
-                            level.type === "support" ? "bg-emerald-500" : "bg-red-500"
-                          }`}
-                        />
-                        <span className="text-sm font-mono font-medium flex-1">{level.price}</span>
-                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
-                          level.type === "support"
-                            ? "bg-emerald-500/10 text-emerald-400"
-                            : "bg-red-500/10 text-red-400"
-                        }`}>
-                          {level.type}
-                        </span>
-                        <button
-                          onClick={() => removeKeyLevel(idx)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive rounded transition-opacity"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+              {biasSelected && (
+                <>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">Strategy Branch</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateTradePlan("strategy", dayData.tradePlan.strategy === "conservative" ? "" : "conservative")}
+                        className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all ${
+                          dayData.tradePlan.strategy === "conservative"
+                            ? "bg-amber-500/20 border-amber-500 text-amber-400"
+                            : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                        }`}
+                      >
+                        CONSERVATIVE
+                      </button>
+                      <button
+                        onClick={() => updateTradePlan("strategy", dayData.tradePlan.strategy === "aggressive" ? "" : "aggressive")}
+                        className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all ${
+                          dayData.tradePlan.strategy === "aggressive"
+                            ? "bg-orange-500/20 border-orange-500 text-orange-400"
+                            : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                        }`}
+                      >
+                        AGGRESSIVE
+                      </button>
+                    </div>
+                    {dayData.tradePlan.strategy === "conservative" && (
+                      <div className="mt-2 p-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                        <p className="text-xs text-amber-400/80 font-medium">Conservative: HTF Bias · Premium/Discount · No Red News · Wait 2 confirmations · 0.5% risk</p>
                       </div>
-                    ))}
+                    )}
+                    {dayData.tradePlan.strategy === "aggressive" && (
+                      <div className="mt-2 p-2.5 bg-orange-500/5 border border-orange-500/20 rounded-lg">
+                        <p className="text-xs text-orange-400/80 font-medium">Aggressive: Bias confirmed · At least 1 key level · FVG present · 1% risk</p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Max Trades Today</label>
-                  <input
-                    type="text"
-                    value={dayData.tradePlan.maxTrades}
-                    onChange={(e) => updateTradePlan("maxTrades", e.target.value)}
-                    placeholder="e.g. 2-3"
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Risk Per Trade</label>
-                  <input
-                    type="text"
-                    value={dayData.tradePlan.riskPerTrade}
-                    onChange={(e) => updateTradePlan("riskPerTrade", e.target.value)}
-                    placeholder="e.g. 1% or $50"
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  />
-                </div>
-              </div>
-
-              {isFeatureEnabled("feature_win_rate_estimator") && winRateEstimate && (
-                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Activity className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-bold text-primary">Win Rate Estimator</span>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                      <Clock className="h-3 w-3" />
+                      Session Focus
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {SESSION_CARDS.map((s) => (
+                        <button
+                          key={s.value}
+                          onClick={() => updateTradePlan("sessionFocus", dayData.tradePlan.sessionFocus === s.value ? "" : s.value)}
+                          className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-center transition-all ${
+                            dayData.tradePlan.sessionFocus === s.value
+                              ? s.color
+                              : "bg-secondary border-border text-muted-foreground hover:border-foreground/30"
+                          }`}
+                        >
+                          <span className="text-xs font-bold leading-tight">{s.label}</span>
+                          <span className="text-[10px] opacity-70 leading-tight">{s.time}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {dayData.tradePlan.sessionFocus && SESSION_WINDOWS[dayData.tradePlan.sessionFocus] && (
+                      <button
+                        onClick={() => exportToIcs(dayData.tradePlan.sessionFocus, selectedDate)}
+                        className="mt-2 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+                      >
+                        <Download className="h-3 w-3" />
+                        Export to Calendar (.ics)
+                      </button>
+                    )}
                   </div>
-                  <p className="text-sm">{winRateEstimate.message}</p>
-                  <div className="mt-2 h-2 bg-border rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${winRateEstimate.winRate}%`,
-                        backgroundColor: winRateEstimate.winRate >= 50 ? "hsl(165 100% 39.2%)" : winRateEstimate.winRate >= 35 ? "#F59E0B" : "#EF4444",
-                      }}
+
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Pairs / Instruments to Watch</label>
+                    <input
+                      type="text"
+                      value={dayData.tradePlan.pairsToWatch}
+                      onChange={(e) => updateTradePlan("pairsToWatch", e.target.value)}
+                      placeholder="e.g. NQ, ES, EUR/USD, GBP/USD..."
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
                     />
                   </div>
-                </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                      Key Levels &amp; Zones
+                      {dayData.tradePlan.strategy === "conservative" && (
+                        <span className="ml-2 text-amber-400/70">· Add at least 2 levels</span>
+                      )}
+                      {dayData.tradePlan.strategy === "aggressive" && (
+                        <span className="ml-2 text-orange-400/70">· Add at least 1 level</span>
+                      )}
+                    </label>
+
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {PRESET_LEVELS.map((preset) => {
+                        const isActive = keyLevels.some((l) => l.label === preset.label);
+                        return (
+                          <button
+                            key={preset.label}
+                            onClick={() => addPresetLevel(preset)}
+                            title={preset.desc}
+                            className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+                              isActive
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "border-primary/40 text-primary hover:bg-primary/10"
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={newLevelPrice}
+                        onChange={(e) => setNewLevelPrice(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addKeyLevel()}
+                        placeholder="Price level..."
+                        className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                      <select
+                        value={newLevelType}
+                        onChange={(e) => setNewLevelType(e.target.value as "support" | "resistance")}
+                        className="bg-background border border-border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      >
+                        <option value="support">Support</option>
+                        <option value="resistance">Resistance</option>
+                      </select>
+                      <button
+                        onClick={addKeyLevel}
+                        disabled={!newLevelPrice.trim()}
+                        className="bg-primary text-primary-foreground rounded-lg px-3 py-2 hover:brightness-110 transition-all disabled:opacity-40"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {keyLevels.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">No levels added yet.</p>
+                    )}
+                    <div className="relative pl-4">
+                      {keyLevels.length > 0 && (
+                        <div className="absolute left-1.5 top-0 bottom-0 w-0.5 bg-border rounded-full" />
+                      )}
+                      <div className="space-y-2">
+                        {keyLevels.map((level, idx) => (
+                          <div key={idx} className="flex items-center gap-2 group">
+                            <div
+                              className={`w-3 h-3 rounded-full shrink-0 -ml-1.5 border-2 border-background ${
+                                level.type === "support" ? "bg-emerald-500" : "bg-red-500"
+                              }`}
+                            />
+                            {level.label ? (
+                              <span className="text-xs font-bold text-muted-foreground w-20 shrink-0">{level.label}</span>
+                            ) : null}
+                            <input
+                              type="text"
+                              data-level-price="true"
+                              value={level.price}
+                              onChange={(e) => updateKeyLevelPrice(idx, e.target.value)}
+                              placeholder="price..."
+                              className="flex-1 bg-transparent text-sm font-mono font-medium focus:outline-none focus:ring-1 focus:ring-primary/30 rounded px-1"
+                            />
+                            <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+                              level.type === "support"
+                                ? "bg-emerald-500/10 text-emerald-400"
+                                : "bg-red-500/10 text-red-400"
+                            }`}>
+                              {level.type}
+                            </span>
+                            <button
+                              onClick={() => removeKeyLevel(idx)}
+                              className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive rounded transition-opacity"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">Position Sizer</label>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {Object.keys(TICK_DATA).map((asset) => (
+                        <button
+                          key={asset}
+                          onClick={() => updateTradePlan("selectedAsset", asset)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+                            selectedAsset === asset
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                          }`}
+                        >
+                          {asset}
+                        </button>
+                      ))}
+                    </div>
+                    {tickInfo && (
+                      <div className="text-xs text-muted-foreground mb-3 bg-secondary/50 rounded-lg px-3 py-2">
+                        <span className="font-semibold text-foreground">{selectedAsset}:</span>{" "}
+                        {tickInfo.tick} tick = ${tickInfo.miniValue.toFixed(2)}/contract (Mini) · ${tickInfo.microValue.toFixed(2)}/contract (Micro)
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">Stop Loss (ticks)</label>
+                        <input
+                          type="number"
+                          value={dayData.tradePlan.stopLossTicks}
+                          onChange={(e) => updateTradePlan("stopLossTicks", e.target.value)}
+                          placeholder="e.g. 20"
+                          min="0"
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">
+                          Risk: {riskPct}% · Contracts
+                        </label>
+                        <div className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono font-bold text-primary">
+                          {contracts > 0 ? contracts.toFixed(1) : "—"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Max Trades Today</label>
+                        <input
+                          type="text"
+                          value={dayData.tradePlan.maxTrades}
+                          onChange={(e) => updateTradePlan("maxTrades", e.target.value)}
+                          placeholder="e.g. 2-3"
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Risk Per Trade</label>
+                        <input
+                          type="text"
+                          value={dayData.tradePlan.riskPerTrade}
+                          onChange={(e) => updateTradePlan("riskPerTrade", e.target.value)}
+                          placeholder="e.g. 1% or $50"
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {isFeatureEnabled("feature_win_rate_estimator") && winRateEstimate && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Activity className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-bold text-primary">Win Rate Estimator</span>
+                      </div>
+                      <p className="text-sm">{winRateEstimate.message}</p>
+                      <div className="mt-2 h-2 bg-border rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${winRateEstimate.winRate}%`,
+                            backgroundColor: winRateEstimate.winRate >= 50 ? "hsl(165 100% 39.2%)" : winRateEstimate.winRate >= 35 ? "#F59E0B" : "#EF4444",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <FailureAnalysis />
+                </>
               )}
-
-              <FailureAnalysis />
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <button onClick={() => setEntryChecklistOpen(!entryChecklistOpen)} className="flex items-center justify-between w-full">
-            <h2 className="font-semibold text-sm flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-purple-400" />
-              ICT Entry Criteria
-              <span className="text-xs text-muted-foreground">
-                {Object.values(entryChecklist).filter(Boolean).length}/{ICT_ENTRY_CRITERIA.length}
-              </span>
-            </h2>
-            {entryChecklistOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+      <div className={!biasSelected ? "pointer-events-none opacity-35 relative" : ""}>
+        {!biasSelected && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-auto">
+            <div className="flex items-center gap-2 bg-background/80 backdrop-blur-sm px-4 py-2 rounded-xl">
+              <Lock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground font-medium">Select your Bias above to unlock</span>
+            </div>
+          </div>
+        )}
+
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <button onClick={() => setEntryChecklistOpen(!entryChecklistOpen)} className="flex items-center justify-between w-full">
+              <h2 className="font-semibold text-sm flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-purple-400" />
+                ICT Entry Criteria
+                <span className="text-xs text-muted-foreground">
+                  {Object.values(entryChecklist).filter(Boolean).length}/{ICT_ENTRY_CRITERIA.length}
+                </span>
+              </h2>
+              {entryChecklistOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {entryChecklistOpen && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {ICT_ENTRY_CRITERIA.map((item) => {
+                  const isAmberRequired =
+                    dayData.tradePlan.strategy === "conservative" &&
+                    (item.key === "htfBias" || item.key === "premiumDiscountZone" || item.key === "noRedNews");
+                  return (
+                    <label
+                      key={item.key}
+                      className={`flex items-center gap-3 cursor-pointer p-2.5 rounded-lg hover:bg-secondary/50 transition-colors border ${
+                        isAmberRequired ? "border-amber-500/40 bg-amber-500/5" : "border-border"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={entryChecklist[item.key]}
+                        onCheckedChange={() => persistChecklist({ ...entryChecklist, [item.key]: !entryChecklist[item.key] })}
+                      />
+                      <span className={`text-sm font-medium ${entryChecklist[item.key] ? "text-primary line-through opacity-70" : isAmberRequired ? "text-amber-400" : ""}`}>
+                        {item.label}
+                      </span>
+                      {isAmberRequired && <span className="ml-auto text-[10px] text-amber-400 font-bold">REQ</span>}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <button onClick={() => setNotesOpen(!notesOpen)} className="flex items-center justify-between w-full">
+              <h2 className="font-semibold text-sm flex items-center gap-2">
+                <StickyNote className="h-4 w-4 text-green-400" />
+                Daily Notes
+              </h2>
+              {notesOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {notesOpen && (
+              <div className="mt-3">
+                <textarea
+                  value={dayData.notes}
+                  onChange={(e) => updateNotes(e.target.value)}
+                  placeholder="Write your thoughts, observations, lessons learned, or anything on your mind..."
+                  rows={5}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
+                />
+                {dayData.notes && (
+                  <p className="text-xs text-muted-foreground mt-1 text-right">{dayData.notes.length} characters</p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex gap-3 items-center">
+        {speechSupported && (
+          <button
+            onClick={isListening ? stopVoiceNote : startVoiceNote}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+              isListening
+                ? "bg-red-500/20 border-red-500 text-red-400 animate-pulse"
+                : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            }`}
+          >
+            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            {isListening ? "Stop" : "Voice Note"}
           </button>
-          {entryChecklistOpen && (
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {ICT_ENTRY_CRITERIA.map((item) => (
-                <label key={item.key} className="flex items-center gap-3 cursor-pointer p-2.5 rounded-lg hover:bg-secondary/50 transition-colors border border-border">
-                  <Checkbox
-                    checked={entryChecklist[item.key]}
-                    onCheckedChange={() => persistChecklist({ ...entryChecklist, [item.key]: !entryChecklist[item.key] })}
-                  />
-                  <span className={`text-sm font-medium ${entryChecklist[item.key] ? "text-primary line-through opacity-70" : ""}`}>
-                    {item.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        )}
+        <button
+          onClick={handleSendToJournal}
+          disabled={showHaltBanner}
+          title={showHaltBanner ? "Trading halted" : "Send to Journal"}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            showHaltBanner
+              ? "bg-secondary border border-border text-muted-foreground cursor-not-allowed opacity-50"
+              : "bg-primary text-primary-foreground hover:brightness-110"
+          }`}
+        >
+          <Send className="h-4 w-4" />
+          Send to Journal
+        </button>
+      </div>
 
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <button onClick={() => setNotesOpen(!notesOpen)} className="flex items-center justify-between w-full">
-            <h2 className="font-semibold text-sm flex items-center gap-2">
-              <StickyNote className="h-4 w-4 text-green-400" />
-              Daily Notes
-            </h2>
-            {notesOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+      {dayData.tradePlan.voiceNote && (
+        <div className="mt-3 p-3 bg-secondary/50 border border-border rounded-xl">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Mic className="h-3 w-3 text-primary" />
+            <span className="text-xs font-semibold text-primary">Voice Note</span>
+          </div>
+          <p className="text-sm text-muted-foreground">{dayData.tradePlan.voiceNote}</p>
+          <button
+            onClick={() => updateTradePlan("voiceNote", "")}
+            className="mt-1.5 text-xs text-destructive hover:text-destructive/80"
+          >
+            Clear
           </button>
-          {notesOpen && (
-            <div className="mt-3">
-              <textarea
-                value={dayData.notes}
-                onChange={(e) => updateNotes(e.target.value)}
-                placeholder="Write your thoughts, observations, lessons learned, or anything on your mind..."
-                rows={5}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
-              />
-              {dayData.notes && (
-                <p className="text-xs text-muted-foreground mt-1 text-right">{dayData.notes.length} characters</p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
+
+    {sendModalOpen && (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSendModalOpen(false)}>
+        <div className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <h2 className="text-lg font-bold mb-1">Ready to Trade</h2>
+          <p className="text-sm text-muted-foreground mb-4">Confirm your plan details before logging.</p>
+          <div className="space-y-2 mb-5">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Bias</span>
+              <span className="font-semibold capitalize">{dayData.tradePlan.bias || "—"}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Strategy</span>
+              <span className="font-semibold capitalize">{dayData.tradePlan.strategy || "—"}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Session</span>
+              <span className="font-semibold">{dayData.tradePlan.sessionFocus || "—"}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Key Levels</span>
+              <span className="font-semibold">{keyLevels.length} level{keyLevels.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Setup Score</span>
+              <span className={`font-bold ${probScore >= 80 ? "text-emerald-400" : probScore >= 60 ? "text-amber-400" : "text-red-400"}`}>{probScore}%</span>
+            </div>
+            {dayData.tradePlan.voiceNote && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Voice Note</span>
+                <span className="font-semibold text-primary">Attached</span>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setSendModalOpen(false)}
+              className="flex-1 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setSendModalOpen(false);
+                const planPayload = {
+                  bias: dayData.tradePlan.bias,
+                  strategy: dayData.tradePlan.strategy,
+                  session: dayData.tradePlan.sessionFocus,
+                  keyLevels: keyLevels.map((l) => `${l.label || ""} ${l.price} (${l.type})`).join(", "),
+                  pairs: dayData.tradePlan.pairsToWatch,
+                  setupScore: probScore,
+                  stopLossTicks: dayData.tradePlan.stopLossTicks,
+                  voiceNote: dayData.tradePlan.voiceNote,
+                  entryChecklist: Object.entries(entryChecklist)
+                    .filter(([, v]) => v)
+                    .map(([k]) => k)
+                    .join(", "),
+                };
+                const notes = [
+                  `Pre-Trade Plan: ${planPayload.bias} | ${planPayload.strategy || "no strategy"} | ${planPayload.session || "no session"}`,
+                  planPayload.keyLevels ? `Key Levels: ${planPayload.keyLevels}` : "",
+                  planPayload.pairs ? `Pairs: ${planPayload.pairs}` : "",
+                  `Setup Score: ${planPayload.setupScore}%`,
+                  planPayload.entryChecklist ? `Checked: ${planPayload.entryChecklist}` : "",
+                  planPayload.voiceNote ? `Voice Note: ${planPayload.voiceNote}` : "",
+                ].filter(Boolean).join("\n");
+                localStorage.setItem("planner_journal_draft", JSON.stringify({
+                  pair: planPayload.pairs,
+                  notes,
+                  bias: planPayload.bias,
+                  isDraft: true,
+                }));
+                navigate("/journal");
+              }}
+              className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:brightness-110 transition-all"
+            >
+              Log to Journal
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }
