@@ -77,7 +77,7 @@ export default function KillZoneStrip() {
   }, 0);
 
   const CARD_WIDTH = 111;
-  const totalCards = SESSIONS.length + 4;
+  const totalCards = SESSIONS.length + 3;
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
@@ -97,6 +97,20 @@ export default function KillZoneStrip() {
 
   return (
     <View style={styles.wrapper}>
+      {/* Fixed EST Clock — always visible */}
+      <View style={[styles.kzCard, styles.estClockCard]}>
+        <View style={styles.kzCardRow1}>
+          <Ionicons name="time-outline" size={10} color={C.accent} />
+          <Text style={styles.kzStatLabel}>EST</Text>
+        </View>
+        <Text style={styles.estTimeText} numberOfLines={1}>
+          {formatESTTime(estNowForClock)}
+        </Text>
+      </View>
+
+      {/* Vertical divider */}
+      <View style={styles.divider} />
+
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -108,17 +122,6 @@ export default function KillZoneStrip() {
           scrollIndexRef.current = 0;
         }}
       >
-        {/* EST Clock Card — always first */}
-        <View style={[styles.kzCard, styles.estClockCard]}>
-          <View style={styles.kzCardRow1}>
-            <Ionicons name="time-outline" size={10} color={C.accent} />
-            <Text style={styles.kzStatLabel}>EST</Text>
-          </View>
-          <Text style={styles.estTimeText} numberOfLines={1}>
-            {formatESTTime(estNowForClock)}
-          </Text>
-        </View>
-
         {/* Session Cards */}
         {SESSIONS.map((session) => {
           const estNow = getESTNow();
@@ -207,8 +210,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderBottomWidth: 1,
     borderBottomColor: C.cardBorder,
+    flexDirection: "row",
+    alignItems: "center",
   },
-  strip: { height: 44 },
+  divider: {
+    width: 1,
+    height: 32,
+    backgroundColor: C.cardBorder,
+    marginHorizontal: 6,
+  },
+  strip: { flex: 1, height: 44 },
   stripContent: { gap: 6, paddingRight: 6, alignItems: "center" },
   kzCard: {
     backgroundColor: C.backgroundSecondary,
@@ -225,6 +236,7 @@ const styles = StyleSheet.create({
     borderColor: C.accent + "40",
     backgroundColor: C.accent + "08",
     minWidth: 118,
+    flexShrink: 0,
   },
   kzCardRow1: { flexDirection: "row", alignItems: "center", gap: 4 },
   kzSub: { fontSize: 8, color: C.textSecondary, fontFamily: "Inter_400Regular", marginLeft: 10 },
