@@ -202,7 +202,6 @@ function KillZoneStrip() {
 function StatsStripWidget() {
   const router = useRouter();
   const { data: apiTrades } = useListTrades();
-  const { streak } = useDailyGamification();
   const trades = (apiTrades || []) as Array<{
     outcome?: string | null;
     pnl?: string | number | null;
@@ -239,11 +238,6 @@ function StatsStripWidget() {
       label: "Trades",
       value: todayCompleted.length > 0 ? String(todayCompleted.length) : "—",
       color: C.text,
-    },
-    {
-      label: "Streak",
-      value: `${streak}d`,
-      color: streak >= 7 ? "#EF4444" : streak >= 3 ? "#F59E0B" : C.textSecondary,
     },
   ];
 
@@ -1206,7 +1200,6 @@ function NextWatchCard() {
 
 function LearningProgressCard() {
   const router = useRouter();
-  const { streak } = useDailyGamification();
   const [progress, setProgress] = useState<{ completed: number; total: number; nextTitle: string; nextChapter: string } | null>(null);
 
   useFocusEffect(
@@ -1253,10 +1246,6 @@ function LearningProgressCard() {
       </View>
       <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 10 }}>
         <View style={styles.lpStatRow}>
-          <View style={styles.lpStat}>
-            <Text style={[styles.lpStatValue, { color: streak >= 7 ? "#EF4444" : "#F59E0B" }]}>{streak}</Text>
-            <Text style={styles.lpStatLabel}>Day streak</Text>
-          </View>
           <View style={styles.lpStat}>
             <Text style={[styles.lpStatValue, { color: C.accent }]}>{pct}%</Text>
             <Text style={styles.lpStatLabel}>Complete</Text>
@@ -1681,9 +1670,6 @@ export default function DashboardScreen() {
           userId={user?.id}
         />
 
-        {/* AI Greeting — always-on, top of feed */}
-        <AIGreetingCard />
-
         {appMode === "lite" ? (
           <>
             {/* Learning Mode Dashboard — NextWatch lives inside TodayRoutineWidget > Learn pill */}
@@ -1691,7 +1677,6 @@ export default function DashboardScreen() {
             <TodayRoutineWidget />
             <LessonCarousel />
             <LearningCommunityWidget />
-            <RiskShieldLockCard />
           </>
         ) : (
           <>
@@ -1701,9 +1686,6 @@ export default function DashboardScreen() {
             {/* Stats Strip */}
             {prefs.stats && <StatsStripWidget />}
 
-            {/* Today's Mission — always-on slot machine card */}
-            <SlotMachineCard />
-
             {/* Morning Routine */}
             {prefs.morningRoutine && <MorningRoutineWidget />}
 
@@ -1712,9 +1694,6 @@ export default function DashboardScreen() {
 
             {/* Trade Plan */}
             {prefs.tradePlan && <TradePlanWidget />}
-
-            {/* Risk Shield Mini */}
-            {prefs.riskShield && <RiskShieldWidget />}
 
             {/* Quick Journal */}
             {prefs.quickJournal && <QuickJournalWidget />}
