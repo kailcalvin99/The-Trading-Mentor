@@ -1349,6 +1349,7 @@ export default function Dashboard() {
   const isFreeUser = tierLevel === 0;
   const isLearningMode = appMode === "lite";
   const { prefs, toggle, isEnabled } = useDashboardWidgets();
+  const navigate = useNavigate();
   const [showCustomize, setShowCustomize] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
