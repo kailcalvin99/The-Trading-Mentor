@@ -84,6 +84,42 @@ router.patch("/", authRequired, async (req, res) => {
       return;
     }
 
+    if (section === "socialProfile") {
+      const socialUpdates: Partial<{
+        bio: string | null;
+        twitterHandle: string | null;
+        discordHandle: string | null;
+        isPublic: boolean;
+        avatarUrl: string | null;
+      }> = {};
+
+      if (data.bio !== undefined) {
+        const bio = typeof data.bio === "string" ? data.bio.slice(0, 160).trim() : null;
+        socialUpdates.bio = bio || null;
+      }
+      if (data.twitterHandle !== undefined) {
+        const handle = typeof data.twitterHandle === "string" ? data.twitterHandle.trim().replace(/^@/, "").slice(0, 64) : null;
+        socialUpdates.twitterHandle = handle || null;
+      }
+      if (data.discordHandle !== undefined) {
+        const handle = typeof data.discordHandle === "string" ? data.discordHandle.trim().slice(0, 64) : null;
+        socialUpdates.discordHandle = handle || null;
+      }
+      if (data.isPublic !== undefined) {
+        socialUpdates.isPublic = Boolean(data.isPublic);
+      }
+      if (data.avatarUrl !== undefined) {
+        socialUpdates.avatarUrl = typeof data.avatarUrl === "string" ? data.avatarUrl || null : null;
+      }
+
+      if (Object.keys(socialUpdates).length > 0) {
+        await db.update(usersTable).set(socialUpdates).where(eq(usersTable.id, userId));
+      }
+
+      res.json({ success: true, message: "Profile updated successfully" });
+      return;
+    }
+
     if (section === "profile") {
       const profileUpdates: Partial<{
         name: string;
@@ -320,7 +356,7 @@ router.patch("/", authRequired, async (req, res) => {
       return;
     }
 
-    res.status(400).json({ error: "Invalid section. Use 'profile', 'tradingDefaults', 'riskRules', 'appMode', 'avatar', 'gamification', 'progress', 'routineTimes', or 'widgetPrefs'" });
+    res.status(400).json({ error: "Invalid section. Use 'profile', 'socialProfile', 'tradingDefaults', 'riskRules', 'appMode', 'avatar', 'gamification', 'progress', 'routineTimes', or 'widgetPrefs'" });
   } catch (err) {
     console.error("Update user settings error:", err);
     res.status(500).json({ error: "Failed to update settings" });

@@ -36,6 +36,7 @@ router.get("/posts", async (req, res) => {
         authorRole: usersTable.role,
         authorIsFounder: usersTable.isFounder,
         authorFounderNumber: usersTable.founderNumber,
+        authorIsPublic: usersTable.isPublic,
       })
       .from(communityPostsTable)
       .innerJoin(usersTable, eq(communityPostsTable.userId, usersTable.id))
@@ -60,10 +61,17 @@ router.get("/posts", async (req, res) => {
       likedPostIds = likes.map((l) => l.postId);
     }
 
-    const result = posts.map((p) => ({
-      ...p,
-      liked: likedPostIds.includes(p.id),
-    }));
+    const result = posts.map((p) => {
+      const isAnon = !p.authorIsPublic && p.userId !== userId;
+      return {
+        ...p,
+        authorName: isAnon ? "Anonymous" : p.authorName,
+        authorIsFounder: isAnon ? false : p.authorIsFounder,
+        authorFounderNumber: isAnon ? null : p.authorFounderNumber,
+        authorRole: isAnon ? "user" : p.authorRole,
+        liked: likedPostIds.includes(p.id),
+      };
+    });
 
     res.json({ posts: result, page, limit, hasMore: posts.length === limit });
   } catch (err) {
@@ -122,6 +130,7 @@ router.get("/posts/:id", async (req, res) => {
         authorRole: usersTable.role,
         authorIsFounder: usersTable.isFounder,
         authorFounderNumber: usersTable.founderNumber,
+        authorIsPublic: usersTable.isPublic,
       })
       .from(communityPostsTable)
       .innerJoin(usersTable, eq(communityPostsTable.userId, usersTable.id))
@@ -143,6 +152,7 @@ router.get("/posts/:id", async (req, res) => {
         authorRole: usersTable.role,
         authorIsFounder: usersTable.isFounder,
         authorFounderNumber: usersTable.founderNumber,
+        authorIsPublic: usersTable.isPublic,
       })
       .from(communityRepliesTable)
       .innerJoin(usersTable, eq(communityRepliesTable.userId, usersTable.id))
@@ -155,7 +165,27 @@ router.get("/posts/:id", async (req, res) => {
       .from(postLikesTable)
       .where(and(eq(postLikesTable.postId, postId), eq(postLikesTable.userId, userId)));
 
-    res.json({ ...post, liked: !!like, replies });
+    const postIsAnon = !post.authorIsPublic && post.userId !== userId;
+    const anonymizedPost = {
+      ...post,
+      authorName: postIsAnon ? "Anonymous" : post.authorName,
+      authorIsFounder: postIsAnon ? false : post.authorIsFounder,
+      authorFounderNumber: postIsAnon ? null : post.authorFounderNumber,
+      authorRole: postIsAnon ? "user" : post.authorRole,
+    };
+
+    const anonymizedReplies = replies.map((r) => {
+      const isAnon = !r.authorIsPublic && r.userId !== userId;
+      return {
+        ...r,
+        authorName: isAnon ? "Anonymous" : r.authorName,
+        authorIsFounder: isAnon ? false : r.authorIsFounder,
+        authorFounderNumber: isAnon ? null : r.authorFounderNumber,
+        authorRole: isAnon ? "user" : r.authorRole,
+      };
+    });
+
+    res.json({ ...anonymizedPost, liked: !!like, replies: anonymizedReplies });
   } catch (err) {
     console.error("GET /community/posts/:id error:", err);
     res.status(500).json({ error: "Failed to fetch post" });
@@ -352,7 +382,7 @@ router.get("/leaderboard", async (req, res) => {
       })
       .from(tradesTable)
       .innerJoin(usersTable, eq(tradesTable.userId, usersTable.id))
-      .where(eq(tradesTable.isDraft, false))
+      .where(and(eq(tradesTable.isDraft, false), eq(usersTable.isPublic, true)))
       .groupBy(tradesTable.userId, usersTable.name, usersTable.isFounder, usersTable.founderNumber)
       .orderBy(desc(count(tradesTable.id)))
       .limit(5);
@@ -368,7 +398,7 @@ router.get("/leaderboard", async (req, res) => {
       })
       .from(tradesTable)
       .innerJoin(usersTable, eq(tradesTable.userId, usersTable.id))
-      .where(and(eq(tradesTable.isDraft, false), isNotNull(tradesTable.outcome)))
+      .where(and(eq(tradesTable.isDraft, false), isNotNull(tradesTable.outcome), eq(usersTable.isPublic, true)))
       .orderBy(tradesTable.userId, tradesTable.createdAt);
 
     type UserStat = {

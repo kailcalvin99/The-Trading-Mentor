@@ -59,29 +59,31 @@ router.get("/", authRequired, async (req, res) => {
         name: usersTable.name,
         isFounder: usersTable.isFounder,
         founderNumber: usersTable.founderNumber,
+        isPublic: usersTable.isPublic,
         tierName: subscriptionTiersTable.name,
         tierLevel: subscriptionTiersTable.level,
       })
       .from(usersTable)
       .leftJoin(userSubscriptionsTable, eq(usersTable.id, userSubscriptionsTable.userId))
-      .leftJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id));
+      .leftJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
+      .where(eq(usersTable.isPublic, true));
 
     const userInfoMap = new Map(users.map((u) => [u.id, u]));
 
     const entries = Array.from(userMap.values())
-      .filter((e) => e.total >= 1)
+      .filter((e) => e.total >= 1 && userInfoMap.has(e.userId))
       .map((e) => {
-        const info = userInfoMap.get(e.userId);
+        const info = userInfoMap.get(e.userId)!;
         return {
           userId: e.userId,
-          name: info?.name || "Unknown Trader",
-          isFounder: info?.isFounder || false,
-          founderNumber: info?.founderNumber || null,
+          name: info.name,
+          isFounder: info.isFounder,
+          founderNumber: info.founderNumber,
           winRate: e.total > 0 ? (e.wins / e.total) * 100 : 0,
           totalTrades: e.total,
           disciplinedPct: e.total > 0 ? (e.disciplined / e.total) * 100 : 0,
-          tierName: info?.tierName || "Free",
-          tierLevel: info?.tierLevel || 0,
+          tierName: info.tierName || "Free",
+          tierLevel: info.tierLevel || 0,
         };
       })
       .sort((a, b) => b.winRate - a.winRate)

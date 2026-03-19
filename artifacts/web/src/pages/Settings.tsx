@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
@@ -27,9 +27,115 @@ import {
   Tag,
   Plus,
   X,
+  Camera,
+  Globe,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+const STOCK_AVATARS = [
+  { id: "bull", emoji: "🐂", label: "Bull" },
+  { id: "bear", emoji: "🐻", label: "Bear" },
+  { id: "chart", emoji: "📈", label: "Chart" },
+  { id: "candle", emoji: "🕯️", label: "Candle" },
+  { id: "rocket", emoji: "🚀", label: "Rocket" },
+  { id: "shield", emoji: "🛡️", label: "Shield" },
+  { id: "flame", emoji: "🔥", label: "Flame" },
+  { id: "crown", emoji: "👑", label: "Crown" },
+];
+
+function resizeImageToBase64(file: File, maxSize = 200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("No canvas context")); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function AvatarPickerModal({
+  currentAvatar,
+  onClose,
+  onSelect,
+}: {
+  currentAvatar?: string | null;
+  onClose: () => void;
+  onSelect: (val: string) => Promise<void>;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const b64 = await resizeImageToBase64(file);
+      await onSelect(b64);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 w-80" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold">Choose Avatar</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          {STOCK_AVATARS.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => onSelect(a.emoji)}
+              className={`w-full aspect-square rounded-xl text-2xl flex items-center justify-center border transition-all ${
+                currentAvatar === a.emoji
+                  ? "border-primary bg-primary/10 ring-2 ring-primary"
+                  : "border-border hover:border-primary/50 bg-secondary"
+              }`}
+              title={a.label}
+            >
+              {a.emoji}
+            </button>
+          ))}
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        <div className="flex gap-2">
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg border border-border hover:bg-secondary transition-colors"
+          >
+            <Camera className="h-3.5 w-3.5" />
+            {uploading ? "Uploading…" : "Upload Photo"}
+          </button>
+          {currentAvatar && (
+            <button
+              onClick={() => onSelect("")}
+              className="px-3 py-2 text-xs rounded-lg border border-border hover:bg-secondary transition-colors text-muted-foreground"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const SESSION_OPTIONS = [
   { value: "", label: "Select..." },
@@ -58,6 +164,14 @@ interface ProfileData {
   isPublic: boolean;
 }
 
+interface SocialProfileData {
+  bio: string;
+  twitterHandle: string;
+  discordHandle: string;
+  isPublic: boolean;
+  avatarUrl: string | null;
+}
+
 interface TradingDefaultsData {
   [key: string]: unknown;
   defaultSession: string;
@@ -73,11 +187,12 @@ interface RiskRulesData {
 }
 
 export default function Settings() {
-  const { user, refreshUser, tierLevel, appMode, setAppMode } = useAuth();
+  const { user, refreshUser, tierLevel, appMode, setAppMode, setAvatarUrl } = useAuth();
   const { resetTour } = useTourGuideContext();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingSocialProfile, setSavingSocialProfile] = useState(false);
   const [savingTrading, setSavingTrading] = useState(false);
   const [savingRisk, setSavingRisk] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -85,6 +200,15 @@ export default function Settings() {
   const [clearConfirm, setClearConfirm] = useState(false);
   const [clearingTrades, setClearingTrades] = useState(false);
   const [currentSkillLevel] = useState(() => getSkillLevel());
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+
+  const [socialProfile, setSocialProfile] = useState<SocialProfileData>({
+    bio: "",
+    twitterHandle: "",
+    discordHandle: "",
+    isPublic: false,
+    avatarUrl: null,
+  });
 
   const [profile, setProfile] = useState<ProfileData>({
     name: "",
@@ -114,6 +238,12 @@ export default function Settings() {
     loadSettings();
   }, []);
 
+  useEffect(() => {
+    if (user?.avatarUrl !== undefined) {
+      setSocialProfile((prev) => ({ ...prev, avatarUrl: user.avatarUrl ?? null }));
+    }
+  }, [user?.avatarUrl]);
+
   async function loadSettings() {
     try {
       const res = await fetch(`${API_BASE}/user/settings`, {
@@ -131,6 +261,13 @@ export default function Settings() {
           twitterHandle: data.profile.twitterHandle || "",
           discordHandle: data.profile.discordHandle || "",
           isPublic: data.profile.isPublic ?? false,
+        });
+        setSocialProfile({
+          bio: data.profile.bio || "",
+          twitterHandle: data.profile.twitterHandle || "",
+          discordHandle: data.profile.discordHandle || "",
+          isPublic: data.profile.isPublic ?? false,
+          avatarUrl: user?.avatarUrl ?? null,
         });
         setTradingDefaults({
           defaultSession: data.tradingDefaults.defaultSession || "",
@@ -199,6 +336,28 @@ export default function Settings() {
     saveSection("profile", data, setSavingProfile);
   }
 
+  async function handleSaveSocialProfile() {
+    await saveSection(
+      "socialProfile",
+      {
+        bio: socialProfile.bio,
+        twitterHandle: socialProfile.twitterHandle,
+        discordHandle: socialProfile.discordHandle,
+        isPublic: socialProfile.isPublic,
+        avatarUrl: socialProfile.avatarUrl,
+      },
+      setSavingSocialProfile
+    );
+    await refreshUser();
+  }
+
+  async function handleAvatarSelect(val: string) {
+    const newUrl = val || null;
+    setSocialProfile((prev) => ({ ...prev, avatarUrl: newUrl }));
+    await setAvatarUrl(newUrl);
+    setShowAvatarPicker(false);
+  }
+
   function handleSaveTrading() {
     saveSection("tradingDefaults", tradingDefaults, setSavingTrading);
   }
@@ -254,6 +413,117 @@ export default function Settings() {
       </div>
 
       <div className="space-y-6">
+        {showAvatarPicker && (
+          <AvatarPickerModal
+            currentAvatar={socialProfile.avatarUrl}
+            onClose={() => setShowAvatarPicker(false)}
+            onSelect={handleAvatarSelect}
+          />
+        )}
+
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+            <Globe className="h-5 w-5 text-primary" />
+            <h2 className="text-sm font-bold text-foreground">Public Profile</h2>
+          </div>
+          <div className="px-5 py-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowAvatarPicker(true)}
+                className="relative w-14 h-14 rounded-full bg-primary/10 border-2 border-border flex items-center justify-center overflow-hidden hover:border-primary/50 transition-colors shrink-0"
+                title="Change avatar"
+              >
+                {socialProfile.avatarUrl ? (
+                  socialProfile.avatarUrl.startsWith("data:") || socialProfile.avatarUrl.startsWith("http") ? (
+                    <img src={socialProfile.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl leading-none">{socialProfile.avatarUrl}</span>
+                  )
+                ) : (
+                  <span className="text-2xl leading-none">{user?.name?.charAt(0)?.toUpperCase() || "?"}</span>
+                )}
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-full">
+                  <Camera className="h-4 w-4 text-white" />
+                </div>
+              </button>
+              <div>
+                <p className="text-sm font-medium text-foreground">Avatar</p>
+                <p className="text-xs text-muted-foreground">Click to change your avatar</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Bio</label>
+              <textarea
+                value={socialProfile.bio}
+                onChange={(e) => setSocialProfile({ ...socialProfile, bio: e.target.value.slice(0, 160) })}
+                placeholder="A short bio shown on the leaderboard..."
+                maxLength={160}
+                rows={3}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              />
+              <p className="text-xs text-muted-foreground mt-1 text-right">{socialProfile.bio.length}/160</p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Twitter / X Handle</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">@</span>
+                <input
+                  type="text"
+                  value={socialProfile.twitterHandle}
+                  onChange={(e) => setSocialProfile({ ...socialProfile, twitterHandle: e.target.value.replace(/^@/, "").slice(0, 64) })}
+                  placeholder="yourhandle"
+                  className="w-full bg-background border border-border rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Discord Handle</label>
+              <input
+                type="text"
+                value={socialProfile.discordHandle}
+                onChange={(e) => setSocialProfile({ ...socialProfile, discordHandle: e.target.value.slice(0, 64) })}
+                placeholder="username or username#1234"
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3 bg-background">
+              <div>
+                <p className="text-sm font-medium text-foreground">Make Profile Public</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Appear on the Leaderboard; hidden posts show as Anonymous</p>
+              </div>
+              <button
+                onClick={() => setSocialProfile({ ...socialProfile, isPublic: !socialProfile.isPublic })}
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                  socialProfile.isPublic ? "bg-primary" : "bg-muted"
+                }`}
+                role="switch"
+                aria-checked={socialProfile.isPublic}
+              >
+                <span
+                  className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                    socialProfile.isPublic ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={handleSaveSocialProfile}
+                disabled={savingSocialProfile}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {savingSocialProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save Public Profile
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
             <User className="h-5 w-5 text-primary" />

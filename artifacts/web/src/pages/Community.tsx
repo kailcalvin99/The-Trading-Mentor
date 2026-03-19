@@ -311,6 +311,8 @@ export default function Community() {
   const [newTitle, setNewTitle] = useState("");
   const [newBody, setNewBody] = useState("");
   const [newCategory, setNewCategory] = useState("strategy-talk");
+  const [titleError, setTitleError] = useState("");
+  const [bodyError, setBodyError] = useState("");
   const [replyBody, setReplyBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showHallOfFame, setShowHallOfFame] = useState(false);
@@ -369,18 +371,39 @@ export default function Community() {
   }
 
   async function handleCreatePost() {
-    if (!newTitle.trim() || !newBody.trim() || submitting) return;
+    const titleTrimmed = newTitle.trim();
+    const bodyTrimmed = newBody.trim();
+    let hasError = false;
+
+    if (!titleTrimmed) {
+      setTitleError("Title is required");
+      hasError = true;
+    } else {
+      setTitleError("");
+    }
+
+    if (!bodyTrimmed) {
+      setBodyError("Body is required");
+      hasError = true;
+    } else {
+      setBodyError("");
+    }
+
+    if (hasError || submitting) return;
+
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/community/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ title: newTitle.trim(), body: newBody.trim(), category: newCategory }),
+        body: JSON.stringify({ title: titleTrimmed, body: bodyTrimmed, category: newCategory }),
       });
       if (res.ok) {
         setNewTitle("");
         setNewBody("");
+        setTitleError("");
+        setBodyError("");
         setShowNewPost(false);
         fetchPosts();
       }
@@ -683,7 +706,7 @@ export default function Community() {
           <div className="bg-card border border-border rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-foreground">New Post</h2>
-              <button onClick={() => setShowNewPost(false)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => { setShowNewPost(false); setTitleError(""); setBodyError(""); }} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -700,33 +723,39 @@ export default function Community() {
                   </option>
                 ))}
               </select>
-              <input
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Post title..."
-                maxLength={200}
-                className="w-full bg-secondary border border-border rounded-lg p-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <textarea
-                value={newBody}
-                onChange={(e) => setNewBody(e.target.value)}
-                placeholder="Share your thoughts, trade analysis, or questions..."
-                maxLength={5000}
-                rows={5}
-                className="w-full bg-secondary border border-border rounded-lg p-2.5 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+              <div>
+                <input
+                  value={newTitle}
+                  onChange={(e) => { setNewTitle(e.target.value); if (e.target.value.trim()) setTitleError(""); }}
+                  placeholder="Post title..."
+                  maxLength={200}
+                  className={`w-full bg-secondary border rounded-lg p-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary ${titleError ? "border-red-500 focus:ring-red-500" : "border-border"}`}
+                />
+                {titleError && <p className="text-xs text-red-500 mt-1">{titleError}</p>}
+              </div>
+              <div>
+                <textarea
+                  value={newBody}
+                  onChange={(e) => { setNewBody(e.target.value); if (e.target.value.trim()) setBodyError(""); }}
+                  placeholder="Share your thoughts, trade analysis, or questions..."
+                  maxLength={5000}
+                  rows={5}
+                  className={`w-full bg-secondary border rounded-lg p-2.5 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary ${bodyError ? "border-red-500 focus:ring-red-500" : "border-border"}`}
+                />
+                {bodyError && <p className="text-xs text-red-500 mt-1">{bodyError}</p>}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setShowNewPost(false)}
+                onClick={() => { setShowNewPost(false); setTitleError(""); setBodyError(""); }}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreatePost}
-                disabled={!newTitle.trim() || !newBody.trim() || submitting}
+                disabled={submitting}
                 className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity"
               >
                 <Send className="h-4 w-4" />

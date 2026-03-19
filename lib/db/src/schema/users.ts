@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, integer, uuid } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, integer, uuid, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -25,8 +25,8 @@ export const usersTable = pgTable("users", {
   routineTimes: text("routine_times"),
   widgetPrefs: text("widget_prefs"),
   bio: text("bio"),
-  twitterHandle: text("twitter_handle"),
-  discordHandle: text("discord_handle"),
+  twitterHandle: varchar("twitter_handle", { length: 64 }),
+  discordHandle: varchar("discord_handle", { length: 64 }),
   isPublic: boolean("is_public").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
