@@ -1521,6 +1521,34 @@ export default function DashboardScreen() {
   const [showAchievements, setShowAchievements] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showChecklistPopup, setShowChecklistPopup] = useState(false);
+  const [checklistChecked, setChecklistChecked] = useState<Record<string, boolean>>({});
+
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(CHECKLIST_STORAGE_KEY).then((raw) => {
+        if (!raw) return;
+        try {
+          const data = JSON.parse(raw);
+          const ageMs = Date.now() - (data.timestamp || 0);
+          if (ageMs > CHECKLIST_TTL_MS) {
+            AsyncStorage.removeItem(CHECKLIST_STORAGE_KEY);
+            setChecklistChecked({});
+          } else {
+            setChecklistChecked(data.checked || {});
+          }
+        } catch {
+          setChecklistChecked({});
+        }
+      });
+    }, [])
+  );
+
+  async function toggleChecklistItem(id: string) {
+    const next = { ...checklistChecked, [id]: !checklistChecked[id] };
+    setChecklistChecked(next);
+    await AsyncStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify({ checked: next, timestamp: Date.now() }));
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -1661,6 +1689,55 @@ export default function DashboardScreen() {
         </View>
       </Modal>
 
+      {/* Pre-Trade Checklist Popup Modal */}
+      <Modal visible={showChecklistPopup} transparent animationType="slide" onRequestClose={() => setShowChecklistPopup(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowChecklistPopup(false)} />
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Ionicons name="checkmark-circle-outline" size={18} color={C.accent} />
+              <Text style={styles.modalTitle}>Pre-Trade Checklist</Text>
+            </View>
+            <View style={[styles.checklistBadge, PRE_TRADE_ITEMS.every((i) => checklistChecked[i.id]) && styles.checklistBadgeDone]}>
+              <Text style={[styles.checklistBadgeText, PRE_TRADE_ITEMS.every((i) => checklistChecked[i.id]) && styles.checklistBadgeTextDone]}>
+                {PRE_TRADE_ITEMS.filter((i) => checklistChecked[i.id]).length}/{PRE_TRADE_ITEMS.length}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.modalSubtitle}>Confirm your setup before entering a trade</Text>
+          {PRE_TRADE_ITEMS.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.checklistItem}
+              onPress={() => toggleChecklistItem(item.id)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, checklistChecked[item.id] && styles.checkboxChecked]}>
+                {checklistChecked[item.id] && <Ionicons name="checkmark" size={12} color="#0A0A0F" />}
+              </View>
+              <Ionicons
+                name={item.icon}
+                size={14}
+                color={checklistChecked[item.id] ? C.accent : C.textSecondary}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.checklistLabel, checklistChecked[item.id] && styles.checklistLabelDone]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          <View style={[styles.checklistStatusBar, PRE_TRADE_ITEMS.every((i) => checklistChecked[i.id]) && styles.checklistStatusBarDone, { marginTop: 4 }]}>
+            <Text style={[styles.checklistStatusText, PRE_TRADE_ITEMS.every((i) => checklistChecked[i.id]) && styles.checklistStatusTextDone]}>
+              {PRE_TRADE_ITEMS.every((i) => checklistChecked[i.id]) ? "✓ Ready to Trade" : "Not Ready"}
+            </Text>
+          </View>
+          <TouchableOpacity style={[styles.doneBtn, { marginTop: 12 }]} onPress={() => setShowChecklistPopup(false)}>
+            <Text style={styles.doneBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         {/* Stats strip — always visible, sits above all other content */}
         <StatsStripWidget />
@@ -1685,6 +1762,20 @@ export default function DashboardScreen() {
           <>
             {/* Full Mode Dashboard */}
             <AIGreetingCard />
+
+            {/* Pre-Trade Checklist compact button */}
+            <TouchableOpacity
+              style={styles.checklistPillBtn}
+              onPress={() => setShowChecklistPopup(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="checkmark-circle-outline" size={14} color={PRE_TRADE_ITEMS.every((i) => checklistChecked[i.id]) ? "#00C896" : C.textSecondary} />
+              <Text style={[styles.checklistPillText, PRE_TRADE_ITEMS.every((i) => checklistChecked[i.id]) && { color: "#00C896" }]}>
+                Pre-Trade Checklist: {PRE_TRADE_ITEMS.filter((i) => checklistChecked[i.id]).length}/{PRE_TRADE_ITEMS.length}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={C.textTertiary} style={{ marginLeft: "auto" }} />
+            </TouchableOpacity>
+
             <NextWatchCard />
 
             {/* Today's Schedule */}
@@ -1692,9 +1783,6 @@ export default function DashboardScreen() {
 
             {/* Morning Routine */}
             {prefs.morningRoutine && <MorningRoutineWidget />}
-
-            {/* Pre-Trade Checklist */}
-            {prefs.preTradeChecklist && <PreTradeChecklistWidget />}
 
             {/* Quick Journal */}
             {prefs.quickJournal && <QuickJournalWidget />}
@@ -2719,4 +2807,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   todayLearnBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+
+  checklistPillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  checklistPillText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: C.textSecondary,
+    flex: 1,
+  },
 });

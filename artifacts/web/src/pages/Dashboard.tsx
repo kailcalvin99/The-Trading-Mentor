@@ -207,7 +207,89 @@ function WidgetHeader({
   );
 }
 
-function CompactGreetingRow() {
+function ChecklistPopup({ onClose }: { onClose: () => void }) {
+  const [checked, setChecked] = useState<Record<string, boolean>>(() => getChecklistState().checked);
+  const [ttlAnchor, setTtlAnchor] = useState(() => getChecklistState().timestamp);
+  const allChecked = CHECKLIST_ITEMS.every((item) => checked[item.id]);
+  const doneCount = Object.values(checked).filter(Boolean).length;
+
+  useEffect(() => {
+    if (ttlAnchor <= 0) return;
+    const expiresAt = ttlAnchor + CHECKLIST_TTL_HOURS * 60 * 60 * 1000;
+    const msLeft = expiresAt - Date.now();
+    if (msLeft <= 0) {
+      setChecked({});
+      setTtlAnchor(0);
+      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setChecked({});
+      setTtlAnchor(0);
+      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
+    }, msLeft);
+    return () => clearTimeout(timer);
+  }, [ttlAnchor]);
+
+  function toggle(id: string) {
+    const next = { ...checked, [id]: !checked[id] };
+    setChecked(next);
+    saveChecklistState(next);
+    if (ttlAnchor <= 0) setTtlAnchor(Date.now());
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:w-[420px] p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <ClipboardCheck className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Pre-Trade Checklist</h3>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${allChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
+              {doneCount}/{CHECKLIST_ITEMS.length}
+            </span>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="space-y-1.5 mb-3">
+          {CHECKLIST_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => toggle(item.id)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all text-left ${
+                checked[item.id]
+                  ? "bg-emerald-500/10 border-emerald-500/30"
+                  : "bg-secondary/30 border-border hover:border-emerald-500/30"
+              }`}
+            >
+              {checked[item.id]
+                ? <CheckSquare className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                : <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs font-medium ${checked[item.id] ? "text-emerald-400" : "text-foreground"}`}>{item.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{item.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className={`rounded-lg border px-3 py-2 text-center text-xs font-bold transition-all ${
+          allChecked
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+            : "bg-secondary/30 border-border text-muted-foreground"
+        }`}>
+          {allChecked ? "✓ Ready to Trade" : "Not Ready"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompactGreetingRow({ onOpenChecklist }: { onOpenChecklist?: () => void }) {
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")[0] || "Trader";
   const checklistDone = CHECKLIST_ITEMS.filter(
@@ -227,10 +309,13 @@ function CompactGreetingRow() {
           {timeGreeting}, {firstName}
         </span>
       </div>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <button
+        onClick={onOpenChecklist}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+      >
         <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
         <span>Checklist: {checklistDone}/{checklistTotal}</span>
-      </div>
+      </button>
     </div>
   );
 }
@@ -1352,6 +1437,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [showCustomize, setShowCustomize] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showChecklistPopup, setShowChecklistPopup] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("dashboard-visited")) {
@@ -1397,9 +1483,10 @@ export default function Dashboard() {
             onSelect={async (val) => { await setAvatarUrl(val); setShowAvatarPicker(false); }}
           />
         )}
+        {showChecklistPopup && <ChecklistPopup onClose={() => setShowChecklistPopup(false)} />}
 
         <div className="space-y-4">
-          <CompactGreetingRow />
+          <CompactGreetingRow onOpenChecklist={() => setShowChecklistPopup(true)} />
           <LearningProgressWidget />
           <MasterMorningWidget />
           <LessonCarouselWidget />
@@ -1426,6 +1513,7 @@ export default function Dashboard() {
           onSelect={async (val) => { await setAvatarUrl(val); setShowAvatarPicker(false); }}
         />
       )}
+      {showChecklistPopup && <ChecklistPopup onClose={() => setShowChecklistPopup(false)} />}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-2">
           <SessionStatsBar />
@@ -1463,6 +1551,13 @@ export default function Dashboard() {
               Log Trade
             </button>
             <button
+              onClick={() => setShowChecklistPopup(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl px-3 py-2 transition-colors"
+            >
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              Checklist
+            </button>
+            <button
               onClick={() => setShowCustomize(true)}
               className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl px-3 py-2 transition-colors"
             >
@@ -1477,7 +1572,6 @@ export default function Dashboard() {
           <MorningBriefingWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {isEnabled("mastermorning") && <MasterMorningWidget />}
-            {isEnabled("checklist") && <PreTradeChecklistWidget />}
           </div>
 
           {isEnabled("tradingcalendar") && <TradingCalendarWidget />}
