@@ -1704,7 +1704,8 @@ function LearningCommunityWidget() {
           </Text>
         ) : (
           posts.map((post) => {
-            const excerpt = post.content.length > 80 ? post.content.slice(0, 80) + "…" : post.content;
+            const text = post.content ?? "";
+            const excerpt = text.length > 80 ? text.slice(0, 80) + "…" : text;
             const diff = Date.now() - new Date(post.createdAt).getTime();
             const mins = Math.floor(diff / 60000);
             const timeStr = mins < 60 ? `${mins}m ago` : mins < 1440 ? `${Math.floor(mins / 60)}h ago` : `${Math.floor(mins / 1440)}d ago`;
