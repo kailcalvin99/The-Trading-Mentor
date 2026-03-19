@@ -42,19 +42,27 @@ async function initStripe() {
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+  console.error("PORT environment variable is required but was not provided.");
+  process.exit(1);
 }
 
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+  console.error(`Invalid PORT value: "${rawPort}"`);
+  process.exit(1);
 }
 
-await initStripe();
+try {
+  await initStripe();
+} catch (err: any) {
+  console.error("Stripe initialization failed, continuing without Stripe:", err?.message || err);
+}
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+});
+
+server.on("error", (err) => {
+  console.error("Server error:", err);
 });

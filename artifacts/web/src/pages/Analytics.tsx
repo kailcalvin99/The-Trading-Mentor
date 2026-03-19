@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { LockedFeatureOverlay } from "@/components/CasinoElements";
 import { ShareButton } from "@/components/ShareButton";
@@ -412,6 +412,7 @@ function GradeGauge({ score }: { score: number }) {
 type ExpandedChart = "pnl" | "hour" | "day" | "setup" | "behavior" | "confluence" | null;
 
 export default function Analytics() {
+  const navigate = useNavigate();
   const { tierLevel, isAdmin } = useAuth();
   const isPremium = isAdmin || (tierLevel ?? 0) >= 2;
   const { data: rawTrades, isLoading: tradesLoading } = useListTrades();
@@ -716,7 +717,7 @@ export default function Analytics() {
             to="/journal"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
           >
-            Log Your First Trade
+            Log Your First Trade &rarr;
           </Link>
         </div>
       </div>

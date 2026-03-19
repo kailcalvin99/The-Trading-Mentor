@@ -823,7 +823,7 @@ export default function Settings() {
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground">Take the Tour Again</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Restart the guided video tour from the beginning. It walks through all 11 platform features with video explanations.
+                  Restart the guided video tour from the beginning. It walks through 5 key platform features with video explanations.
                 </p>
               </div>
               <button
@@ -851,6 +851,18 @@ export default function Settings() {
                 ? "You are in Learning Mode — showing only the essentials. Switch to Full Mode to unlock Tilt Detection, Pre-Trade Checklist, advanced analytics, and all extra features."
                 : "You are in Full Mode — all features are active. Switch to Learning Mode for a simpler experience with just the core tools."}
             </p>
+            {appMode === "lite" && (
+              <button
+                onClick={() => {
+                  setAppMode("full");
+                  toast({ title: "Full Mode activated", description: "All features are now unlocked." });
+                }}
+                className="w-full mb-4 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
+              >
+                <Layers className="h-4 w-4" />
+                Switch to Full Mode
+              </button>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setAppMode("lite")}

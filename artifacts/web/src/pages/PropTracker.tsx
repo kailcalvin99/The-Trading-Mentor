@@ -6,6 +6,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -320,27 +321,36 @@ export default function PropTracker() {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <div className="flex items-center gap-3 mb-8">
-          <div className="h-11 w-11 rounded-xl bg-secondary animate-pulse" />
+          <Skeleton className="h-11 w-11 rounded-xl" />
           <div className="space-y-2">
-            <div className="h-6 w-32 rounded bg-secondary animate-pulse" />
-            <div className="h-4 w-56 rounded bg-secondary animate-pulse" />
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-4 w-56" />
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[0, 1, 2].map((i) => (
             <div key={i} className="rounded-xl border p-5 space-y-3">
-              <div className="h-3 w-24 rounded bg-secondary animate-pulse" />
-              <div className="h-8 w-36 rounded bg-secondary animate-pulse" />
-              <div className="h-3 w-28 rounded bg-secondary animate-pulse" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-8 w-36" />
+              <Skeleton className="h-3 w-28" />
             </div>
           ))}
         </div>
         <div className="rounded-xl border p-6 space-y-4">
-          <div className="h-4 w-40 rounded bg-secondary animate-pulse" />
+          <Skeleton className="h-4 w-40" />
           <div className="grid grid-cols-2 gap-8">
-            <div className="h-36 rounded-full bg-secondary animate-pulse mx-auto w-36" />
-            <div className="h-36 rounded-full bg-secondary animate-pulse mx-auto w-36" />
+            <Skeleton className="h-36 w-36 rounded-full mx-auto" />
+            <Skeleton className="h-36 w-36 rounded-full mx-auto" />
           </div>
+        </div>
+        <div className="rounded-xl border p-6 space-y-4">
+          <Skeleton className="h-4 w-32" />
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between py-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
         </div>
       </div>
     );

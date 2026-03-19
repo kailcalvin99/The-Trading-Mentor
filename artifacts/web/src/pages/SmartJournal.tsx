@@ -385,14 +385,6 @@ export default function SmartJournal() {
   }
 
   function openDraftForm(draft: ExtendedTrade) {
-    if (!isRoutineComplete) {
-      toast({
-        title: "Morning Routine Required",
-        description: "Complete your morning routine on the Planner tab before editing drafts.",
-        variant: "destructive",
-      });
-      return;
-    }
     setEditingDraftId(draft.id);
     const draftNotes = draft.notes || "";
     const inferredMode: EntryMode = draftNotes.startsWith("[Silver Bullet]") ? "aggressive" : "conservative";
@@ -639,11 +631,11 @@ export default function SmartJournal() {
             </Card>
           </div>
 
-          {/* Routine Lockout */}
+          {/* Routine info banner — manual bypass available */}
           {!isRoutineComplete && (
             <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-400 text-sm">
-              <Lock className="h-4 w-4 shrink-0" />
-              <span>Complete your Morning Routine on the Planner tab to unlock trade logging</span>
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>Morning routine incomplete — you can still log trades in manual mode.</span>
             </div>
           )}
 
@@ -734,6 +726,14 @@ export default function SmartJournal() {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
+
+                {/* Manual Mode Banner */}
+                {!isRoutineComplete && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-400 text-xs font-semibold">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    Manual Mode — morning routine incomplete
+                  </div>
+                )}
 
                 {/* Entry Mode Toggle */}
                 <div>
@@ -1079,8 +1079,15 @@ export default function SmartJournal() {
                 </>
               ) : (
                 <>
-                  <p className="font-semibold text-lg">No trades yet</p>
-                  <p className="text-sm mt-1">Complete your morning routine and log your first trade</p>
+                  <p className="font-semibold text-lg mb-1">No trades yet</p>
+                  <p className="text-sm mb-4">Log your first trade to start tracking your performance</p>
+                  <button
+                    onClick={() => { setShowForm(false); setTimeout(openNewForm, 50); }}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Log Your First Trade &rarr;
+                  </button>
                 </>
               )}
             </div>

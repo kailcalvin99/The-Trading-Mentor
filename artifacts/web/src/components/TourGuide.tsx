@@ -167,6 +167,8 @@ function loadPersistedState(stateKey: string): TourState {
   return DEFAULT_TOUR_STATE;
 }
 
+export const TOUR_NEVER_SHOW_KEY = "ict-tour-never-show";
+
 export function useTourGuide(userId?: string | number) {
   const stateKey = userId !== undefined ? makeStorageKey(userId, "state") : TOUR_STORAGE_KEY;
   const autoShownKey = userId !== undefined ? makeStorageKey(userId, "auto-shown") : null;
@@ -209,6 +211,7 @@ export function useTourGuide(userId?: string | number) {
   }, []);
 
   const resetTour = useCallback(() => {
+    try { localStorage.removeItem(TOUR_NEVER_SHOW_KEY); } catch {}
     dispatch({ type: "RESET_TOUR" });
   }, []);
 

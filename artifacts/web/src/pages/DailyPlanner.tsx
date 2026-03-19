@@ -1219,22 +1219,6 @@ export default function DailyPlanner() {
         </Card>
       </div>
 
-      {speechSupported && (
-        <div className="flex justify-end">
-          <button
-            onClick={isListening ? stopVoiceNote : startVoiceNote}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
-              isListening
-                ? "bg-red-500/20 border-red-500 text-red-400 animate-pulse"
-                : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            }`}
-          >
-            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            {isListening ? "Stop" : "Voice Note"}
-          </button>
-        </div>
-      )}
-
       {dayData.tradePlan.voiceNote && (
         <div className="mt-3 p-3 bg-secondary/50 border border-border rounded-xl">
           <div className="flex items-center gap-1.5 mb-1.5">
@@ -1252,14 +1236,27 @@ export default function DailyPlanner() {
       )}
     </div>
 
-    {/* Sticky Footer — Ready to Trade */}
-    <div className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3">
-      <div className="max-w-3xl mx-auto">
+    {/* Sticky footer — always-visible action bar */}
+    <div className="sticky bottom-0 z-10 bg-background border-t border-border px-4 py-3">
+      <div className="flex gap-3 items-center max-w-4xl mx-auto">
+        {speechSupported && (
+          <button
+            onClick={isListening ? stopVoiceNote : startVoiceNote}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+              isListening
+                ? "bg-red-500/20 border-red-500 text-red-400 animate-pulse"
+                : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            }`}
+          >
+            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            {isListening ? "Stop" : "Voice Note"}
+          </button>
+        )}
         <button
           onClick={handleSendToJournal}
           disabled={showHaltBanner}
           title={showHaltBanner ? "Trading halted" : "Ready to Trade"}
-          className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
             showHaltBanner
               ? "bg-secondary border border-border text-muted-foreground cursor-not-allowed opacity-50"
               : "bg-primary text-primary-foreground hover:brightness-110"

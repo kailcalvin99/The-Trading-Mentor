@@ -693,6 +693,8 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
 
 const FREE_LESSON_CAP = 5;
 
+const ADVANCED_CHAPTER_IDS = ["ch3", "ch5", "ch7"];
+
 function LearnView() {
   const { tierLevel } = useAuth();
   const isFree = tierLevel === 0;
@@ -846,6 +848,7 @@ function LearnView() {
             const hasTargetLesson = pendingLessonId
               ? chapter.lessons.some((l) => l.id === pendingLessonId)
               : false;
+            const isBeginnerLocked = isBeginner && ADVANCED_CHAPTER_IDS.includes(chapter.id);
             return (
               <ChapterAccordion
                 key={chapter.id}
@@ -861,6 +864,7 @@ function LearnView() {
                 isFree={isFree}
                 chapterStartIdx={chStartIdx}
                 isBeginner={isBeginner}
+                isBeginnerLocked={isBeginnerLocked}
               />
             );
           });
@@ -871,12 +875,12 @@ function LearnView() {
 }
 
 function ChapterAccordion({
-  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, defaultExpandedLesson, isFree, chapterStartIdx, isBeginner,
+  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, defaultExpandedLesson, isFree, chapterStartIdx, isBeginner, isBeginnerLocked,
 }: {
   chapter: Chapter; chIdx: number; chCompleted: number; chTotal: number; chDone: boolean;
   completed: Set<string>; toggleComplete: (id: string, globalIdx: number) => void; defaultOpen: boolean;
   defaultExpandedLesson?: string | null;
-  isFree?: boolean; chapterStartIdx?: number; isBeginner?: boolean;
+  isFree?: boolean; chapterStartIdx?: number; isBeginner?: boolean; isBeginnerLocked?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(defaultExpandedLesson ?? null);
@@ -885,7 +889,13 @@ function ChapterAccordion({
   const { watched: videoWatched, markWatched, unmarkWatched } = useAcademyWatchedVideos();
 
   return (
-    <div className="rounded-xl border overflow-hidden bg-card">
+    <div className={`rounded-xl border overflow-hidden bg-card relative ${isBeginnerLocked ? "opacity-50 pointer-events-none" : ""}`}>
+      {isBeginnerLocked && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm pointer-events-auto cursor-not-allowed" title="Complete beginner modules first">
+          <Lock className="h-6 w-6 text-muted-foreground mb-2" />
+          <span className="text-xs text-muted-foreground font-medium text-center px-4">Complete beginner modules first</span>
+        </div>
+      )}
       {lightboxKey && (
         <ChartLightbox conceptKey={lightboxKey} onClose={() => setLightboxKey(null)} />
       )}
