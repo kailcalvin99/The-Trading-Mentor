@@ -8,12 +8,26 @@ export async function seedDefaults() {
     const standardTier = existingTiers.find((t) => t.level === 1);
     if (standardTier) {
       const features = standardTier.features as string[];
-      if (!features.includes("Prop Tracker")) {
+      const needsPriceUpdate = standardTier.monthlyPrice !== "14.99";
+      const needsFeatureUpdate = !features.includes("Prop Tracker");
+      if (needsPriceUpdate || needsFeatureUpdate) {
         await db
           .update(subscriptionTiersTable)
-          .set({ features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Prop Tracker", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges"] })
+          .set({
+            monthlyPrice: "14.99",
+            annualPrice: "143.88",
+            annualDiscountPct: 20,
+            features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Prop Tracker", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges"],
+          })
           .where(eq(subscriptionTiersTable.id, standardTier.id));
       }
+    }
+    const premiumTier = existingTiers.find((t) => t.level === 2);
+    if (premiumTier && premiumTier.monthlyPrice !== "30.00") {
+      await db
+        .update(subscriptionTiersTable)
+        .set({ monthlyPrice: "30.00", annualPrice: "288.00", annualDiscountPct: 20 })
+        .where(eq(subscriptionTiersTable.id, premiumTier.id));
     }
   }
 
@@ -32,9 +46,9 @@ export async function seedDefaults() {
       {
         name: "Standard",
         level: 1,
-        monthlyPrice: "29.99",
-        annualPrice: "299.99",
-        annualDiscountPct: 17,
+        monthlyPrice: "14.99",
+        annualPrice: "143.88",
+        annualDiscountPct: 20,
         features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Prop Tracker", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges"],
         description: "Everything you need to start trading seriously",
         isActive: true,
@@ -42,9 +56,9 @@ export async function seedDefaults() {
       {
         name: "Premium",
         level: 2,
-        monthlyPrice: "59.99",
-        annualPrice: "599.99",
-        annualDiscountPct: 17,
+        monthlyPrice: "30.00",
+        annualPrice: "288.00",
+        annualDiscountPct: 20,
         features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Smart Journal", "Analytics Dashboard", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges", "Leaderboard Access", "TradingView Webhooks", "Priority Support"],
         description: "The complete trading toolkit for serious traders",
         isActive: true,

@@ -377,14 +377,6 @@ export default function SmartJournal() {
   }
 
   function openNewForm() {
-    if (!isRoutineComplete) {
-      toast({
-        title: "Morning Routine Required",
-        description: "Complete your morning routine on the Planner tab before logging a trade.",
-        variant: "destructive",
-      });
-      return;
-    }
     if (shouldSitOut) {
       setShowSitOutWarning(true);
       return;
@@ -717,18 +709,21 @@ export default function SmartJournal() {
 
           {/* Add Trade / Form Toggle */}
           {!showForm ? (
-            <button
-              onClick={openNewForm}
-              className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-colors ${
-                isRoutineComplete
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "bg-amber-500/10 text-amber-400 border border-amber-500/40 cursor-not-allowed"
-              }`}
-              disabled={!isRoutineComplete}
-            >
-              {isRoutineComplete ? <Plus className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-              {isRoutineComplete ? "Log New Trade" : "Routine Required"}
-            </button>
+            <div className="space-y-2">
+              {!isRoutineComplete && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span><strong>Manual Mode</strong> — Morning routine incomplete. Log carefully.</span>
+                </div>
+              )}
+              <button
+                onClick={openNewForm}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-colors bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="h-4 w-4" />
+                Log New Trade
+              </button>
+            </div>
           ) : (
             /* Trade Entry Form */
             <Card className="border-primary/20">

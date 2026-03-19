@@ -24,6 +24,10 @@ export const usersTable = pgTable("users", {
   lastLoginDate: text("last_login_date"),
   routineTimes: text("routine_times"),
   widgetPrefs: text("widget_prefs"),
+  bio: text("bio"),
+  twitterHandle: text("twitter_handle"),
+  discordHandle: text("discord_handle"),
+  isPublic: boolean("is_public").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

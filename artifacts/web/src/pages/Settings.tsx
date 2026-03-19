@@ -52,6 +52,10 @@ interface ProfileData {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+  bio: string;
+  twitterHandle: string;
+  discordHandle: string;
+  isPublic: boolean;
 }
 
 interface TradingDefaultsData {
@@ -88,6 +92,10 @@ export default function Settings() {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
+    bio: "",
+    twitterHandle: "",
+    discordHandle: "",
+    isPublic: false,
   });
 
   const [tradingDefaults, setTradingDefaults] = useState<TradingDefaultsData>({
@@ -119,6 +127,10 @@ export default function Settings() {
           currentPassword: "",
           newPassword: "",
           confirmPassword: "",
+          bio: data.profile.bio || "",
+          twitterHandle: data.profile.twitterHandle || "",
+          discordHandle: data.profile.discordHandle || "",
+          isPublic: data.profile.isPublic ?? false,
         });
         setTradingDefaults({
           defaultSession: data.tradingDefaults.defaultSession || "",
@@ -173,13 +185,17 @@ export default function Settings() {
       toast({ title: "Error", description: "Enter your current password to change it", variant: "destructive" });
       return;
     }
-    const data: Record<string, string> = {};
+    const data: Record<string, unknown> = {};
     if (profile.name) data.name = profile.name;
     if (profile.email) data.email = profile.email;
     if (profile.currentPassword && profile.newPassword) {
       data.currentPassword = profile.currentPassword;
       data.newPassword = profile.newPassword;
     }
+    data.bio = profile.bio;
+    data.twitterHandle = profile.twitterHandle;
+    data.discordHandle = profile.discordHandle;
+    data.isPublic = profile.isPublic;
     saveSection("profile", data, setSavingProfile);
   }
 
@@ -261,6 +277,57 @@ export default function Settings() {
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Bio</label>
+              <textarea
+                value={profile.bio}
+                onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                placeholder="Tell the community about your trading journey..."
+                rows={3}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              />
+              <p className="text-xs text-muted-foreground mt-1">{profile.bio.length}/500 characters</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Twitter / X Handle</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
+                  <input
+                    type="text"
+                    value={profile.twitterHandle}
+                    onChange={(e) => setProfile({ ...profile, twitterHandle: e.target.value.replace(/^@/, "") })}
+                    placeholder="yourhandle"
+                    className="w-full bg-background border border-border rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Discord Handle</label>
+                <input
+                  type="text"
+                  value={profile.discordHandle}
+                  onChange={(e) => setProfile({ ...profile, discordHandle: e.target.value })}
+                  placeholder="username#0000"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border border-border">
+              <div>
+                <p className="text-sm font-medium text-foreground">Public Profile</p>
+                <p className="text-xs text-muted-foreground">Allow others to see your trading stats on the leaderboard</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProfile({ ...profile, isPublic: !profile.isPublic })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${profile.isPublic ? "bg-primary" : "bg-secondary border border-border"}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${profile.isPublic ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </button>
             </div>
             <div className="pt-2 border-t border-border">
               <p className="text-xs text-muted-foreground mb-3">Leave password fields blank to keep your current password</p>

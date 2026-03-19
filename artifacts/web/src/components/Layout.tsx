@@ -368,7 +368,7 @@ export default function Layout() {
   const communityPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { state: tourState, dispatch: tourDispatch, closeTour } = useTourGuideContext();
+  const { state: tourState, dispatch: tourDispatch, closeTour, neverShowTour } = useTourGuideContext();
 
   const skillLevelNum = useMemo(() => {
     const level = getSkillLevel();
@@ -721,6 +721,7 @@ export default function Layout() {
       {tourState.visible && (
         <TourGuide
           onClose={closeTour}
+          onNeverShow={neverShowTour}
           state={tourState}
           dispatch={tourDispatch}
         />

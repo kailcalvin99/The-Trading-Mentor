@@ -706,12 +706,18 @@ export default function Analytics() {
   if (trades.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-3 text-center max-w-sm">
+        <div className="flex flex-col items-center gap-4 text-center max-w-sm">
           <BarChart3 className="h-12 w-12 text-muted-foreground" />
           <h2 className="text-lg font-semibold">No Trade Data Yet</h2>
           <p className="text-sm text-muted-foreground">
-            Log some trades in your Smart Journal to see how you're doing — charts, scores, and more will show up here.
+            Log trades in your Smart Journal and your charts, win rate, and performance scores will appear here automatically.
           </p>
+          <Link
+            to="/journal"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
+          >
+            Log Your First Trade
+          </Link>
         </div>
       </div>
     );

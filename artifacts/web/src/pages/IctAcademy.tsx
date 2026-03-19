@@ -47,7 +47,11 @@ import { Maximize2 } from "lucide-react";
 import { ALL_VIDEOS, type Video as VideoItem } from "../data/video-data";
 import { VideoPlayerModal } from "./VideoLibrary";
 
+import { getSkillLevel } from "@/components/OnboardingQuiz";
+
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+const ADVANCED_LESSON_IDS = new Set(["ch3-4", "ch3-4b"]);
 
 function useAcademyWatchedVideos() {
   const [watched, setWatched] = useState<Set<string>>(new Set());
@@ -692,6 +696,7 @@ const FREE_LESSON_CAP = 5;
 function LearnView() {
   const { tierLevel } = useAuth();
   const isFree = tierLevel === 0;
+  const isBeginner = getSkillLevel() === "beginner";
   const [searchParams, setSearchParams] = useSearchParams();
   const [swipeMode, setSwipeMode] = useState(() => searchParams.get("swipe") === "1");
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
@@ -855,6 +860,7 @@ function LearnView() {
                 defaultExpandedLesson={hasTargetLesson ? pendingLessonId : null}
                 isFree={isFree}
                 chapterStartIdx={chStartIdx}
+                isBeginner={isBeginner}
               />
             );
           });
@@ -865,12 +871,12 @@ function LearnView() {
 }
 
 function ChapterAccordion({
-  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, defaultExpandedLesson, isFree, chapterStartIdx,
+  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, defaultExpandedLesson, isFree, chapterStartIdx, isBeginner,
 }: {
   chapter: Chapter; chIdx: number; chCompleted: number; chTotal: number; chDone: boolean;
   completed: Set<string>; toggleComplete: (id: string, globalIdx: number) => void; defaultOpen: boolean;
   defaultExpandedLesson?: string | null;
-  isFree?: boolean; chapterStartIdx?: number;
+  isFree?: boolean; chapterStartIdx?: number; isBeginner?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(defaultExpandedLesson ?? null);
@@ -913,7 +919,8 @@ function ChapterAccordion({
           {chapter.lessons.map((lesson, lIdx) => {
             const globalIdx = (chapterStartIdx ?? 0) + lIdx;
             const isLocked = isFree && globalIdx >= FREE_LESSON_CAP;
-            const isLessonOpen = !isLocked && expandedLesson === lesson.id;
+            const isBeginnerGated = isBeginner && ADVANCED_LESSON_IDS.has(lesson.id);
+            const isLessonOpen = !isLocked && !isBeginnerGated && expandedLesson === lesson.id;
             const isDone = completed.has(lesson.id);
 
             if (isLocked) {
@@ -930,6 +937,27 @@ function ChapterAccordion({
                     >
                       Upgrade
                     </Link>
+                  </div>
+                </div>
+              );
+            }
+
+            if (isBeginnerGated) {
+              return (
+                <div key={lesson.id} className="border-b last:border-b-0 relative overflow-hidden">
+                  <div
+                    className="w-full flex items-center gap-3 px-4 py-3"
+                    style={{ filter: "grayscale(1)", opacity: 0.5 }}
+                  >
+                    <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-muted-foreground font-mono w-6">{lIdx + 1}.</span>
+                    <span className="flex-1 text-sm font-medium text-muted-foreground">{lesson.title}</span>
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-end pr-4 pointer-events-none">
+                    <span className="inline-flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 rounded-full px-2 py-0.5 text-[10px] font-bold text-amber-500">
+                      <Lock className="h-2.5 w-2.5" />
+                      Intermediate+
+                    </span>
                   </div>
                 </div>
               );

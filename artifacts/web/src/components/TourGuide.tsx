@@ -13,6 +13,7 @@ import {
 import {
   TOUR_STEPS,
   TOUR_STORAGE_KEY,
+  TOUR_NEVER_SHOW_KEY,
   DEFAULT_TOUR_STATE,
   type TourState,
   type TourMachineState,
@@ -181,10 +182,12 @@ export function useTourGuide(userId?: string | number) {
   useEffect(() => {
     if (autoShownKey === null) return undefined;
     const seen = localStorage.getItem(autoShownKey);
-    if (!seen && !state.visible && state.machineState === "IDLE" && state.completedSteps.length === 0) {
+    const neverShow = localStorage.getItem(TOUR_NEVER_SHOW_KEY);
+    if (!seen && !neverShow && !state.visible && state.machineState === "IDLE" && state.completedSteps.length === 0) {
       const timer = setTimeout(() => {
         const stillEligible =
           !localStorage.getItem(autoShownKey) &&
+          !localStorage.getItem(TOUR_NEVER_SHOW_KEY) &&
           !state.visible &&
           state.machineState === "IDLE";
         if (stillEligible) {
@@ -209,6 +212,11 @@ export function useTourGuide(userId?: string | number) {
     dispatch({ type: "RESET_TOUR" });
   }, []);
 
+  const neverShowTour = useCallback(() => {
+    try { localStorage.setItem(TOUR_NEVER_SHOW_KEY, "1"); } catch {}
+    dispatch({ type: "CLOSE_TOUR" });
+  }, []);
+
   return {
     state,
     dispatch,
@@ -216,11 +224,13 @@ export function useTourGuide(userId?: string | number) {
     startTour,
     closeTour,
     resetTour,
+    neverShowTour,
   };
 }
 
 interface TourGuideProps {
   onClose?: () => void;
+  onNeverShow?: () => void;
   state: TourState;
   dispatch: React.Dispatch<TourAction>;
 }
@@ -229,7 +239,7 @@ const HEYGEN_ORIGIN = "https://app.heygen.com";
 const HEYGEN_SIGNAL_TIMEOUT_MS = 10_000;
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
 
-export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
+export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuideProps) {
   const navigate = useNavigate();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -355,6 +365,12 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
   function handleClose() {
     dispatch({ type: "CLOSE_TOUR" });
     onClose?.();
+  }
+
+  function handleNeverShow() {
+    try { localStorage.setItem(TOUR_NEVER_SHOW_KEY, "1"); } catch {}
+    dispatch({ type: "CLOSE_TOUR" });
+    onNeverShow?.();
   }
 
   function handlePlayVideo() {
@@ -593,6 +609,12 @@ export function TourGuide({ onClose, state, dispatch }: TourGuideProps) {
                   <ChevronRight className="h-3 w-3" />
                 </button>
               </div>
+              <button
+                onClick={handleNeverShow}
+                className="w-full text-center text-[9px] text-muted-foreground/50 hover:text-muted-foreground transition-colors pt-1"
+              >
+                Don't show again
+              </button>
             </div>
           </div>
         </div>

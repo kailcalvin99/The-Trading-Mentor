@@ -614,7 +614,7 @@ export default function DailyPlanner() {
       </div>
     )}
 
-    <div className="p-6 max-w-3xl mx-auto pb-20">
+    <div className="p-6 max-w-3xl mx-auto pb-28">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Calendar className="h-6 w-6 text-primary" />
@@ -1219,8 +1219,8 @@ export default function DailyPlanner() {
         </Card>
       </div>
 
-      <div className="flex gap-3 items-center">
-        {speechSupported && (
+      {speechSupported && (
+        <div className="flex justify-end">
           <button
             onClick={isListening ? stopVoiceNote : startVoiceNote}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
@@ -1232,21 +1232,8 @@ export default function DailyPlanner() {
             {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             {isListening ? "Stop" : "Voice Note"}
           </button>
-        )}
-        <button
-          onClick={handleSendToJournal}
-          disabled={showHaltBanner}
-          title={showHaltBanner ? "Trading halted" : "Send to Journal"}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
-            showHaltBanner
-              ? "bg-secondary border border-border text-muted-foreground cursor-not-allowed opacity-50"
-              : "bg-primary text-primary-foreground hover:brightness-110"
-          }`}
-        >
-          <Send className="h-4 w-4" />
-          Send to Journal
-        </button>
-      </div>
+        </div>
+      )}
 
       {dayData.tradePlan.voiceNote && (
         <div className="mt-3 p-3 bg-secondary/50 border border-border rounded-xl">
@@ -1263,6 +1250,25 @@ export default function DailyPlanner() {
           </button>
         </div>
       )}
+    </div>
+
+    {/* Sticky Footer — Ready to Trade */}
+    <div className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-sm border-t border-border px-4 py-3">
+      <div className="max-w-3xl mx-auto">
+        <button
+          onClick={handleSendToJournal}
+          disabled={showHaltBanner}
+          title={showHaltBanner ? "Trading halted" : "Ready to Trade"}
+          className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
+            showHaltBanner
+              ? "bg-secondary border border-border text-muted-foreground cursor-not-allowed opacity-50"
+              : "bg-primary text-primary-foreground hover:brightness-110"
+          }`}
+        >
+          <Send className="h-4 w-4" />
+          {showHaltBanner ? "Trading Halted" : "Ready to Trade"}
+        </button>
+      </div>
     </div>
 
     {sendModalOpen && (

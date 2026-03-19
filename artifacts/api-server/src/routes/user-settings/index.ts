@@ -44,6 +44,10 @@ router.get("/", authRequired, async (req, res) => {
       profile: {
         name: user.name,
         email: user.email,
+        bio: user.bio || "",
+        twitterHandle: user.twitterHandle || "",
+        discordHandle: user.discordHandle || "",
+        isPublic: user.isPublic ?? false,
       },
       tradingDefaults: {
         defaultSession: user.defaultSession || "",
@@ -85,6 +89,10 @@ router.patch("/", authRequired, async (req, res) => {
         name: string;
         email: string;
         passwordHash: string;
+        bio: string | null;
+        twitterHandle: string | null;
+        discordHandle: string | null;
+        isPublic: boolean;
       }> = {};
 
       if (data.name && typeof data.name === "string" && data.name.trim()) {
@@ -122,6 +130,20 @@ router.patch("/", authRequired, async (req, res) => {
           return;
         }
         profileUpdates.passwordHash = await bcrypt.hash(data.newPassword, 12);
+      }
+
+      if (data.bio !== undefined) {
+        profileUpdates.bio = typeof data.bio === "string" ? (data.bio.trim() || null) : null;
+      }
+      if (data.twitterHandle !== undefined) {
+        const handle = (data.twitterHandle || "").replace(/^@/, "").trim();
+        profileUpdates.twitterHandle = handle || null;
+      }
+      if (data.discordHandle !== undefined) {
+        profileUpdates.discordHandle = (data.discordHandle || "").trim() || null;
+      }
+      if (data.isPublic !== undefined) {
+        profileUpdates.isPublic = Boolean(data.isPublic);
       }
 
       if (Object.keys(profileUpdates).length > 0) {
