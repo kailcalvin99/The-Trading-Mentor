@@ -44,24 +44,6 @@ function fromApiSession(s: string | null): string | null {
   return s ? SESSION_FROM_API[s] || s : null;
 }
 
-const BIAS_TO_API: Record<string, string> = { bull: "bullish", bear: "bearish", neutral: "neutral" };
-const BIAS_FROM_API: Record<string, string> = { bullish: "bull", bearish: "bear", neutral: "neutral" };
-const SESSION_TO_API: Record<string, string> = { "ny-open": "new-york", london: "london", "silver-bullet": "silver-bullet" };
-const SESSION_FROM_API: Record<string, string> = { "new-york": "ny-open", london: "london", "silver-bullet": "silver-bullet" };
-
-function toApiBias(b: string | null): string | null {
-  return b ? BIAS_TO_API[b] || b : null;
-}
-function fromApiBias(b: string | null): string | null {
-  return b ? BIAS_FROM_API[b] || b : null;
-}
-function toApiSession(s: string | null): string | null {
-  return s ? SESSION_TO_API[s] || s : null;
-}
-function fromApiSession(s: string | null): string | null {
-  return s ? SESSION_FROM_API[s] || s : null;
-}
-
 type Bias = "bull" | "neutral" | "bear" | null;
 type Strategy = "conservative" | "aggressive" | null;
 
