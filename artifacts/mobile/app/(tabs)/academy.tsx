@@ -629,7 +629,7 @@ export default function AcademyScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <GraduationCelebration visible={showCelebration} onClose={closeCelebration} />
 
       <View style={styles.header}>
@@ -656,7 +656,7 @@ export default function AcademyScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
-  header: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 0 },
+  header: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 0 },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 14 },
   tabBar: { flexDirection: "row", backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 4 },
   tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center" },
@@ -686,7 +686,7 @@ const learnStyles = StyleSheet.create({
   lessonNum: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_500Medium", width: 22 },
   lessonThumbnail: { width: 40, height: 28, borderRadius: 6, backgroundColor: C.backgroundSecondary },
   lessonTitle: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: C.text },
-  lessonDone: { textDecorationLine: "line-through", color: C.textSecondary },
+  lessonDone: { color: "#666666" },
   lessonContent: { paddingHorizontal: 14, paddingBottom: 16, marginLeft: 44 },
   paragraph: { fontSize: 14, color: C.text, lineHeight: 22, marginBottom: 10, opacity: 0.9 },
   chartLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },

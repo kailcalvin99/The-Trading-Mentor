@@ -255,7 +255,7 @@ function AnalyticsScreen() {
 
   if (tierLevel < 2) {
     return (
-      <SafeAreaView style={s.safe} edges={["top"]}>
+      <SafeAreaView style={s.safe} edges={["bottom"]}>
         <View style={s.header}>
           <Text style={s.title}>Analytics</Text>
         </View>
@@ -275,7 +275,7 @@ function AnalyticsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={s.safe} edges={["top"]}>
+      <SafeAreaView style={s.safe} edges={["bottom"]}>
         <View style={s.center}>
           <ActivityIndicator size="large" color={C.accent} />
         </View>
@@ -285,7 +285,7 @@ function AnalyticsScreen() {
 
   if (!stats || trades.length === 0) {
     return (
-      <SafeAreaView style={s.safe} edges={["top"]}>
+      <SafeAreaView style={s.safe} edges={["bottom"]}>
         <View style={s.header}>
           <Text style={s.title}>Analytics</Text>
         </View>
@@ -378,7 +378,7 @@ function AnalyticsScreen() {
       : "Focus on your rules";
 
   return (
-    <SafeAreaView style={s.safe} edges={["top"]}>
+    <SafeAreaView style={s.safe} edges={["bottom"]}>
       <View style={s.header}>
         <Text style={s.title}>Analytics</Text>
         <TouchableOpacity style={s.shareBtn} onPress={handleShare}>
@@ -495,7 +495,8 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 20,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: C.cardBorder,
   },

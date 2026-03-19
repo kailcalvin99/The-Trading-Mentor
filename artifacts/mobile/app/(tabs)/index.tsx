@@ -10,6 +10,7 @@ import {
   Platform,
   Modal,
 } from "react-native";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -346,9 +347,9 @@ function PlannerScreen() {
   const contracts = stopTicks > 0 && tickInfo ? Math.floor((accountBalance * riskPct / 100) / (stopTicks * tickInfo.miniValue) * 10) / 10 : 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <OnboardingTour visible={showTour} onComplete={completeTour} />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <KeyboardAwareScrollViewCompat style={styles.scroll} contentContainerStyle={styles.content}>
 
         {/* Header */}
         <View style={styles.header}>
@@ -840,7 +841,7 @@ function PlannerScreen() {
         </View>
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
-      </ScrollView>
+      </KeyboardAwareScrollViewCompat>
 
       {/* Send to Journal Modal */}
       <Modal visible={sendModalOpen} transparent animationType="fade" onRequestClose={() => setSendModalOpen(false)}>
@@ -905,7 +906,7 @@ function PlannerScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
   scroll: { flex: 1 },
-  content: { padding: 16 },
+  content: { padding: 16, paddingTop: 20 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.text },
   dateText: { fontSize: 13, color: C.textSecondary, marginTop: 2 },

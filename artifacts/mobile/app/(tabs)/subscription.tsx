@@ -139,7 +139,7 @@ export default function SubscriptionScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={s.safe} edges={["top"]}>
+      <SafeAreaView style={s.safe} edges={["bottom"]}>
         <View style={s.center}>
           <ActivityIndicator size="large" color={C.accent} />
         </View>
@@ -148,7 +148,7 @@ export default function SubscriptionScreen() {
   }
 
   return (
-    <SafeAreaView style={s.safe} edges={["top"]}>
+    <SafeAreaView style={s.safe} edges={["bottom"]}>
       <View style={s.pageHeader}>
         <Text style={s.pageTitle}>Subscription</Text>
       </View>
@@ -297,7 +297,8 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   pageHeader: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 20,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: C.cardBorder,
   },

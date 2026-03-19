@@ -466,8 +466,8 @@ export default function JournalScreen() {
 
   if (tierLevel < 2) {
     return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
-        <View style={styles.headerRow}>
+      <SafeAreaView style={styles.safe} edges={["bottom"]}>
+        <View style={[styles.headerRow, { paddingTop: 20 }]}>
           <Text style={styles.title}>Smart Journal</Text>
         </View>
         <View style={styles.lockedCenter}>
@@ -485,7 +485,7 @@ export default function JournalScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
 
         {/* Header */}
@@ -514,7 +514,7 @@ export default function JournalScreen() {
         )}
 
         {/* Stats Row */}
-        <View style={styles.statsRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsRow} contentContainerStyle={styles.statsRowContent}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{total}</Text>
             <Text style={styles.statLabel}>Trades</Text>
@@ -531,7 +531,7 @@ export default function JournalScreen() {
             <Text style={[styles.statValue, { color: "#00C896" }]}>{isMonkMode ? "—" : disciplinedCount}</Text>
             <Text style={styles.statLabel}>Disciplined</Text>
           </View>
-        </View>
+        </ScrollView>
 
         {/* Draft Trades from TradingView */}
         {draftTrades.length > 0 && (
@@ -1063,7 +1063,7 @@ const tiltStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
   scroll: { flex: 1 },
-  content: { padding: 16 },
+  content: { padding: 16, paddingTop: 20 },
   lockedCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 8 },
   lockedTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text, marginTop: 8 },
   lockedSubtitle: { fontSize: 13, color: C.textSecondary, textAlign: "center", lineHeight: 20, paddingHorizontal: 16 },
@@ -1077,8 +1077,9 @@ const styles = StyleSheet.create({
   monkBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.accent },
   lockBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(245,158,11,0.1)", borderRadius: 12, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: "rgba(245,158,11,0.3)" },
   lockText: { flex: 1, fontSize: 13, color: "#F59E0B" },
-  statsRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  statCard: { flex: 1, backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
+  statsRow: { marginBottom: 16 },
+  statsRowContent: { flexDirection: "row", gap: 8 },
+  statCard: { minWidth: 80, backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
   statValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text },
   statLabel: { fontSize: 10, color: C.textSecondary, marginTop: 2, textAlign: "center" },
   draftSection: { backgroundColor: "rgba(245,158,11,0.08)", borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "rgba(245,158,11,0.3)" },

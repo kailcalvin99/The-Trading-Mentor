@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
   Platform,
 } from "react-native";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -579,7 +580,7 @@ export default function RiskShieldScreen() {
   return (
     <SafeAreaView
       style={[styles.safe, isStopTrading && styles.safeRed]}
-      edges={["top"]}
+      edges={["bottom"]}
     >
       {isStopTrading && (
         <View style={styles.stopBanner}>
@@ -598,7 +599,7 @@ export default function RiskShieldScreen() {
         </View>
       )}
 
-      <ScrollView
+      <KeyboardAwareScrollViewCompat
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
@@ -718,7 +719,7 @@ export default function RiskShieldScreen() {
         </View>
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
-      </ScrollView>
+      </KeyboardAwareScrollViewCompat>
 
       <Modal
         visible={showAccountSetup}
@@ -820,7 +821,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   scroll: { flex: 1 },
-  content: { padding: 16 },
+  content: { padding: 16, paddingTop: 20 },
   contentWide: { paddingHorizontal: 32, maxWidth: 1200 },
   headerRow: {
     flexDirection: "row",
