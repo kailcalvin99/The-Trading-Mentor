@@ -299,12 +299,12 @@ export default function TopTabBar({
         style={[
           styles.container,
           {
-            paddingTop: insets.top,
             backgroundColor: C.backgroundSecondary,
             borderBottomColor: C.cardBorder,
           },
         ]}
       >
+        <View style={{ height: insets.top }} />
         {isDashboard ? renderDashboardBar() : renderDefaultBar()}
       </View>
 
@@ -425,9 +425,12 @@ const styles = StyleSheet.create({
   container: {
     borderBottomWidth: 1,
     zIndex: 10,
+    minHeight: 42,
   },
   bar: {
     height: 42,
+    maxHeight: 42,
+    overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
