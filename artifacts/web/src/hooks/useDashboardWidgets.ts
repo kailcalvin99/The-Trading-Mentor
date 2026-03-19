@@ -15,7 +15,6 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   { id: "quickjournal", label: "Quick Journal Entry", defaultOn: true },
 ];
 
-// Always-on widgets not shown in customizer
 export const ALWAYS_ON_WIDGETS = ["greeting", "mission"] as const;
 
 function getDefaultPrefs(): Record<string, boolean> {
@@ -36,10 +35,48 @@ function loadPrefs(): Record<string, boolean> {
   return getDefaultPrefs();
 }
 
+async function syncWidgetPrefsFromApi(): Promise<Record<string, boolean> | null> {
+  try {
+    const res = await fetch("/api/user-settings", { credentials: "include" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.widgetPrefs && typeof data.widgetPrefs === "object") {
+      return data.widgetPrefs;
+    }
+  } catch {}
+  return null;
+}
+
+async function saveWidgetPrefsToApi(prefs: Record<string, boolean>): Promise<void> {
+  try {
+    await fetch("/api/user-settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ section: "widgetPrefs", data: { prefs } }),
+    });
+  } catch {}
+}
+
 export function useDashboardWidgets() {
   const [prefs, setPrefs] = useState<Record<string, boolean>>(loadPrefs);
 
   useEffect(() => {
+    syncWidgetPrefsFromApi().then((apiPrefs) => {
+      if (apiPrefs) {
+        const defaults = getDefaultPrefs();
+        const merged = { ...defaults, ...apiPrefs };
+        setPrefs(merged);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
+      } else {
+        const local = loadPrefs();
+        const defaults = getDefaultPrefs();
+        if (JSON.stringify(local) !== JSON.stringify(defaults)) {
+          saveWidgetPrefsToApi(local);
+        }
+      }
+    });
+
     function onStorage(e: StorageEvent) {
       if (e.key === STORAGE_KEY) {
         setPrefs(loadPrefs());
@@ -53,6 +90,7 @@ export function useDashboardWidgets() {
     setPrefs((prev) => {
       const next = { ...prev, [id]: !prev[id] };
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      saveWidgetPrefsToApi(next);
       return next;
     });
   }, []);

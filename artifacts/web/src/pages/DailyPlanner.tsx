@@ -160,7 +160,7 @@ function migrateKeyLevels(keyLevels: KeyLevel[] | string): KeyLevel[] {
   return [];
 }
 
-function loadDayData(date: Date): DayData {
+function loadDayDataLocal(date: Date): DayData {
   try {
     const raw = localStorage.getItem(getDayKey(date));
     if (raw) {
@@ -173,11 +173,11 @@ function loadDayData(date: Date): DayData {
   return { tasks: [], notes: "", tradePlan: { ...DEFAULT_TRADE_PLAN, keyLevels: [] } };
 }
 
-function saveDayData(date: Date, data: DayData) {
+function saveDayDataLocal(date: Date, data: DayData) {
   localStorage.setItem(getDayKey(date), JSON.stringify(data));
 }
 
-function loadEntryChecklist(date: Date): EntryChecklist {
+function loadEntryChecklistLocal(date: Date): EntryChecklist {
   try {
     const raw = localStorage.getItem(getEntryChecklistKey(date));
     if (raw) return { ...DEFAULT_ENTRY_CHECKLIST, ...JSON.parse(raw) };
@@ -185,8 +185,45 @@ function loadEntryChecklist(date: Date): EntryChecklist {
   return { ...DEFAULT_ENTRY_CHECKLIST };
 }
 
-function saveEntryChecklist(date: Date, checklist: EntryChecklist) {
+function saveEntryChecklistLocal(date: Date, checklist: EntryChecklist) {
   localStorage.setItem(getEntryChecklistKey(date), JSON.stringify(checklist));
+}
+
+const API_BASE_URL = "/api";
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function persistToApi(dateStr: string, dayData: DayData, entryChecklist: EntryChecklist) {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(async () => {
+    try {
+      await fetch(`${API_BASE_URL}/planner/${dateStr}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ data: { ...dayData, entryChecklist } }),
+      });
+    } catch {}
+  }, 500);
+}
+
+async function loadDayDataFromApi(date: Date): Promise<DayData & { entryChecklist?: EntryChecklist } | null> {
+  const dateStr = date.toISOString().split("T")[0];
+  try {
+    const res = await fetch(`${API_BASE_URL}/planner/${dateStr}`, {
+      credentials: "include",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.data && Object.keys(json.data).length > 0) {
+      const d = json.data;
+      d.tradePlan = d.tradePlan || { ...DEFAULT_TRADE_PLAN };
+      d.tradePlan.keyLevels = migrateKeyLevels(d.tradePlan.keyLevels || []);
+      d.tasks = d.tasks || [];
+      d.notes = d.notes || "";
+      return d;
+    }
+  } catch {}
+  return null;
 }
 
 interface TradeRecord {
@@ -318,8 +355,8 @@ export default function DailyPlanner() {
   const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
   const { isFeatureEnabled } = useAppConfig();
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [dayData, setDayData] = useState<DayData>(() => loadDayData(new Date()));
-  const [entryChecklist, setEntryChecklist] = useState<EntryChecklist>(() => loadEntryChecklist(new Date()));
+  const [dayData, setDayData] = useState<DayData>(() => loadDayDataLocal(new Date()));
+  const [entryChecklist, setEntryChecklist] = useState<EntryChecklist>(() => loadEntryChecklistLocal(new Date()));
   const [newTask, setNewTask] = useState("");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -392,19 +429,52 @@ export default function DailyPlanner() {
   }, [isRoutineComplete]);
 
   useEffect(() => {
-    setDayData(loadDayData(selectedDate));
-    setEntryChecklist(loadEntryChecklist(selectedDate));
+    const localData = loadDayDataLocal(selectedDate);
+    const localChecklist = loadEntryChecklistLocal(selectedDate);
+    setDayData(localData);
+    setEntryChecklist(localChecklist);
     setHaltDismissed(false);
+
+    loadDayDataFromApi(selectedDate).then((apiData) => {
+      if (apiData) {
+        const { entryChecklist: apiChecklist, ...rest } = apiData;
+        const apiDayData: DayData = {
+          tasks: rest.tasks ?? [],
+          notes: rest.notes ?? "",
+          tradePlan: { ...DEFAULT_TRADE_PLAN, ...rest.tradePlan },
+        };
+        setDayData(apiDayData);
+        saveDayDataLocal(selectedDate, apiDayData);
+        if (apiChecklist) {
+          const mergedChecklist = { ...DEFAULT_ENTRY_CHECKLIST, ...apiChecklist };
+          setEntryChecklist(mergedChecklist);
+          saveEntryChecklistLocal(selectedDate, mergedChecklist);
+        }
+      } else if (localData.tasks.length > 0 || localData.notes || localData.tradePlan.bias) {
+        const dateStr = selectedDate.toISOString().split("T")[0];
+        persistToApi(dateStr, localData, localChecklist);
+      }
+    });
   }, [selectedDate]);
 
   const persist = useCallback((data: DayData) => {
     setDayData(data);
-    saveDayData(selectedDate, data);
+    saveDayDataLocal(selectedDate, data);
+    const dateStr = selectedDate.toISOString().split("T")[0];
+    setEntryChecklist((current) => {
+      persistToApi(dateStr, data, current);
+      return current;
+    });
   }, [selectedDate]);
 
   const persistChecklist = useCallback((checklist: EntryChecklist) => {
     setEntryChecklist(checklist);
-    saveEntryChecklist(selectedDate, checklist);
+    saveEntryChecklistLocal(selectedDate, checklist);
+    const dateStr = selectedDate.toISOString().split("T")[0];
+    setDayData((current) => {
+      persistToApi(dateStr, current, checklist);
+      return current;
+    });
   }, [selectedDate]);
 
   function addTask() {

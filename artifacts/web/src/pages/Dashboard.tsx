@@ -380,19 +380,36 @@ function NextWatchWidget() {
   const [nextLesson, setNextLesson] = useState<{ id: string; title: string; chapterTitle: string; chapterColor: string; estMins: number } | null>(null);
 
   useEffect(() => {
-    const completed = getAcademyProgress();
-    let lessonIndex = 0;
-    for (const chapter of COURSE_CHAPTERS) {
-      for (const lesson of chapter.lessons) {
-        if (!completed.has(lesson.id)) {
-          const estMins = 8 + (lessonIndex % 7) * 2;
-          setNextLesson({ id: lesson.id, title: lesson.title, chapterTitle: chapter.title, chapterColor: chapter.color, estMins });
-          return;
+    let completed = getAcademyProgress();
+
+    fetch("/api/academy/progress", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.lessonIds?.length) {
+          const merged = new Set([...completed, ...data.lessonIds]);
+          localStorage.setItem(ICT_ACADEMY_PROGRESS_KEY_WEB, JSON.stringify([...merged]));
+          completed = merged;
+          findNext(completed);
         }
-        lessonIndex++;
+      })
+      .catch(() => {});
+
+    findNext(completed);
+
+    function findNext(comp: Set<string>) {
+      let lessonIndex = 0;
+      for (const chapter of COURSE_CHAPTERS) {
+        for (const lesson of chapter.lessons) {
+          if (!comp.has(lesson.id)) {
+            const estMins = 8 + (lessonIndex % 7) * 2;
+            setNextLesson({ id: lesson.id, title: lesson.title, chapterTitle: chapter.title, chapterColor: chapter.color, estMins });
+            return;
+          }
+          lessonIndex++;
+        }
       }
+      setNextLesson(null);
     }
-    setNextLesson(null);
   }, []);
 
   if (!nextLesson) return null;

@@ -56,24 +56,44 @@ export function useDailyGamification() {
 
   useEffect(() => {
     (async () => {
-      const savedXp = parseInt((await AsyncStorage.getItem(XP_KEY)) || "0");
-      const savedStreak = parseInt((await AsyncStorage.getItem(STREAK_KEY)) || "0");
-      const lastLogin = await AsyncStorage.getItem(LAST_LOGIN_KEY);
-      const today = new Date().toDateString();
+      let savedXp = parseInt((await AsyncStorage.getItem(XP_KEY)) || "0");
+      let savedStreak = parseInt((await AsyncStorage.getItem(STREAK_KEY)) || "0");
+      let lastLogin = await AsyncStorage.getItem(LAST_LOGIN_KEY);
+
+      try {
+        const { apiGet } = await import("@/lib/api");
+        const res = await apiGet<{ gamification?: { totalXp: number; loginStreak: number; lastLoginDate: string | null } }>("user-settings");
+        if (res.gamification) {
+          const g = res.gamification;
+          if (g.totalXp > savedXp) savedXp = g.totalXp;
+          if (g.loginStreak > savedStreak) savedStreak = g.loginStreak;
+          if (g.lastLoginDate) lastLogin = g.lastLoginDate;
+        }
+      } catch {}
+
+      const today = new Date().toISOString().split("T")[0];
 
       if (lastLogin !== today) {
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
         const newStreak = lastLogin === yesterday ? savedStreak + 1 : 1;
         const gain = Math.min(newStreak * 10, 100);
+        const newXp = savedXp + gain;
         setStreak(newStreak);
-        setXp(savedXp + gain);
+        setXp(newXp);
         setXpGained(gain);
         await AsyncStorage.setItem(LAST_LOGIN_KEY, today);
         await AsyncStorage.setItem(STREAK_KEY, String(newStreak));
-        await AsyncStorage.setItem(XP_KEY, String(savedXp + gain));
+        await AsyncStorage.setItem(XP_KEY, String(newXp));
+
+        try {
+          const { apiPatch } = await import("@/lib/api");
+          apiPatch("user-settings", { section: "gamification", data: { totalXp: newXp, loginStreak: newStreak, lastLoginDate: today } }).catch(() => {});
+        } catch {}
       } else {
         setStreak(savedStreak);
         setXp(savedXp);
+        await AsyncStorage.setItem(STREAK_KEY, String(savedStreak));
+        await AsyncStorage.setItem(XP_KEY, String(savedXp));
       }
     })();
   }, []);

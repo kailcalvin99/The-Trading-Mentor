@@ -603,6 +603,10 @@ function MorningRoutineWidget({ showWhy = false }: { showWhy?: boolean }) {
   );
 }
 
+const BIAS_TO_API: Record<string, string> = { bull: "bullish", bear: "bearish", neutral: "neutral" };
+const BIAS_FROM_API: Record<string, string> = { bullish: "bull", bearish: "bear", neutral: "neutral" };
+const SESSION_FROM_API: Record<string, string> = { "new-york": "ny-open", london: "london", "silver-bullet": "silver-bullet" };
+
 const PLANNER_BIAS_CHIPS: Array<{ key: "bull" | "neutral" | "bear"; label: string; icon: string; color: string }> = [
   { key: "bull", label: "Bullish", icon: "📈", color: "#00C896" },
   { key: "neutral", label: "Neutral", icon: "➡️", color: "#F59E0B" },
@@ -616,7 +620,8 @@ function TradePlanWidget() {
   const [keyLevels, setKeyLevels] = useState<Array<{ id: string; price: string; label?: string }>>([]);
 
   const loadPlan = useCallback(() => {
-    AsyncStorage.getItem(TRADE_PLAN_KEY).then((v) => {
+    (async () => {
+      const v = await AsyncStorage.getItem(TRADE_PLAN_KEY);
       if (v) {
         try {
           const parsed = JSON.parse(v);
@@ -625,7 +630,20 @@ function TradePlanWidget() {
           setKeyLevels(Array.isArray(parsed.keyLevels) ? parsed.keyLevels.slice(0, 3) : []);
         } catch {}
       }
-    });
+      try {
+        const dateStr = new Date().toISOString().split("T")[0];
+        const res = await apiGet<{ data: any }>(`planner/${dateStr}`);
+        if (res.data && Object.keys(res.data).length > 0) {
+          const tp = res.data.tradePlan || res.data;
+          const apiBias = tp.bias ? (BIAS_FROM_API[tp.bias] || tp.bias) : null;
+          const apiSession = tp.sessionFocus ? (SESSION_FROM_API[tp.sessionFocus] || tp.sessionFocus) : (tp.targetSession || null);
+          setSelectedBias((apiBias === "bull" || apiBias === "neutral" || apiBias === "bear") ? apiBias : null);
+          setTargetSession(apiSession);
+          const levels = tp.keyLevels ?? [];
+          setKeyLevels(Array.isArray(levels) ? levels.slice(0, 3) : []);
+        }
+      } catch {}
+    })();
   }, []);
 
   useFocusEffect(loadPlan);
@@ -634,12 +652,25 @@ function TradePlanWidget() {
     const newBias = selectedBias === key ? null : key;
     setSelectedBias(newBias);
     const existing = await AsyncStorage.getItem(TRADE_PLAN_KEY);
-    let data: Record<string, unknown> = {};
+    let localData: Record<string, unknown> = {};
     if (existing) {
-      try { data = JSON.parse(existing); } catch {}
+      try { localData = JSON.parse(existing); } catch {}
     }
-    data.bias = newBias;
-    await AsyncStorage.setItem(TRADE_PLAN_KEY, JSON.stringify(data));
+    localData.bias = newBias;
+    await AsyncStorage.setItem(TRADE_PLAN_KEY, JSON.stringify(localData));
+    try {
+      const { apiGet, apiPut } = await import("@/lib/api");
+      const dateStr = new Date().toISOString().split("T")[0];
+      let serverData: Record<string, unknown> = {};
+      try {
+        const res = await apiGet<{ data: Record<string, unknown> }>(`planner/${dateStr}`);
+        if (res.data && Object.keys(res.data).length > 0) serverData = res.data;
+      } catch {}
+      const tradePlan = (serverData.tradePlan as Record<string, unknown>) || {};
+      tradePlan.bias = newBias ? (BIAS_TO_API[newBias] || newBias) : null;
+      serverData.tradePlan = tradePlan;
+      apiPut(`planner/${dateStr}`, { data: serverData }).catch(() => {});
+    } catch {}
   }
 
   const activeChip = PLANNER_BIAS_CHIPS.find((c) => c.key === selectedBias);
@@ -1780,16 +1811,23 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem(WIDGET_PREFS_KEY).then((raw) => {
+      (async () => {
+        const raw = await AsyncStorage.getItem(WIDGET_PREFS_KEY);
+        let localPrefs = DEFAULT_WIDGET_PREFS;
         if (raw) {
-          try {
-            setPrefs({ ...DEFAULT_WIDGET_PREFS, ...JSON.parse(raw) });
-          } catch {
-          }
-        } else {
-          setPrefs(DEFAULT_WIDGET_PREFS);
+          try { localPrefs = { ...DEFAULT_WIDGET_PREFS, ...JSON.parse(raw) }; } catch {}
         }
-      });
+        setPrefs(localPrefs);
+
+        try {
+          const res = await apiGet<{ widgetPrefs?: Record<string, boolean> | null }>("user-settings");
+          if (res.widgetPrefs && typeof res.widgetPrefs === "object") {
+            const merged = { ...DEFAULT_WIDGET_PREFS, ...res.widgetPrefs } as WidgetPrefs;
+            setPrefs(merged);
+            AsyncStorage.setItem(WIDGET_PREFS_KEY, JSON.stringify(merged));
+          }
+        } catch {}
+      })();
     }, [])
   );
 
@@ -1802,6 +1840,10 @@ export default function DashboardScreen() {
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
     await AsyncStorage.setItem(WIDGET_PREFS_KEY, JSON.stringify(next));
+    try {
+      const { apiPatch } = await import("@/lib/api");
+      apiPatch("user-settings", { section: "widgetPrefs", data: { prefs: next } }).catch(() => {});
+    } catch {}
   }
 
   const avatarUrl = user?.avatarUrl;

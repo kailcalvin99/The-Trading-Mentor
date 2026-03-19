@@ -24,6 +24,9 @@ import {
   RotateCcw,
   Layers,
   LayoutDashboard,
+  Tag,
+  Plus,
+  X,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -442,6 +445,8 @@ export default function Settings() {
 
         <TradingViewWebhookCard isPremium={isPremium} />
 
+        <TagManagementCard />
+
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
             <Brain className="h-5 w-5 text-primary" />
@@ -685,6 +690,153 @@ function DashboardWidgetsCard() {
           ))}
         </div>
         <p className="text-xs text-muted-foreground mt-3">Changes are saved automatically and applied immediately to your dashboard.</p>
+      </div>
+    </div>
+  );
+}
+
+interface ApiTag {
+  id: number;
+  name: string;
+  color: string;
+  emoji?: string;
+  category?: string;
+}
+
+function TagManagementCard() {
+  const [tags, setTags] = useState<ApiTag[]>([]);
+  const [newName, setNewName] = useState("");
+  const [newColor, setNewColor] = useState("#8B8BA0");
+  const [newCategory, setNewCategory] = useState("Custom");
+  const [loadingTags, setLoadingTags] = useState(true);
+
+  useEffect(() => {
+    loadTags();
+  }, []);
+
+  async function loadTags() {
+    try {
+      const res = await fetch(`${API_BASE}/tags`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setTags(data.tags || []);
+      }
+    } catch {}
+    setLoadingTags(false);
+  }
+
+  async function addTag() {
+    const name = newName.trim();
+    if (!name) return;
+    try {
+      const res = await fetch(`${API_BASE}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name, color: newColor, category: newCategory }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTags([...tags, data.tag]);
+        setNewName("");
+        toast({ title: "Tag created" });
+      } else {
+        const err = await res.json();
+        toast({ title: err.error || "Failed to create tag", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Failed to create tag", variant: "destructive" });
+    }
+  }
+
+  async function deleteTag(id: number) {
+    try {
+      await fetch(`${API_BASE}/tags/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      setTags(tags.filter((t) => t.id !== id));
+      toast({ title: "Tag deleted" });
+    } catch {}
+  }
+
+  const TAG_COLORS = ["#00C896", "#A78BFA", "#FFB340", "#38BDF8", "#FB7185", "#10B981", "#FF4444", "#8B8BA0"];
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+        <Tag className="h-5 w-5 text-primary" />
+        <div>
+          <h2 className="text-sm font-bold text-foreground">Trade Tags</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Manage your custom tags for trade journaling</p>
+        </div>
+      </div>
+      <div className="px-5 py-5 space-y-4">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addTag()}
+            placeholder="New tag name..."
+            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <div className="flex gap-1 items-center">
+            {TAG_COLORS.map((c) => (
+              <button
+                key={c}
+                onClick={() => setNewColor(c)}
+                className="w-5 h-5 rounded-full transition-all"
+                style={{
+                  backgroundColor: c,
+                  outline: newColor === c ? "2px solid currentColor" : "none",
+                  outlineOffset: "2px",
+                }}
+              />
+            ))}
+          </div>
+          <button
+            onClick={addTag}
+            disabled={!newName.trim()}
+            className="flex items-center gap-1 px-3 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            Add
+          </button>
+        </div>
+
+        {loadingTags ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading tags...
+          </div>
+        ) : tags.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">No custom tags yet. Add one above to get started.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <div
+                key={tag.id}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-background text-sm group"
+              >
+                <span
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: tag.color }}
+                />
+                <span className="text-foreground">{tag.name}</span>
+                {tag.category && (
+                  <span className="text-xs text-muted-foreground">({tag.category})</span>
+                )}
+                <button
+                  onClick={() => deleteTag(tag.id)}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

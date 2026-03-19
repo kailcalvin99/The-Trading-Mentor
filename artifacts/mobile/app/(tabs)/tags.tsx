@@ -61,30 +61,62 @@ export default function TagsScreen() {
 
   const load = useCallback(async () => {
     const raw = await AsyncStorage.getItem(TAGS_KEY);
+    let localTags: TagEntry[] = [];
     if (raw) {
-      try {
-        setTags(JSON.parse(raw));
-      } catch {
-        initDefaults();
-      }
-    } else {
-      initDefaults();
+      try { localTags = JSON.parse(raw); } catch {}
     }
+    if (localTags.length === 0) {
+      localTags = PRESET_TAGS.map((t) => ({
+        id: t.label.toLowerCase().replace(/\s+/g, "-"),
+        label: t.label,
+        category: t.category,
+        color: t.color,
+        count: 0,
+      }));
+      AsyncStorage.setItem(TAGS_KEY, JSON.stringify(localTags));
+    }
+    setTags(localTags);
+
+    try {
+      const { apiGet } = await import("@/lib/api");
+      const res = await apiGet<{ tags: Array<{ id: number; name: string; color: string; emoji?: string; category?: string }> }>("tags");
+      if (res.tags && res.tags.length > 0) {
+        const apiTagNames = new Set(res.tags.map((t) => t.name));
+        const merged = [...localTags];
+        for (const apiTag of res.tags) {
+          if (!merged.some((lt) => lt.label === apiTag.name)) {
+            merged.push({
+              id: `api-${apiTag.id}`,
+              label: apiTag.name,
+              category: apiTag.category || "Custom",
+              color: apiTag.color,
+              count: 0,
+            });
+          }
+        }
+        setTags(merged);
+        AsyncStorage.setItem(TAGS_KEY, JSON.stringify(merged));
+
+        const customLocal = localTags.filter((t) => t.category === "Custom" && !apiTagNames.has(t.label));
+        for (const lt of customLocal) {
+          try {
+            const { apiPost } = await import("@/lib/api");
+            await apiPost("tags", { name: lt.label, color: lt.color, category: "Custom" });
+          } catch {}
+        }
+      } else {
+        const customTags = localTags.filter((t) => t.category === "Custom");
+        for (const ct of customTags) {
+          try {
+            const { apiPost } = await import("@/lib/api");
+            await apiPost("tags", { name: ct.label, color: ct.color, category: "Custom" });
+          } catch {}
+        }
+      }
+    } catch {}
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
-
-  function initDefaults() {
-    const defaults: TagEntry[] = PRESET_TAGS.map((t) => ({
-      id: t.label.toLowerCase().replace(/\s+/g, "-"),
-      label: t.label,
-      category: t.category,
-      color: t.color,
-      count: 0,
-    }));
-    setTags(defaults);
-    AsyncStorage.setItem(TAGS_KEY, JSON.stringify(defaults));
-  }
 
   async function incrementTag(id: string) {
     const next = tags.map((t) => t.id === id ? { ...t, count: t.count + 1 } : t);
@@ -110,13 +142,23 @@ export default function TagsScreen() {
   async function addCustomTag() {
     const label = newTagText.trim();
     if (!label) return;
-    const id = `custom-${Date.now()}`;
-    const newTag: TagEntry = { id, label, category: "Custom", color: "#8B8BA0", count: 0 };
+    const tempId = `custom-${Date.now()}`;
+    const newTag: TagEntry = { id: tempId, label, category: "Custom", color: "#8B8BA0", count: 0 };
     const next = [...tags, newTag];
     setTags(next);
     await AsyncStorage.setItem(TAGS_KEY, JSON.stringify(next));
     setNewTagText("");
     setAdding(false);
+
+    try {
+      const { apiPost } = await import("@/lib/api");
+      const res = await apiPost<{ tag: { id: number } }>("tags", { name: label, color: "#8B8BA0", category: "Custom" });
+      if (res?.tag?.id) {
+        const updated = next.map((t) => t.id === tempId ? { ...t, id: `api-${res.tag.id}` } : t);
+        setTags(updated);
+        await AsyncStorage.setItem(TAGS_KEY, JSON.stringify(updated));
+      }
+    } catch {}
   }
 
   async function deleteTag(id: string) {
@@ -126,9 +168,26 @@ export default function TagsScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
+          const tagToDelete = tags.find((t) => t.id === id);
           const next = tags.filter((t) => t.id !== id);
           setTags(next);
           await AsyncStorage.setItem(TAGS_KEY, JSON.stringify(next));
+
+          if (tagToDelete && tagToDelete.category === "Custom") {
+            if (id.startsWith("api-")) {
+              try {
+                const { apiDelete: apiDel } = await import("@/lib/api");
+                await apiDel(`tags/${id.replace("api-", "")}`);
+              } catch {}
+            } else {
+              try {
+                const { apiGet, apiDelete: apiDel } = await import("@/lib/api");
+                const res = await apiGet<{ tags: Array<{ id: number; name: string }> }>("tags");
+                const match = res.tags?.find((t) => t.name === tagToDelete.label);
+                if (match) await apiDel(`tags/${match.id}`);
+              } catch {}
+            }
+          }
         },
       },
     ]);

@@ -9,3 +9,5 @@ export * from "./community";
 export * from "./password_reset_tokens";
 export * from "./video_watched";
 export * from "./cooldown_events";
+export * from "./planner";
+export * from "./tags";

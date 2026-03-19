@@ -33,26 +33,54 @@ export function useDailyStreak() {
   const [xpGained, setXpGained] = useState(0);
 
   useEffect(() => {
-    const lastLogin = localStorage.getItem("last_login_date");
-    const savedStreak = parseInt(localStorage.getItem("login_streak") || "0");
-    const savedXp = parseInt(localStorage.getItem("total_xp") || "0");
-    const today = new Date().toDateString();
+    (async () => {
+      let savedStreak = parseInt(localStorage.getItem("login_streak") || "0");
+      let savedXp = parseInt(localStorage.getItem("total_xp") || "0");
+      let lastLogin = localStorage.getItem("last_login_date");
 
-    if (lastLogin !== today) {
-      const yesterday = new Date(Date.now() - 86400000).toDateString();
-      const newStreak = lastLogin === yesterday ? savedStreak + 1 : 1;
-      const gain = Math.min(newStreak * 10, 100);
+      try {
+        const res = await fetch("/api/user-settings", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.gamification) {
+            const g = data.gamification;
+            if (g.totalXp > savedXp) savedXp = g.totalXp;
+            if (g.loginStreak > savedStreak) savedStreak = g.loginStreak;
+            if (g.lastLoginDate) lastLogin = g.lastLoginDate;
+          }
+        }
+      } catch {}
 
-      setStreak(newStreak);
-      setXp(savedXp + gain);
-      setXpGained(gain);
-      localStorage.setItem("last_login_date", today);
-      localStorage.setItem("login_streak", String(newStreak));
-      localStorage.setItem("total_xp", String(savedXp + gain));
-    } else {
-      setStreak(savedStreak);
-      setXp(savedXp);
-    }
+      const today = new Date().toISOString().split("T")[0];
+
+      if (lastLogin !== today) {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+        const newStreak = lastLogin === yesterday ? savedStreak + 1 : 1;
+        const gain = Math.min(newStreak * 10, 100);
+        const newXp = savedXp + gain;
+
+        setStreak(newStreak);
+        setXp(newXp);
+        setXpGained(gain);
+        localStorage.setItem("last_login_date", today);
+        localStorage.setItem("login_streak", String(newStreak));
+        localStorage.setItem("total_xp", String(newXp));
+
+        try {
+          await fetch("/api/user-settings", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ section: "gamification", data: { totalXp: newXp, loginStreak: newStreak, lastLoginDate: today } }),
+          });
+        } catch {}
+      } else {
+        setStreak(savedStreak);
+        setXp(savedXp);
+        localStorage.setItem("login_streak", String(savedStreak));
+        localStorage.setItem("total_xp", String(savedXp));
+      }
+    })();
   }, []);
 
   return { streak, xp, xpGained };

@@ -12,6 +12,8 @@ import communityRouter from "./community";
 import leaderboardRouter from "./leaderboard";
 import videosRouter from "./videos";
 import academyRouter from "./academy";
+import plannerRouter from "./planner";
+import tagsRouter from "./tags";
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -28,5 +30,7 @@ router.use("/community", communityRouter);
 router.use("/leaderboard", leaderboardRouter);
 router.use("/videos", videosRouter);
 router.use("/academy", academyRouter);
+router.use("/planner", plannerRouter);
+router.use("/tags", tagsRouter);
 
 export default router;

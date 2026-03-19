@@ -26,6 +26,42 @@ const C = Colors.dark;
 
 const PLAN_KEY = "daily_trade_plan_v2";
 
+const BIAS_TO_API: Record<string, string> = { bull: "bullish", bear: "bearish", neutral: "neutral" };
+const BIAS_FROM_API: Record<string, string> = { bullish: "bull", bearish: "bear", neutral: "neutral" };
+const SESSION_TO_API: Record<string, string> = { "ny-open": "new-york", london: "london", "silver-bullet": "silver-bullet" };
+const SESSION_FROM_API: Record<string, string> = { "new-york": "ny-open", london: "london", "silver-bullet": "silver-bullet" };
+
+function toApiBias(b: string | null): string | null {
+  return b ? BIAS_TO_API[b] || b : null;
+}
+function fromApiBias(b: string | null): string | null {
+  return b ? BIAS_FROM_API[b] || b : null;
+}
+function toApiSession(s: string | null): string | null {
+  return s ? SESSION_TO_API[s] || s : null;
+}
+function fromApiSession(s: string | null): string | null {
+  return s ? SESSION_FROM_API[s] || s : null;
+}
+
+const BIAS_TO_API: Record<string, string> = { bull: "bullish", bear: "bearish", neutral: "neutral" };
+const BIAS_FROM_API: Record<string, string> = { bullish: "bull", bearish: "bear", neutral: "neutral" };
+const SESSION_TO_API: Record<string, string> = { "ny-open": "new-york", london: "london", "silver-bullet": "silver-bullet" };
+const SESSION_FROM_API: Record<string, string> = { "new-york": "ny-open", london: "london", "silver-bullet": "silver-bullet" };
+
+function toApiBias(b: string | null): string | null {
+  return b ? BIAS_TO_API[b] || b : null;
+}
+function fromApiBias(b: string | null): string | null {
+  return b ? BIAS_FROM_API[b] || b : null;
+}
+function toApiSession(s: string | null): string | null {
+  return s ? SESSION_TO_API[s] || s : null;
+}
+function fromApiSession(s: string | null): string | null {
+  return s ? SESSION_FROM_API[s] || s : null;
+}
+
 type Bias = "bull" | "neutral" | "bear" | null;
 type Strategy = "conservative" | "aggressive" | null;
 
@@ -142,28 +178,75 @@ function PlannerScreen() {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem(PLAN_KEY).then((planVal) => {
+    (async () => {
+      let localPlan: TradePlan = { ...DEFAULT_PLAN };
+      const planVal = await AsyncStorage.getItem(PLAN_KEY);
       if (planVal) {
-        try {
-          const parsed = JSON.parse(planVal);
-          setPlan({ ...DEFAULT_PLAN, ...parsed });
-        } catch {}
+        try { localPlan = { ...DEFAULT_PLAN, ...JSON.parse(planVal) }; } catch {}
       } else {
-        AsyncStorage.getItem("daily_trade_plan_v1").then((oldVal) => {
-          if (oldVal) {
-            try {
-              const old = JSON.parse(oldVal);
-              setPlan({ ...DEFAULT_PLAN, ...old });
-            } catch {}
-          }
-        });
+        const oldVal = await AsyncStorage.getItem("daily_trade_plan_v1");
+        if (oldVal) {
+          try { localPlan = { ...DEFAULT_PLAN, ...JSON.parse(oldVal) }; } catch {}
+        }
       }
-    });
+      setPlan(localPlan);
+
+      try {
+        const { apiGet } = await import("@/lib/api");
+        const dateStr = new Date().toISOString().split("T")[0];
+        const res = await apiGet<{ data: any }>(`planner/${dateStr}`);
+        if (res.data && Object.keys(res.data).length > 0) {
+          const tp = res.data.tradePlan || res.data;
+          const apiPlan: TradePlan = {
+            ...DEFAULT_PLAN,
+            bias: (fromApiBias(tp.bias) ?? localPlan.bias) as Bias,
+            keyLevels: tp.keyLevels ?? localPlan.keyLevels,
+            targetSession: fromApiSession(tp.targetSession ?? tp.sessionFocus) ?? localPlan.targetSession,
+            entryCriteria: tp.entryCriteria ?? localPlan.entryCriteria,
+            notes: tp.notes ?? res.data.notes ?? localPlan.notes,
+            strategy: tp.strategy ?? localPlan.strategy,
+            stopLossTicks: tp.stopLossTicks ?? localPlan.stopLossTicks,
+            selectedAsset: tp.selectedAsset ?? localPlan.selectedAsset,
+            voiceNoteUri: localPlan.voiceNoteUri,
+            pairsToWatch: tp.pairsToWatch ?? localPlan.pairsToWatch,
+          };
+          setPlan(apiPlan);
+          AsyncStorage.setItem(PLAN_KEY, JSON.stringify(apiPlan));
+        } else if (localPlan.bias || localPlan.keyLevels.length > 0) {
+          const { apiPut } = await import("@/lib/api");
+          const apiTradePlan = { ...localPlan, bias: toApiBias(localPlan.bias), sessionFocus: toApiSession(localPlan.targetSession) };
+          apiPut(`planner/${dateStr}`, { data: { tradePlan: apiTradePlan, notes: localPlan.notes } }).catch(() => {});
+        }
+      } catch {}
+    })();
   }, []);
 
   const savePlan = useCallback((updated: TradePlan) => {
     setPlan(updated);
     AsyncStorage.setItem(PLAN_KEY, JSON.stringify(updated));
+    const dateStr = new Date().toISOString().split("T")[0];
+    import("@/lib/api").then(async ({ apiGet, apiPut }) => {
+      let serverData: Record<string, unknown> = {};
+      try {
+        const res = await apiGet<{ data: Record<string, unknown> }>(`planner/${dateStr}`);
+        if (res.data && Object.keys(res.data).length > 0) serverData = res.data;
+      } catch {}
+      const apiTradePlan = {
+        ...(serverData.tradePlan as object || {}),
+        bias: toApiBias(updated.bias),
+        keyLevels: updated.keyLevels,
+        sessionFocus: toApiSession(updated.targetSession),
+        entryCriteria: updated.entryCriteria,
+        notes: updated.notes,
+        strategy: updated.strategy,
+        stopLossTicks: updated.stopLossTicks,
+        selectedAsset: updated.selectedAsset,
+        pairsToWatch: updated.pairsToWatch,
+      };
+      serverData.tradePlan = apiTradePlan;
+      if (updated.notes) serverData.notes = updated.notes;
+      apiPut(`planner/${dateStr}`, { data: serverData }).catch(() => {});
+    });
   }, []);
 
   const est = getESTNow();

@@ -145,6 +145,29 @@ function setProgress(completed: Set<string>) {
   localStorage.setItem(PROGRESS_KEY, JSON.stringify([...completed]));
 }
 
+async function syncProgressFromApi(): Promise<Set<string> | null> {
+  try {
+    const res = await fetch("/api/academy/progress", { credentials: "include" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.lessonIds && Array.isArray(json.lessonIds)) {
+      return new Set(json.lessonIds as string[]);
+    }
+  } catch {}
+  return null;
+}
+
+async function saveProgressToApi(completed: Set<string>): Promise<void> {
+  try {
+    await fetch("/api/academy/progress", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ lessonIds: [...completed] }),
+    });
+  } catch {}
+}
+
 function getImageUrl(filename: string): string {
   const base = import.meta.env.BASE_URL;
   return `${base}images/${filename}`;
@@ -276,6 +299,7 @@ function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boole
     next.add(lesson.id);
     setCompleted(next);
     setProgress(next);
+    saveProgressToApi(next);
 
     const today = new Date().toDateString();
     const lastDate = getLastDate();
@@ -673,6 +697,17 @@ function LearnView() {
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
 
   useEffect(() => {
+    syncProgressFromApi().then((apiProgress) => {
+      if (apiProgress) {
+        const local = getProgress();
+        const merged = new Set([...local, ...apiProgress]);
+        setCompleted(merged);
+        setProgress(merged);
+        if (merged.size > apiProgress.size) {
+          saveProgressToApi(merged);
+        }
+      }
+    });
     const interval = setInterval(() => setCompleted(getProgress()), 500);
     return () => clearInterval(interval);
   }, []);
@@ -706,6 +741,7 @@ function LearnView() {
     else next.add(lessonId);
     setCompleted(next);
     setProgress(next);
+    saveProgressToApi(next);
   }
 
   if (swipeMode) {

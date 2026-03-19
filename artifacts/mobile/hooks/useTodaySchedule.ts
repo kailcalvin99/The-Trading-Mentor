@@ -45,6 +45,25 @@ export function useTodaySchedule(routineItemsChecked: Record<string, boolean>) {
         setRoutineTimes({ ...DEFAULT_ROUTINE_TIMES, ...JSON.parse(raw) });
       } catch {}
     }
+
+    try {
+      const { apiGet } = await import("@/lib/api");
+      const res = await apiGet<{ routineTimes?: Record<string, string> | null }>("user-settings");
+      if (res.routineTimes && typeof res.routineTimes === "object") {
+        const merged = { ...DEFAULT_ROUTINE_TIMES, ...res.routineTimes };
+        setRoutineTimes(merged);
+        AsyncStorage.setItem(ROUTINE_TIMES_KEY, JSON.stringify(merged));
+      } else if (raw) {
+        try {
+          const localTimes = JSON.parse(raw);
+          const hasCustom = Object.keys(localTimes).some((k) => localTimes[k] !== DEFAULT_ROUTINE_TIMES[k]);
+          if (hasCustom) {
+            const { apiPatch } = await import("@/lib/api");
+            apiPatch("user-settings", { section: "routineTimes", data: { times: localTimes } }).catch(() => {});
+          }
+        } catch {}
+      }
+    } catch {}
   }, []);
 
   const saveTime = useCallback((key: string, value: string) => {
@@ -56,6 +75,9 @@ export function useTodaySchedule(routineItemsChecked: Record<string, boolean>) {
     setRoutineTimes((prev) => {
       const updated = { ...prev, [key]: value.trim() };
       AsyncStorage.setItem(ROUTINE_TIMES_KEY, JSON.stringify(updated));
+      import("@/lib/api").then(({ apiPatch }) => {
+        apiPatch("user-settings", { section: "routineTimes", data: { times: updated } }).catch(() => {});
+      });
       return updated;
     });
   }, []);

@@ -19,6 +19,11 @@ export const usersTable = pgTable("users", {
   webhookToken: uuid("webhook_token").default(sql`gen_random_uuid()`),
   academyProgress: text("academy_progress"),
   avatarUrl: text("avatar_url"),
+  totalXp: integer("total_xp").notNull().default(0),
+  loginStreak: integer("login_streak").notNull().default(0),
+  lastLoginDate: text("last_login_date"),
+  routineTimes: text("routine_times"),
+  widgetPrefs: text("widget_prefs"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

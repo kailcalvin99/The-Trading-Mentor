@@ -25,6 +25,21 @@ router.get("/", authRequired, async (req, res) => {
       .where(getUserPropFilter(userId))
       .limit(1);
 
+    let academyProgress: string[] = [];
+    if (user.academyProgress) {
+      try { academyProgress = JSON.parse(user.academyProgress); } catch {}
+    }
+
+    let routineTimes: Record<string, string> | null = null;
+    if (user.routineTimes) {
+      try { routineTimes = JSON.parse(user.routineTimes); } catch {}
+    }
+
+    let widgetPrefs: Record<string, boolean> | null = null;
+    if (user.widgetPrefs) {
+      try { widgetPrefs = JSON.parse(user.widgetPrefs); } catch {}
+    }
+
     res.json({
       profile: {
         name: user.name,
@@ -40,6 +55,14 @@ router.get("/", authRequired, async (req, res) => {
         maxDailyLossPct: propAccount ? parseFloat(propAccount.maxDailyLossPct) : 2,
         maxTotalDrawdownPct: propAccount ? parseFloat(propAccount.maxTotalDrawdownPct) : 10,
       },
+      gamification: {
+        totalXp: user.totalXp ?? 0,
+        loginStreak: user.loginStreak ?? 0,
+        lastLoginDate: user.lastLoginDate || null,
+      },
+      academyProgress,
+      routineTimes,
+      widgetPrefs,
     });
   } catch (err) {
     console.error("Get user settings error:", err);
@@ -204,7 +227,78 @@ router.patch("/", authRequired, async (req, res) => {
       return;
     }
 
-    res.status(400).json({ error: "Invalid section. Use 'profile', 'tradingDefaults', 'riskRules', 'appMode', or 'avatar'" });
+    if (section === "gamification") {
+      const [currentUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+      if (!currentUser) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+      const updates: Record<string, number | string | null> = {};
+      const currentXp = currentUser.totalXp ?? 0;
+      const currentStreak = currentUser.loginStreak ?? 0;
+
+      if (data.totalXp !== undefined && typeof data.totalXp === "number") {
+        updates.totalXp = Math.max(currentXp, Math.max(0, data.totalXp));
+      }
+      if (data.loginStreak !== undefined && typeof data.loginStreak === "number") {
+        updates.loginStreak = Math.max(0, data.loginStreak);
+      }
+      if (data.lastLoginDate !== undefined) {
+        const dateStr = String(data.lastLoginDate || "");
+        if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          updates.lastLoginDate = dateStr;
+        } else if (dateStr) {
+          const parsed = new Date(dateStr);
+          if (!isNaN(parsed.getTime())) {
+            updates.lastLoginDate = parsed.toISOString().split("T")[0];
+          }
+        } else {
+          updates.lastLoginDate = null;
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
+      }
+      res.json({ success: true, message: "Gamification updated successfully" });
+      return;
+    }
+
+    if (section === "progress") {
+      const { completedLessonIds } = data;
+      if (!Array.isArray(completedLessonIds)) {
+        res.status(400).json({ error: "completedLessonIds must be an array" });
+        return;
+      }
+      const validated = completedLessonIds.filter(
+        (id: unknown): id is string => typeof id === "string" && (id as string).length > 0
+      );
+      await db.update(usersTable).set({ academyProgress: JSON.stringify(validated) }).where(eq(usersTable.id, userId));
+      res.json({ success: true, message: "Progress updated successfully" });
+      return;
+    }
+
+    if (section === "routineTimes") {
+      if (!data.times || typeof data.times !== "object") {
+        res.status(400).json({ error: "times object is required" });
+        return;
+      }
+      await db.update(usersTable).set({ routineTimes: JSON.stringify(data.times) }).where(eq(usersTable.id, userId));
+      res.json({ success: true, message: "Routine times updated successfully" });
+      return;
+    }
+
+    if (section === "widgetPrefs") {
+      if (!data.prefs || typeof data.prefs !== "object") {
+        res.status(400).json({ error: "prefs object is required" });
+        return;
+      }
+      await db.update(usersTable).set({ widgetPrefs: JSON.stringify(data.prefs) }).where(eq(usersTable.id, userId));
+      res.json({ success: true, message: "Widget preferences updated successfully" });
+      return;
+    }
+
+    res.status(400).json({ error: "Invalid section. Use 'profile', 'tradingDefaults', 'riskRules', 'appMode', 'avatar', 'gamification', 'progress', 'routineTimes', or 'widgetPrefs'" });
   } catch (err) {
     console.error("Update user settings error:", err);
     res.status(500).json({ error: "Failed to update settings" });
