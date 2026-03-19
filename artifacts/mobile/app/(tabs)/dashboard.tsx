@@ -10,6 +10,7 @@ import {
   TextInput,
   Image,
   Switch,
+  Alert,
   PanResponder,
   Animated,
 } from "react-native";
@@ -34,6 +35,7 @@ import {
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
 import { registerAvatarPickerListener, unregisterAvatarPickerListener } from "@/lib/avatarPickerBus";
+import { useTodaySchedule, ROUTINE_ITEMS as SCHEDULE_ROUTINE_ITEMS, SESSION_SCHEDULE, parseTimeToMinutes } from "@/hooks/useTodaySchedule";
 
 const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; why: string }> = [
   { key: "water", label: "Drink water", icon: "water-outline", why: "Dehydration reduces focus and decision-making quality." },
@@ -48,6 +50,7 @@ const C = Colors.dark;
 
 const TRADE_PLAN_KEY = "daily_trade_plan_v1";
 const NOTES_KEY = "dashboard-notes";
+const CUSTOM_SCHEDULE_ITEMS_KEY = "custom_schedule_items_v1";
 const CHECKLIST_STORAGE_KEY = "ict-checklist-state";
 const CHECKLIST_TTL_MS = 4 * 60 * 60 * 1000;
 const QUICK_JOURNAL_KEY = "ict-quick-journal-notes";
@@ -138,148 +141,342 @@ function AIGreetingCard() {
   );
 }
 
-function KillZoneStrip() {
-  const router = useRouter();
+
+interface CustomScheduleItem {
+  id: string;
+  time: string;
+  label: string;
+  checked: boolean;
+}
+
+function TodayScheduleWidget() {
+  const { routineItems, toggleItem, hasRedNews, toggleRedNews } = usePlanner();
+  const { routineTimes, loadTimes, saveTime, sortedSchedule } = useTodaySchedule(routineItems);
+  const [editingTimeKey, setEditingTimeKey] = useState<string | null>(null);
+  const [editingTimeVal, setEditingTimeVal] = useState("");
+  const [customItems, setCustomItems] = useState<CustomScheduleItem[]>([]);
+  const [addingAfterIdx, setAddingAfterIdx] = useState<number | null>(null);
+  const [newTime, setNewTime] = useState("");
+  const [newLabel, setNewLabel] = useState("");
   const [, setTick] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollIndexRef = useRef(0);
-  const { data: apiTrades } = useListTrades();
-
-  const trades = (apiTrades || []) as Array<{
-    outcome?: string | null;
-    pnl?: string | number | null;
-    createdAt?: string | null;
-    isDraft?: boolean | null;
-  }>;
-
-  const today = new Date().toDateString();
-  const todayTrades = trades.filter((t) => {
-    if (t.isDraft) return false;
-    if (!t.createdAt) return false;
-    return new Date(t.createdAt).toDateString() === today;
-  });
-  const todayCompleted = todayTrades.filter((t) => t.outcome === "win" || t.outcome === "loss");
-  const todayWins = todayCompleted.filter((t) => t.outcome === "win").length;
-  const winRate = todayCompleted.length > 0 ? Math.round((todayWins / todayCompleted.length) * 100) : null;
-  const todayPnL = todayTrades.reduce((sum, t) => {
-    const v = parseFloat(String(t.pnl ?? "0"));
-    return sum + (isNaN(v) ? 0 : v);
-  }, 0);
-
-  const CARD_WIDTH = 111;
-  const totalCards = SESSIONS.length + 3;
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    const autoScrollId = setInterval(() => {
-      const next = (scrollIndexRef.current + 1) % totalCards;
-      scrollIndexRef.current = next;
-      scrollRef.current?.scrollTo({ x: next * CARD_WIDTH, animated: true });
-    }, 2500);
-    return () => clearInterval(autoScrollId);
-  }, [totalCards]);
+  useFocusEffect(
+    useCallback(() => {
+      loadTimes();
+      AsyncStorage.getItem(CUSTOM_SCHEDULE_ITEMS_KEY).then((raw) => {
+        if (raw) {
+          try { setCustomItems(JSON.parse(raw)); } catch {}
+        }
+      });
+    }, [loadTimes])
+  );
+
+  async function saveCustomItems(items: CustomScheduleItem[]) {
+    setCustomItems(items);
+    await AsyncStorage.setItem(CUSTOM_SCHEDULE_ITEMS_KEY, JSON.stringify(items));
+  }
+
+  function addCustomItem(afterIdx: number) {
+    const trimmedTime = newTime.trim();
+    const trimmedLabel = newLabel.trim();
+    if (!trimmedLabel) {
+      setAddingAfterIdx(null);
+      setNewTime("");
+      setNewLabel("");
+      return;
+    }
+    const newItem: CustomScheduleItem = {
+      id: `cs_${Date.now()}`,
+      time: trimmedTime || "12:00 PM",
+      label: trimmedLabel,
+      checked: false,
+    };
+    const updated = [...customItems, newItem];
+    saveCustomItems(updated);
+    setAddingAfterIdx(null);
+    setNewTime("");
+    setNewLabel("");
+  }
+
+  function toggleCustomItem(id: string) {
+    const updated = customItems.map((ci) => ci.id === id ? { ...ci, checked: !ci.checked } : ci);
+    saveCustomItems(updated);
+  }
+
+  function removeCustomItem(id: string) {
+    saveCustomItems(customItems.filter((ci) => ci.id !== id));
+  }
+
+  const allItems = [
+    ...sortedSchedule.map((s, idx) => ({ ...s, _sortKey: s.mins, _srcType: "schedule" as const, _srcIdx: idx })),
+    ...customItems.map((ci) => ({
+      id: ci.id,
+      label: ci.label,
+      timeStr: ci.time,
+      mins: parseTimeToMinutes(ci.time),
+      checked: ci.checked,
+      type: "custom" as const,
+      color: "#818CF8",
+      icon: "star-outline" as React.ComponentProps<typeof Ionicons>["name"],
+      desc: "",
+      _sortKey: parseTimeToMinutes(ci.time),
+      _srcType: "custom" as const,
+      _srcIdx: 0,
+    })),
+  ].sort((a, b) => a._sortKey - b._sortKey);
 
   return (
-    <View>
-      <View style={styles.widgetHeaderRow}>
-        <Ionicons name="time-outline" size={14} color={C.accent} />
-        <Text style={styles.widgetHeaderLabel}>Kill Zones</Text>
-        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7}>
-          <Text style={styles.editLink}>Planner ↗</Text>
-        </TouchableOpacity>
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="calendar-outline" size={14} color={C.accent} />
+        <Text style={styles.cardLabel}>Today's Schedule</Text>
       </View>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.kzStrip}
-        contentContainerStyle={styles.kzStripContent}
-        scrollEventThrottle={16}
-        onScrollBeginDrag={() => {
-          scrollIndexRef.current = 0;
-        }}
-      >
-        {SESSIONS.map((session) => {
-          const estNow = getESTNow();
-          const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
-          const startMins = session.startH * 60 + session.startM;
-          const endMins = session.endH * 60 + session.endM;
-          const isLive = nowMins >= startMins && nowMins < endMins;
-          const isEnded = nowMins >= endMins;
 
+      {allItems.map((item, idx) => {
+        const isRoutine = item.type === "routine";
+        const isSession = item.type === "session";
+        const isCustom = item.type === "custom";
+
+        const routineItemDef = isRoutine ? SCHEDULE_ROUTINE_ITEMS.find((r) => r.key === item.id) : null;
+        const sessionDef = isSession ? SESSION_SCHEDULE.find((s) => s.name === item.id) : null;
+
+        const estNow = getESTNow();
+        const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
+        let isLive = false;
+        let isEnded = false;
+        let msUntil = 0;
+        if (isSession && sessionDef) {
+          const startMins = sessionDef.startH * 60 + sessionDef.startM;
+          const endMins = sessionDef.endH * 60 + sessionDef.endM;
+          isLive = nowMins >= startMins && nowMins < endMins;
+          isEnded = nowMins >= endMins;
           const target = new Date(estNow);
-          target.setHours(session.startH, session.startM, 0, 0);
+          target.setHours(sessionDef.startH, sessionDef.startM, 0, 0);
           if (!isLive && estNow >= target) target.setDate(target.getDate() + 1);
-          const msUntil = isLive ? 0 : target.getTime() - estNow.getTime();
-          const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
+          msUntil = isLive ? 0 : target.getTime() - estNow.getTime();
+        }
 
-          return (
-            <View
-              key={session.name}
-              style={[
-                styles.kzCard,
-                isLive && { borderColor: session.color, borderWidth: 1.5, shadowColor: session.color, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 },
-              ]}
-            >
-              <View style={styles.kzCardRow1}>
-                <View style={[styles.kzDot, { backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : C.cardBorder }]} />
-                <Text style={[styles.kzName, isLive && { color: session.color }]} numberOfLines={1}>{session.name}</Text>
-                {isLive ? (
-                  <View style={[styles.kzBadge, { backgroundColor: session.color + "30" }]}>
-                    <Text style={[styles.kzBadgeText, { color: session.color }]}>LIVE</Text>
-                  </View>
-                ) : isEnded ? (
-                  <Text style={styles.kzEnded}>Done</Text>
+        return (
+          <View key={item.id + idx}>
+            {idx > 0 && <View style={styles.divider} />}
+            <View style={styles.scheduleRow}>
+              <View style={styles.scheduleTimeCol}>
+                {(isRoutine || isCustom) && editingTimeKey === item.id ? (
+                  <TextInput
+                    style={styles.timeEditInput}
+                    value={editingTimeVal}
+                    onChangeText={setEditingTimeVal}
+                    onBlur={() => {
+                      if (editingTimeVal.trim()) {
+                        if (isRoutine) {
+                          saveTime(item.id, editingTimeVal.trim());
+                        } else {
+                          const updated = customItems.map((ci) => ci.id === item.id ? { ...ci, time: editingTimeVal.trim() } : ci);
+                          saveCustomItems(updated);
+                        }
+                      }
+                      setEditingTimeKey(null);
+                    }}
+                    autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={() => {
+                      if (editingTimeVal.trim()) {
+                        if (isRoutine) {
+                          saveTime(item.id, editingTimeVal.trim());
+                        } else {
+                          const updated = customItems.map((ci) => ci.id === item.id ? { ...ci, time: editingTimeVal.trim() } : ci);
+                          saveCustomItems(updated);
+                        }
+                      }
+                      setEditingTimeKey(null);
+                    }}
+                  />
                 ) : (
-                  <Text style={[styles.kzCountdown, isNear && { color: "#F59E0B" }]}>{formatCountdown(msUntil)}</Text>
+                  <TouchableOpacity
+                    onPress={(isRoutine || isCustom) ? () => { setEditingTimeKey(item.id); setEditingTimeVal(item.timeStr); } : undefined}
+                    activeOpacity={(isRoutine || isCustom) ? 0.7 : 1}
+                  >
+                    <Text style={styles.scheduleTime}>{isSession ? item.timeStr.replace(/ EST.*/, "") : item.timeStr}</Text>
+                  </TouchableOpacity>
                 )}
+                <View style={[styles.timelineDot, { backgroundColor: isLive ? item.color : item.checked ? C.accent : C.cardBorder }]} />
+                {idx < allItems.length - 1 && <View style={styles.timelineLine} />}
               </View>
-              <Text style={styles.kzSub} numberOfLines={1}>{session.subtitle}</Text>
+
+              {isRoutine && routineItemDef && (
+                <TouchableOpacity
+                  style={styles.scheduleContent}
+                  onPress={() => {
+                    toggleItem(routineItemDef.key);
+                    if (routineItemDef.key === "news" && !routineItems.news) {
+                      setTimeout(() => {
+                        Alert.alert(
+                          "Red Folder News?",
+                          "Are there any high-impact Red folder events today?",
+                          [
+                            { text: "No Red News", style: "cancel" },
+                            { text: "Yes — Red Active", style: "destructive", onPress: () => { if (!hasRedNews) toggleRedNews(); } },
+                          ]
+                        );
+                      }, 300);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                    <View style={[styles.scheduleCheckbox, item.checked && { backgroundColor: C.accent, borderColor: C.accent }]}>
+                      {item.checked && <Ionicons name="checkmark" size={11} color="#0A0A0F" />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.scheduleLabel, item.checked && styles.scheduleLabelDone]}>{item.label}</Text>
+                      <Text style={styles.scheduleDesc}>{item.desc}</Text>
+                    </View>
+                    <Ionicons name={routineItemDef.icon} size={16} color={item.checked ? C.accent : C.textSecondary} />
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {isSession && sessionDef && (
+                <View style={[styles.sessionBlock, { borderColor: item.color + "44", backgroundColor: item.color + "0A" }]}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name={sessionDef.icon} size={14} color={item.color} />
+                    <Text style={[styles.sessionBlockName, { color: item.color }]}>{item.label}</Text>
+                    {isLive && (
+                      <View style={[styles.liveTag, { backgroundColor: item.color }]}>
+                        <Text style={styles.liveTagText}>LIVE</Text>
+                      </View>
+                    )}
+                    {isEnded && <Text style={styles.endedTag}>ENDED</Text>}
+                  </View>
+                  <Text style={styles.sessionBlockSub}>{sessionDef.subtitle}</Text>
+                  {!isLive && !isEnded && (
+                    <Text style={[styles.sessionCountdown, { color: item.color }]}>{formatCountdown(msUntil)}</Text>
+                  )}
+                </View>
+              )}
+
+              {isCustom && (
+                <View style={[styles.scheduleContent, { flexDirection: "row", alignItems: "center", gap: 8 }]}>
+                  <TouchableOpacity
+                    onPress={() => toggleCustomItem(item.id)}
+                    activeOpacity={0.7}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}
+                  >
+                    <View style={[styles.scheduleCheckbox, item.checked && { backgroundColor: C.accent, borderColor: C.accent }]}>
+                      {item.checked && <Ionicons name="checkmark" size={11} color="#0A0A0F" />}
+                    </View>
+                    <Text style={[styles.scheduleLabel, item.checked && styles.scheduleLabelDone]} numberOfLines={1}>{item.label}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => removeCustomItem(item.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="trash-outline" size={15} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-          );
-        })}
 
-        {/* Stats pills */}
-        <View style={[styles.kzCard, styles.kzStatCard]}>
-          <View style={styles.kzCardRow1}>
-            <Ionicons name="stats-chart" size={10} color={C.accent} />
-            <Text style={styles.kzStatLabel}>P&L</Text>
-          </View>
-          <Text style={[styles.kzStatValue, {
-            color: todayTrades.length > 0
-              ? todayPnL > 0 ? "#00C896" : todayPnL < 0 ? "#EF4444" : C.textSecondary
-              : C.textSecondary,
-          }]}>
-            {todayTrades.length > 0 ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—"}
-          </Text>
-        </View>
+            {isRoutine && routineItemDef?.key === "news" && routineItems.news && (
+              <View style={styles.redNewsToggle}>
+                <Ionicons name="alert-circle-outline" size={16} color="#FF9999" />
+                <Text style={styles.redNewsLabel}>Red folder news today?</Text>
+                <Switch
+                  value={hasRedNews}
+                  onValueChange={toggleRedNews}
+                  trackColor={{ false: C.cardBorder, true: "rgba(255,68,68,0.5)" }}
+                  thumbColor={hasRedNews ? "#FF4444" : C.textSecondary}
+                  style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
+                />
+              </View>
+            )}
 
-        <View style={[styles.kzCard, styles.kzStatCard]}>
-          <View style={styles.kzCardRow1}>
-            <Ionicons name="trophy" size={10} color="#F59E0B" />
-            <Text style={styles.kzStatLabel}>Win Rate</Text>
+            {/* "+" add button after this row */}
+            {addingAfterIdx === idx ? (
+              <View style={styles.addScheduleInlineRow}>
+                <TextInput
+                  style={styles.addScheduleTimeInput}
+                  placeholder="Time (e.g. 9:00 AM)"
+                  placeholderTextColor={C.textTertiary}
+                  value={newTime}
+                  onChangeText={setNewTime}
+                />
+                <TextInput
+                  style={styles.addScheduleLabelInput}
+                  placeholder="Label"
+                  placeholderTextColor={C.textTertiary}
+                  value={newLabel}
+                  onChangeText={setNewLabel}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={() => addCustomItem(idx)}
+                />
+                <TouchableOpacity onPress={() => addCustomItem(idx)} style={styles.addScheduleConfirmBtn}>
+                  <Ionicons name="checkmark" size={16} color="#0A0A0F" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { setAddingAfterIdx(null); setNewTime(""); setNewLabel(""); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close" size={16} color={C.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.addScheduleBtn}
+                onPress={() => { setAddingAfterIdx(idx); setNewTime(""); setNewLabel(""); }}
+                activeOpacity={0.6}
+              >
+                <View style={styles.addScheduleBtnInner}>
+                  <View style={styles.addScheduleLine} />
+                  <Ionicons name="add-circle-outline" size={14} color={C.textTertiary} />
+                  <View style={styles.addScheduleLine} />
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
-          <Text style={[styles.kzStatValue, {
-            color: winRate !== null ? (winRate >= 50 ? "#00C896" : "#F59E0B") : C.textSecondary,
-          }]}>
-            {winRate !== null ? `${winRate}%` : "—"}
-          </Text>
-        </View>
+        );
+      })}
 
-        <View style={[styles.kzCard, styles.kzStatCard]}>
-          <View style={styles.kzCardRow1}>
-            <Ionicons name="swap-horizontal" size={10} color="#818CF8" />
-            <Text style={styles.kzStatLabel}>Trades</Text>
-          </View>
-          <Text style={[styles.kzStatValue, { color: C.text }]}>
-            {todayCompleted.length > 0 ? String(todayCompleted.length) : "—"}
-          </Text>
+      {/* Final + button if no items or at end */}
+      {addingAfterIdx === allItems.length ? (
+        <View style={styles.addScheduleInlineRow}>
+          <TextInput
+            style={styles.addScheduleTimeInput}
+            placeholder="Time (e.g. 9:00 AM)"
+            placeholderTextColor={C.textTertiary}
+            value={newTime}
+            onChangeText={setNewTime}
+          />
+          <TextInput
+            style={styles.addScheduleLabelInput}
+            placeholder="Label"
+            placeholderTextColor={C.textTertiary}
+            value={newLabel}
+            onChangeText={setNewLabel}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={() => addCustomItem(allItems.length)}
+          />
+          <TouchableOpacity onPress={() => addCustomItem(allItems.length)} style={styles.addScheduleConfirmBtn}>
+            <Ionicons name="checkmark" size={16} color="#0A0A0F" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { setAddingAfterIdx(null); setNewTime(""); setNewLabel(""); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close" size={16} color={C.textSecondary} />
+          </TouchableOpacity>
         </View>
-      </ScrollView>
+      ) : (
+        <TouchableOpacity
+          style={[styles.addScheduleBtn, { paddingBottom: 10 }]}
+          onPress={() => { setAddingAfterIdx(allItems.length); setNewTime(""); setNewLabel(""); }}
+          activeOpacity={0.6}
+        >
+          <View style={styles.addScheduleBtnInner}>
+            <View style={styles.addScheduleLine} />
+            <Ionicons name="add-circle-outline" size={14} color={C.textTertiary} />
+            <View style={styles.addScheduleLine} />
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -367,7 +564,7 @@ function MorningRoutineWidget({ showWhy = false }: { showWhy?: boolean }) {
             <Text style={styles.doneBadgeText}>Done ✓</Text>
           </View>
         )}
-        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
           <Text style={styles.editLink}>Planner ↗</Text>
         </TouchableOpacity>
       </View>
@@ -452,7 +649,7 @@ function TradePlanWidget() {
       <View style={styles.cardHeaderRow}>
         <Ionicons name="document-text-outline" size={15} color={C.accent} />
         <Text style={styles.cardLabel}>Today's Trade Plan</Text>
-        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
           <Text style={styles.editLink}>Edit ↗</Text>
         </TouchableOpacity>
       </View>
@@ -500,7 +697,7 @@ function TradePlanWidget() {
                 ))}
               </View>
             ) : (
-              <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7}>
+              <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)" })} activeOpacity={0.7}>
                 <Text style={[styles.planDetailText, { color: C.accent }]}>Add key levels in Planner →</Text>
               </TouchableOpacity>
             )}
@@ -685,7 +882,7 @@ function PreTradeChecklistWidget() {
             {doneCount}/{PRE_TRADE_ITEMS.length}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/index" })} activeOpacity={0.7} style={{ marginLeft: 4 }}>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)" })} activeOpacity={0.7} style={{ marginLeft: 4 }}>
           <Text style={styles.editLink}>Planner ↗</Text>
         </TouchableOpacity>
       </View>
@@ -1709,13 +1906,6 @@ export default function DashboardScreen() {
         </View>
       </Modal>
 
-      {/* Kill Zone Strip — toggleable via customize, pinned at top */}
-      {prefs.killZone && (
-        <View style={styles.kzStripWrapper}>
-          <KillZoneStrip />
-        </View>
-      )}
-
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         {/* AI Morning Briefing — shows once per day, auto-dismisses after 15s */}
         <MorningBriefingWidget
@@ -1737,6 +1927,9 @@ export default function DashboardScreen() {
           <>
             {/* Full Mode Dashboard */}
             <NextWatchCard />
+
+            {/* Today's Schedule */}
+            {prefs.todaySchedule && <TodayScheduleWidget />}
 
             {/* Morning Routine */}
             {prefs.morningRoutine && <MorningRoutineWidget />}
@@ -1763,36 +1956,34 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 16 },
 
-  kzStripWrapper: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: C.cardBorder,
-  },
-  kzStrip: { height: 44 },
-  kzStripContent: { gap: 6, paddingRight: 6, alignItems: "center" },
-  kzCard: {
-    backgroundColor: C.backgroundSecondary,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minWidth: 105,
-    justifyContent: "center",
-    gap: 1,
-  },
-  kzCardRow1: { flexDirection: "row", alignItems: "center", gap: 4 },
-  kzSub: { fontSize: 8, color: C.textSecondary, fontFamily: "Inter_400Regular", marginLeft: 10 },
-  kzDot: { width: 6, height: 6, borderRadius: 3 },
-  kzName: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.text },
-  kzBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1, marginLeft: "auto" },
-  kzBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold" },
-  kzEnded: { fontSize: 9, color: C.textSecondary, marginLeft: "auto" },
-  kzCountdown: { fontSize: 9, fontFamily: "Inter_700Bold", color: C.text, marginLeft: "auto" },
-  kzStatCard: { minWidth: 105, gap: 2 },
-  kzStatLabel: { fontSize: 8, color: C.textSecondary, fontFamily: "Inter_500Medium", marginLeft: 3 },
-  kzStatValue: { fontSize: 13, fontFamily: "Inter_700Bold", marginLeft: 2 },
+  scheduleRow: { flexDirection: "row", alignItems: "flex-start", paddingLeft: 14, paddingRight: 14, paddingVertical: 10 },
+  scheduleTimeCol: { width: 70, alignItems: "flex-end", paddingRight: 14, position: "relative" },
+  scheduleTime: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textAlign: "right", marginBottom: 4 },
+  timeEditInput: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.accent, textAlign: "right", borderBottomWidth: 1, borderBottomColor: C.accent, paddingVertical: 0, minWidth: 60 },
+  timelineDot: { width: 8, height: 8, borderRadius: 4, alignSelf: "flex-end", marginBottom: 0 },
+  timelineLine: { position: "absolute", bottom: -20, right: 17, width: 2, height: 20, backgroundColor: C.cardBorder },
+  scheduleContent: { flex: 1, paddingLeft: 12 },
+  scheduleCheckbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
+  scheduleLabel: { fontSize: 14, fontFamily: "Inter_500Medium", color: C.text },
+  scheduleLabelDone: { color: C.textSecondary, textDecorationLine: "line-through" as const },
+  scheduleDesc: { fontSize: 11, color: C.textSecondary, marginTop: 1 },
+  sessionBlock: { flex: 1, paddingLeft: 12, borderLeftWidth: 2, paddingVertical: 6, borderRadius: 4 },
+  sessionBlockName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  sessionBlockSub: { fontSize: 11, color: C.textSecondary, marginTop: 1 },
+  sessionCountdown: { fontSize: 12, fontFamily: "Inter_700Bold", marginTop: 4 },
+  liveTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  liveTagText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+  endedTag: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  redNewsToggle: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingBottom: 12, paddingLeft: 96 },
+  redNewsLabel: { flex: 1, fontSize: 13, color: "#FF9999" },
+  addScheduleBtn: { paddingHorizontal: 14, paddingTop: 2 },
+  addScheduleBtnInner: { flexDirection: "row", alignItems: "center", gap: 8 },
+  addScheduleLine: { flex: 1, height: 1, backgroundColor: C.cardBorder + "60" },
+  addScheduleInlineRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: C.backgroundTertiary },
+  addScheduleTimeInput: { width: 100, fontSize: 11, color: C.text, fontFamily: "Inter_500Medium", borderBottomWidth: 1, borderBottomColor: C.cardBorder, paddingVertical: 4 },
+  addScheduleLabelInput: { flex: 1, fontSize: 13, color: C.text, fontFamily: "Inter_500Medium", borderBottomWidth: 1, borderBottomColor: C.cardBorder, paddingVertical: 4 },
+  addScheduleConfirmBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.accent, alignItems: "center", justifyContent: "center" },
+  divider: { height: 1, backgroundColor: C.cardBorder },
 
   widgetHeaderRow: {
     flexDirection: "row",

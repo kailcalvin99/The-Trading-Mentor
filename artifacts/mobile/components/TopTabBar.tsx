@@ -267,19 +267,6 @@ export default function TopTabBar({
         </Text>
 
         <View style={styles.rightRow}>
-          <View style={styles.toggleRow}>
-            <Text style={[styles.toggleLabel, { color: appMode === "lite" ? C.accent : C.textSecondary }]}>
-              Learning
-            </Text>
-            <Switch
-              value={appMode === "lite"}
-              onValueChange={(val) => setAppMode(val ? "lite" : "full")}
-              trackColor={{ false: "#3A3A55", true: "#00C896" + "60" }}
-              thumbColor={appMode === "lite" ? "#00C896" : "#55556A"}
-              ios_backgroundColor="#3A3A55"
-              style={styles.switch}
-            />
-          </View>
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => setProfileOpen(true)}
@@ -366,6 +353,23 @@ export default function TopTabBar({
             </TouchableOpacity>
           );
         })}
+
+        {/* Learning Mode divider + toggle */}
+        <View style={[styles.menuDivider, { backgroundColor: C.cardBorder }]} />
+        <View style={styles.learningToggleRow}>
+          <View style={[styles.menuIconBox, { backgroundColor: appMode === "lite" ? C.accent + "20" : C.backgroundTertiary }]}>
+            <Ionicons name="school-outline" size={20} color={appMode === "lite" ? C.accent : C.textSecondary} />
+          </View>
+          <Text style={[styles.menuLabel, { color: appMode === "lite" ? C.accent : C.text, flex: 1 }]}>Learning Mode</Text>
+          <Switch
+            value={appMode === "lite"}
+            onValueChange={(val) => setAppMode(val ? "lite" : "full")}
+            trackColor={{ false: "#3A3A55", true: C.accent + "60" }}
+            thumbColor={appMode === "lite" ? C.accent : "#55556A"}
+            ios_backgroundColor="#3A3A55"
+            style={styles.switch}
+          />
+        </View>
       </BottomSheet>
 
       <BottomSheet visible={profileOpen} onClose={() => setProfileOpen(false)} C={C}>
@@ -625,5 +629,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: "Inter_700Bold",
     color: "#EF4444",
+  },
+  menuDivider: {
+    height: 1,
+    marginVertical: 8,
+  },
+  learningToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 4,
   },
 });

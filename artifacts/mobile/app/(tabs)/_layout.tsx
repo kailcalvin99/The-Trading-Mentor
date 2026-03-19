@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import AIAssistant from "@/components/AIAssistant";
 import TopTabBar from "@/components/TopTabBar";
+import KillZoneStrip from "@/components/KillZoneStrip";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 
@@ -61,6 +62,7 @@ export default function TabLayout() {
         userName={user?.name ?? ""}
         communityBadge={communityBadge}
       />
+      <KillZoneStrip />
       <Tabs
         tabBar={() => null}
         screenOptions={{

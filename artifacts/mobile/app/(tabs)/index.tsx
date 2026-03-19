@@ -6,12 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Switch,
   TextInput,
   Platform,
 } from "react-native";
-import { File as FSFile, Paths as FSPaths } from "expo-file-system";
-import * as Sharing from "expo-sharing";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -23,14 +20,6 @@ import FullModeGate from "@/components/FullModeGate";
 const C = Colors.dark;
 
 const PLAN_KEY = "daily_trade_plan_v1";
-const ROUTINE_TIMES_KEY = "routine_times_v1";
-
-const DEFAULT_ROUTINE_TIMES: Record<string, string> = {
-  water: "7:00 AM",
-  breathing: "7:15 AM",
-  news: "7:30 AM",
-  bias: "8:00 AM",
-};
 
 type Bias = "bull" | "neutral" | "bear" | null;
 
@@ -71,53 +60,10 @@ const SESSIONS = [
   { key: "ny-open", name: "NY Open", time: "9:30–10 AM EST", color: "#00C896", icon: "trending-up-outline" as const },
 ];
 
-interface SessionFull {
-  name: string;
-  subtitle: string;
-  startH: number;
-  startM: number;
-  endH: number;
-  endM: number;
-  color: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}
-
-const SESSION_SCHEDULE: SessionFull[] = [
-  { name: "NY Open", subtitle: "9:30 AM EST — Main session opens", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896", icon: "trending-up" },
-  { name: "Silver Bullet", subtitle: "10:00–11:00 AM EST — Prime ICT window", startH: 10, startM: 0, endH: 11, endM: 0, color: "#F59E0B", icon: "flash" },
-  { name: "London Open", subtitle: "2:00–5:00 AM EST — European session", startH: 2, startM: 0, endH: 5, endM: 0, color: "#818CF8", icon: "globe" },
-];
-
-const ROUTINE_ITEMS = [
-  { key: "water" as const, label: "Water & Physical Reset", icon: "water-outline" as const, desc: "Hydrate, stretch, step outside 2 min" },
-  { key: "breathing" as const, label: "5-Min Box Breathing", icon: "body-outline" as const, desc: "Inhale 4s → Hold 4s → Exhale 4s → Hold 4s" },
-  { key: "news" as const, label: "Check for Big News Events", icon: "newspaper-outline" as const, desc: "Are there any big news events today?" },
-  { key: "bias" as const, label: "Check the Big Picture Chart", icon: "trending-up-outline" as const, desc: "HTF — Is the market going up or down today?" },
-];
-
 function getESTNow(): Date {
   const now = new Date();
   const utc = now.getTime() + now.getTimezoneOffset() * 60000;
   return new Date(utc + -5 * 3600000);
-}
-
-function formatCountdown(ms: number): string {
-  if (ms <= 0) return "LIVE NOW";
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
-}
-
-function parseTimeToMinutes(timeStr: string): number {
-  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if (!match) return 0;
-  let h = parseInt(match[1], 10);
-  const m = parseInt(match[2], 10);
-  const ampm = match[3].toUpperCase();
-  if (ampm === "PM" && h < 12) h += 12;
-  if (ampm === "AM" && h === 12) h = 0;
-  return h * 60 + m;
 }
 
 export default function PlannerScreenGated() {
@@ -135,9 +81,6 @@ function PlannerScreen() {
   } = usePlanner();
 
   const [plan, setPlan] = useState<TradePlan>({ ...DEFAULT_PLAN });
-  const [routineTimes, setRoutineTimes] = useState<Record<string, string>>({ ...DEFAULT_ROUTINE_TIMES });
-  const [editingTimeKey, setEditingTimeKey] = useState<string | null>(null);
-  const [editingTimeVal, setEditingTimeVal] = useState("");
   const [newLevelInput, setNewLevelInput] = useState("");
   const [newLevelType, setNewLevelType] = useState<"support" | "resistance">("support");
   const [newItemText, setNewItemText] = useState("");
@@ -150,15 +93,9 @@ function PlannerScreen() {
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem(PLAN_KEY),
-      AsyncStorage.getItem(ROUTINE_TIMES_KEY),
-    ]).then(([planVal, timesVal]) => {
+    AsyncStorage.getItem(PLAN_KEY).then((planVal) => {
       if (planVal) {
         try { setPlan(JSON.parse(planVal)); } catch {}
-      }
-      if (timesVal) {
-        try { setRoutineTimes({ ...DEFAULT_ROUTINE_TIMES, ...JSON.parse(timesVal) }); } catch {}
       }
     });
   }, []);
@@ -166,19 +103,6 @@ function PlannerScreen() {
   const savePlan = useCallback((updated: TradePlan) => {
     setPlan(updated);
     AsyncStorage.setItem(PLAN_KEY, JSON.stringify(updated));
-  }, []);
-
-  const saveTime = useCallback((key: string, value: string) => {
-    const valid = /^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(value.trim());
-    if (!valid) {
-      Alert.alert("Invalid Time", "Use format like 7:30 AM or 10:00 PM");
-      return;
-    }
-    setRoutineTimes((prev) => {
-      const updated = { ...prev, [key]: value.trim() };
-      AsyncStorage.setItem(ROUTINE_TIMES_KEY, JSON.stringify(updated));
-      return updated;
-    });
   }, []);
 
   const est = getESTNow();
@@ -205,96 +129,6 @@ function PlannerScreen() {
     savePlan({ ...plan, entryCriteria: { ...plan.entryCriteria, [key]: !plan.entryCriteria[key] } });
   }
 
-  async function exportToCalendar() {
-    const today = new Date();
-    const todayStr = today.toISOString().replace(/[-:]/g, "").split(".")[0].slice(0, 8);
-
-    const events: string[] = [];
-
-    ROUTINE_ITEMS.forEach((item) => {
-      const timeStr2 = routineTimes[item.key] || DEFAULT_ROUTINE_TIMES[item.key];
-      const mins = parseTimeToMinutes(timeStr2);
-      const h = Math.floor(mins / 60).toString().padStart(2, "0");
-      const m = (mins % 60).toString().padStart(2, "0");
-      const hEnd = Math.floor((mins + 15) / 60).toString().padStart(2, "0");
-      const mEnd = ((mins + 15) % 60).toString().padStart(2, "0");
-      events.push([
-        "BEGIN:VEVENT",
-        `DTSTART:${todayStr}T${h}${m}00`,
-        `DTEND:${todayStr}T${hEnd}${mEnd}00`,
-        `SUMMARY:${item.label}`,
-        `DESCRIPTION:${item.desc}`,
-        "END:VEVENT",
-      ].join("\r\n"));
-    });
-
-    SESSION_SCHEDULE.forEach((session) => {
-      const h = session.startH.toString().padStart(2, "0");
-      const m = session.startM.toString().padStart(2, "0");
-      const hEnd = session.endH.toString().padStart(2, "0");
-      const mEnd = session.endM.toString().padStart(2, "0");
-      events.push([
-        "BEGIN:VEVENT",
-        `DTSTART:${todayStr}T${String(parseInt(h) + 5).padStart(2, "0")}${m}00Z`,
-        `DTEND:${todayStr}T${String(parseInt(hEnd) + 5).padStart(2, "0")}${mEnd}00Z`,
-        `SUMMARY:📊 ${session.name}`,
-        `DESCRIPTION:${session.subtitle}`,
-        "END:VEVENT",
-      ].join("\r\n"));
-    });
-
-    const ics = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//ICT Trading Mentor//EN",
-      "CALSCALE:GREGORIAN",
-      ...events,
-      "END:VCALENDAR",
-    ].join("\r\n");
-
-    try {
-      const file = new FSFile(FSPaths.cache, "ict-routine.ics");
-      file.write(ics);
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(file.uri, {
-          mimeType: "text/calendar",
-          dialogTitle: "Add to Calendar",
-          UTI: "com.apple.ical.ics",
-        });
-      } else {
-        Alert.alert("Sharing Not Available", "Calendar export is not supported on this device.");
-      }
-    } catch {
-      Alert.alert("Export Failed", "Could not write the calendar file.");
-    }
-  }
-
-  const sortedSchedule = [
-    ...ROUTINE_ITEMS.map((item) => ({
-      id: item.key,
-      label: item.label,
-      timeStr: routineTimes[item.key] || DEFAULT_ROUTINE_TIMES[item.key],
-      mins: parseTimeToMinutes(routineTimes[item.key] || DEFAULT_ROUTINE_TIMES[item.key]),
-      checked: routineItems[item.key],
-      type: "routine" as const,
-      color: C.accent,
-      icon: item.icon,
-      desc: item.desc,
-    })),
-    ...SESSION_SCHEDULE.map((s) => ({
-      id: s.name,
-      label: s.name,
-      timeStr: s.subtitle.split(" — ")[0],
-      mins: s.startH * 60 + s.startM,
-      checked: false,
-      type: "session" as const,
-      color: s.color,
-      icon: s.icon,
-      desc: s.subtitle,
-    })),
-  ].sort((a, b) => a.mins - b.mins);
-
   const biasConfig = {
     bull: { label: "BULLISH", icon: "trending-up" as const, color: "#00C896", bg: "#00C89618" },
     neutral: { label: "NEUTRAL", icon: "remove" as const, color: "#F59E0B", bg: "#F59E0B18" },
@@ -312,15 +146,9 @@ function PlannerScreen() {
             <Text style={styles.title}>Daily Planner</Text>
             <Text style={styles.dateText}>{dateStr}</Text>
           </View>
-          <View style={{ alignItems: "flex-end", gap: 6 }}>
-            <View style={styles.clockBadge}>
-              <Text style={styles.clockText}>{timeStr}</Text>
-              <Text style={styles.clockSub}>EST</Text>
-            </View>
-            <TouchableOpacity style={styles.exportBtn} onPress={exportToCalendar}>
-              <Ionicons name="calendar-outline" size={13} color={C.accent} />
-              <Text style={styles.exportBtnText}>Export</Text>
-            </TouchableOpacity>
+          <View style={styles.clockBadge}>
+            <Text style={styles.clockText}>{timeStr}</Text>
+            <Text style={styles.clockSub}>EST</Text>
           </View>
         </View>
 
@@ -503,142 +331,6 @@ function PlannerScreen() {
           )}
         </View>
 
-        {/* ─── TODAY'S SCHEDULE (combined) ─── */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2, marginBottom: 10 }}>
-          <Text style={styles.sectionTitle}>Today's Schedule</Text>
-          <TouchableOpacity onPress={exportToCalendar} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Ionicons name="share-outline" size={13} color={C.textSecondary} />
-            <Text style={{ fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" }}>Export</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Red news toggle */}
-        <View style={styles.card}>
-          {sortedSchedule.map((item, idx) => {
-            if (item.type === "routine") {
-              const routineItem = ROUTINE_ITEMS.find((r) => r.key === item.id)!;
-              return (
-                <View key={item.id}>
-                  {idx > 0 && <View style={styles.divider} />}
-                  <View style={styles.scheduleRow}>
-                    <View style={styles.scheduleTimeCol}>
-                      {editingTimeKey === item.id ? (
-                        <TextInput
-                          style={styles.timeEditInput}
-                          value={editingTimeVal}
-                          onChangeText={setEditingTimeVal}
-                          onBlur={() => {
-                            if (editingTimeVal.trim()) saveTime(item.id, editingTimeVal.trim());
-                            setEditingTimeKey(null);
-                          }}
-                          autoFocus
-                          returnKeyType="done"
-                          onSubmitEditing={() => {
-                            if (editingTimeVal.trim()) saveTime(item.id, editingTimeVal.trim());
-                            setEditingTimeKey(null);
-                          }}
-                        />
-                      ) : (
-                        <TouchableOpacity onPress={() => { setEditingTimeKey(item.id); setEditingTimeVal(item.timeStr); }}>
-                          <Text style={styles.scheduleTime}>{item.timeStr}</Text>
-                        </TouchableOpacity>
-                      )}
-                      <View style={[styles.timelineDot, { backgroundColor: item.checked ? C.accent : C.cardBorder }]} />
-                      {idx < sortedSchedule.length - 1 && <View style={styles.timelineLine} />}
-                    </View>
-                    <TouchableOpacity
-                      style={styles.scheduleContent}
-                      onPress={() => {
-                        toggleItem(routineItem.key);
-                        if (routineItem.key === "news" && !routineItems.news) {
-                          setTimeout(() => {
-                            Alert.alert(
-                              "Red Folder News?",
-                              "Are there any high-impact Red folder events today?",
-                              [
-                                { text: "No Red News", style: "cancel" },
-                                { text: "Yes — Red Active", style: "destructive", onPress: () => { if (!hasRedNews) toggleRedNews(); } },
-                              ]
-                            );
-                          }, 300);
-                        }
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                        <View style={[styles.scheduleCheckbox, item.checked && { backgroundColor: C.accent, borderColor: C.accent }]}>
-                          {item.checked && <Ionicons name="checkmark" size={11} color="#0A0A0F" />}
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.scheduleLabel, item.checked && styles.scheduleLabelDone]}>{item.label}</Text>
-                          <Text style={styles.scheduleDesc}>{item.desc}</Text>
-                        </View>
-                        <Ionicons name={routineItem.icon} size={16} color={item.checked ? C.accent : C.textSecondary} />
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-
-                  {routineItem.key === "news" && routineItems.news && (
-                    <View style={styles.redNewsToggle}>
-                      <Ionicons name="alert-circle-outline" size={16} color="#FF9999" />
-                      <Text style={styles.redNewsLabel}>Red folder news today?</Text>
-                      <Switch
-                        value={hasRedNews}
-                        onValueChange={toggleRedNews}
-                        trackColor={{ false: C.cardBorder, true: "rgba(255,68,68,0.5)" }}
-                        thumbColor={hasRedNews ? "#FF4444" : C.textSecondary}
-                        style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
-                      />
-                    </View>
-                  )}
-                </View>
-              );
-            }
-
-            const session = SESSION_SCHEDULE.find((s) => s.name === item.id)!;
-            if (!session) return null;
-            const estNow = getESTNow();
-            const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
-            const startMins = session.startH * 60 + session.startM;
-            const endMins = session.endH * 60 + session.endM;
-            const isLive = nowMins >= startMins && nowMins < endMins;
-            const isEnded = nowMins >= endMins;
-            const target = new Date(estNow);
-            target.setHours(session.startH, session.startM, 0, 0);
-            if (!isLive && estNow >= target) target.setDate(target.getDate() + 1);
-            const msUntil = isLive ? 0 : target.getTime() - estNow.getTime();
-
-            return (
-              <View key={item.id}>
-                {idx > 0 && <View style={styles.divider} />}
-                <View style={styles.scheduleRow}>
-                  <View style={styles.scheduleTimeCol}>
-                    <Text style={styles.scheduleTime}>{item.timeStr.replace(/ EST.*/, "")}</Text>
-                    <View style={[styles.timelineDot, { backgroundColor: item.color }]} />
-                    {idx < sortedSchedule.length - 1 && <View style={styles.timelineLine} />}
-                  </View>
-                  <View style={[styles.sessionBlock, { borderColor: item.color + "44", backgroundColor: item.color + "0A" }]}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Ionicons name={session.icon} size={14} color={item.color} />
-                      <Text style={[styles.sessionBlockName, { color: item.color }]}>{item.label}</Text>
-                      {isLive && (
-                        <View style={[styles.liveTag, { backgroundColor: item.color }]}>
-                          <Text style={styles.liveTagText}>LIVE</Text>
-                        </View>
-                      )}
-                      {isEnded && <Text style={styles.endedTag}>ENDED</Text>}
-                    </View>
-                    <Text style={styles.sessionBlockSub}>{session.subtitle}</Text>
-                    {!isLive && !isEnded && (
-                      <Text style={[styles.sessionCountdown, { color: item.color }]}>{formatCountdown(msUntil)}</Text>
-                    )}
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
         {/* My Routine */}
         <Text style={styles.sectionTitle}>My Routine</Text>
         <View style={styles.card}>
@@ -755,8 +447,6 @@ const styles = StyleSheet.create({
   clockBadge: { backgroundColor: C.backgroundSecondary, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
   clockText: { fontSize: 13, fontFamily: "Inter_700Bold", color: C.accent },
   clockSub: { fontSize: 9, color: C.textSecondary, marginTop: 1 },
-  exportBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: C.accent + "15", borderRadius: 8, borderWidth: 1, borderColor: C.accent + "33" },
-  exportBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.accent },
   redAlert: { flexDirection: "row", alignItems: "flex-start", backgroundColor: "rgba(255,68,68,0.1)", borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "rgba(255,68,68,0.35)" },
   redAlertTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#FF4444", marginBottom: 3 },
   redAlertText: { fontSize: 13, color: "#FF9999", lineHeight: 18 },
@@ -803,28 +493,6 @@ const styles = StyleSheet.create({
   planReadiness: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, padding: 10, borderRadius: 10, borderWidth: 1 },
   planReadinessText: { fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1 },
 
-  scheduleRow: { flexDirection: "row", alignItems: "flex-start", paddingLeft: 14, paddingRight: 14, paddingVertical: 10 },
-  scheduleTimeCol: { width: 70, alignItems: "flex-end", paddingRight: 14, position: "relative" },
-  scheduleTime: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textAlign: "right", marginBottom: 4 },
-  timeEditInput: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.accent, textAlign: "right", borderBottomWidth: 1, borderBottomColor: C.accent, paddingVertical: 0, minWidth: 60 },
-  timelineDot: { width: 8, height: 8, borderRadius: 4, alignSelf: "flex-end", marginBottom: 0 },
-  timelineLine: { position: "absolute", bottom: -20, right: 17, width: 2, height: 20, backgroundColor: C.cardBorder },
-  scheduleContent: { flex: 1, paddingLeft: 12 },
-  scheduleCheckbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
-  scheduleLabel: { fontSize: 14, fontFamily: "Inter_500Medium", color: C.text },
-  scheduleLabelDone: { color: C.textSecondary, textDecorationLine: "line-through" },
-  scheduleDesc: { fontSize: 11, color: C.textSecondary, marginTop: 1 },
-
-  sessionBlock: { flex: 1, paddingLeft: 12, borderLeftWidth: 2, paddingVertical: 6, borderRadius: 4 },
-  sessionBlockName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  sessionBlockSub: { fontSize: 11, color: C.textSecondary, marginTop: 1 },
-  sessionCountdown: { fontSize: 12, fontFamily: "Inter_700Bold", marginTop: 4 },
-  liveTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  liveTagText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
-  endedTag: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
-
-  redNewsToggle: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingBottom: 12, paddingLeft: 96 },
-  redNewsLabel: { flex: 1, fontSize: 13, color: "#FF9999" },
   routineLabel: { fontSize: 15, fontFamily: "Inter_500Medium", color: C.text },
   routineLabelDone: { color: C.textSecondary, textDecorationLine: "line-through" },
   ruleRow: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: 14, paddingVertical: 10 },
