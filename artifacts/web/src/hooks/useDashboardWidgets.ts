@@ -9,9 +9,9 @@ export interface DashboardWidget {
 }
 
 export const DASHBOARD_WIDGETS: DashboardWidget[] = [
-  { id: "morningroutine", label: "Morning Routine", defaultOn: true },
+  { id: "mastermorning", label: "Master Morning Plan", defaultOn: true },
   { id: "checklist", label: "Pre-Trade Checklist", defaultOn: true },
-  { id: "todayschedule", label: "Today's Schedule", defaultOn: true },
+  { id: "tradingcalendar", label: "Trading Calendar", defaultOn: true },
   { id: "quickjournal", label: "Quick Journal Entry", defaultOn: true },
 ];
 

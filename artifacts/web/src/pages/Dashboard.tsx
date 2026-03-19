@@ -5,7 +5,9 @@ import {
   FileText, StickyNote, ClipboardCheck, CheckSquare, Square,
   Settings, X,
   CheckCircle2, Play, GraduationCap, Users, Lock,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
+import { useListTrades } from "@workspace/api-client-react";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
@@ -1121,6 +1123,462 @@ function TodayScheduleWidget() {
   );
 }
 
+function MasterMorningWidget() {
+  const navigate = useNavigate();
+  const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
+  const { sortedSchedule, saveTime } = useTodaySchedule(routineItems);
+  const [customItems, setCustomItems] = useState<CustomScheduleItem[]>(() => getCustomItems());
+  const [addingAfter, setAddingAfter] = useState<number | null>(null);
+  const [newTime, setNewTime] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
+  const [editingTimeVal, setEditingTimeVal] = useState("");
+
+  const doneCount = routineConfig.filter((item) => routineItems[item.key]).length;
+  const totalCount = routineConfig.length;
+  const pct = totalCount > 0 ? doneCount / totalCount : 0;
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - pct);
+
+  type RowItem = {
+    id: string;
+    time: string;
+    label: string;
+    icon?: string;
+    done: boolean;
+    isRoutine: boolean;
+    routineKey?: string;
+    customId?: string;
+  };
+
+  function rowTimeToMins(timeStr: string): number {
+    if (!timeStr) return Infinity;
+    const ampm = parseAmPmToH24(timeStr);
+    if (ampm) return ampm.h * 60 + ampm.m;
+    const hhmm = parseHhmm(timeStr);
+    if (hhmm) return hhmm.h * 60 + hhmm.m;
+    return Infinity;
+  }
+
+  const allRows: RowItem[] = [
+    ...sortedSchedule.map((item): RowItem => ({
+      id: `routine_${item.id}`,
+      time: item.timeStr,
+      label: item.label,
+      icon: item.icon,
+      done: item.checked,
+      isRoutine: true,
+      routineKey: item.id,
+    })),
+    ...customItems.map((c): RowItem => ({
+      id: c.id,
+      time: c.time,
+      label: c.label,
+      done: c.done ?? false,
+      isRoutine: false,
+      customId: c.id,
+    })),
+  ].sort((a, b) => rowTimeToMins(a.time) - rowTimeToMins(b.time));
+
+  function addItem() {
+    if (!newLabel.trim()) return;
+    const id = `custom_${Date.now()}`;
+    const item: CustomScheduleItem = { id, time: newTime || "", label: newLabel.trim(), done: false };
+    const updated = [...customItems, item];
+    setCustomItems(updated);
+    saveCustomItems(updated);
+    setAddingAfter(null);
+    setNewTime("");
+    setNewLabel("");
+  }
+
+  function deleteItem(customId: string) {
+    const updated = customItems.filter((c) => c.id !== customId);
+    setCustomItems(updated);
+    saveCustomItems(updated);
+  }
+
+  function toggleCustomDone(customId: string) {
+    const updated = customItems.map((c) =>
+      c.id === customId ? { ...c, done: !c.done } : c
+    );
+    setCustomItems(updated);
+    saveCustomItems(updated);
+  }
+
+  function startEditRoutineTime(routineKey: string, currentTime: string) {
+    setEditingTimeId(`routine_${routineKey}`);
+    setEditingTimeVal(currentTime);
+  }
+
+  function saveRoutineTime(routineKey: string) {
+    saveTime(routineKey, editingTimeVal.trim());
+    setEditingTimeId(null);
+  }
+
+  function startEditCustomTime(customId: string, currentTime: string) {
+    setEditingTimeId(customId);
+    setEditingTimeVal(currentTime);
+  }
+
+  function saveCustomTime(customId: string) {
+    const updated = customItems.map((c) =>
+      c.id === customId ? { ...c, time: editingTimeVal.trim() } : c
+    );
+    setCustomItems(updated);
+    saveCustomItems(updated);
+    setEditingTimeId(null);
+  }
+
+  const allExportRows = allRows.map((r) => ({ time: r.time, label: r.label }));
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <WidgetHeader
+        icon={CheckCircle2}
+        title="☀️ Morning Master Plan"
+        editLink="/planner"
+        editLabel="Planner ↗"
+        badge={
+          isRoutineComplete ? (
+            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">All Done ✓</span>
+          ) : undefined
+        }
+      />
+
+      <div className="flex items-center gap-4 mb-4">
+        <div className="relative shrink-0">
+          <svg width="52" height="52" viewBox="0 0 52 52">
+            <circle cx="26" cy="26" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+            <circle
+              cx="26"
+              cy="26"
+              r={radius}
+              fill="none"
+              stroke={isRoutineComplete ? "#00C896" : "#818CF8"}
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              style={{ transform: "rotate(-90deg)", transformOrigin: "center", transition: "stroke-dashoffset 0.4s ease" }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-[11px] font-bold text-foreground">{doneCount}/{totalCount}</span>
+          </div>
+        </div>
+        <div className="flex-1 grid grid-cols-2 gap-x-3 gap-y-1.5">
+          {routineConfig.map((item) => {
+            const done = routineItems[item.key];
+            return (
+              <label
+                key={item.key}
+                className="flex items-center gap-2 cursor-pointer group"
+                onClick={(e) => { e.preventDefault(); toggleItem(item.key); }}
+              >
+                <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors border ${
+                  done ? "bg-primary border-primary" : "border-border group-hover:border-primary/50"
+                }`}>
+                  {done && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
+                </div>
+                <span className={`text-xs leading-tight ${done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                  {item.label}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 my-3">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider shrink-0">Today's Schedule</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
+      <div>
+        {allRows.map((row, idx) => (
+          <div key={row.id}>
+            <div className="flex items-center gap-2 py-1.5 group">
+              <div className="w-20 shrink-0">
+                {editingTimeId === row.id ? (
+                  <input
+                    type="text"
+                    value={editingTimeVal}
+                    onChange={(e) => setEditingTimeVal(e.target.value)}
+                    onBlur={() => {
+                      if (row.isRoutine && row.routineKey) saveRoutineTime(row.routineKey);
+                      else if (row.customId) saveCustomTime(row.customId);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        if (row.isRoutine && row.routineKey) saveRoutineTime(row.routineKey);
+                        else if (row.customId) saveCustomTime(row.customId);
+                      }
+                      if (e.key === "Escape") setEditingTimeId(null);
+                    }}
+                    placeholder="7:30 AM"
+                    autoFocus
+                    className="w-full bg-secondary border border-primary rounded px-1 py-0.5 text-[10px] text-foreground focus:outline-none"
+                  />
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (row.isRoutine && row.routineKey) startEditRoutineTime(row.routineKey, row.time);
+                      else if (row.customId) startEditCustomTime(row.customId, row.time);
+                    }}
+                    className="text-[10px] font-mono text-muted-foreground whitespace-nowrap leading-tight hover:text-primary cursor-pointer transition-colors"
+                  >
+                    {row.time || "—"}
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-col items-center self-stretch shrink-0" style={{ width: 14 }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0 mt-1" />
+                {idx < allRows.length - 1 && <div className="flex-1 w-px bg-border mt-0.5" />}
+              </div>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    if (row.isRoutine && row.routineKey) toggleItem(row.routineKey);
+                    else if (row.customId) toggleCustomDone(row.customId);
+                  }}
+                  className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
+                    row.done ? "bg-primary border-primary" : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  {row.done && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
+                </button>
+                {row.icon && (
+                  <span className="text-sm shrink-0 leading-none">{row.icon}</span>
+                )}
+                <span className={`text-xs leading-tight min-w-0 flex-1 ${row.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                  {row.label}
+                </span>
+                {!row.isRoutine && (
+                  <button
+                    onClick={() => row.customId && deleteItem(row.customId)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400 shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-center py-0.5 opacity-0 hover:opacity-100 transition-opacity">
+              {addingAfter === idx ? (
+                <div className="flex items-center gap-1.5 w-full pl-22">
+                  <input
+                    type="text"
+                    value={newTime}
+                    onChange={(e) => setNewTime(e.target.value)}
+                    placeholder="7:30 AM"
+                    className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <input
+                    type="text"
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") addItem(); if (e.key === "Escape") { setAddingAfter(null); setNewLabel(""); setNewTime(""); } }}
+                    placeholder="Label..."
+                    autoFocus
+                    className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-[10px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <button onClick={addItem} className="text-[10px] font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
+                  <button onClick={() => { setAddingAfter(null); setNewLabel(""); setNewTime(""); }} className="text-[10px] text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAddingAfter(idx)}
+                  className="text-[10px] text-muted-foreground hover:text-primary transition-colors px-2"
+                >
+                  +
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        <div className="flex justify-center py-0.5">
+          {addingAfter === allRows.length ? (
+            <div className="flex items-center gap-1.5 w-full pl-22">
+              <input
+                type="text"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                placeholder="7:30 AM"
+                className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <input
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addItem(); if (e.key === "Escape") { setAddingAfter(null); setNewLabel(""); setNewTime(""); } }}
+                placeholder="Label..."
+                autoFocus
+                className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-[10px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button onClick={addItem} className="text-[10px] font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
+              <button onClick={() => { setAddingAfter(null); setNewLabel(""); setNewTime(""); }} className="text-[10px] text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingAfter(allRows.length)}
+              className="text-[10px] text-muted-foreground hover:text-primary transition-colors px-2"
+            >
+              +
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="pt-3 mt-2 border-t border-border flex items-center justify-between">
+        <button
+          onClick={() => exportScheduleToIcs(allExportRows)}
+          className="text-[10px] text-primary hover:text-primary/80 font-medium transition-colors"
+        >
+          Export to Calendar (.ics) ↗
+        </button>
+        <button
+          onClick={() => navigate("/planner")}
+          className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Edit in Planner →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TradingCalendarWidget() {
+  const navigate = useNavigate();
+  const [viewMonth, setViewMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+
+  const { data: apiTrades } = useListTrades();
+  const trades = (apiTrades || []) as Array<{
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+  }>;
+
+  const dailyPnl: Record<string, number> = {};
+  trades.forEach((t) => {
+    if (t.isDraft || !t.createdAt) return;
+    const dateStr = new Date(t.createdAt).toISOString().split("T")[0];
+    const pnl = parseFloat(String(t.pnl ?? "0"));
+    if (!isNaN(pnl)) {
+      dailyPnl[dateStr] = (dailyPnl[dateStr] ?? 0) + pnl;
+    }
+  });
+
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+
+  const { year, month } = viewMonth;
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startDow = firstDay.getDay();
+
+  const monthName = firstDay.toLocaleString("en-US", { month: "long" });
+
+  const prevMonth = () => setViewMonth(({ year: y, month: m }) => {
+    if (m === 0) return { year: y - 1, month: 11 };
+    return { year: y, month: m - 1 };
+  });
+  const nextMonth = () => setViewMonth(({ year: y, month: m }) => {
+    if (m === 11) return { year: y + 1, month: 0 };
+    return { year: y, month: m + 1 };
+  });
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-base select-none">📅</span>
+        <h3 className="text-sm font-bold text-foreground flex-1">Trading Calendar</h3>
+        <button
+          onClick={prevMonth}
+          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="text-xs font-semibold text-foreground w-24 text-center">{monthName} {year}</span>
+        <button
+          onClick={nextMonth}
+          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 text-center mb-1">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+          <span key={d} className="text-[10px] text-muted-foreground font-medium">{d}</span>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          if (!day) return <div key={i} className="aspect-square" />;
+          const mm = String(month + 1).padStart(2, "0");
+          const dd = String(day).padStart(2, "0");
+          const dateStr = `${year}-${mm}-${dd}`;
+          const pnl = dailyPnl[dateStr];
+          const hasTrades = pnl !== undefined;
+          const isProfit = hasTrades && pnl > 0;
+          const isLoss = hasTrades && pnl <= 0;
+          const isToday = dateStr === todayStr;
+
+          return (
+            <button
+              key={i}
+              onClick={() => hasTrades ? navigate(`/journal?date=${dateStr}`) : undefined}
+              className={`aspect-square rounded-md text-[11px] font-semibold transition-all flex items-center justify-center ${
+                hasTrades ? "cursor-pointer hover:opacity-90" : "cursor-default"
+              } ${
+                isProfit
+                  ? "bg-primary/75 text-primary-foreground"
+                  : isLoss
+                    ? "bg-red-500/75 text-white"
+                    : "border border-border/40 text-muted-foreground/60"
+              } ${
+                isToday ? "ring-2 ring-primary ring-offset-1 ring-offset-card font-bold" : ""
+              }`}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-border">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-primary/75" />
+          <span className="text-[10px] text-muted-foreground">Profit day</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-red-500/75" />
+          <span className="text-[10px] text-muted-foreground">Loss day</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded border border-border" />
+          <span className="text-[10px] text-muted-foreground">No trades</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustomizeDrawer({
   open,
   onClose,
@@ -1181,7 +1639,7 @@ function CustomizeDrawer({
 }
 
 export default function Dashboard() {
-  const { tierLevel, appMode } = useAuth();
+  const { user, tierLevel, appMode } = useAuth();
   const isFreeUser = tierLevel === 0;
   const isLearningMode = appMode === "lite";
   const { prefs, toggle, isEnabled } = useDashboardWidgets();
@@ -1193,13 +1651,29 @@ export default function Dashboard() {
     }
   }, []);
 
+  const firstName = user?.name?.split(" ")[0] || "Trader";
+  const dayLabel = new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+
   if (isLearningMode) {
     return (
       <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-xs text-amber-500 font-medium mt-0.5">Learning Mode</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/20 border border-border flex items-center justify-center shrink-0 overflow-hidden">
+              {user?.avatarUrl ? (
+                user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
+                  <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-lg leading-none">{user.avatarUrl}</span>
+                )
+              ) : (
+                <span className="text-sm font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "T"}</span>
+              )}
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Hi, {firstName}! 👋</h1>
+              <p className="text-xs text-amber-500 font-medium mt-0.5">Learning Mode · {dayLabel}</p>
+            </div>
           </div>
         </div>
 
@@ -1226,7 +1700,23 @@ export default function Dashboard() {
       />
       <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/20 border border-border flex items-center justify-center shrink-0 overflow-hidden">
+              {user?.avatarUrl ? (
+                user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
+                  <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-lg leading-none">{user.avatarUrl}</span>
+                )
+              ) : (
+                <span className="text-sm font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "T"}</span>
+              )}
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Hi, {firstName}! 👋</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">{dayLabel}</p>
+            </div>
+          </div>
           <button
             onClick={() => setShowCustomize(true)}
             className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl px-3 py-2 transition-colors"
@@ -1239,14 +1729,12 @@ export default function Dashboard() {
         <div className="space-y-4">
           <NextWatchWidget />
           <MorningBriefingWidget />
-          <CompactGreetingRow />
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {isEnabled("morningroutine") && <MorningRoutineWidget />}
+            {isEnabled("mastermorning") && <MasterMorningWidget />}
             {isEnabled("checklist") && <PreTradeChecklistWidget />}
           </div>
 
-          {isEnabled("todayschedule") && <TodayScheduleWidget />}
+          {isEnabled("tradingcalendar") && <TradingCalendarWidget />}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {isEnabled("quickjournal") && <QuickJournalWidget />}

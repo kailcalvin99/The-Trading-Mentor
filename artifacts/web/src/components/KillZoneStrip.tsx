@@ -42,7 +42,7 @@ function formatESTTime(date: Date): string {
   return `${String(h).padStart(2, "0")}:${m}:${s} ${ampm}`;
 }
 
-const CARD_WIDTH = 180;
+const CARD_WIDTH = 200;
 
 export default function KillZoneStrip() {
   const [, setTick] = useState(0);
@@ -113,8 +113,8 @@ export default function KillZoneStrip() {
 
   return (
     <div
-      className="border-b border-border bg-sidebar shrink-0"
-      style={{ height: 48 }}
+      className="border-b border-border bg-card/80 shrink-0"
+      style={{ height: 64 }}
     >
       <div
         ref={scrollRef}
@@ -123,10 +123,10 @@ export default function KillZoneStrip() {
         style={{ scrollbarWidth: "none" }}
       >
         <div className={cardBase} style={{ minWidth: 160 }}>
-          <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+          <Clock className="h-4 w-4 text-primary shrink-0" />
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] font-bold text-muted-foreground leading-tight">EST</span>
-            <span className="text-xs font-mono font-bold text-foreground leading-tight whitespace-nowrap">
+            <span className="text-xs font-bold text-muted-foreground leading-tight">EST</span>
+            <span className="text-sm font-mono font-bold text-foreground leading-tight whitespace-nowrap">
               {formatESTTime(est)}
             </span>
           </div>
@@ -151,28 +151,28 @@ export default function KillZoneStrip() {
           return (
             <div
               key={session.name}
-              className={`flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border rounded-xl transition-all ${isLive ? "border-2" : "border-border"}`}
-              style={{ ...cardStyle, ...(isLive ? { borderColor: session.color, boxShadow: `0 0 8px ${session.color}25` } : {}) }}
+              className={`flex-shrink-0 flex items-center gap-2 px-4 h-full bg-card border rounded-xl transition-all ${isLive ? "border-2" : "border-border"}`}
+              style={{ ...cardStyle, ...(isLive ? { borderColor: session.color, boxShadow: `0 0 10px ${session.color}30` } : {}) }}
             >
               <div
-                className={`w-1.5 h-1.5 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
+                className={`w-2 h-2 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
                 style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
               />
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-foreground whitespace-nowrap leading-tight">{session.emoji} {session.name}</span>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight">{session.time}</span>
+                <span className="text-sm font-bold text-foreground whitespace-nowrap leading-tight">{session.emoji} {session.name}</span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap leading-tight">{session.time}</span>
               </div>
               {isLive ? (
                 <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-1"
+                  className="text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-1"
                   style={{ backgroundColor: `${session.color}20`, color: session.color }}
                 >
                   LIVE
                 </span>
               ) : isEnded ? (
-                <span className="text-[10px] text-muted-foreground font-medium shrink-0 ml-1">Ended</span>
+                <span className="text-xs text-muted-foreground font-medium shrink-0 ml-1">Ended</span>
               ) : (
-                <span className={`text-[10px] font-mono font-medium shrink-0 ml-1 ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
+                <span className={`text-xs font-mono font-medium shrink-0 ml-1 ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
                   {formatCountdown(msUntil)}
                 </span>
               )}
@@ -182,9 +182,9 @@ export default function KillZoneStrip() {
 
         <div className={cardBase} style={cardStyle}>
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Today's P&L</span>
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Today's P&L</span>
             <span
-              className="text-xs font-bold whitespace-nowrap leading-tight"
+              className="text-sm font-bold whitespace-nowrap leading-tight"
               style={{ color: hasTodayTrades ? pnlColor : undefined }}
             >
               {hasTodayTrades ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—"}
@@ -194,9 +194,9 @@ export default function KillZoneStrip() {
 
         <div className={cardBase} style={cardStyle}>
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Win Rate</span>
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Win Rate</span>
             <span
-              className="text-xs font-bold whitespace-nowrap leading-tight"
+              className="text-sm font-bold whitespace-nowrap leading-tight"
               style={{ color: todayWinRate !== null ? (todayWinRate >= 50 ? "#00C896" : "#F59E0B") : undefined }}
             >
               {todayWinRate !== null ? `${todayWinRate}%` : "—"}
@@ -206,8 +206,8 @@ export default function KillZoneStrip() {
 
         <div className={cardBase} style={cardStyle}>
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Trades</span>
-            <span className="text-xs font-bold text-foreground whitespace-nowrap leading-tight">
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Trades</span>
+            <span className="text-sm font-bold text-foreground whitespace-nowrap leading-tight">
               {todayCompleted.length > 0 ? String(todayCompleted.length) : "—"}
             </span>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, ChevronLeft, Video, Zap, Layers, Flame, Star } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, Video, Zap, Layers, Flame, Star, Menu } from "lucide-react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -52,7 +52,7 @@ function HeaderGamificationBadges() {
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
-const SIDEBAR_COLLAPSED_KEY = "ict-sidebar-collapsed";
+
 const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 const COMMUNITY_POLL_INTERVAL = 3 * 60 * 1000;
 
@@ -360,9 +360,7 @@ export default function Layout() {
   const [showShare, setShowShare] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
-    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
-  });
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [communityHasNew, setCommunityHasNew] = useState(false);
   const communityPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const navigate = useNavigate();
@@ -386,13 +384,7 @@ export default function Layout() {
 
   const isFreeUser = tierLevel === 0;
 
-  const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
-      return next;
-    });
-  }, []);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   useEffect(() => {
     if (isAdmin) return;
@@ -462,95 +454,112 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className={`hidden md:flex flex-col border-r border-sidebar-border bg-sidebar shrink-0 h-screen overflow-y-auto transition-all duration-300 ${sidebarCollapsed ? "w-16" : "w-56"}`}>
-        <button
-          onClick={toggleSidebar}
-          className={`flex items-center gap-2 h-12 border-b border-sidebar-border hover:bg-secondary/50 transition-colors w-full text-left relative ${sidebarCollapsed ? "justify-center px-2" : "justify-start px-3"}`}
-          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <Logo size={36} />
-          {!sidebarCollapsed && (
-            <span className="text-xs font-semibold text-sidebar-foreground truncate flex-1">
-              {config.app_name || "ICT AI Trading Mentor"}
-            </span>
-          )}
-          {!sidebarCollapsed && (
-            <span className="flex items-center justify-center w-5 h-5 rounded-full text-muted-foreground hover:text-foreground shrink-0">
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </span>
-          )}
-        </button>
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={closeDrawer}
+        />
+      )}
+      <div
+        className={`fixed left-0 top-0 h-full w-72 bg-sidebar border-r border-sidebar-border z-50 flex flex-col overflow-y-auto transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <div className="flex items-center gap-2 h-12 border-b border-sidebar-border px-3 shrink-0">
+          <Logo size={32} />
+          <span className="text-sm font-semibold text-sidebar-foreground truncate flex-1">
+            {config.app_name || "ICT AI Trading Mentor"}
+          </span>
+          <button
+            onClick={closeDrawer}
+            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         <nav className="flex flex-col gap-1 p-2 flex-1">
           {visibleNavItems.map((item) => (
-            <NavItem
+            <NavLink
               key={item.to}
-              {...item}
-              userTier={tierLevel}
-              onLockedClick={handleLockedClick}
-              collapsed={sidebarCollapsed}
-              badge={item.to === "/community" ? communityHasNew : undefined}
-            />
+              to={item.to}
+              end
+              onClick={closeDrawer}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`
+              }
+            >
+              <div className="relative shrink-0">
+                <item.icon className="h-5 w-5" />
+                {item.to === "/community" && communityHasNew && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border border-background" />
+                )}
+              </div>
+              <span>{item.label}</span>
+              {item.to === "/community" && communityHasNew && (
+                <span className="ml-auto w-2 h-2 rounded-full bg-red-500 shrink-0" />
+              )}
+            </NavLink>
           ))}
         </nav>
 
         <div className="p-2 border-t border-sidebar-border space-y-1">
-          <ModeSwitcher collapsed={sidebarCollapsed} appMode={appMode} setAppMode={setAppMode} />
+          <ModeSwitcher collapsed={false} appMode={appMode} setAppMode={setAppMode} />
 
           <Link
             to="/pricing"
-            title={sidebarCollapsed ? "Subscription" : undefined}
+            onClick={closeDrawer}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <CreditCard className="h-5 w-5 shrink-0" />
-            {!sidebarCollapsed && <span>Subscription</span>}
+            <span>Subscription</span>
           </Link>
 
           <Link
             to="/settings"
-            title={sidebarCollapsed ? "Settings" : undefined}
+            onClick={closeDrawer}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <Settings className="h-5 w-5 shrink-0" />
-            {!sidebarCollapsed && <span>Settings</span>}
+            <span>Settings</span>
           </Link>
 
           {isAdmin && (
             <Link
               to="/admin"
-              title={sidebarCollapsed ? "Admin" : undefined}
+              onClick={closeDrawer}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
               <Lock className="h-5 w-5 shrink-0" />
-              {!sidebarCollapsed && <span>Admin</span>}
+              <span>Admin</span>
             </Link>
           )}
 
           <Link
             to="/welcome"
-            title={sidebarCollapsed ? "Help & Tour" : undefined}
+            onClick={closeDrawer}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <HelpCircle className="h-5 w-5 shrink-0" />
-            {!sidebarCollapsed && <span>Help & Tour</span>}
+            <span>Help & Tour</span>
           </Link>
 
           <button
-            onClick={handleOpenShare}
-            title={sidebarCollapsed ? "Invite Friends" : undefined}
+            onClick={() => { handleOpenShare(); closeDrawer(); }}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full text-left"
           >
             <Share2 className="h-5 w-5 shrink-0" />
-            {!sidebarCollapsed && <span>Invite Friends</span>}
+            <span>Invite Friends</span>
           </button>
 
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              title={sidebarCollapsed ? (user?.name || "Account") : undefined}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors w-full text-left"
             >
-              <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden border border-border">
+              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden border border-border">
                 {user?.avatarUrl ? (
                   user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
                     <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
@@ -561,9 +570,9 @@ export default function Layout() {
                   <span className="text-xs font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "?"}</span>
                 )}
               </div>
-              {!sidebarCollapsed && <span className="truncate flex-1">{user?.name}</span>}
-              {!sidebarCollapsed && user?.isFounder && <Crown className="h-3 w-3 text-red-500" />}
-              {!sidebarCollapsed && <ChevronDown className="h-3 w-3" />}
+              <span className="truncate flex-1">{user?.name}</span>
+              {user?.isFounder && <Crown className="h-3 w-3 text-red-500" />}
+              <ChevronDown className="h-3 w-3" />
             </button>
 
             {showUserMenu && (
@@ -642,12 +651,25 @@ export default function Layout() {
             )}
           </div>
         </div>
-      </aside>
+      </div>
 
       <div className="flex flex-col flex-1 min-w-0">
-        <div className="hidden md:flex items-center gap-3 px-4 py-0.5 border-b border-border bg-sidebar shrink-0">
-          <AIAssistant />
-          <HeaderGamificationBadges />
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-sidebar shrink-0 h-12">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+            aria-label="Open navigation"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <Logo size={28} />
+          <span className="text-sm font-semibold text-foreground hidden sm:block truncate">
+            {config.app_name || "ICT AI Trading Mentor"}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <AIAssistant />
+            <HeaderGamificationBadges />
+          </div>
         </div>
 
         <KillZoneStrip />
@@ -665,10 +687,6 @@ export default function Layout() {
             )}
           </div>
         </main>
-
-        <div className="md:hidden">
-          <AIAssistant />
-        </div>
 
         <nav className="md:hidden flex items-center border-t border-border bg-sidebar shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           {visibleNavItems.map((item) => (
