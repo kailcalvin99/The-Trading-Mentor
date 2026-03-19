@@ -33,6 +33,7 @@ import {
 } from "@/constants/dashboardWidgets";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
+import { registerAvatarPickerListener, unregisterAvatarPickerListener } from "@/lib/avatarPickerBus";
 
 const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; why: string }> = [
   { key: "water", label: "Drink water", icon: "water-outline", why: "Dehydration reduces focus and decision-making quality." },
@@ -140,10 +141,47 @@ function AIGreetingCard() {
 function KillZoneStrip() {
   const router = useRouter();
   const [, setTick] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollIndexRef = useRef(0);
+  const { data: apiTrades } = useListTrades();
+
+  const trades = (apiTrades || []) as Array<{
+    outcome?: string | null;
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+  }>;
+
+  const today = new Date().toDateString();
+  const todayTrades = trades.filter((t) => {
+    if (t.isDraft) return false;
+    if (!t.createdAt) return false;
+    return new Date(t.createdAt).toDateString() === today;
+  });
+  const todayCompleted = todayTrades.filter((t) => t.outcome === "win" || t.outcome === "loss");
+  const todayWins = todayCompleted.filter((t) => t.outcome === "win").length;
+  const winRate = todayCompleted.length > 0 ? Math.round((todayWins / todayCompleted.length) * 100) : null;
+  const todayPnL = todayTrades.reduce((sum, t) => {
+    const v = parseFloat(String(t.pnl ?? "0"));
+    return sum + (isNaN(v) ? 0 : v);
+  }, 0);
+
+  const CARD_WIDTH = 111;
+  const totalCards = SESSIONS.length + 3;
+
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const autoScrollId = setInterval(() => {
+      const next = (scrollIndexRef.current + 1) % totalCards;
+      scrollIndexRef.current = next;
+      scrollRef.current?.scrollTo({ x: next * CARD_WIDTH, animated: true });
+    }, 2500);
+    return () => clearInterval(autoScrollId);
+  }, [totalCards]);
 
   return (
     <View>
@@ -154,7 +192,17 @@ function KillZoneStrip() {
           <Text style={styles.editLink}>Planner ↗</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.kzStrip} contentContainerStyle={styles.kzStripContent}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.kzStrip}
+        contentContainerStyle={styles.kzStripContent}
+        scrollEventThrottle={16}
+        onScrollBeginDrag={() => {
+          scrollIndexRef.current = 0;
+        }}
+      >
         {SESSIONS.map((session) => {
           const estNow = getESTNow();
           const nowMins = estNow.getHours() * 60 + estNow.getMinutes();
@@ -194,6 +242,43 @@ function KillZoneStrip() {
             </View>
           );
         })}
+
+        {/* Stats pills */}
+        <View style={[styles.kzCard, styles.kzStatCard]}>
+          <View style={styles.kzCardRow1}>
+            <Ionicons name="stats-chart" size={10} color={C.accent} />
+            <Text style={styles.kzStatLabel}>P&L</Text>
+          </View>
+          <Text style={[styles.kzStatValue, {
+            color: todayTrades.length > 0
+              ? todayPnL > 0 ? "#00C896" : todayPnL < 0 ? "#EF4444" : C.textSecondary
+              : C.textSecondary,
+          }]}>
+            {todayTrades.length > 0 ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—"}
+          </Text>
+        </View>
+
+        <View style={[styles.kzCard, styles.kzStatCard]}>
+          <View style={styles.kzCardRow1}>
+            <Ionicons name="trophy" size={10} color="#F59E0B" />
+            <Text style={styles.kzStatLabel}>Win Rate</Text>
+          </View>
+          <Text style={[styles.kzStatValue, {
+            color: winRate !== null ? (winRate >= 50 ? "#00C896" : "#F59E0B") : C.textSecondary,
+          }]}>
+            {winRate !== null ? `${winRate}%` : "—"}
+          </Text>
+        </View>
+
+        <View style={[styles.kzCard, styles.kzStatCard]}>
+          <View style={styles.kzCardRow1}>
+            <Ionicons name="swap-horizontal" size={10} color="#818CF8" />
+            <Text style={styles.kzStatLabel}>Trades</Text>
+          </View>
+          <Text style={[styles.kzStatValue, { color: C.text }]}>
+            {todayCompleted.length > 0 ? String(todayCompleted.length) : "—"}
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -1511,6 +1596,11 @@ export default function DashboardScreen() {
     }, [])
   );
 
+  useEffect(() => {
+    registerAvatarPickerListener(() => setShowAvatarPicker(true));
+    return () => unregisterAvatarPickerListener();
+  }, []);
+
   async function toggleWidget(key: keyof WidgetPrefs) {
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
@@ -1521,7 +1611,7 @@ export default function DashboardScreen() {
   const initials = user?.name?.charAt(0)?.toUpperCase() || "?";
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <AchievementsModal
         visible={showAchievements}
         onClose={() => setShowAchievements(false)}
@@ -1627,41 +1717,6 @@ export default function DashboardScreen() {
       )}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        {/* Compact Header — single slim row ~40px */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.avatarBtn} onPress={() => setShowAvatarPicker(true)} activeOpacity={0.7}>
-            {avatarUrl ? (
-              avatarUrl.startsWith("data:") || avatarUrl.startsWith("http") ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarBtnImage} />
-              ) : (
-                <Text style={styles.avatarBtnEmoji}>{avatarUrl}</Text>
-              )
-            ) : (
-              <Text style={styles.avatarBtnInitial}>{initials}</Text>
-            )}
-          </TouchableOpacity>
-
-          <Text style={styles.headerGreeting} numberOfLines={1}>Hi, {user?.name?.split(" ")[0] || "Trader"}</Text>
-
-          <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.headerBadge} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
-              <Ionicons name="star" size={13} color={C.accent} />
-              <Text style={styles.headerBadgeText}>Lv.{level}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.headerBadge} onPress={() => setShowAchievements(true)} activeOpacity={0.7}>
-              <Ionicons name="flame" size={13} color={streak >= 7 ? "#EF4444" : "#F59E0B"} />
-              <Text style={[styles.headerBadgeText, { color: streak >= 7 ? "#EF4444" : "#F59E0B" }]}>{streak}d</Text>
-            </TouchableOpacity>
-
-            {appMode !== "lite" && (
-              <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCustomize(true)} activeOpacity={0.7}>
-                <Ionicons name="settings-outline" size={16} color={C.textSecondary} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
         {/* AI Morning Briefing — shows once per day, auto-dismisses after 15s */}
         <MorningBriefingWidget
           firstName={firstName}
@@ -1683,23 +1738,14 @@ export default function DashboardScreen() {
             {/* Full Mode Dashboard */}
             <NextWatchCard />
 
-            {/* Stats Strip */}
-            {prefs.stats && <StatsStripWidget />}
-
             {/* Morning Routine */}
             {prefs.morningRoutine && <MorningRoutineWidget />}
 
             {/* Pre-Trade Checklist */}
             {prefs.preTradeChecklist && <PreTradeChecklistWidget />}
 
-            {/* Trade Plan */}
-            {prefs.tradePlan && <TradePlanWidget />}
-
             {/* Quick Journal */}
             {prefs.quickJournal && <QuickJournalWidget />}
-
-            {/* Swipe Mode Launcher */}
-            {prefs.swipeMode && <SwipeModeCard />}
 
             {/* Notes */}
             {prefs.notes && <NotesWidget />}
@@ -1744,6 +1790,9 @@ const styles = StyleSheet.create({
   kzBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold" },
   kzEnded: { fontSize: 9, color: C.textSecondary, marginLeft: "auto" },
   kzCountdown: { fontSize: 9, fontFamily: "Inter_700Bold", color: C.text, marginLeft: "auto" },
+  kzStatCard: { minWidth: 105, gap: 2 },
+  kzStatLabel: { fontSize: 8, color: C.textSecondary, fontFamily: "Inter_500Medium", marginLeft: 3 },
+  kzStatValue: { fontSize: 13, fontFamily: "Inter_700Bold", marginLeft: 2 },
 
   widgetHeaderRow: {
     flexDirection: "row",

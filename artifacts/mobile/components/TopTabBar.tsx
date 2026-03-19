@@ -3,6 +3,7 @@ import { Href, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -18,6 +19,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDailyGamification } from "@/components/DashboardGamification";
+import { emitOpenAvatarPicker } from "@/lib/avatarPickerBus";
 
 const TOUR_DONE_KEY = "mobile-onboarding-tour-done";
 
@@ -142,7 +145,9 @@ export default function TopTabBar({
 }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
   const { colors: C } = useTheme();
-  const { setAppMode } = useAuth();
+  const { setAppMode, user } = useAuth();
+  const { xp, streak } = useDailyGamification();
+  const level = Math.floor(xp / 100) + 1;
   const router = useRouter();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -158,6 +163,13 @@ export default function TopTabBar({
   );
 
   const activeLabel = activeRoute ? TAB_LABELS[activeRoute] : "ICT Mentor";
+  const isDashboard = normalizedPath === "/dashboard";
+
+  const firstName = user?.name?.split(" ")?.[0] || "Trader";
+  const avatarUrl = user?.avatarUrl;
+  const initials = userName
+    ? userName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
+    : "U";
 
   function navigate(href: Href) {
     setMenuOpen(false);
@@ -171,9 +183,117 @@ export default function TopTabBar({
     setTimeout(() => router.navigate("/"), 200);
   }
 
-  const initials = userName
-    ? userName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
-    : "U";
+  function renderDashboardBar() {
+    return (
+      <View style={styles.bar}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => setMenuOpen(true)}
+          accessibilityLabel="Open navigation menu"
+          accessibilityRole="button"
+        >
+          <Ionicons name="menu" size={24} color={C.text} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.dashAvatar, { backgroundColor: C.accent + "20", borderColor: C.accent + "40" }]}
+          onPress={emitOpenAvatarPicker}
+          accessibilityLabel="Change avatar"
+          accessibilityRole="button"
+          activeOpacity={0.7}
+        >
+          {avatarUrl ? (
+            avatarUrl.startsWith("data:") || avatarUrl.startsWith("http") ? (
+              <Image source={{ uri: avatarUrl }} style={styles.dashAvatarImage} />
+            ) : (
+              <Text style={styles.dashAvatarEmoji}>{avatarUrl}</Text>
+            )
+          ) : (
+            <Text style={[styles.dashAvatarInitial, { color: C.accent }]}>{initials}</Text>
+          )}
+        </TouchableOpacity>
+
+        <Text style={[styles.dashGreeting, { color: C.text }]} numberOfLines={1}>
+          Hi, {firstName}
+        </Text>
+
+        <View style={styles.rightRow}>
+          <View style={[styles.dashBadge, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}>
+            <Ionicons name="star" size={11} color={C.accent} />
+            <Text style={[styles.dashBadgeText, { color: C.accent }]}>Lv.{level}</Text>
+          </View>
+
+          <View style={[styles.dashBadge, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}>
+            <Ionicons name="flame" size={11} color={streak >= 7 ? "#EF4444" : "#F59E0B"} />
+            <Text style={[styles.dashBadgeText, { color: streak >= 7 ? "#EF4444" : "#F59E0B" }]}>{streak}d</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.navigate("/swipe-mode" as Href)}
+            accessibilityLabel="Swipe mode"
+            accessibilityRole="button"
+          >
+            <Ionicons name="albums-outline" size={20} color={C.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => setProfileOpen(true)}
+            accessibilityLabel="Open settings"
+            accessibilityRole="button"
+          >
+            <Ionicons name="settings-outline" size={20} color={C.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  function renderDefaultBar() {
+    return (
+      <View style={styles.bar}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => setMenuOpen(true)}
+          accessibilityLabel="Open navigation menu"
+          accessibilityRole="button"
+        >
+          <Ionicons name="menu" size={24} color={C.text} />
+        </TouchableOpacity>
+
+        <Text style={[styles.activeLabel, { color: C.text }]} numberOfLines={1}>
+          {activeLabel}
+        </Text>
+
+        <View style={styles.rightRow}>
+          <View style={styles.toggleRow}>
+            <Text style={[styles.toggleLabel, { color: appMode === "lite" ? C.accent : C.textSecondary }]}>
+              Learning
+            </Text>
+            <Switch
+              value={appMode === "lite"}
+              onValueChange={(val) => setAppMode(val ? "lite" : "full")}
+              trackColor={{ false: "#3A3A55", true: "#00C896" + "60" }}
+              thumbColor={appMode === "lite" ? "#00C896" : "#55556A"}
+              ios_backgroundColor="#3A3A55"
+              style={styles.switch}
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => setProfileOpen(true)}
+            accessibilityLabel="Open profile menu"
+            accessibilityRole="button"
+          >
+            <View style={[styles.avatar, { backgroundColor: C.accent + "25", borderColor: C.accent + "50" }]}>
+              <Text style={[styles.avatarText, { color: C.accent }]}>{initials}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -187,44 +307,7 @@ export default function TopTabBar({
           },
         ]}
       >
-        <View style={styles.bar}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => setMenuOpen(true)}
-            accessibilityLabel="Open navigation menu"
-            accessibilityRole="button"
-          >
-            <Ionicons name="menu" size={24} color={C.text} />
-          </TouchableOpacity>
-
-          <Text style={[styles.activeLabel, { color: C.text }]} numberOfLines={1}>
-            {activeLabel}
-          </Text>
-
-          <View style={styles.rightRow}>
-            <View style={styles.toggleRow}>
-              <Text style={[styles.toggleLabel, { color: appMode === "lite" ? C.accent : C.textSecondary }]}>
-                Learning
-              </Text>
-              <Switch
-                value={appMode === "lite"}
-                onValueChange={(val) => setAppMode(val ? "lite" : "full")}
-                trackColor={{ false: "#3A3A55", true: "#00C896" + "60" }}
-                thumbColor={appMode === "lite" ? "#00C896" : "#55556A"}
-                ios_backgroundColor="#3A3A55"
-                style={styles.switch}
-              />
-            </View>
-            <TouchableOpacity
-              style={[styles.avatar, { backgroundColor: C.accent + "25", borderColor: C.accent + "50" }]}
-              onPress={() => setProfileOpen(true)}
-              accessibilityLabel="Open profile menu"
-              accessibilityRole="button"
-            >
-              <Text style={[styles.avatarText, { color: C.accent }]}>{initials}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {isDashboard ? renderDashboardBar() : renderDefaultBar()}
       </View>
 
       <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} C={C}>
@@ -351,7 +434,7 @@ const styles = StyleSheet.create({
   rightRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 4,
   },
   toggleRow: {
     flexDirection: "row",
@@ -376,6 +459,48 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
+
+  dashAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  dashAvatarImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  dashAvatarEmoji: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  dashAvatarInitial: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  dashGreeting: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.1,
+  },
+  dashBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  dashBadgeText: {
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
   },
 
@@ -498,7 +623,7 @@ const styles = StyleSheet.create({
   },
   badgePillText: {
     fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
     color: "#EF4444",
   },
 });
