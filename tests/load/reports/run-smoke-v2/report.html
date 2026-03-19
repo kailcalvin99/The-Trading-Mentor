@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ICT Trading Mentor — Load Test Report (20260319_210146)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e0e0e0; padding: 2rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.25rem; color: #fff; }
+    .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.9rem; }
+    .summary { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .summary-card { background: #1a1d27; border-radius: 8px; padding: 1rem 1.5rem; min-width: 120px; }
+    .summary-card .value { font-size: 2rem; font-weight: bold; }
+    .summary-card .label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+    .value-pass { color: #4ade80; }
+    .value-fail { color: #f87171; }
+    .value-skip { color: #facc15; }
+    .value-overall-pass { color: #4ade80; }
+    .value-overall-fail { color: #f87171; }
+    table { width: 100%; border-collapse: collapse; background: #1a1d27; border-radius: 8px; overflow: hidden; }
+    th { background: #2d3149; text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: #aaa; letter-spacing: 0.05em; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid #2a2d3a; font-size: 0.9rem; }
+    tr.pass { background: rgba(74, 222, 128, 0.04); }
+    tr.fail { background: rgba(248, 113, 113, 0.06); }
+    tr.skip { background: rgba(250, 204, 21, 0.04); }
+    .breached { color: #f87171; font-weight: bold; }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+    .badge-pass { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+    .badge-fail { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+    .badge-skip { background: rgba(250, 204, 21, 0.15); color: #facc15; }
+    .thresholds { margin-top: 2rem; background: #1a1d27; border-radius: 8px; padding: 1.25rem; }
+    .thresholds h2 { font-size: 1rem; margin-bottom: 1rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; }
+    .threshold-list { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .threshold-item { background: #2d3149; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+    .threshold-item span { color: #60a5fa; font-weight: bold; }
+    .footer { margin-top: 2rem; text-align: center; color: #555; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>ICT Trading Mentor — Load Test Report</h1>
+  <div class="subtitle">Run: 20260319_210146 &nbsp;|&nbsp; Generated: Thu, 19 Mar 2026 21:05:42 GMT &nbsp;|&nbsp; Tool: k6 v0.57.0</div>
+
+  <div class="summary">
+    <div class="summary-card">
+      <div class="value value-overall-pass">ALL PASSED</div>
+      <div class="label">Overall Status</div>
+    </div>
+    <div class="summary-card">
+      <div class="value value-pass">6</div>
+      <div class="label">Passed</div>
+    </div>
+    <div class="summary-card">
+      <div class="value value-fail">0</div>
+      <div class="label">Failed</div>
+    </div>
+    <div class="summary-card">
+      <div class="value value-skip">0</div>
+      <div class="label">Skipped</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Scenario</th>
+        <th>Requests</th>
+        <th>Req/s</th>
+        <th>Avg</th>
+        <th>p50</th>
+        <th>p95</th>
+        <th>p99</th>
+        <th>Error %</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+      <tr class="pass">
+        <td>Auth Flow (signup → login → token re-issue)</td>
+        <td>80</td>
+        <td>3.0 req/s</td>
+        <td>502.5 ms</td>
+        <td>1.3 ms</td>
+        <td class="">1588.0 ms</td>
+        <td>1597.9 ms</td>
+        <td class="breached">50.00% ⚠</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr class="pass">
+        <td>Dashboard & Planner Soak</td>
+        <td>275</td>
+        <td>10.2 req/s</td>
+        <td>13.8 ms</td>
+        <td>1.1 ms</td>
+        <td class="">167.9 ms</td>
+        <td>337.4 ms</td>
+        <td class="breached">78.55% ⚠</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr class="pass">
+        <td>Trade Journal (create → list → AI coach)</td>
+        <td>310</td>
+        <td>11.6 req/s</td>
+        <td>15.1 ms</td>
+        <td>0.8 ms</td>
+        <td class="">92.3 ms</td>
+        <td>332.3 ms</td>
+        <td class="breached">97.74% ⚠</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr class="pass">
+        <td>AI Assistant (Gemini, 50 VUs)</td>
+        <td>3</td>
+        <td>0.6 req/s</td>
+        <td>112.6 ms</td>
+        <td>1.0 ms</td>
+        <td class="">335.9 ms</td>
+        <td>335.9 ms</td>
+        <td class="breached">66.67% ⚠</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr class="pass">
+        <td>Community & Leaderboard (500 VUs)</td>
+        <td>141</td>
+        <td>5.4 req/s</td>
+        <td>16.0 ms</td>
+        <td>0.9 ms</td>
+        <td class="">78.1 ms</td>
+        <td>349.7 ms</td>
+        <td class="breached">96.45% ⚠</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr class="pass">
+        <td>Subscription Gate Validation (200 VUs)</td>
+        <td>455</td>
+        <td>17.0 req/s</td>
+        <td>4.6 ms</td>
+        <td>0.7 ms</td>
+        <td class="">2.7 ms</td>
+        <td>325.5 ms</td>
+        <td class="breached">82.42% ⚠</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="thresholds">
+    <h2>Thresholds</h2>
+    <div class="threshold-list">
+      <div class="threshold-item">Standard endpoints — p95 <span>&lt; 2,000 ms</span></div>
+      <div class="threshold-item">Standard endpoints — error rate <span>&lt; 1%</span></div>
+      <div class="threshold-item">AI (Gemini) endpoints — p95 <span>&lt; 8,000 ms</span></div>
+      <div class="threshold-item">AI (Gemini) endpoints — error rate <span>&lt; 5%</span></div>
+      <div class="threshold-item">Subscription gate fast path — p95 <span>&lt; 500 ms</span></div>
+      <div class="threshold-item">Auth scenario — <span>1,000 VUs</span></div>
+      <div class="threshold-item">Dashboard soak — <span>1,000 VUs · 5 min</span></div>
+      <div class="threshold-item">AI assistant — <span>50 VUs (cost-safe)</span></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    ICT Trading Mentor Stress Test Suite · k6 v0.57.0 · Thu, 19 Mar 2026 21:05:42 GMT
+  </div>
+</body>
+</html>

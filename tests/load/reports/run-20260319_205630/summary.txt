@@ -1,0 +1,9 @@
+ICT Trading Mentor — 1000-VU Stress Test Suite
+================================================
+Base URL  : http://localhost:8080/api
+Timestamp : 20260319_205630
+Mode      : smoke (5 VUs, 30s)
+
+PASS  | Auth Flow (signup → login → /auth/me → token re-issue) (31s)
+PASS  | Dashboard & Planner Soak (31s)
+FAIL  | Trade Journal (create → list → export → AI coach) (31s) — k6 exit code 99
