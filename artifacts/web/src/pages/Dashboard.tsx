@@ -185,8 +185,6 @@ function PreTradeChecklistWidget() {
       <WidgetHeader
         icon={ClipboardCheck}
         title="Pre-Trade Checklist"
-        editLink="/planner"
-        editLabel="Planner ↗"
         badge={
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${allChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
             {doneCount}/{CHECKLIST_ITEMS.length}
@@ -642,7 +640,6 @@ function exportScheduleToIcs(items: Array<{ time: string; label: string }>) {
 }
 
 function MasterMorningWidget() {
-  const navigate = useNavigate();
   const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
   const { sortedSchedule, saveTime } = useTodaySchedule(routineItems);
   const [customItems, setCustomItems] = useState<CustomScheduleItem[]>(() => getCustomItems());
@@ -952,18 +949,12 @@ function MasterMorningWidget() {
         </div>
       </div>
 
-      <div className="pt-3 mt-2 border-t border-border flex items-center justify-between">
+      <div className="pt-3 mt-2 border-t border-border flex items-center justify-start">
         <button
           onClick={() => exportScheduleToIcs(allExportRows)}
           className="text-[10px] text-primary hover:text-primary/80 font-medium transition-colors"
         >
           Export to Calendar (.ics) ↗
-        </button>
-        <button
-          onClick={() => navigate("/planner")}
-          className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Edit in Planner →
         </button>
       </div>
     </div>

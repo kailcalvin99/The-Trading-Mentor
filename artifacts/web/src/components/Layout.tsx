@@ -10,6 +10,7 @@ import AIAssistant from "@/components/AIAssistant";
 import { TourGuide } from "@/components/TourGuide";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
 import KillZoneStrip from "@/components/KillZoneStrip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
@@ -101,10 +102,9 @@ function NavItem({
   const isLocked = requiredTier > userTier;
 
   if (isLocked) {
-    return (
+    const button = (
       <button
         onClick={() => { onLockedClick(); onClick?.(); }}
-        title={collapsed ? label : undefined}
         className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground/40 cursor-not-allowed w-full text-left group relative"
       >
         <div className="relative">
@@ -115,13 +115,21 @@ function NavItem({
         {!collapsed && <Crown className="h-3 w-3 text-red-500 ml-auto opacity-60" />}
       </button>
     );
+    if (collapsed) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent side="right">{label}</TooltipContent>
+        </Tooltip>
+      );
+    }
+    return button;
   }
 
-  return (
+  const link = (
     <NavLink
       to={to}
       end
-      title={collapsed ? label : undefined}
       onClick={onClick}
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -143,6 +151,16 @@ function NavItem({
       )}
     </NavLink>
   );
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right">{label}</TooltipContent>
+      </Tooltip>
+    );
+  }
+  return link;
 }
 
 function MobileNavItem({
@@ -456,6 +474,7 @@ export default function Layout() {
   }
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="flex h-screen overflow-hidden">
       {drawerOpen && (
         <div
@@ -580,6 +599,29 @@ export default function Layout() {
                       {subscription?.tierName || "Free"} Plan
                     </p>
                   </div>
+                  <Link
+                    to="/pricing"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Subscription
+                  </Link>
+                  <button
+                    onClick={() => { setAppMode(appMode === "lite" ? "full" : "lite"); setShowUserMenu(false); }}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
+                  >
+                    {appMode === "lite" ? <Zap className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+                    {appMode === "lite" ? "Full Mode" : "Learning Mode"}
+                  </button>
+                  <Link
+                    to="/settings"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
                   <button
                     onClick={() => { setShowAvatarPicker((v) => !v); }}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
@@ -727,5 +769,6 @@ export default function Layout() {
         />
       )}
     </div>
+    </TooltipProvider>
   );
 }

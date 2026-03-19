@@ -144,9 +144,9 @@ export default function Leaderboard() {
       ) : sorted.length === 0 ? (
         <div className="bg-card border border-border rounded-2xl p-8 text-center">
           <Trophy className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm font-bold text-foreground mb-1">No traders yet</p>
+          <p className="text-sm font-bold text-foreground mb-1">Coming Soon — log trades to appear here</p>
           <p className="text-xs text-muted-foreground">
-            Log trades in your Smart Journal to appear on the leaderboard.
+            Start logging trades in your Smart Journal to earn your spot on the leaderboard.
           </p>
         </div>
       ) : (
@@ -161,7 +161,7 @@ export default function Leaderboard() {
                   <div className="text-4xl">🏆</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-foreground">{sorted[0].name}</span>
+                      <span className="font-bold text-foreground">{sorted[0].name || "Anonymous Trader"}</span>
                       {sorted[0].isFounder && (
                         <span className="inline-flex items-center gap-0.5 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5">
                           <Crown className="h-2.5 w-2.5 text-amber-500" />
@@ -197,7 +197,7 @@ export default function Leaderboard() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-foreground truncate">{entry.name}</span>
+                    <span className="font-semibold text-sm text-foreground truncate">{entry.name || "Anonymous Trader"}</span>
                     {entry.isFounder && (
                       <span className="inline-flex items-center gap-0.5 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5">
                         <Crown className="h-2.5 w-2.5 text-amber-500" />
