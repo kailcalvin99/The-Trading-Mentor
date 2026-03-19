@@ -5,7 +5,7 @@ import {
   FileText, StickyNote, ClipboardCheck, CheckSquare, Square,
   Settings, X, Camera,
   CheckCircle2, Play, GraduationCap, Users, Lock,
-  ChevronLeft, ChevronRight, Plus,
+  ChevronLeft, ChevronRight, Plus, Bot, Calendar,
 } from "lucide-react";
 import { useListTrades } from "@workspace/api-client-react";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
@@ -123,7 +123,7 @@ function SessionStatsBar() {
   const pnlSign = pnlIsPositive ? "+" : "";
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <button
         onClick={() => navigate("/journal")}
         className="bg-card border border-border rounded-xl px-4 py-3 text-left hover:border-primary/40 transition-colors group"
@@ -222,7 +222,7 @@ function CompactGreetingRow() {
   return (
     <div className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3">
       <div className="flex items-center gap-2">
-        <span className="text-lg select-none">🤖</span>
+        <Bot className="h-4 w-4 text-primary shrink-0" />
         <span className="text-sm font-semibold text-foreground">
           {timeGreeting}, {firstName}
         </span>
@@ -490,7 +490,7 @@ function LearningProgressWidget() {
     <div className="bg-card border border-border rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <GraduationCap className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-bold text-foreground flex-1">Learning Progress</h3>
+        <h3 className="text-sm font-semibold text-foreground flex-1">Learning Progress</h3>
         <button onClick={() => navigate("/academy")} className="text-xs text-primary font-medium">Academy ↗</button>
       </div>
       <div className="flex items-center gap-4 mb-3">
@@ -558,7 +558,7 @@ function CommunityWidget() {
     <div className="bg-card border border-border rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <Users className="h-4 w-4 text-violet-400 shrink-0" />
-        <h3 className="text-sm font-bold text-foreground flex-1">Community</h3>
+        <h3 className="text-sm font-semibold text-foreground flex-1">Community</h3>
         <button onClick={() => navigate("/community")} className="text-xs text-primary font-medium">See all ↗</button>
       </div>
       <div className="space-y-3">
@@ -620,7 +620,7 @@ function LessonCarouselWidget() {
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <FileText className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-bold text-foreground flex-1">Up Next — ICT Lessons</h3>
+        <h3 className="text-sm font-semibold text-foreground flex-1">Up Next — ICT Lessons</h3>
         <button onClick={() => navigate("/academy")} className="text-xs text-primary font-medium">View all ↗</button>
       </div>
       <div className="flex gap-3 overflow-x-auto px-4 py-3 scrollbar-thin" style={{ scrollbarWidth: "none" }}>
@@ -1101,8 +1101,8 @@ function TradingCalendarWidget() {
   return (
     <div className="bg-card border border-border rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-base select-none">📅</span>
-        <h3 className="text-sm font-bold text-foreground flex-1">Trading Calendar</h3>
+        <Calendar className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-semibold text-foreground flex-1">Trading Calendar</h3>
         <button
           onClick={prevMonth}
           className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -1426,6 +1426,11 @@ export default function Dashboard() {
           onSelect={async (val) => { await setAvatarUrl(val); setShowAvatarPicker(false); }}
         />
       )}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-2">
+          <SessionStatsBar />
+        </div>
+      </div>
       <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -1445,7 +1450,7 @@ export default function Dashboard() {
               )}
             </button>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Hi, {firstName}! 👋</h1>
+              <h1 className="text-xl font-bold text-foreground">Hi, {firstName}.</h1>
               <p className="text-xs text-muted-foreground mt-0.5">{dayLabel}</p>
             </div>
           </div>
@@ -1468,7 +1473,6 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4">
-          <SessionStatsBar />
           <NextWatchWidget />
           <MorningBriefingWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
