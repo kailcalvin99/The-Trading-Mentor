@@ -677,9 +677,16 @@ function LearnView() {
     return () => clearInterval(interval);
   }, []);
 
+  const [pendingLessonId, setPendingLessonId] = useState<string | null>(() => searchParams.get("lesson"));
+
   useEffect(() => {
     if (searchParams.get("swipe") === "1") {
       setSwipeMode(true);
+      setSearchParams({}, { replace: true });
+    }
+    const lessonParam = searchParams.get("lesson");
+    if (lessonParam) {
+      setPendingLessonId(lessonParam);
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);
@@ -795,6 +802,9 @@ function LearnView() {
             const chTotal = chapter.lessons.length;
             const chDone = chCompleted === chTotal && chTotal > 0;
 
+            const hasTargetLesson = pendingLessonId
+              ? chapter.lessons.some((l) => l.id === pendingLessonId)
+              : false;
             return (
               <ChapterAccordion
                 key={chapter.id}
@@ -805,7 +815,8 @@ function LearnView() {
                 chDone={chDone}
                 completed={completed}
                 toggleComplete={toggleComplete}
-                defaultOpen={chIdx === 0}
+                defaultOpen={chIdx === 0 || hasTargetLesson}
+                defaultExpandedLesson={hasTargetLesson ? pendingLessonId : null}
                 isFree={isFree}
                 chapterStartIdx={chStartIdx}
               />
@@ -818,14 +829,15 @@ function LearnView() {
 }
 
 function ChapterAccordion({
-  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, isFree, chapterStartIdx,
+  chapter, chIdx, chCompleted, chTotal, chDone, completed, toggleComplete, defaultOpen, defaultExpandedLesson, isFree, chapterStartIdx,
 }: {
   chapter: Chapter; chIdx: number; chCompleted: number; chTotal: number; chDone: boolean;
   completed: Set<string>; toggleComplete: (id: string, globalIdx: number) => void; defaultOpen: boolean;
+  defaultExpandedLesson?: string | null;
   isFree?: boolean; chapterStartIdx?: number;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
+  const [expandedLesson, setExpandedLesson] = useState<string | null>(defaultExpandedLesson ?? null);
   const [lightboxKey, setLightboxKey] = useState<string | null>(null);
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const { watched: videoWatched, markWatched, unmarkWatched } = useAcademyWatchedVideos();

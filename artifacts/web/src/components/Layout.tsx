@@ -301,7 +301,7 @@ function ModeSwitcher({ collapsed, appMode, setAppMode }: { collapsed: boolean; 
   return (
     <button
       onClick={() => setAppMode(isLite ? "full" : "lite")}
-      title={collapsed ? (isLite ? "Switch to Full Mode" : "Switch to Lite Mode") : undefined}
+      title={collapsed ? (isLite ? "Switch to Full Mode" : "Switch to Learning Mode") : undefined}
       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left ${
         isLite
           ? "bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600/20"
@@ -311,8 +311,8 @@ function ModeSwitcher({ collapsed, appMode, setAppMode }: { collapsed: boolean; 
       {isLite ? <Zap className="h-5 w-5 shrink-0" /> : <Layers className="h-5 w-5 shrink-0" />}
       {!collapsed && (
         <div className="flex flex-col">
-          <span className="text-xs font-bold leading-tight">{isLite ? "Lite Mode" : "Full Mode"}</span>
-          <span className="text-[10px] opacity-60 leading-tight">{isLite ? "Tap for Full" : "Tap for Lite"}</span>
+          <span className="text-xs font-bold leading-tight">{isLite ? "Learning Mode" : "Full Mode"}</span>
+          <span className="text-[10px] opacity-60 leading-tight">{isLite ? "Tap for Full" : "Tap for Learning"}</span>
         </div>
       )}
     </button>
@@ -373,7 +373,7 @@ export default function Layout() {
     return level ? SKILL_LEVEL_NUM[level] : SKILL_LEVEL_NUM["none"];
   }, []);
 
-  const LITE_MODE_ALLOWED = ["/dashboard", "/academy", "/risk-shield", "/journal"];
+  const LITE_MODE_ALLOWED = ["/dashboard", "/academy", "/journal"];
 
   const visibleNavItems = useMemo(() => {
     let items = skillLevelNum === SKILL_LEVEL_NUM["none"] ? navItems : navItems.filter((item) => item.minSkillLevel <= skillLevelNum);

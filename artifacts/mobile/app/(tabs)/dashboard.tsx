@@ -10,6 +10,8 @@ import {
   TextInput,
   Image,
   Switch,
+  PanResponder,
+  Animated,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -29,13 +31,17 @@ import {
   WIDGET_CONFIG,
   type WidgetPrefs,
 } from "@/constants/dashboardWidgets";
+import { COURSE_CHAPTERS } from "@/data/academy-data";
+import { apiGet } from "@/lib/api";
 
-const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; label: string; icon: React.ComponentProps<typeof Ionicons>["name"] }> = [
-  { key: "water", label: "Drink water", icon: "water-outline" },
-  { key: "breathing", label: "5-min breathing", icon: "leaf-outline" },
-  { key: "news", label: "Check news", icon: "newspaper-outline" },
-  { key: "bias", label: "Set daily bias", icon: "trending-up-outline" },
+const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; why: string }> = [
+  { key: "water", label: "Drink water", icon: "water-outline", why: "Dehydration reduces focus and decision-making quality." },
+  { key: "breathing", label: "5-min breathing", icon: "leaf-outline", why: "Calms the nervous system, reducing impulsive trading decisions." },
+  { key: "news", label: "Check news", icon: "newspaper-outline", why: "News catalysts drive session volatility — know what's moving." },
+  { key: "bias", label: "Set daily bias", icon: "trending-up-outline", why: "A clear bias prevents emotional flip-flopping mid-session." },
 ];
+
+const ACADEMY_PENDING_LESSON_KEY = "ict-academy-pending-lesson";
 
 const C = Colors.dark;
 
@@ -265,7 +271,7 @@ function StatsStripWidget() {
   );
 }
 
-function MorningRoutineWidget() {
+function MorningRoutineWidget({ showWhy = false }: { showWhy?: boolean }) {
   const router = useRouter();
   const { routineItems, isRoutineComplete, toggleItem } = usePlanner();
 
@@ -291,7 +297,7 @@ function MorningRoutineWidget() {
           <Text style={styles.routineRingText}>{doneCount}/{totalCount}</Text>
           <Text style={styles.routineRingLabel}>done</Text>
         </View>
-        <View style={{ flex: 1, gap: 6 }}>
+        <View style={{ flex: 1, gap: showWhy ? 10 : 6 }}>
           {ROUTINE_DISPLAY.map((item) => {
             const done = routineItems[item.key];
             return (
@@ -304,9 +310,14 @@ function MorningRoutineWidget() {
                 <View style={[styles.routineCheckbox, done && styles.routineCheckboxDone]}>
                   {done && <Ionicons name="checkmark" size={10} color="#0A0A0F" />}
                 </View>
-                <Text style={[styles.routineItemLabel, done && styles.routineItemLabelDone]} numberOfLines={1}>
-                  {item.label}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.routineItemLabel, done && styles.routineItemLabelDone]} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                  {showWhy && (
+                    <Text style={styles.routineWhyText} numberOfLines={2}>{item.why}</Text>
+                  )}
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -833,6 +844,589 @@ function MissionModal({ visible, onClose }: { visible: boolean; onClose: () => v
   );
 }
 
+const ICT_ACADEMY_PROGRESS_KEY = "ict-academy-progress";
+
+function SwipeLessonCard({
+  lesson,
+  onDismiss,
+  onWatch,
+  stackIndex,
+}: {
+  lesson: { id: string; title: string; chapterTitle: string; chapterColor: string; takeaway: string };
+  onDismiss: () => void;
+  onWatch: () => void;
+  stackIndex: number;
+}) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(stackIndex * 4)).current;
+  const scale = useRef(new Animated.Value(1 - stackIndex * 0.04)).current;
+  const opacity = useRef(new Animated.Value(1 - stackIndex * 0.15)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 10,
+      onPanResponderMove: (_, gesture) => {
+        translateX.setValue(gesture.dx);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (Math.abs(gesture.dx) > 80) {
+          Animated.timing(translateX, {
+            toValue: gesture.dx > 0 ? 400 : -400,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(onDismiss);
+        } else {
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
+
+  return (
+    <Animated.View
+      style={[
+        styles.swipeLessonCard,
+        {
+          transform: [{ translateX }, { translateY }, { scale }],
+          opacity,
+          zIndex: 10 - stackIndex,
+          borderColor: lesson.chapterColor + "40",
+        },
+      ]}
+      {...(stackIndex === 0 ? panResponder.panHandlers : {})}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+        <View style={[styles.lessonCardDot, { backgroundColor: lesson.chapterColor, marginTop: 0 }]} />
+        <Text style={styles.lessonCardChapter} numberOfLines={1}>{lesson.chapterTitle}</Text>
+      </View>
+      <Text style={styles.swipeLessonTitle} numberOfLines={2}>{lesson.title}</Text>
+      <Text style={styles.swipeLessonTeaser} numberOfLines={2}>{lesson.takeaway}</Text>
+      {stackIndex === 0 && (
+        <View style={styles.swipeLessonActions}>
+          <TouchableOpacity
+            style={styles.swipeLessonSkip}
+            onPress={onDismiss}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={13} color={C.textSecondary} />
+            <Text style={styles.swipeLessonSkipText}>Skip</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.swipeLessonWatch, { backgroundColor: lesson.chapterColor }]}
+            onPress={onWatch}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="play-circle" size={13} color="#0A0A0F" />
+            <Text style={styles.swipeLessonWatchText}>Watch Now</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </Animated.View>
+  );
+}
+
+function LessonCarousel() {
+  const router = useRouter();
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(ICT_ACADEMY_PROGRESS_KEY).then((raw) => {
+        try { setCompleted(new Set(raw ? JSON.parse(raw) : [])); } catch { setCompleted(new Set()); }
+      });
+    }, [])
+  );
+
+  const allLessons = COURSE_CHAPTERS.flatMap((ch) =>
+    ch.lessons.map((l) => ({ ...l, chapterTitle: ch.title, chapterColor: ch.color, chapterId: ch.id }))
+  );
+
+  const lessonCards = allLessons
+    .filter((l) => !completed.has(l.id) && !dismissed.has(l.id))
+    .slice(0, 3);
+
+  function dismissCard(id: string) {
+    setDismissed((prev) => new Set([...prev, id]));
+  }
+
+  if (lessonCards.length === 0) return null;
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="book-outline" size={14} color={C.accent} />
+        <Text style={styles.cardLabel}>Up Next — ICT Lessons</Text>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/academy" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+          <Text style={styles.editLink}>View all ↗</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.swipeLessonStack}>
+        {[...lessonCards].reverse().map((lesson, reversedIdx) => {
+          const stackIndex = lessonCards.length - 1 - reversedIdx;
+          return (
+            <SwipeLessonCard
+              key={lesson.id}
+              lesson={lesson}
+              stackIndex={stackIndex}
+              onDismiss={() => dismissCard(lesson.id)}
+              onWatch={async () => {
+                await AsyncStorage.setItem(ACADEMY_PENDING_LESSON_KEY, JSON.stringify({ lessonId: lesson.id }));
+                router.navigate({ pathname: "/(tabs)/academy" });
+              }}
+            />
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function RoutinePillContent() {
+  const { routineItems, isRoutineComplete, toggleItem } = usePlanner();
+  const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
+  const totalCount = ROUTINE_DISPLAY.length;
+
+  return (
+    <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+        <View style={styles.routineRing}>
+          <Text style={styles.routineRingText}>{doneCount}/{totalCount}</Text>
+          <Text style={styles.routineRingLabel}>done</Text>
+        </View>
+        {isRoutineComplete && (
+          <View style={[styles.doneBadge, { marginLeft: 8 }]}>
+            <Text style={styles.doneBadgeText}>All done ✓</Text>
+          </View>
+        )}
+      </View>
+      <View style={{ gap: 10 }}>
+        {ROUTINE_DISPLAY.map((item) => {
+          const done = routineItems[item.key];
+          return (
+            <TouchableOpacity key={item.key} style={styles.routineItem} onPress={() => toggleItem(item.key)} activeOpacity={0.7}>
+              <View style={[styles.routineCheckbox, done && styles.routineCheckboxDone]}>
+                {done && <Ionicons name="checkmark" size={10} color="#0A0A0F" />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.routineItemLabel, done && styles.routineItemLabelDone]}>{item.label}</Text>
+                <Text style={styles.routineWhyText}>{item.why}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function TodayLearnPill() {
+  const router = useRouter();
+  const [nextLesson, setNextLesson] = useState<{ id: string; title: string; chapterTitle: string; chapterColor: string; estMins: number } | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(ICT_ACADEMY_PROGRESS_KEY).then((raw) => {
+        let completed: Set<string>;
+        try { completed = new Set(raw ? JSON.parse(raw) : []); } catch { completed = new Set(); }
+        let idx = 0;
+        for (const chapter of COURSE_CHAPTERS) {
+          for (const lesson of chapter.lessons) {
+            if (!completed.has(lesson.id)) {
+              setNextLesson({ id: lesson.id, title: lesson.title, chapterTitle: chapter.title, chapterColor: chapter.color, estMins: 8 + (idx % 7) * 2 });
+              return;
+            }
+            idx++;
+          }
+        }
+        setNextLesson(null);
+      });
+    }, [])
+  );
+
+  return (
+    <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 10 }}>
+      <Text style={styles.todayLearnHint}>
+        Complete your next lesson to build your trading edge day by day.
+      </Text>
+      {nextLesson && (
+        <View style={[styles.learnPillCard, { borderColor: nextLesson.chapterColor + "40" }]}>
+          <View style={[styles.learnPillThumb, { backgroundColor: nextLesson.chapterColor + "20" }]}>
+            <Ionicons name="play-circle" size={28} color={nextLesson.chapterColor} />
+            <View style={styles.learnPillDurationBadge}>
+              <Ionicons name="time-outline" size={9} color="#fff" />
+              <Text style={styles.learnPillDurationText}>{nextLesson.estMins} min</Text>
+            </View>
+          </View>
+          <View style={styles.learnPillBody}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 }}>
+              <View style={[styles.learnPillDot, { backgroundColor: nextLesson.chapterColor }]} />
+              <Text style={styles.learnPillUpNext}>UP NEXT</Text>
+            </View>
+            <Text style={styles.learnPillChapter} numberOfLines={1}>{nextLesson.chapterTitle}</Text>
+            <Text style={styles.learnPillTitle} numberOfLines={2}>{nextLesson.title}</Text>
+          </View>
+        </View>
+      )}
+      <TouchableOpacity
+        style={styles.todayLearnBtn}
+        onPress={async () => {
+          if (nextLesson) {
+            await AsyncStorage.setItem(ACADEMY_PENDING_LESSON_KEY, JSON.stringify({ lessonId: nextLesson.id }));
+          }
+          router.navigate({ pathname: "/(tabs)/academy" });
+        }}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="school-outline" size={14} color="#0A0A0F" />
+        <Text style={styles.todayLearnBtnText}>{nextLesson ? "Watch Now" : "Open Academy"}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+type TodayPill = "routine" | "sessions" | "learn";
+
+function TodayRoutineWidget() {
+  const [pill, setPill] = useState<TodayPill>("routine");
+  const router = useRouter();
+
+  const PILLS: { key: TodayPill; label: string }[] = [
+    { key: "routine", label: "Routine" },
+    { key: "sessions", label: "Sessions" },
+    { key: "learn", label: "Learn" },
+  ];
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="today-outline" size={14} color="#F59E0B" />
+        <Text style={styles.cardLabel}>Today's Routine</Text>
+      </View>
+      <View style={styles.todayPillBar}>
+        {PILLS.map((p) => (
+          <TouchableOpacity
+            key={p.key}
+            style={[styles.todayPill, pill === p.key && styles.todayPillActive]}
+            onPress={() => setPill(p.key)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.todayPillText, pill === p.key && styles.todayPillTextActive]}>{p.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {pill === "routine" && (
+        <RoutinePillContent />
+      )}
+      {pill === "sessions" && (
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 10 }}>
+          {SESSIONS.map((session) => (
+            <View key={session.name} style={styles.todaySessionRow}>
+              <View style={[styles.todaySessionDot, { backgroundColor: session.color }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.todaySessionName}>{session.name}</Text>
+                <Text style={styles.todaySessionTime}>{session.subtitle}</Text>
+              </View>
+              <Ionicons name={session.icon} size={16} color={session.color} />
+            </View>
+          ))}
+        </View>
+      )}
+      {pill === "learn" && (
+        <TodayLearnPill />
+      )}
+    </View>
+  );
+}
+
+function NextWatchCard() {
+  const router = useRouter();
+  const [nextLesson, setNextLesson] = useState<{ id: string; title: string; chapterTitle: string; chapterColor: string; estMins: number } | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(ICT_ACADEMY_PROGRESS_KEY).then((raw) => {
+        let completed: Set<string>;
+        try {
+          completed = new Set(raw ? JSON.parse(raw) : []);
+        } catch {
+          completed = new Set();
+        }
+        let lessonIndex = 0;
+        for (const chapter of COURSE_CHAPTERS) {
+          for (const lesson of chapter.lessons) {
+            if (!completed.has(lesson.id)) {
+              const estMins = 8 + (lessonIndex % 7) * 2;
+              setNextLesson({ id: lesson.id, title: lesson.title, chapterTitle: chapter.title, chapterColor: chapter.color, estMins });
+              return;
+            }
+            lessonIndex++;
+          }
+        }
+        setNextLesson(null);
+      });
+    }, [])
+  );
+
+  if (!nextLesson) return null;
+
+  return (
+    <View style={styles.nextWatchCard}>
+      <View style={[styles.nextWatchThumb, { backgroundColor: nextLesson.chapterColor + "30" }]}>
+        <Ionicons name="play-circle" size={32} color={nextLesson.chapterColor} />
+        <View style={styles.nextWatchDurationBadge}>
+          <Ionicons name="time-outline" size={9} color="#fff" />
+          <Text style={styles.nextWatchDurationText}>{nextLesson.estMins} min</Text>
+        </View>
+      </View>
+      <View style={styles.nextWatchBody}>
+        <View style={styles.nextWatchHeader}>
+          <View style={[styles.nextWatchDot, { backgroundColor: nextLesson.chapterColor }]} />
+          <Text style={styles.nextWatchLabel}>UP NEXT</Text>
+        </View>
+        <Text style={styles.nextWatchChapter} numberOfLines={1}>{nextLesson.chapterTitle}</Text>
+        <Text style={styles.nextWatchTitle} numberOfLines={2}>{nextLesson.title}</Text>
+        <TouchableOpacity
+          style={styles.nextWatchBtn}
+          onPress={async () => {
+            if (nextLesson) {
+              await AsyncStorage.setItem(ACADEMY_PENDING_LESSON_KEY, JSON.stringify({ lessonId: nextLesson.id, chapterId: nextLesson.chapterTitle }));
+            }
+            router.navigate({ pathname: "/(tabs)/academy" });
+          }}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="play-circle" size={16} color="#0A0A0F" />
+          <Text style={styles.nextWatchBtnText}>Watch Now</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function LearningProgressCard() {
+  const router = useRouter();
+  const { streak } = useDailyGamification();
+  const [progress, setProgress] = useState<{ completed: number; total: number; nextTitle: string; nextChapter: string } | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let total = 0;
+      for (const ch of COURSE_CHAPTERS) total += ch.lessons.length;
+
+      AsyncStorage.getItem(ICT_ACADEMY_PROGRESS_KEY).then((raw) => {
+        let completed: Set<string>;
+        try {
+          completed = new Set(raw ? JSON.parse(raw) : []);
+        } catch {
+          completed = new Set();
+        }
+        let nextTitle = "";
+        let nextChapter = "";
+        for (const chapter of COURSE_CHAPTERS) {
+          for (const lesson of chapter.lessons) {
+            if (!completed.has(lesson.id)) {
+              nextTitle = lesson.title;
+              nextChapter = chapter.title;
+              break;
+            }
+          }
+          if (nextTitle) break;
+        }
+        setProgress({ completed: completed.size, total, nextTitle, nextChapter });
+      });
+    }, [])
+  );
+
+  if (!progress) return null;
+
+  const pct = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="school-outline" size={14} color={C.accent} />
+        <Text style={styles.cardLabel}>Learning Progress</Text>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/academy" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+          <Text style={styles.editLink}>Academy ↗</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 10 }}>
+        <View style={styles.lpStatRow}>
+          <View style={styles.lpStat}>
+            <Text style={[styles.lpStatValue, { color: streak >= 7 ? "#EF4444" : "#F59E0B" }]}>{streak}</Text>
+            <Text style={styles.lpStatLabel}>Day streak</Text>
+          </View>
+          <View style={styles.lpStat}>
+            <Text style={[styles.lpStatValue, { color: C.accent }]}>{pct}%</Text>
+            <Text style={styles.lpStatLabel}>Complete</Text>
+          </View>
+          <View style={styles.lpStat}>
+            <Text style={[styles.lpStatValue, { color: C.text }]}>{progress.completed}/{progress.total}</Text>
+            <Text style={styles.lpStatLabel}>Lessons</Text>
+          </View>
+        </View>
+        <View style={styles.lpProgressBar}>
+          <View style={[styles.lpProgressFill, { flexBasis: `${pct}%` }]} />
+        </View>
+        {progress.nextTitle ? (
+          <View style={styles.lpNextRow}>
+            <Ionicons name="play-circle-outline" size={13} color={C.accent} />
+            <Text style={styles.lpNextText} numberOfLines={1}>Next: {progress.nextTitle}</Text>
+          </View>
+        ) : (
+          <Text style={styles.lpCompleteText}>All lessons complete!</Text>
+        )}
+        <View style={styles.lpUnlockBanner}>
+          <Ionicons name="lock-open-outline" size={12} color={C.accent} />
+          <Text style={styles.lpUnlockText}>Complete all lessons to unlock Full Mode</Text>
+        </View>
+        <TouchableOpacity style={styles.lpUpgradeBtn} onPress={() => router.navigate({ pathname: "/(tabs)/academy" })} activeOpacity={0.85}>
+          <Text style={styles.lpUpgradeBtnText}>Continue Learning</Text>
+          <Ionicons name="arrow-forward" size={13} color="#0A0A0F" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function RiskShieldLockCard() {
+  const { setAppMode } = useAuth();
+  const { data: account } = useGetPropAccount();
+  const hasAccount = account && account.startingBalance > 0;
+
+  if (hasAccount) {
+    const bal = account.startingBalance ?? 0;
+    const drawdown = account.maxDailyLoss ?? 0;
+    const drawdownPct = bal > 0 ? Math.round((drawdown / bal) * 100) : 0;
+    return (
+      <View style={[styles.card, { borderColor: "#00C89620" }]}>
+        <View style={styles.cardHeaderRow}>
+          <Ionicons name="shield-checkmark-outline" size={14} color="#00C896" />
+          <Text style={styles.cardLabel}>Risk Shield</Text>
+          <TouchableOpacity onPress={() => setAppMode("full")} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+            <Text style={styles.editLink}>Full Mode ↗</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 8 }}>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={styles.lpStat}>
+              <Text style={[styles.lpStatValue, { color: "#00C896", fontSize: 16 }]}>${bal.toLocaleString()}</Text>
+              <Text style={styles.lpStatLabel}>Balance</Text>
+            </View>
+            <View style={styles.lpStat}>
+              <Text style={[styles.lpStatValue, { color: "#EF4444", fontSize: 16 }]}>{drawdownPct}%</Text>
+              <Text style={styles.lpStatLabel}>Max Daily DD</Text>
+            </View>
+          </View>
+          <View style={[styles.lpUnlockBanner, { borderColor: "#00C89620", backgroundColor: "#00C89610" }]}>
+            <Ionicons name="shield-checkmark" size={12} color="#00C896" />
+            <Text style={[styles.lpUnlockText, { color: "#00C896" }]}>Risk Shield active — switch to Full Mode to manage</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.card, { borderColor: "#EF444420" }]}>
+      <View style={styles.riskLockInner}>
+        <View style={styles.riskLockIconRow}>
+          <View style={styles.riskLockIcon}>
+            <Ionicons name="shield-outline" size={28} color="#EF4444" />
+            <View style={styles.riskLockBadge}>
+              <Ionicons name="lock-closed" size={10} color={C.background} />
+            </View>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.riskLockTitle}>Risk Shield</Text>
+            <Text style={styles.riskLockSubtitle}>Activate your first prop firm account to unlock Risk Shield</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.riskLockBtn} onPress={() => setAppMode("full")} activeOpacity={0.8}>
+          <Text style={styles.riskLockBtnText}>Switch to Full Mode to set up</Text>
+          <Ionicons name="chevron-forward" size={14} color={C.accent} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+interface CommunityPost {
+  id: number;
+  content: string;
+  authorName: string;
+  createdAt: string;
+  likesCount: number;
+}
+
+function LearningCommunityWidget() {
+  const router = useRouter();
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      apiGet<CommunityPost[] | { posts: CommunityPost[] }>("community/posts?limit=3")
+        .then((data) => {
+          if (Array.isArray(data)) setPosts(data.slice(0, 3));
+          else if (data && Array.isArray((data as { posts: CommunityPost[] }).posts)) {
+            setPosts((data as { posts: CommunityPost[] }).posts.slice(0, 3));
+          }
+        })
+        .catch(() => {});
+    }, [])
+  );
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="people-outline" size={14} color="#818CF8" />
+        <Text style={styles.cardLabel}>Community</Text>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/community" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+          <Text style={styles.editLink}>See all ↗</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 8 }}>
+        {posts.length === 0 ? (
+          <Text style={{ fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>
+            No posts yet. Be the first to share!
+          </Text>
+        ) : (
+          posts.map((post) => {
+            const excerpt = post.content.length > 80 ? post.content.slice(0, 80) + "…" : post.content;
+            const diff = Date.now() - new Date(post.createdAt).getTime();
+            const mins = Math.floor(diff / 60000);
+            const timeStr = mins < 60 ? `${mins}m ago` : mins < 1440 ? `${Math.floor(mins / 60)}h ago` : `${Math.floor(mins / 1440)}d ago`;
+            return (
+              <TouchableOpacity
+                key={post.id}
+                style={styles.communityPostItem}
+                onPress={() => router.navigate({ pathname: "/(tabs)/community" })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.communityPostAvatar}>
+                  <Text style={styles.communityPostAvatarText}>{post.authorName?.charAt(0)?.toUpperCase() || "?"}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                    <Text style={styles.communityPostAuthor} numberOfLines={1}>{post.authorName}</Text>
+                    {post.createdAt ? <Text style={styles.communityPostTime}>{timeStr}</Text> : null}
+                  </View>
+                  <Text style={styles.communityPostContent}>{excerpt}</Text>
+                </View>
+                <View style={styles.communityPostLikes}>
+                  <Ionicons name="heart" size={11} color="#EF4444" />
+                  <Text style={styles.communityPostLikesText}>{post.likesCount ?? 0}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </View>
+    </View>
+  );
+}
+
 function CustomizeModal({
   visible,
   onClose,
@@ -890,7 +1484,7 @@ function CustomizeModal({
 }
 
 export default function DashboardScreen() {
-  const { user, setAvatarUrl } = useAuth();
+  const { user, setAvatarUrl, appMode } = useAuth();
   const router = useRouter();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
   const { xp, streak } = useDailyGamification();
@@ -1071,9 +1665,11 @@ export default function DashboardScreen() {
               <Text style={[styles.headerBadgeText, { color: streak >= 7 ? "#EF4444" : "#F59E0B" }]}>{streak}d</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCustomize(true)} activeOpacity={0.7}>
-              <Ionicons name="settings-outline" size={16} color={C.textSecondary} />
-            </TouchableOpacity>
+            {appMode !== "lite" && (
+              <TouchableOpacity style={styles.headerIconBtn} onPress={() => setShowCustomize(true)} activeOpacity={0.7}>
+                <Ionicons name="settings-outline" size={16} color={C.textSecondary} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -1088,32 +1684,48 @@ export default function DashboardScreen() {
         {/* AI Greeting — always-on, top of feed */}
         <AIGreetingCard />
 
-        {/* Stats Strip */}
-        {prefs.stats && <StatsStripWidget />}
+        {appMode === "lite" ? (
+          <>
+            {/* Learning Mode Dashboard — NextWatch lives inside TodayRoutineWidget > Learn pill */}
+            <LearningProgressCard />
+            <TodayRoutineWidget />
+            <LessonCarousel />
+            <LearningCommunityWidget />
+            <RiskShieldLockCard />
+          </>
+        ) : (
+          <>
+            {/* Full Mode Dashboard */}
+            <NextWatchCard />
 
-        {/* Today's Mission — always-on slot machine card */}
-        <SlotMachineCard />
+            {/* Stats Strip */}
+            {prefs.stats && <StatsStripWidget />}
 
-        {/* Morning Routine */}
-        {prefs.morningRoutine && <MorningRoutineWidget />}
+            {/* Today's Mission — always-on slot machine card */}
+            <SlotMachineCard />
 
-        {/* Pre-Trade Checklist */}
-        {prefs.preTradeChecklist && <PreTradeChecklistWidget />}
+            {/* Morning Routine */}
+            {prefs.morningRoutine && <MorningRoutineWidget />}
 
-        {/* Trade Plan */}
-        {prefs.tradePlan && <TradePlanWidget />}
+            {/* Pre-Trade Checklist */}
+            {prefs.preTradeChecklist && <PreTradeChecklistWidget />}
 
-        {/* Risk Shield Mini */}
-        {prefs.riskShield && <RiskShieldWidget />}
+            {/* Trade Plan */}
+            {prefs.tradePlan && <TradePlanWidget />}
 
-        {/* Quick Journal */}
-        {prefs.quickJournal && <QuickJournalWidget />}
+            {/* Risk Shield Mini */}
+            {prefs.riskShield && <RiskShieldWidget />}
 
-        {/* Swipe Mode Launcher */}
-        {prefs.swipeMode && <SwipeModeCard />}
+            {/* Quick Journal */}
+            {prefs.quickJournal && <QuickJournalWidget />}
 
-        {/* Notes */}
-        {prefs.notes && <NotesWidget />}
+            {/* Swipe Mode Launcher */}
+            {prefs.swipeMode && <SwipeModeCard />}
+
+            {/* Notes */}
+            {prefs.notes && <NotesWidget />}
+          </>
+        )}
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
@@ -1864,4 +2476,250 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+
+  nextWatchCard: {
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.accent + "30",
+    marginBottom: 14,
+    overflow: "hidden",
+  },
+  nextWatchThumb: {
+    height: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  nextWatchDurationBadge: {
+    position: "absolute",
+    bottom: 8,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  nextWatchDurationText: { fontSize: 9, color: "#fff", fontFamily: "Inter_600SemiBold" },
+  nextWatchBody: { padding: 14 },
+  nextWatchHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
+  nextWatchDot: { width: 8, height: 8, borderRadius: 4 },
+  nextWatchLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1.2 },
+  nextWatchChapter: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_500Medium", marginBottom: 2 },
+  nextWatchTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 12, lineHeight: 22 },
+  nextWatchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  nextWatchBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+
+  lpStatRow: { flexDirection: "row", gap: 0 },
+  lpStat: { flex: 1, alignItems: "center" },
+  lpStatValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text },
+  lpStatLabel: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular", marginTop: 2 },
+  lpProgressBar: {
+    height: 6,
+    backgroundColor: C.backgroundTertiary,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  lpProgressFill: {
+    height: 6,
+    backgroundColor: C.accent,
+    borderRadius: 3,
+  },
+  lpNextRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  lpNextText: { flex: 1, fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular" },
+  lpCompleteText: { fontSize: 12, color: "#00C896", fontFamily: "Inter_600SemiBold" },
+  lpUnlockBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: C.accent + "10",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: C.accent + "20",
+  },
+  lpUnlockText: { fontSize: 11, color: C.accent, fontFamily: "Inter_500Medium", flex: 1 },
+  lpUpgradeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  lpUpgradeBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+
+  riskLockInner: { padding: 14 },
+  riskLockIconRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 12 },
+  riskLockIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: "#EF444415", alignItems: "center", justifyContent: "center", position: "relative", flexShrink: 0 },
+  riskLockBadge: { position: "absolute", bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: "#EF4444", alignItems: "center", justifyContent: "center" },
+  riskLockTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 2 },
+  riskLockSubtitle: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  riskLockBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: C.backgroundTertiary,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: C.accent + "25",
+  },
+  riskLockBtnText: { fontSize: 12, color: C.accent, fontFamily: "Inter_600SemiBold" },
+
+  communityPostItem: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  communityPostAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#818CF820", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  communityPostAvatarText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#818CF8" },
+  communityPostAuthor: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.text, flex: 1 },
+  communityPostContent: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  communityPostTime: { fontSize: 9, color: C.textTertiary, fontFamily: "Inter_400Regular", flexShrink: 0 },
+  communityPostLikes: { flexDirection: "row", alignItems: "center", gap: 3, flexShrink: 0 },
+  communityPostLikesText: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+
+  routineWhyText: { fontSize: 10, color: C.textTertiary, fontFamily: "Inter_400Regular", lineHeight: 14, marginTop: 1 },
+
+  lessonCard: {
+    width: 148,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    gap: 4,
+    flexShrink: 0,
+  },
+  lessonCardDone: { borderColor: "#00C89630", backgroundColor: "#00C89608" },
+  lessonCardDismiss: { position: "absolute", top: 6, right: 6, padding: 2 },
+  lessonCardDot: { width: 8, height: 8, borderRadius: 4, marginBottom: 2, marginTop: 12 },
+  lessonCardChapter: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  lessonCardTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.text, lineHeight: 16, flex: 1 },
+  lessonCardDoneBadge: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  lessonCardDoneText: { fontSize: 10, color: "#00C896", fontFamily: "Inter_600SemiBold" },
+  lessonCardPlayRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  lessonCardPlayText: { fontSize: 10, color: C.accent, fontFamily: "Inter_600SemiBold" },
+
+  swipeLessonStack: {
+    height: 170,
+    marginHorizontal: 14,
+    marginBottom: 14,
+    position: "relative",
+  },
+  swipeLessonCard: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 4,
+  },
+  swipeLessonTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: C.text, lineHeight: 20 },
+  swipeLessonTeaser: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 2 },
+  swipeLessonActions: { flexDirection: "row", gap: 8, marginTop: 10 },
+  swipeLessonSkip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: C.backgroundTertiary,
+  },
+  swipeLessonSkipText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary },
+  swipeLessonWatch: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  swipeLessonWatchText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+
+  todayPillBar: {
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
+  todayPill: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: "center",
+    backgroundColor: C.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  todayPillActive: { backgroundColor: C.accent, borderColor: C.accent },
+  todayPillText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary },
+  todayPillTextActive: { color: "#0A0A0F" },
+
+  todaySessionRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  todaySessionDot: { width: 8, height: 8, borderRadius: 4 },
+  todaySessionName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.text },
+  todaySessionTime: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular" },
+
+  learnPillCard: {
+    flexDirection: "row",
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+    backgroundColor: C.backgroundSecondary,
+  },
+  learnPillThumb: {
+    width: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    paddingVertical: 12,
+  },
+  learnPillDurationBadge: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  learnPillDurationText: { fontSize: 8, color: "#fff", fontFamily: "Inter_600SemiBold" },
+  learnPillBody: { flex: 1, padding: 10, justifyContent: "center" },
+  learnPillDot: { width: 6, height: 6, borderRadius: 3 },
+  learnPillUpNext: { fontSize: 8, fontFamily: "Inter_700Bold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1 },
+  learnPillChapter: { fontSize: 9, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  learnPillTitle: { fontSize: 12, fontFamily: "Inter_700Bold", color: C.text, lineHeight: 16 },
+
+  todayLearnHint: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  todayLearnBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  todayLearnBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 });

@@ -565,7 +565,7 @@ export default function SettingsScreen() {
           <CardHeader icon="options-outline" title="App Mode" />
           <View style={s.section}>
             <Text style={{ color: C.textSecondary, fontSize: 12, marginBottom: 12 }}>
-              Lite Mode shows only essential features. Full Mode unlocks everything.
+              Learning Mode shows only essential features. Full Mode unlocks everything.
             </Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {(["lite", "full"] as const).map((mode) => {
@@ -597,7 +597,7 @@ export default function SettingsScreen() {
                         marginTop: 4,
                       }}
                     >
-                      {mode === "lite" ? "Lite" : "Full"}
+                      {mode === "lite" ? "Learning" : "Full"}
                     </Text>
                   </TouchableOpacity>
                 );

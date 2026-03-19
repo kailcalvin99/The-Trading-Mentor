@@ -128,7 +128,7 @@ function FullModeGate({ children }: { children: React.ReactNode }) {
           </div>
           <h2 className="text-2xl font-bold text-foreground">Full Mode Feature</h2>
           <p className="text-muted-foreground leading-relaxed">
-            This section is available in Full Mode. Lite Mode keeps things simple with Academy, Journal, and Risk Shield.
+            This section is available in Full Mode. Learning Mode keeps things simple with Dashboard, Academy, and Journal.
           </p>
           <div className="flex flex-col gap-3">
             <button
@@ -199,7 +199,7 @@ function App() {
                   <Route path="journal" element={<SmartJournal />} />
                   <Route path="analytics" element={<FullModeGate><Analytics /></FullModeGate>} />
                   <Route path="videos" element={<FullModeGate><VideoLibrary /></FullModeGate>} />
-                  <Route path="community" element={<FullModeGate><Community /></FullModeGate>} />
+                  <Route path="community" element={<Community />} />
                   <Route path="leaderboard" element={<FullModeGate><Leaderboard /></FullModeGate>} />
                   <Route path="webhooks" element={<FullModeGate><TradingViewWebhooks /></FullModeGate>} />
                   <Route path="admin" element={<Admin />} />

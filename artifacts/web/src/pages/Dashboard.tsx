@@ -5,7 +5,7 @@ import {
   Sparkles,
   FileText, StickyNote, ClipboardCheck, CheckSquare, Square,
   Target, Settings, X,
-  CheckCircle2,
+  CheckCircle2, Play, GraduationCap, Users, Lock,
 } from "lucide-react";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ import { usePlanner } from "@/contexts/PlannerContext";
 import { useGetPropAccount } from "@workspace/api-client-react";
 import { DASHBOARD_WIDGETS, useDashboardWidgets } from "@/hooks/useDashboardWidgets";
 import type { LucideIcon } from "lucide-react";
+import { COURSE_CHAPTERS } from "@/data/academy-data";
 
 const SESSIONS = [
   { name: "London", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", time: "2:00–5:00 AM EST" },
@@ -881,6 +882,476 @@ function StatsTickerStrip() {
   );
 }
 
+const ICT_ACADEMY_PROGRESS_KEY_WEB = "ict-academy-progress";
+
+function getAcademyProgress(): Set<string> {
+  try {
+    const raw = localStorage.getItem(ICT_ACADEMY_PROGRESS_KEY_WEB);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+
+function NextWatchWidget() {
+  const navigate = useNavigate();
+  const [nextLesson, setNextLesson] = useState<{ id: string; title: string; chapterTitle: string; chapterColor: string; estMins: number } | null>(null);
+
+  useEffect(() => {
+    const completed = getAcademyProgress();
+    let lessonIndex = 0;
+    for (const chapter of COURSE_CHAPTERS) {
+      for (const lesson of chapter.lessons) {
+        if (!completed.has(lesson.id)) {
+          const estMins = 8 + (lessonIndex % 7) * 2;
+          setNextLesson({ id: lesson.id, title: lesson.title, chapterTitle: chapter.title, chapterColor: chapter.color, estMins });
+          return;
+        }
+        lessonIndex++;
+      }
+    }
+    setNextLesson(null);
+  }, []);
+
+  if (!nextLesson) return null;
+
+  return (
+    <div
+      className="bg-card border rounded-2xl overflow-hidden cursor-pointer hover:bg-card/80 transition-colors"
+      style={{ borderColor: `${nextLesson.chapterColor}30` }}
+      onClick={() => navigate(`/academy?lesson=${nextLesson.id}`)}
+    >
+      <div
+        className="relative h-24 flex items-center justify-center"
+        style={{ backgroundColor: `${nextLesson.chapterColor}20` }}
+      >
+        <Play className="h-10 w-10" style={{ color: nextLesson.chapterColor }} />
+        <div className="absolute bottom-2 right-3 flex items-center gap-1 bg-black/50 rounded-md px-2 py-1">
+          <span className="text-[10px] text-white font-medium">{nextLesson.estMins} min</span>
+        </div>
+      </div>
+      <div className="p-4 flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Up Next</span>
+            <span
+              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+              style={{ backgroundColor: `${nextLesson.chapterColor}20`, color: nextLesson.chapterColor }}
+            >
+              {nextLesson.chapterTitle}
+            </span>
+          </div>
+          <p className="text-sm font-bold text-foreground leading-tight line-clamp-2">{nextLesson.title}</p>
+        </div>
+        <button
+          className="shrink-0 text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
+          style={{ backgroundColor: nextLesson.chapterColor, color: "#0A0A0F" }}
+          onClick={(e) => { e.stopPropagation(); navigate(`/academy?lesson=${nextLesson.id}`); }}
+        >
+          Watch Now
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LearningProgressWidget() {
+  const navigate = useNavigate();
+  const { streak } = useDailyStreak();
+
+  const completed = getAcademyProgress();
+  let total = 0;
+  for (const ch of COURSE_CHAPTERS) total += ch.lessons.length;
+  const pct = total > 0 ? Math.round((completed.size / total) * 100) : 0;
+
+  let nextTitle = "";
+  for (const chapter of COURSE_CHAPTERS) {
+    for (const lesson of chapter.lessons) {
+      if (!completed.has(lesson.id)) { nextTitle = lesson.title; break; }
+    }
+    if (nextTitle) break;
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <GraduationCap className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-bold text-foreground flex-1">Learning Progress</h3>
+        <button onClick={() => navigate("/academy")} className="text-[10px] text-primary font-medium">Academy ↗</button>
+      </div>
+      <div className="flex items-center gap-4 mb-3">
+        <div className="text-center">
+          <p className="text-xl font-bold" style={{ color: streak >= 7 ? "#EF4444" : "#F59E0B" }}>{streak}</p>
+          <p className="text-[10px] text-muted-foreground">Day streak</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xl font-bold text-primary">{pct}%</p>
+          <p className="text-[10px] text-muted-foreground">Complete</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xl font-bold text-foreground">{completed.size}/{total}</p>
+          <p className="text-[10px] text-muted-foreground">Lessons</p>
+        </div>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
+        <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+      </div>
+      {nextTitle && (
+        <p className="text-xs text-muted-foreground mb-2">
+          <span className="text-primary">▶</span> Next: {nextTitle}
+        </p>
+      )}
+      <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2 mb-3">
+        <Lock className="h-3 w-3 text-primary shrink-0" />
+        <p className="text-xs text-primary font-medium">Complete all lessons to unlock Full Mode</p>
+      </div>
+      <button
+        onClick={() => navigate("/academy")}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors"
+        style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+      >
+        Continue Learning
+      </button>
+    </div>
+  );
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function CommunityWidget() {
+  const navigate = useNavigate();
+  const [posts, setPosts] = useState<Array<{ id: number; content: string; authorName: string; likesCount: number; createdAt?: string }>>([]);
+
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL || "/api";
+    fetch(`${apiBase}/community/posts?limit=3`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setPosts(data.slice(0, 3));
+        else if (Array.isArray(data.posts)) setPosts(data.posts.slice(0, 3));
+      })
+      .catch(() => {});
+  }, []);
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Users className="h-4 w-4 text-violet-400 shrink-0" />
+        <h3 className="text-sm font-bold text-foreground flex-1">Community</h3>
+        <button onClick={() => navigate("/community")} className="text-[10px] text-primary font-medium">See all ↗</button>
+      </div>
+      <div className="space-y-3">
+        {posts.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No posts yet. Be the first to share!</p>
+        ) : (
+          posts.map((post) => {
+            const excerpt = post.content.length > 80 ? post.content.slice(0, 80) + "…" : post.content;
+            return (
+              <button key={post.id} className="w-full flex items-start gap-2 text-left hover:opacity-80 transition-opacity" onClick={() => navigate("/community")}>
+                <div className="w-7 h-7 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-violet-400">{post.authorName?.charAt(0)?.toUpperCase() || "?"}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <p className="text-[11px] font-semibold text-foreground truncate">{post.authorName}</p>
+                    {post.createdAt && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(post.createdAt)}</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{excerpt}</p>
+                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0">❤ {post.likesCount ?? 0}</span>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RiskShieldLockWidget() {
+  const { setAppMode } = useAuth();
+  const { data: account } = useGetPropAccount();
+  const hasAccount = account && account.startingBalance > 0;
+
+  if (hasAccount) {
+    const bal = account.startingBalance ?? 0;
+    const drawdown = account.maxDailyLoss ?? 0;
+    const drawdownPct = bal > 0 ? Math.round((drawdown / bal) * 100) : 0;
+    return (
+      <div className="bg-card border rounded-2xl p-4" style={{ borderColor: "rgba(0,200,150,0.15)" }}>
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="h-4 w-4 shrink-0" style={{ color: "#00C896" }} />
+          <h3 className="text-sm font-bold text-foreground flex-1">Risk Shield</h3>
+          <button onClick={() => setAppMode("full")} className="text-[10px] font-medium" style={{ color: "#00C896" }}>Full Mode ↗</button>
+        </div>
+        <div className="flex gap-4 mb-3">
+          <div className="text-center">
+            <p className="text-lg font-bold" style={{ color: "#00C896" }}>${bal.toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground">Balance</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-red-400">{drawdownPct}%</p>
+            <p className="text-[10px] text-muted-foreground">Max Daily DD</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2 border text-xs font-medium" style={{ backgroundColor: "rgba(0,200,150,0.05)", borderColor: "rgba(0,200,150,0.15)", color: "#00C896" }}>
+          <Shield className="h-3 w-3 shrink-0" />
+          <span>Risk Shield active — switch to Full Mode to manage</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card border rounded-2xl p-4" style={{ borderColor: "rgba(239,68,68,0.15)" }}>
+      <div className="flex items-start gap-3 mb-3">
+        <div className="relative shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+            <Shield className="h-5 w-5 text-red-400" />
+          </div>
+          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
+            <Lock className="h-2 w-2 text-white" />
+          </div>
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-foreground mb-0.5">Risk Shield</h3>
+          <p className="text-xs text-muted-foreground">Activate your first prop firm account to unlock Risk Shield</p>
+        </div>
+      </div>
+      <button
+        onClick={() => setAppMode("full")}
+        className="w-full flex items-center justify-between bg-secondary/50 border border-border rounded-xl px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <span>Switch to Full Mode to set up</span>
+        <span>→</span>
+      </button>
+    </div>
+  );
+}
+
+const ROUTINE_WHY = [
+  { key: "water", label: "Drink water", why: "Dehydration reduces focus and decision-making quality." },
+  { key: "breathing", label: "5-min breathing", why: "Calms the nervous system, reducing impulsive trading decisions." },
+  { key: "news", label: "Check news", why: "News catalysts drive session volatility — know what's moving." },
+  { key: "bias", label: "Set daily bias", why: "A clear bias prevents emotional flip-flopping mid-session." },
+] as const;
+
+type TodayPillWeb = "routine" | "sessions" | "learn";
+
+function TodayRoutineWidgetWeb() {
+  const navigate = useNavigate();
+  const { routineItems, isRoutineComplete, toggleItem } = usePlanner();
+  const [pill, setPill] = useState<TodayPillWeb>("routine");
+
+  const PILLS: { key: TodayPillWeb; label: string }[] = [
+    { key: "routine", label: "Routine" },
+    { key: "sessions", label: "Sessions" },
+    { key: "learn", label: "Learn" },
+  ];
+
+  const doneCount = ROUTINE_WHY.filter((r) => routineItems[r.key]).length;
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+        <CheckCircle2 className="h-4 w-4 text-amber-400 shrink-0" />
+        <h3 className="text-sm font-bold text-foreground flex-1">Today's Routine</h3>
+        <span className="text-[10px] text-muted-foreground">{doneCount}/{ROUTINE_WHY.length} done</span>
+      </div>
+
+      <div className="flex gap-2 px-4 pb-3">
+        {PILLS.map((p) => (
+          <button
+            key={p.key}
+            onClick={() => setPill(p.key)}
+            className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+            style={pill === p.key
+              ? { backgroundColor: "hsl(var(--primary))", color: "#0A0A0F" }
+              : { backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--muted-foreground))" }}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {pill === "routine" && (
+        <div className="px-4 pb-4 space-y-3">
+          {isRoutineComplete && (
+            <div className="text-xs font-semibold text-green-400 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" /> All done ✓
+            </div>
+          )}
+          {ROUTINE_WHY.map((item) => {
+            const done = routineItems[item.key];
+            return (
+              <button
+                key={item.key}
+                onClick={() => toggleItem(item.key)}
+                className="w-full flex items-start gap-3 text-left hover:opacity-80 transition-opacity"
+              >
+                <div className={`w-4 h-4 rounded mt-0.5 shrink-0 flex items-center justify-center border ${done ? "bg-primary border-primary" : "border-border"}`}>
+                  {done && <CheckSquare className="h-3 w-3 text-background" />}
+                </div>
+                <div>
+                  <p className={`text-sm ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>{item.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{item.why}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {pill === "sessions" && (
+        <div className="px-4 pb-4 space-y-3">
+          {SESSIONS.map((s) => (
+            <div key={s.name} className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">{s.emoji} {s.name}</p>
+                <p className="text-xs text-muted-foreground">{s.time}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pill === "learn" && (
+        <TodayLearnPillWeb navigate={navigate} />
+      )}
+    </div>
+  );
+}
+
+function TodayLearnPillWeb({ navigate }: { navigate: (path: string) => void }) {
+  const [nextLesson, setNextLesson] = useState<{ id: string; title: string; chapterTitle: string; chapterColor: string; estMins: number } | null>(null);
+
+  useEffect(() => {
+    const completed = getAcademyProgress();
+    let idx = 0;
+    for (const chapter of COURSE_CHAPTERS) {
+      for (const lesson of chapter.lessons) {
+        if (!completed.has(lesson.id)) {
+          setNextLesson({ id: lesson.id, title: lesson.title, chapterTitle: chapter.title, chapterColor: chapter.color, estMins: 8 + (idx % 7) * 2 });
+          return;
+        }
+        idx++;
+      }
+    }
+    setNextLesson(null);
+  }, []);
+
+  return (
+    <div className="px-4 pb-4 space-y-3">
+      <p className="text-xs text-muted-foreground">Complete your next lesson to build your trading edge day by day.</p>
+      {nextLesson && (
+        <div
+          className="flex rounded-xl overflow-hidden border cursor-pointer hover:opacity-80 transition-opacity"
+          style={{ borderColor: `${nextLesson.chapterColor}35`, backgroundColor: "hsl(var(--secondary))" }}
+          onClick={() => navigate(`/academy?lesson=${nextLesson.id}`)}
+        >
+          <div
+            className="relative w-20 flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `${nextLesson.chapterColor}20` }}
+          >
+            <Play className="h-6 w-6" style={{ color: nextLesson.chapterColor }} />
+            <div className="absolute bottom-1 right-1 bg-black/55 rounded px-1 py-0.5">
+              <span className="text-[8px] text-white font-semibold">{nextLesson.estMins}m</span>
+            </div>
+          </div>
+          <div className="flex-1 p-2.5 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1">
+              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: nextLesson.chapterColor }} />
+              <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground">Up Next</span>
+            </div>
+            <p className="text-[9px] text-muted-foreground">{nextLesson.chapterTitle}</p>
+            <p className="text-xs font-bold text-foreground leading-tight line-clamp-2">{nextLesson.title}</p>
+          </div>
+        </div>
+      )}
+      <button
+        onClick={() => {
+          if (nextLesson) navigate(`/academy?lesson=${nextLesson.id}`);
+          else navigate("/academy");
+        }}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-opacity hover:opacity-80"
+        style={{ backgroundColor: "hsl(var(--primary))", color: "#0A0A0F" }}
+      >
+        <GraduationCap className="h-4 w-4" />
+        {nextLesson ? "Watch Now" : "Open Academy"}
+      </button>
+    </div>
+  );
+}
+
+function LessonCarouselWidget() {
+  const navigate = useNavigate();
+  const [completed, setCompleted] = useState<Set<string>>(() => getAcademyProgress());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const id = setInterval(() => setCompleted(getAcademyProgress()), 2000);
+    return () => clearInterval(id);
+  }, []);
+
+  const allLessons = COURSE_CHAPTERS.flatMap((ch) =>
+    ch.lessons.map((l) => ({ ...l, chapterTitle: ch.title, chapterColor: ch.color }))
+  );
+
+  const lessonCards = allLessons
+    .filter((l) => !completed.has(l.id) && !dismissed.has(l.id))
+    .slice(0, 3);
+
+  function dismissCard(id: string) {
+    setDismissed((prev) => new Set([...prev, id]));
+  }
+
+  if (lessonCards.length === 0) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+        <FileText className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-bold text-foreground flex-1">Up Next — ICT Lessons</h3>
+        <button onClick={() => navigate("/academy")} className="text-[10px] text-primary font-medium">View all ↗</button>
+      </div>
+      <div className="flex gap-3 overflow-x-auto px-4 py-3 scrollbar-thin" style={{ scrollbarWidth: "none" }}>
+        {lessonCards.map((lesson) => (
+          <div key={lesson.id} className="relative shrink-0 w-44">
+            <button
+              onClick={() => navigate(`/academy?lesson=${lesson.id}`)}
+              className="w-full flex flex-col gap-1 p-3 pt-5 rounded-xl border text-left transition-colors hover:bg-secondary/50"
+              style={{ borderColor: `${lesson.chapterColor}30` }}
+            >
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: lesson.chapterColor }} />
+              <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">{lesson.chapterTitle}</p>
+              <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{lesson.title}</p>
+              <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2 mt-0.5">{lesson.takeaway}</p>
+              <div className="flex items-center gap-1 mt-auto pt-1">
+                <Play className="h-3 w-3 text-primary" />
+                <span className="text-[10px] text-primary font-semibold">Watch</span>
+              </div>
+            </button>
+            <button
+              onClick={() => dismissCard(lesson.id)}
+              className="absolute top-1.5 right-1.5 p-0.5 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CustomizeDrawer({
   open,
   onClose,
@@ -941,8 +1412,9 @@ function CustomizeDrawer({
 }
 
 export default function Dashboard() {
-  const { tierLevel } = useAuth();
+  const { tierLevel, appMode } = useAuth();
   const isFreeUser = tierLevel === 0;
+  const isLearningMode = appMode === "lite";
   const { prefs, toggle, isEnabled } = useDashboardWidgets();
   const [showCustomize, setShowCustomize] = useState(false);
 
@@ -951,6 +1423,30 @@ export default function Dashboard() {
       localStorage.setItem("dashboard-visited", "true");
     }
   }, []);
+
+  if (isLearningMode) {
+    return (
+      <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+            <p className="text-xs text-amber-500 font-medium mt-0.5">Learning Mode</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <CompactGreetingRow />
+          <LearningProgressWidget />
+          <TodayRoutineWidgetWeb />
+          <LessonCarouselWidget />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <CommunityWidget />
+            <RiskShieldLockWidget />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -973,6 +1469,7 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4">
+          <NextWatchWidget />
           <MorningBriefingWidget />
           {isEnabled("killzone") && <KillZoneStripWidget />}
           <CompactGreetingRow />

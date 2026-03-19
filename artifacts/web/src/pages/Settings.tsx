@@ -500,14 +500,14 @@ export default function Settings() {
             {appMode === "lite" ? <Zap className="h-5 w-5 text-amber-500" /> : <Layers className="h-5 w-5 text-primary" />}
             <h2 className="text-sm font-bold text-foreground">App Mode</h2>
             <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${appMode === "lite" ? "text-amber-500 bg-amber-500/10 border-amber-500/30" : "text-primary bg-primary/10 border-primary/30"}`}>
-              {appMode === "lite" ? "LITE" : "FULL"}
+              {appMode === "lite" ? "LEARNING" : "FULL"}
             </span>
           </div>
           <div className="px-5 py-5">
             <p className="text-sm text-muted-foreground mb-4">
               {appMode === "lite"
-                ? "You are in Lite Mode — showing only the essentials. Switch to Full Mode to unlock Tilt Detection, Pre-Trade Checklist, advanced analytics, and all extra features."
-                : "You are in Full Mode — all features are active. Switch to Lite Mode for a simpler experience with just the core tools."}
+                ? "You are in Learning Mode — showing only the essentials. Switch to Full Mode to unlock Tilt Detection, Pre-Trade Checklist, advanced analytics, and all extra features."
+                : "You are in Full Mode — all features are active. Switch to Learning Mode for a simpler experience with just the core tools."}
             </p>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -520,7 +520,7 @@ export default function Settings() {
               >
                 <Zap className="h-5 w-5" />
                 <div className="text-center">
-                  <div className="font-bold">Lite Mode</div>
+                  <div className="font-bold">Learning Mode</div>
                   <div className="text-xs opacity-70 mt-0.5">Dashboard, Academy, Risk, Journal</div>
                 </div>
               </button>

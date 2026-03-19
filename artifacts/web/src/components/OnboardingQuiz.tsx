@@ -294,7 +294,7 @@ export default function OnboardingQuiz({ onComplete }: Props) {
                 <ul className="space-y-1.5">
                   <li className="flex items-start gap-2 text-sm text-foreground">
                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    Lite Mode activated — simplified interface with Dashboard, Academy, Risk Shield, and Journal
+                    Learning Mode activated — simplified interface with Dashboard, Academy, Risk Shield, and Journal
                   </li>
                   <li className="flex items-start gap-2 text-sm text-foreground">
                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />

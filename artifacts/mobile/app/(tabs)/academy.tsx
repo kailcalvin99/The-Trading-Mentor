@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   type DimensionValue,
 } from "react-native";
 import { Image } from "expo-image";
+import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
@@ -107,6 +108,7 @@ type Tab = "learn" | "glossary" | "quiz" | "plan";
 
 const PROGRESS_KEY = "ict-academy-progress";
 const ACADEMY_UNLOCKED_KEY = "ict-academy-unlocked";
+const ACADEMY_PENDING_LESSON_KEY = "ict-academy-pending-lesson";
 
 async function loadLocalProgress(): Promise<Set<string>> {
   const raw = await AsyncStorage.getItem(PROGRESS_KEY);
@@ -136,7 +138,7 @@ async function syncProgressFromServer(current: Set<string>, onUpdate: (merged: S
 }
 
 
-function LearnView({ onAskMentor }: { onAskMentor: (topic: string) => void }) {
+function LearnView({ onAskMentor, pendingLessonId }: { onAskMentor: (topic: string) => void; pendingLessonId?: string | null }) {
   const [expandedChapter, setExpandedChapter] = useState<string | null>("ch1");
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
@@ -147,6 +149,19 @@ function LearnView({ onAskMentor }: { onAskMentor: (topic: string) => void }) {
       syncProgressFromServer(local, (merged) => setCompleted(merged));
     });
   }, []);
+
+  useEffect(() => {
+    if (!pendingLessonId) return;
+    for (const chapter of COURSE_CHAPTERS) {
+      for (const lesson of chapter.lessons) {
+        if (lesson.id === pendingLessonId) {
+          setExpandedChapter(chapter.id);
+          setExpandedLesson(lesson.id);
+          return;
+        }
+      }
+    }
+  }, [pendingLessonId]);
 
   function toggleComplete(lessonId: string) {
     const next = new Set(completed);
@@ -595,8 +610,23 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export default function AcademyScreen() {
   const [tab, setTab] = useState<Tab>("learn");
+  const [pendingLessonId, setPendingLessonId] = useState<string | null>(null);
   const { showCelebration, closeCelebration } = useGraduationCheck();
   const { openWithTopic } = useAIAssistant();
+
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(ACADEMY_PENDING_LESSON_KEY).then((raw) => {
+        if (!raw) return;
+        try {
+          const parsed = JSON.parse(raw) as { lessonId: string };
+          setPendingLessonId(parsed.lessonId);
+          setTab("learn");
+        } catch {}
+        AsyncStorage.removeItem(ACADEMY_PENDING_LESSON_KEY);
+      });
+    }, [])
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -615,7 +645,7 @@ export default function AcademyScreen() {
         </View>
       </View>
       <View style={{ flex: 1 }}>
-        {tab === "learn" && <LearnView onAskMentor={openWithTopic} />}
+        {tab === "learn" && <LearnView onAskMentor={openWithTopic} pendingLessonId={pendingLessonId} />}
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
         {tab === "plan" && <PlanView />}

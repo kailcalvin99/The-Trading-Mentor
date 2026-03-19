@@ -58,6 +58,27 @@ const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
 
 const SETUP_TYPES = ["FVG", "Order Block", "Liquidity Sweep", "Turtle Soup", "BOS/CHoCH"] as const;
 
+const EXAMPLE_JOURNAL_ENTRIES = [
+  {
+    id: "ex-1",
+    pair: "NQ1!",
+    outcome: "win" as const,
+    entryTime: "10:12 AM",
+    riskPct: "0.5",
+    tag: "Disciplined",
+    note: "Waited for the Silver Bullet window. FVG formed cleanly after liquidity sweep. Entered at OTE, hit TP at +2R. Felt calm, no FOMO.",
+  },
+  {
+    id: "ex-2",
+    pair: "MNQ1!",
+    outcome: "loss" as const,
+    entryTime: "9:47 AM",
+    riskPct: "1.0",
+    tag: "FOMO",
+    note: "Jumped in before the displacement confirmed. No liquidity sweep, no MSS. Stopped out at -1R. Lesson: wait for the full setup checklist.",
+  },
+];
+
 interface TradeFormData {
   pair: string;
   entryTime: string;
@@ -517,6 +538,41 @@ export default function JournalScreen() {
                   <Text style={styles.draftActionText}>Complete Entry →</Text>
                 </View>
               </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Learning Mode Example Entries */}
+        {appMode === "lite" && (
+          <View style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <Ionicons name="school-outline" size={13} color={C.accent} />
+              <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 12, color: C.accent }]}>Example Journal Entries</Text>
+            </View>
+            {EXAMPLE_JOURNAL_ENTRIES.map((entry) => (
+              <View key={entry.id} style={[styles.tradeCard, { borderColor: C.accent + "25", borderStyle: "dashed" }]}>
+                <View style={styles.tradeHeader}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={styles.tradePair}>{entry.pair}</Text>
+                    <View style={{ backgroundColor: C.accent + "20", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1, borderWidth: 1, borderColor: C.accent + "40" }}>
+                      <Text style={{ fontSize: 9, color: C.accent, fontFamily: "Inter_700Bold" }}>EXAMPLE</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.outcomeBadge, { backgroundColor: entry.outcome === "win" ? "#00C89620" : "#EF444420", borderColor: entry.outcome === "win" ? "#00C896" : "#EF4444" }]}>
+                    <Text style={[styles.outcomeText, { color: entry.outcome === "win" ? "#00C896" : "#EF4444" }]}>
+                      {entry.outcome.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.tradeDetails}>
+                  <Text style={styles.tradeDetail}>⏰ {entry.entryTime}</Text>
+                  <Text style={styles.tradeDetail}>📊 {entry.riskPct}% risk</Text>
+                  <Text style={styles.tradeDetail}>🏷 {entry.tag}</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 17, marginTop: 6 }}>
+                  {entry.note}
+                </Text>
+              </View>
             ))}
           </View>
         )}

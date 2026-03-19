@@ -39,11 +39,33 @@ import {
   Download,
   Angry,
   Repeat,
+  GraduationCap,
 } from "lucide-react";
 
 import type { Trade, CreateTradeBody } from "@workspace/api-client-react";
 import { recordTradeResult } from "@/components/CoolDownOverlay";
 import { dispatchAITrigger } from "@/hooks/useAITrigger";
+
+const EXAMPLE_JOURNAL_ENTRIES_WEB = [
+  {
+    id: "ex-1",
+    pair: "NQ1!",
+    outcome: "win" as const,
+    entryTime: "10:12 AM",
+    riskPct: "0.5",
+    tag: "Disciplined",
+    note: "Waited for the Silver Bullet window. FVG formed cleanly after liquidity sweep. Entered at OTE, hit TP at +2R. Felt calm, no FOMO.",
+  },
+  {
+    id: "ex-2",
+    pair: "MNQ1!",
+    outcome: "loss" as const,
+    entryTime: "9:47 AM",
+    riskPct: "1.0",
+    tag: "FOMO",
+    note: "Jumped in before the displacement confirmed. No liquidity sweep, no MSS. Stopped out at -1R. Lesson: wait for the full setup checklist.",
+  },
+];
 
 type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge" | "Angry" | "Overtrading";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
@@ -643,6 +665,35 @@ export default function SmartJournal() {
                   <div className="text-xs text-muted-foreground">{draft.notes || "Tap to complete this trade entry"}</div>
                   <div className="text-xs text-amber-400 font-semibold mt-1">Complete Entry &rarr;</div>
                 </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Learning Mode Example Entries */}
+          {appMode === "lite" && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-3.5 w-3.5 text-primary" />
+                <p className="text-xs font-semibold text-primary">Example Journal Entries</p>
+              </div>
+              {EXAMPLE_JOURNAL_ENTRIES_WEB.map((entry) => (
+                <div key={entry.id} className="border rounded-xl p-3 space-y-2" style={{ borderColor: "rgba(0,200,150,0.25)", borderStyle: "dashed" }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm">{entry.pair}</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border" style={{ color: "hsl(var(--primary))", backgroundColor: "hsl(var(--primary) / 0.1)", borderColor: "hsl(var(--primary) / 0.3)" }}>EXAMPLE</span>
+                    </div>
+                    <span className={`text-xs font-bold ${entry.outcome === "win" ? "text-green-400" : "text-red-400"}`}>
+                      {entry.outcome.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex gap-3 text-[10px] text-muted-foreground">
+                    <span>⏰ {entry.entryTime}</span>
+                    <span>📊 {entry.riskPct}% risk</span>
+                    <span>🏷 {entry.tag}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{entry.note}</p>
+                </div>
               ))}
             </div>
           )}

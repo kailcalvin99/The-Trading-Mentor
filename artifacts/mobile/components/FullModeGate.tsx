@@ -19,7 +19,7 @@ export default function FullModeGate({ children }: { children: React.ReactNode }
         </View>
         <Text style={styles.title}>Full Mode Feature</Text>
         <Text style={styles.body}>
-          This section is available in Full Mode. Lite Mode keeps things simple with Academy, Journal, and Risk Shield.
+          This section is available in Full Mode. Learning Mode keeps things simple with Dashboard, Academy, and Journal.
         </Text>
         <TouchableOpacity style={styles.primaryBtn} onPress={() => setAppMode("full")}>
           <Text style={styles.primaryBtnText}>Switch to Full Mode</Text>

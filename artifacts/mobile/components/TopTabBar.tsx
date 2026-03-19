@@ -65,7 +65,7 @@ const TAB_HREFS: Record<TabRoute, Href> = {
 };
 
 const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "tracker", "journal", "tags", "community", "analytics"];
-const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy", "tracker", "journal", "tags"];
+const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy", "journal"];
 
 interface TopTabBarProps {
   pathname: string;
@@ -204,7 +204,7 @@ export default function TopTabBar({
           <View style={styles.rightRow}>
             <View style={styles.toggleRow}>
               <Text style={[styles.toggleLabel, { color: appMode === "lite" ? C.accent : C.textSecondary }]}>
-                Lite
+                Learning
               </Text>
               <Switch
                 value={appMode === "lite"}
