@@ -1,4 +1,6 @@
 import { Router, type IRouter } from "express";
+import fs from "fs";
+import path from "path";
 import { db } from "@workspace/db";
 import { conversations, messages, adminSettingsTable, tradesTable, usersTable, userSubscriptionsTable, subscriptionTiersTable, propAccountTable } from "@workspace/db";
 import { eq, desc, sql, and, gte, inArray, count } from "drizzle-orm";
@@ -11,6 +13,27 @@ import { authRequired, adminRequired } from "../../middleware/auth";
 import type { Type } from "@google/genai";
 
 const router: IRouter = Router();
+
+const WORKSPACE_ROOT = path.resolve(process.cwd(), "../..");
+const ARTIFACTS_ROOT = path.resolve(WORKSPACE_ROOT, "artifacts");
+
+function resolveRealPath(absPath: string): string {
+  try {
+    return fs.realpathSync(absPath);
+  } catch {
+    const parentDir = path.dirname(absPath);
+    try {
+      return path.join(fs.realpathSync(parentDir), path.basename(absPath));
+    } catch {
+      return absPath;
+    }
+  }
+}
+
+function isInsideArtifacts(absPath: string): boolean {
+  const realPath = resolveRealPath(absPath);
+  return realPath === ARTIFACTS_ROOT || realPath.startsWith(ARTIFACTS_ROOT + path.sep);
+}
 
 const DEFAULT_ICT_SYSTEM_PROMPT = `You are the Ultimate ICT & Trading Psychology Mentor — a full-featured trading assistant who blends Inner Circle Trader (ICT) methodology with proven trading psychology principles. You teach at a 6th-grade reading level: short sentences, bold key terms, and everyday analogies. You never use RSI, MACD, or "Support/Resistance" — you always reframe those as **liquidity pools** or **old highs/lows where orders are resting**.
 
@@ -174,7 +197,30 @@ SECTION 8 — PERSONALITY & CORE PRINCIPLES
 - You protect the student's capital like it is your own.
 - You never shame a trader for a loss — losses are tuition in the school of the market.
 - You hold the line on discipline: no setup = no trade, no matter how strongly the student wants to act.
-- Protecting the account is always Priority #1.`;
+- Protecting the account is always Priority #1.
+
+═══════════════════════════════════════
+SECTION 9 — SELF-RECODE PROTOCOL (ADMIN ONLY)
+═══════════════════════════════════════
+
+When an admin asks you to read, fix, or update source files or your own system prompt, follow this protocol exactly:
+
+**Step 1 — Audit first.** Before touching anything, think through what change is needed and why. Identify the exact file and the specific lines to change.
+
+**Step 2 — Read the file.** Use the \`read_source_file\` tool to fetch the current contents of the relevant file inside the \`artifacts/\` directory. Never assume what a file contains — always read it first.
+
+**Step 3 — Propose the exact change.** Show the admin the specific change you intend to make (old content vs new content) and explain the reasoning. Then explicitly ask for confirmation before writing anything. Wait for the admin to confirm in chat.
+
+**Step 4 — Write only after confirmation.** Once the admin explicitly approves (e.g., "yes", "go ahead", "do it"), use \`write_source_file\` to overwrite the file with the corrected content. You will receive a confirmation with the path and a diff summary.
+
+**Step 5 — Confirm what changed.** After writing, tell the admin exactly what was changed and what the impact will be.
+
+**For system prompt updates:** Use \`update_self_system_prompt\` only after the admin has reviewed and approved the new prompt text. Always show the full new prompt before writing. The change takes effect immediately for all future conversations.
+
+**Safety rules:**
+- You may only read or write files inside the \`artifacts/\` directory. Any path outside that directory will be rejected.
+- Never write a file without explicit admin confirmation in the current conversation.
+- Always preserve the existing file structure and formatting unless the admin specifically asks you to change it.`;
 
 async function getSystemPrompt(): Promise<string> {
   try {
@@ -339,6 +385,42 @@ const ADMIN_TOOL_DECLARATIONS = [
       properties: {
         focus: { type: "STRING" as Type, description: "Optional focus area for the prompt (e.g., 'risk management', 'discipline', 'ICT concepts')" },
       },
+    },
+  },
+  {
+    name: "read_source_file",
+    description: "Read the contents of a source file inside the artifacts/ directory. Use when the admin asks you to read, review, or audit a source file before proposing changes. Always read the file before proposing any edits. Admin only.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {
+        path: { type: "STRING" as Type, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "write_source_file",
+    description: "Overwrite a source file inside the artifacts/ directory with new content. Only call this AFTER the admin has explicitly confirmed the change in chat. Writes outside artifacts/ are rejected. Admin only.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {
+        path: { type: "STRING" as Type, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
+        content: { type: "STRING" as Type, description: "The full new content to write to the file" },
+        reason: { type: "STRING" as Type, description: "Brief description of what changed and why" },
+      },
+      required: ["path", "content", "reason"],
+    },
+  },
+  {
+    name: "update_self_system_prompt",
+    description: "Write a new system prompt for the AI mentor to the admin_settings table (key: ai_mentor_system_prompt). This replaces the active prompt immediately. Only call after the admin has reviewed and approved the new prompt text in chat. Admin only.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {
+        prompt: { type: "STRING" as Type, description: "The full new system prompt text to save" },
+        reason: { type: "STRING" as Type, description: "Brief explanation of why the prompt is being updated" },
+      },
+      required: ["prompt", "reason"],
     },
   },
 ];
@@ -916,6 +998,79 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
         };
       } catch {
         return { action: "data", psychReport: null, error: "Failed to fetch psychology report." };
+      }
+    }
+
+    case "read_source_file": {
+      if (!isAdmin) return { error: "Admin access required" };
+      const filePath = (args.path as string) || "";
+      const absPath = path.resolve(WORKSPACE_ROOT, filePath.replace(/\\/g, "/").replace(/^\/+/, ""));
+      if (!isInsideArtifacts(absPath)) {
+        return { error: "Access denied: read_source_file may only access files inside the artifacts/ directory." };
+      }
+      try {
+        const content = fs.readFileSync(absPath, "utf8");
+        return {
+          action: "read_source_file",
+          path: path.relative(WORKSPACE_ROOT, absPath),
+          content,
+          lines: content.split("\n").length,
+        };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: `Failed to read file: ${message}` };
+      }
+    }
+
+    case "write_source_file": {
+      if (!isAdmin) return { error: "Admin access required" };
+      const filePath = (args.path as string) || "";
+      const newContent = (args.content as string) ?? "";
+      const reason = (args.reason as string) || "";
+      const absPath = path.resolve(WORKSPACE_ROOT, filePath.replace(/\\/g, "/").replace(/^\/+/, ""));
+      if (!isInsideArtifacts(absPath)) {
+        return { error: "Access denied: write_source_file may only write files inside the artifacts/ directory." };
+      }
+      let oldContent = "";
+      try { oldContent = fs.readFileSync(absPath, "utf8"); } catch {}
+      try {
+        fs.mkdirSync(path.dirname(absPath), { recursive: true });
+        fs.writeFileSync(absPath, newContent, "utf8");
+        const oldLines = oldContent.split("\n").length;
+        const newLines = newContent.split("\n").length;
+        return {
+          action: "write_source_file",
+          path: path.relative(WORKSPACE_ROOT, absPath),
+          reason,
+          diffSummary: `Previous: ${oldLines} lines → New: ${newLines} lines (Δ ${newLines - oldLines > 0 ? "+" : ""}${newLines - oldLines})`,
+          success: true,
+        };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: `Failed to write file: ${message}` };
+      }
+    }
+
+    case "update_self_system_prompt": {
+      if (!isAdmin) return { error: "Admin access required" };
+      const prompt = (args.prompt as string) || "";
+      const reason = (args.reason as string) || "";
+      if (!prompt.trim()) return { error: "Prompt text is required and cannot be empty." };
+      try {
+        await db
+          .insert(adminSettingsTable)
+          .values({ key: "ai_mentor_system_prompt", value: prompt })
+          .onConflictDoUpdate({ target: adminSettingsTable.key, set: { value: prompt } });
+        return {
+          action: "update_self_system_prompt",
+          reason,
+          promptLength: prompt.length,
+          success: true,
+          message: "System prompt updated successfully. The new prompt is active immediately for all future conversations.",
+        };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: `Failed to update system prompt: ${message}` };
       }
     }
 
