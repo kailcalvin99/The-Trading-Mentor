@@ -370,7 +370,7 @@ function TodayScheduleWidget() {
                     <Text style={[styles.scheduleLabel, item.checked && styles.scheduleLabelDone]} numberOfLines={1}>{item.label}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => removeCustomItem(item.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="trash-outline" size={15} color="#EF4444" />
+                    <Ionicons name="trash-outline" size={14} color="#EF4444" />
                   </TouchableOpacity>
                 </View>
               )}
@@ -687,7 +687,7 @@ function TradePlanWidget() {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
-        <Ionicons name="document-text-outline" size={15} color={C.accent} />
+        <Ionicons name="document-text-outline" size={14} color={C.accent} />
         <Text style={styles.cardLabel}>Today's Trade Plan</Text>
         <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
           <Text style={styles.editLink}>Edit ↗</Text>
@@ -774,7 +774,7 @@ function NotesWidget() {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
-        <Ionicons name="pencil-outline" size={15} color="#818CF8" />
+        <Ionicons name="pencil-outline" size={14} color="#818CF8" />
         <Text style={styles.cardLabel}>Quick Notes</Text>
         {saved && <Text style={styles.savedText}>Saved</Text>}
       </View>
@@ -915,7 +915,7 @@ function PreTradeChecklistWidget() {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
-        <Ionicons name="checkmark-circle-outline" size={15} color="#00C896" />
+        <Ionicons name="checkmark-circle-outline" size={14} color="#00C896" />
         <Text style={styles.cardLabel}>Pre-Trade Checklist</Text>
         <View style={[styles.checklistBadge, allDone && styles.checklistBadgeDone]}>
           <Text style={[styles.checklistBadgeText, allDone && styles.checklistBadgeTextDone]}>
@@ -986,7 +986,7 @@ function RiskShieldWidget() {
   return (
     <View style={[styles.card, styles.riskCard]}>
       <View style={styles.cardHeaderRow}>
-        <Ionicons name="shield-checkmark-outline" size={15} color="#EF4444" />
+        <Ionicons name="shield-checkmark-outline" size={14} color="#EF4444" />
         <Text style={styles.cardLabel}>Risk Shield</Text>
         <TouchableOpacity onPress={() => router.navigate("/tracker")} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
           <Text style={styles.editLink}>Full Shield ↗</Text>
