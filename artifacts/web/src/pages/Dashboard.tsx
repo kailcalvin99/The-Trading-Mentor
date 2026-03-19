@@ -456,7 +456,7 @@ function timeAgo(dateStr: string): string {
 
 function CommunityWidget() {
   const navigate = useNavigate();
-  const [posts, setPosts] = useState<Array<{ id: number; content: string; authorName: string; likesCount: number; createdAt?: string }>>([]);
+  const [posts, setPosts] = useState<Array<{ id: number; content?: string | null; authorName?: string | null; likesCount: number; createdAt?: string }>>([]);
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL || "/api";
@@ -481,7 +481,8 @@ function CommunityWidget() {
           <p className="text-xs text-muted-foreground">No posts yet. Be the first to share!</p>
         ) : (
           posts.map((post) => {
-            const excerpt = post.content.length > 80 ? post.content.slice(0, 80) + "…" : post.content;
+            const content = post.content ?? '';
+            const excerpt = content.length > 80 ? content.slice(0, 80) + "…" : content;
             return (
               <button key={post.id} className="w-full flex items-start gap-2 text-left hover:opacity-80 transition-opacity" onClick={() => navigate("/community")}>
                 <div className="w-7 h-7 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0">
@@ -489,7 +490,7 @@ function CommunityWidget() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <p className="text-[11px] font-semibold text-foreground truncate">{post.authorName}</p>
+                    <p className="text-[11px] font-semibold text-foreground truncate">{post.authorName ?? 'Unknown'}</p>
                     {post.createdAt && (
                       <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(post.createdAt)}</span>
                     )}
