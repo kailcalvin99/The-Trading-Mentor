@@ -113,8 +113,6 @@ const STOCK_AVATARS_MOBILE = [
 function AIGreetingCard() {
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const tips = [
     "Always wait for the liquidity sweep before entering!",
     "The best setups happen at session opens — be ready!",
@@ -127,10 +125,9 @@ function AIGreetingCard() {
   return (
     <View style={styles.aiCard}>
       <View style={styles.aiHeader}>
-        <Text style={styles.aiEmoji}>🤖</Text>
+        <Ionicons name="hardware-chip-outline" size={26} color={C.accent} style={{ flexShrink: 0 }} />
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.aiGreeting}>{greeting}, {firstName}!</Text>
-          <Text style={styles.aiSubtitle}>Ready to trade today?</Text>
+          <Text style={styles.aiGreeting}>Hi, {firstName}.</Text>
         </View>
       </View>
       <View style={styles.aiTipBox}>
@@ -505,6 +502,13 @@ function StatsStripWidget() {
     return sum + (isNaN(v) ? 0 : v);
   }, 0);
 
+  const estNowH = getESTNow().getHours();
+  const estNowM = getESTNow().getMinutes();
+  const estMins = estNowH * 60 + estNowM;
+  const activeSession = SESSIONS.find(
+    (s) => estMins >= s.startH * 60 + s.startM && estMins < s.endH * 60 + s.endM
+  );
+
   const stats = [
     {
       label: "Today P&L",
@@ -517,9 +521,14 @@ function StatsStripWidget() {
       color: winRate !== null && winRate >= 50 ? "#00C896" : winRate !== null ? "#F59E0B" : C.textSecondary,
     },
     {
-      label: "Trades",
+      label: "This Week",
       value: todayCompleted.length > 0 ? String(todayCompleted.length) : "—",
       color: C.text,
+    },
+    {
+      label: "Session",
+      value: activeSession ? activeSession.name : "Closed",
+      color: activeSession ? activeSession.color : C.textSecondary,
     },
   ];
 
@@ -1949,6 +1958,9 @@ export default function DashboardScreen() {
       </Modal>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        {/* Stats strip — always visible, sits above all other content */}
+        <StatsStripWidget />
+
         {/* AI Morning Briefing — shows once per day, auto-dismisses after 15s */}
         <MorningBriefingWidget
           firstName={firstName}
@@ -1968,6 +1980,7 @@ export default function DashboardScreen() {
         ) : (
           <>
             {/* Full Mode Dashboard */}
+            <AIGreetingCard />
             <NextWatchCard />
 
             {/* Today's Schedule */}
@@ -2014,7 +2027,7 @@ const styles = StyleSheet.create({
   sessionBlockSub: { fontSize: 11, color: C.textSecondary, marginTop: 1 },
   sessionCountdown: { fontSize: 12, fontFamily: "Inter_700Bold", marginTop: 4 },
   liveTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  liveTagText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+  liveTagText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
   endedTag: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
   redNewsToggle: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingBottom: 12, paddingLeft: 96 },
   redNewsLabel: { flex: 1, fontSize: 13, color: "#FF9999" },
@@ -2034,7 +2047,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   widgetHeaderLabel: {
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: C.textSecondary,
     textTransform: "uppercase",
@@ -2042,7 +2055,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   editLink: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     color: C.accent,
   },
@@ -2120,7 +2133,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.accent + "15",
   },
   avatarEmoji: { fontSize: 28, marginBottom: 4 },
-  avatarLabel: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  avatarLabel: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
 
   headerIcons: {
     flexDirection: "row",
@@ -2171,7 +2184,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   cardLabel: {
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: C.textSecondary,
     textTransform: "uppercase",
@@ -2287,7 +2300,7 @@ const styles = StyleSheet.create({
     color: C.text,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: 11,
     color: C.textSecondary,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
@@ -2317,7 +2330,7 @@ const styles = StyleSheet.create({
     color: C.accent,
   },
   routineRingLabel: {
-    fontSize: 8,
+    fontSize: 11,
     color: C.textSecondary,
     fontFamily: "Inter_400Regular",
   },
@@ -2358,7 +2371,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   doneBadgeText: {
-    fontSize: 9,
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
     color: C.accent,
   },
@@ -2430,7 +2443,7 @@ const styles = StyleSheet.create({
     borderColor: "#00C89640",
   },
   checklistBadgeText: {
-    fontSize: 9,
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
     color: C.textSecondary,
   },
@@ -2498,7 +2511,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   unlockedBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
     color: "#00C896",
   },
@@ -2530,13 +2543,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   riskStatLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: C.textSecondary,
     fontFamily: "Inter_500Medium",
     textAlign: "center",
   },
   riskStatLimit: {
-    fontSize: 9,
+    fontSize: 11,
     color: C.textTertiary,
     fontFamily: "Inter_400Regular",
   },
@@ -2556,7 +2569,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   posSizerTitle: {
-    fontSize: 9,
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: C.textSecondary,
     textTransform: "uppercase",
@@ -2572,7 +2585,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   posSizerLabel: {
-    fontSize: 9,
+    fontSize: 11,
     color: C.textSecondary,
     fontFamily: "Inter_400Regular",
     marginBottom: 4,
@@ -2604,7 +2617,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   posSizerResultLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: C.textSecondary,
     fontFamily: "Inter_400Regular",
   },
@@ -2764,12 +2777,12 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
-  nextWatchDurationText: { fontSize: 9, color: "#fff", fontFamily: "Inter_600SemiBold" },
+  nextWatchDurationText: { fontSize: 11, color: "#fff", fontFamily: "Inter_600SemiBold" },
   nextWatchBody: { padding: 14 },
   nextWatchHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
   nextWatchDot: { width: 8, height: 8, borderRadius: 4 },
-  nextWatchLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1.2 },
-  nextWatchChapter: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_500Medium", marginBottom: 2 },
+  nextWatchLabel: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1.2 },
+  nextWatchChapter: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium", marginBottom: 2 },
   nextWatchTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 12, lineHeight: 22 },
   nextWatchBtn: {
     flexDirection: "row",
@@ -2785,7 +2798,7 @@ const styles = StyleSheet.create({
   lpStatRow: { flexDirection: "row", gap: 0 },
   lpStat: { flex: 1, alignItems: "center" },
   lpStatValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text },
-  lpStatLabel: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular", marginTop: 2 },
+  lpStatLabel: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular", marginTop: 2 },
   lpProgressBar: {
     height: 6,
     backgroundColor: C.backgroundTertiary,
@@ -2848,11 +2861,11 @@ const styles = StyleSheet.create({
   communityPostAvatarText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#818CF8" },
   communityPostAuthor: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.text, flex: 1 },
   communityPostContent: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 16 },
-  communityPostTime: { fontSize: 9, color: C.textTertiary, fontFamily: "Inter_400Regular", flexShrink: 0 },
+  communityPostTime: { fontSize: 11, color: C.textTertiary, fontFamily: "Inter_400Regular", flexShrink: 0 },
   communityPostLikes: { flexDirection: "row", alignItems: "center", gap: 3, flexShrink: 0 },
-  communityPostLikesText: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  communityPostLikesText: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
 
-  routineWhyText: { fontSize: 10, color: C.textTertiary, fontFamily: "Inter_400Regular", lineHeight: 14, marginTop: 1 },
+  routineWhyText: { fontSize: 11, color: C.textTertiary, fontFamily: "Inter_400Regular", lineHeight: 14, marginTop: 1 },
 
   lessonCard: {
     width: 148,
@@ -2867,12 +2880,12 @@ const styles = StyleSheet.create({
   lessonCardDone: { borderColor: "#00C89630", backgroundColor: "#00C89608" },
   lessonCardDismiss: { position: "absolute", top: 6, right: 6, padding: 2 },
   lessonCardDot: { width: 8, height: 8, borderRadius: 4, marginBottom: 2, marginTop: 12 },
-  lessonCardChapter: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  lessonCardChapter: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
   lessonCardTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.text, lineHeight: 16, flex: 1 },
   lessonCardDoneBadge: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  lessonCardDoneText: { fontSize: 10, color: "#00C896", fontFamily: "Inter_600SemiBold" },
+  lessonCardDoneText: { fontSize: 11, color: "#00C896", fontFamily: "Inter_600SemiBold" },
   lessonCardPlayRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  lessonCardPlayText: { fontSize: 10, color: C.accent, fontFamily: "Inter_600SemiBold" },
+  lessonCardPlayText: { fontSize: 11, color: C.accent, fontFamily: "Inter_600SemiBold" },
 
   swipeLessonStack: {
     height: 170,
@@ -2965,11 +2978,11 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
   },
-  learnPillDurationText: { fontSize: 8, color: "#fff", fontFamily: "Inter_600SemiBold" },
+  learnPillDurationText: { fontSize: 11, color: "#fff", fontFamily: "Inter_600SemiBold" },
   learnPillBody: { flex: 1, padding: 10, justifyContent: "center" },
   learnPillDot: { width: 6, height: 6, borderRadius: 3 },
-  learnPillUpNext: { fontSize: 8, fontFamily: "Inter_700Bold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1 },
-  learnPillChapter: { fontSize: 9, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  learnPillUpNext: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1 },
+  learnPillChapter: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
   learnPillTitle: { fontSize: 12, fontFamily: "Inter_700Bold", color: C.text, lineHeight: 16 },
 
   todayLearnHint: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 18 },

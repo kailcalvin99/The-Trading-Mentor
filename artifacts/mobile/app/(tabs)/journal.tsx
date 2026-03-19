@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useListTrades, useCreateTrade, useDeleteTrade } from "@workspace/api-client-react";
 import type { Trade } from "@workspace/api-client-react";
@@ -187,6 +187,7 @@ const NEGATIVE_TAGS = ["FOMO", "Chased", "Revenge", "Greedy", "Angry", "Overtrad
 export default function JournalScreen() {
   const { user, subscription, appMode } = useAuth();
   const router = useRouter();
+  const { new: newParam } = useLocalSearchParams<{ new?: string }>();
   const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
   const { isRoutineComplete } = usePlanner();
   const qc = useQueryClient();
@@ -233,6 +234,15 @@ export default function JournalScreen() {
       } catch {}
     });
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (newParam === "1") {
+        router.setParams({ new: "" } as never);
+        proceedToNewForm();
+      }
+    }, [newParam])
+  );
 
   const { data: tradesData } = useListTrades();
   const trades = tradesData ?? [];
@@ -572,7 +582,7 @@ export default function JournalScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Text style={styles.tradePair}>{entry.pair}</Text>
                     <View style={{ backgroundColor: C.accent + "20", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1, borderWidth: 1, borderColor: C.accent + "40" }}>
-                      <Text style={{ fontSize: 9, color: C.accent, fontFamily: "Inter_700Bold" }}>EXAMPLE</Text>
+                      <Text style={{ fontSize: 11, color: C.accent, fontFamily: "Inter_700Bold" }}>EXAMPLE</Text>
                     </View>
                   </View>
                   <View style={[styles.outcomeBadge, { backgroundColor: entry.outcome === "win" ? "#00C89620" : "#EF444420", borderColor: entry.outcome === "win" ? "#00C896" : "#EF4444" }]}>
@@ -1070,7 +1080,7 @@ const styles = StyleSheet.create({
   lockedBtn: { marginTop: 12, backgroundColor: C.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
   lockedBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
   disclaimer: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 16, marginHorizontal: 4, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.cardBorder },
-  disclaimerText: { flex: 1, fontSize: 10, color: C.textSecondary, lineHeight: 15, opacity: 0.7 },
+  disclaimerText: { flex: 1, fontSize: 11, color: C.textSecondary, lineHeight: 15, opacity: 0.7 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.text },
   monkBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: C.accent },
@@ -1081,7 +1091,7 @@ const styles = StyleSheet.create({
   statsRowContent: { flexDirection: "row", gap: 8 },
   statCard: { minWidth: 80, backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
   statValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text },
-  statLabel: { fontSize: 10, color: C.textSecondary, marginTop: 2, textAlign: "center" },
+  statLabel: { fontSize: 11, color: C.textSecondary, marginTop: 2, textAlign: "center" },
   draftSection: { backgroundColor: "rgba(245,158,11,0.08)", borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "rgba(245,158,11,0.3)" },
   draftHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   draftTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#F59E0B" },

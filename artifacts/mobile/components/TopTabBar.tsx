@@ -214,10 +214,21 @@ export default function TopTabBar({
         </TouchableOpacity>
 
         <Text style={[styles.dashGreeting, { color: C.text }]} numberOfLines={1}>
-          Hi, {firstName}
+          Hi, {firstName}.
         </Text>
 
         <View style={styles.rightRow}>
+          <TouchableOpacity
+            style={[styles.logTradeBtn, { backgroundColor: C.accent }]}
+            onPress={() => router.navigate({ pathname: "/(tabs)/journal", params: { new: "1" } } as never)}
+            accessibilityLabel="Log a trade"
+            accessibilityRole="button"
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={13} color="#0A0A0F" />
+            <Text style={styles.logTradeBtnText}>Log Trade</Text>
+          </TouchableOpacity>
+
           <View style={[styles.dashBadge, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}>
             <Ionicons name="star" size={11} color={C.accent} />
             <Text style={[styles.dashBadgeText, { color: C.accent }]}>Lv.{level}</Text>
@@ -493,6 +504,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.1,
+  },
+  logTradeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  logTradeBtnText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: "#0A0A0F",
   },
   dashBadge: {
     flexDirection: "row",
