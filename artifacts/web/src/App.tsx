@@ -194,7 +194,7 @@ function App() {
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="academy" element={<IctAcademy />} />
                   <Route path="planner" element={<FullModeGate><DailyPlanner /></FullModeGate>} />
-                  <Route path="risk-shield" element={<RiskShield />} />
+                  <Route path="risk-shield" element={<Navigate to="/planner" replace />} />
                   <Route path="prop-tracker" element={<FullModeGate><PropTracker /></FullModeGate>} />
                   <Route path="journal" element={<SmartJournal />} />
                   <Route path="analytics" element={<FullModeGate><Analytics /></FullModeGate>} />

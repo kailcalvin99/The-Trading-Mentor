@@ -27,6 +27,12 @@ import {
   MicOff,
   Send,
   Lock,
+  Shield,
+  Calculator,
+  ClipboardCheck,
+  CheckSquare,
+  Square,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { usePlanner } from "@/contexts/PlannerContext";
@@ -42,6 +48,35 @@ import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
 const ICON_MAP: Record<string, LucideIcon> = {
   Droplets, Wind, Newspaper, BarChart3, CheckCircle2, Target, Clock, Activity, AlertTriangle,
 };
+
+const RISK_CHECKLIST_STORAGE_KEY = "ict-pretrade-checklist";
+const RISK_CHECKLIST_TTL_HOURS = 4;
+const RISK_CHECKLIST_ITEMS = [
+  { id: "htf_bias", label: "HTF Bias confirmed on Daily chart", desc: "The Daily chart is clearly bullish or bearish — no choppy indecision." },
+  { id: "kill_zone", label: "In a Kill Zone right now", desc: "You are trading during London Open (2-5 AM EST) or Silver Bullet (10-11 AM EST)." },
+  { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", desc: "A liquidity sweep (stop hunt) or IDM (Inducement) has occurred on your entry timeframe." },
+  { id: "displacement_fvg", label: "Displacement with FVG or MSS present", desc: "Big displacement candles created an FVG or MSS — Smart Money is behind this move." },
+];
+const NQ_POINT_VALUE = 20;
+const MNQ_POINT_VALUE = 2;
+
+function getRiskChecklistState(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(RISK_CHECKLIST_STORAGE_KEY);
+    if (!raw) return {};
+    const data = JSON.parse(raw);
+    const ageMs = Date.now() - (data.timestamp || 0);
+    if (ageMs > RISK_CHECKLIST_TTL_HOURS * 60 * 60 * 1000) {
+      localStorage.removeItem(RISK_CHECKLIST_STORAGE_KEY);
+      return {};
+    }
+    return data.checked || {};
+  } catch { return {}; }
+}
+
+function saveRiskChecklistState(checked: Record<string, boolean>) {
+  localStorage.setItem(RISK_CHECKLIST_STORAGE_KEY, JSON.stringify({ checked, timestamp: Date.now() }));
+}
 
 interface PersonalTask {
   id: string;
@@ -369,6 +404,11 @@ export default function DailyPlanner() {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [showRiskTools, setShowRiskTools] = useState(false);
+  const [showPositionCalc, setShowPositionCalc] = useState(false);
+  const [showPreTradeChecklist, setShowPreTradeChecklist] = useState(false);
+  const [riskChecked, setRiskChecked] = useState<Record<string, boolean>>(() => getRiskChecklistState());
+  const [posCalcPoints, setPosCalcPoints] = useState("");
   const taskInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -397,6 +437,26 @@ export default function DailyPlanner() {
   const dailyLossPct = propStartingBalance > 0 ? (Math.abs(Math.min(todayClosedPnL, 0)) / propStartingBalance) * 100 : 0;
   const isDailyHalted = isToday && dailyLossPct >= maxDailyLossPctVal;
   const showHaltBanner = isDailyHalted && !haltDismissed;
+
+  const riskBalance = propAccount?.currentBalance ?? propStartingBalance;
+  const maxTotalDrawdownPct = propAccount?.maxTotalDrawdownPct ?? 10;
+  const totalLossPct = propStartingBalance > 0 ? ((propStartingBalance - riskBalance) / propStartingBalance) * 100 : 0;
+  const riskAmount = riskBalance * 0.005;
+  const posCalcPts = parseFloat(posCalcPoints) || 0;
+  const nqContracts = posCalcPts > 0 ? riskAmount / (posCalcPts * NQ_POINT_VALUE) : 0;
+  const mnqContracts = posCalcPts > 0 ? riskAmount / (posCalcPts * MNQ_POINT_VALUE) : 0;
+  const riskAllChecked = RISK_CHECKLIST_ITEMS.every((i) => riskChecked[i.id]);
+
+  function toggleRiskChecklist(id: string) {
+    const next = { ...riskChecked, [id]: !riskChecked[id] };
+    setRiskChecked(next);
+    saveRiskChecklistState(next);
+  }
+
+  function resetRiskChecklist() {
+    setRiskChecked({});
+    localStorage.removeItem(RISK_CHECKLIST_STORAGE_KEY);
+  }
 
   const bias = dayData.tradePlan.bias;
   const biasSelected = bias === "bullish" || bias === "bearish";
@@ -618,7 +678,7 @@ export default function DailyPlanner() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Calendar className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Daily Planner</h1>
+          <h1 className="text-2xl font-bold">Mission Control</h1>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => goDay(-1)} className="p-2 rounded-lg hover:bg-secondary transition-colors">
@@ -636,6 +696,31 @@ export default function DailyPlanner() {
         </div>
       </div>
 
+      {/* Risk Tool Buttons */}
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
+        <button
+          onClick={() => setShowRiskTools(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold bg-secondary border border-border hover:bg-secondary/80 text-foreground rounded-xl px-3 py-2 transition-colors"
+        >
+          <Shield className="h-3.5 w-3.5 text-emerald-400" />
+          Risk Gauges
+        </button>
+        <button
+          onClick={() => setShowPositionCalc(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold bg-secondary border border-border hover:bg-secondary/80 text-foreground rounded-xl px-3 py-2 transition-colors"
+        >
+          <Calculator className="h-3.5 w-3.5 text-blue-400" />
+          Position Calc
+        </button>
+        <button
+          onClick={() => setShowPreTradeChecklist(true)}
+          className={`flex items-center gap-1.5 text-xs font-semibold border rounded-xl px-3 py-2 transition-colors ${riskAllChecked ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-secondary border-border hover:bg-secondary/80 text-foreground"}`}
+        >
+          <ClipboardCheck className="h-3.5 w-3.5" />
+          Pre-Trade Checklist {RISK_CHECKLIST_ITEMS.filter((i) => riskChecked[i.id]).length}/{RISK_CHECKLIST_ITEMS.length}
+        </button>
+      </div>
+
       <div className="flex justify-center mb-6">
         <ProbabilityMeter score={probScore} />
       </div>
@@ -643,6 +728,146 @@ export default function DailyPlanner() {
       <p className="text-muted-foreground mb-6 text-sm">
         Plan your trading day. Complete your routine, set your goals, and stay disciplined.
       </p>
+
+      {/* Risk Gauges Modal */}
+      {showRiskTools && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowRiskTools(false)} />
+          <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl z-10">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-emerald-400" />
+                <h2 className="font-bold text-lg">Risk Gauges</h2>
+              </div>
+              <button onClick={() => setShowRiskTools(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-5">
+              {[
+                { label: "Daily Drawdown", value: dailyLossPct, max: maxDailyLossPctVal },
+                { label: "Total Drawdown", value: totalLossPct, max: maxTotalDrawdownPct },
+              ].map(({ label, value, max }) => {
+                const pct = Math.min(value / max, 1);
+                const color = pct >= 1 ? "#EF4444" : pct >= 0.75 ? "#F59E0B" : "#00C896";
+                return (
+                  <div key={label} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">{label}</span>
+                      <span className="text-sm font-bold" style={{ color }}>{value.toFixed(2)}% <span className="text-xs text-muted-foreground">/ {max}%</span></span>
+                    </div>
+                    <div className="h-2.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct * 100}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-2 border-t border-border">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Balance</span>
+                  <span className="font-bold text-foreground">${riskBalance.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Starting Balance</span>
+                  <span className="font-semibold text-foreground">${propStartingBalance.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Position Calculator Modal */}
+      {showPositionCalc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPositionCalc(false)} />
+          <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl z-10">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <Calculator className="h-5 w-5 text-blue-400" />
+                <h2 className="font-bold text-lg">Position Calculator</h2>
+              </div>
+              <button onClick={() => setShowPositionCalc(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-secondary/40 rounded-xl p-3 text-sm">
+                <span className="text-muted-foreground">Balance: </span>
+                <span className="font-bold">${riskBalance.toLocaleString()}</span>
+                <span className="text-muted-foreground ml-2">· Risk (0.5%): </span>
+                <span className="font-bold text-emerald-400">${riskAmount.toFixed(0)}</span>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Points at Risk (Stop Loss)</label>
+                <input
+                  type="number"
+                  value={posCalcPoints}
+                  onChange={(e) => setPosCalcPoints(e.target.value)}
+                  placeholder="e.g. 10"
+                  className="w-full bg-secondary/40 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              {posCalcPts > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 text-center">
+                    <div className="text-xl font-bold text-primary">{nqContracts.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">NQ Contracts</div>
+                  </div>
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-center">
+                    <div className="text-xl font-bold text-blue-400">{mnqContracts.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">MNQ Contracts</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pre-Trade Checklist Modal */}
+      {showPreTradeChecklist && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPreTradeChecklist(false)} />
+          <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl z-10 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5 text-emerald-400" />
+                <h2 className="font-bold text-lg">Pre-Trade Checklist</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={resetRiskChecklist} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Reset</button>
+                <button onClick={() => setShowPreTradeChecklist(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-amber-500 font-medium mb-4">
+              Buy in Discount (below 50% of range) · Sell in Premium (above 50% of range)
+            </div>
+            <div className="space-y-2">
+              {RISK_CHECKLIST_ITEMS.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => toggleRiskChecklist(item.id)}
+                  className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${riskChecked[item.id] ? "bg-emerald-500/10 border-emerald-500/30" : "bg-secondary/30 border-border hover:border-emerald-500/30"}`}
+                >
+                  {riskChecked[item.id]
+                    ? <CheckSquare className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                    : <Square className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />}
+                  <div>
+                    <div className={`text-sm font-semibold ${riskChecked[item.id] ? "text-emerald-400" : "text-foreground"}`}>{item.label}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className={`mt-4 rounded-xl border p-3 text-center text-sm font-bold transition-all ${riskAllChecked ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-secondary/30 border-border text-muted-foreground"}`}>
+              {riskAllChecked ? "✓ Checklist Complete — Ready to Trade" : `${RISK_CHECKLIST_ITEMS.filter((i) => riskChecked[i.id]).length} / ${RISK_CHECKLIST_ITEMS.length} criteria met`}
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card className="mb-4">
         <CardContent className="p-4 space-y-0">

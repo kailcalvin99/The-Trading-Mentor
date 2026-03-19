@@ -34,7 +34,6 @@ const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selec
   index:        { default: "calendar-outline",    selected: "calendar" },
   academy:      { default: "school-outline",      selected: "school" },
   videos:       { default: "play-circle-outline", selected: "play-circle" },
-  tracker:      { default: "shield-outline",      selected: "shield" },
   journal:      { default: "book-outline",        selected: "book" },
   tags:         { default: "pricetag-outline",    selected: "pricetag" },
   community:    { default: "people-outline",      selected: "people" },
@@ -43,31 +42,29 @@ const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selec
 
 const TAB_LABELS: Record<string, string> = {
   dashboard:    "Dashboard",
-  index:        "Planner",
+  index:        "Mission Control",
   academy:      "Academy",
   videos:       "Videos",
-  tracker:      "Risk",
   journal:      "Journal",
   tags:         "Tags",
   community:    "Social",
   analytics:    "Analytics",
 };
 
-type TabRoute = "dashboard" | "index" | "academy" | "videos" | "tracker" | "journal" | "tags" | "community" | "analytics";
+type TabRoute = "dashboard" | "index" | "academy" | "videos" | "journal" | "tags" | "community" | "analytics";
 
 const TAB_HREFS: Record<TabRoute, Href> = {
   dashboard:    "/dashboard",
   index:        "/",
   academy:      "/academy",
   videos:       "/videos",
-  tracker:      "/tracker",
   journal:      "/journal",
   tags:         "/tags",
   community:    "/community",
   analytics:    "/analytics",
 };
 
-const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "tracker", "journal", "tags", "community", "analytics"];
+const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "journal", "tags", "community", "analytics"];
 const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy", "journal"];
 
 interface TopTabBarProps {
@@ -218,17 +215,6 @@ export default function TopTabBar({
         </Text>
 
         <View style={styles.rightRow}>
-          <TouchableOpacity
-            style={[styles.logTradeBtn, { backgroundColor: C.accent }]}
-            onPress={() => router.navigate({ pathname: "/(tabs)/journal", params: { new: "1" } } as never)}
-            accessibilityLabel="Log a trade"
-            accessibilityRole="button"
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={13} color="#0A0A0F" />
-            <Text style={styles.logTradeBtnText}>Log Trade</Text>
-          </TouchableOpacity>
-
           <View style={[styles.dashBadge, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}>
             <Ionicons name="star" size={11} color={C.accent} />
             <Text style={[styles.dashBadgeText, { color: C.accent }]}>Lv.{level}</Text>

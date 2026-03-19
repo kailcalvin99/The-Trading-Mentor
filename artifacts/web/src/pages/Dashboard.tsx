@@ -289,33 +289,20 @@ function ChecklistPopup({ onClose }: { onClose: () => void }) {
   );
 }
 
-function CompactGreetingRow({ onOpenChecklist }: { onOpenChecklist?: () => void }) {
+function CompactGreetingRow() {
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")[0] || "Trader";
-  const checklistDone = CHECKLIST_ITEMS.filter(
-    (item) => getChecklistState().checked[item.id]
-  ).length;
-  const checklistTotal = CHECKLIST_ITEMS.length;
 
   const est = getESTNow();
   const greetingHour = est.getHours();
   const timeGreeting = greetingHour < 12 ? "Good morning" : greetingHour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3">
-      <div className="flex items-center gap-2">
-        <Bot className="h-4 w-4 text-primary shrink-0" />
-        <span className="text-sm font-semibold text-foreground">
-          {timeGreeting}, {firstName}
-        </span>
-      </div>
-      <button
-        onClick={onOpenChecklist}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-      >
-        <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span>Checklist: {checklistDone}/{checklistTotal}</span>
-      </button>
+    <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
+      <Bot className="h-4 w-4 text-primary shrink-0" />
+      <span className="text-sm font-semibold text-foreground">
+        {timeGreeting}, {firstName}
+      </span>
     </div>
   );
 }
@@ -425,7 +412,7 @@ function QuickJournalWidget() {
     <div className="bg-card border border-border rounded-2xl p-4">
       <WidgetHeader
         icon={StickyNote}
-        title="Quick Journal"
+        title="Quick Note"
         editLink="/journal"
         editLabel="Open Journal ↗"
       />
@@ -1437,7 +1424,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [showCustomize, setShowCustomize] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
-  const [showChecklistPopup, setShowChecklistPopup] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("dashboard-visited")) {
@@ -1483,10 +1469,8 @@ export default function Dashboard() {
             onSelect={async (val) => { await setAvatarUrl(val); setShowAvatarPicker(false); }}
           />
         )}
-        {showChecklistPopup && <ChecklistPopup onClose={() => setShowChecklistPopup(false)} />}
-
         <div className="space-y-4">
-          <CompactGreetingRow onOpenChecklist={() => setShowChecklistPopup(true)} />
+          <CompactGreetingRow />
           <LearningProgressWidget />
           <MasterMorningWidget />
           <LessonCarouselWidget />
@@ -1513,7 +1497,6 @@ export default function Dashboard() {
           onSelect={async (val) => { await setAvatarUrl(val); setShowAvatarPicker(false); }}
         />
       )}
-      {showChecklistPopup && <ChecklistPopup onClose={() => setShowChecklistPopup(false)} />}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-2">
           <SessionStatsBar />
@@ -1549,13 +1532,6 @@ export default function Dashboard() {
             >
               <Plus className="h-3.5 w-3.5" />
               Log Trade
-            </button>
-            <button
-              onClick={() => setShowChecklistPopup(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl px-3 py-2 transition-colors"
-            >
-              <ClipboardCheck className="h-3.5 w-3.5" />
-              Checklist
             </button>
             <button
               onClick={() => setShowCustomize(true)}

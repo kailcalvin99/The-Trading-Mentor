@@ -75,7 +75,7 @@ export default function TabLayout() {
         />
         <Tabs.Screen
           name="index"
-          options={{ title: "Planner" }}
+          options={{ title: "Mission Control" }}
         />
         <Tabs.Screen
           name="academy"
@@ -84,10 +84,6 @@ export default function TabLayout() {
         <Tabs.Screen
           name="videos"
           options={{ title: "Videos" }}
-        />
-        <Tabs.Screen
-          name="tracker"
-          options={{ title: "Risk" }}
         />
         <Tabs.Screen
           name="journal"

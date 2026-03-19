@@ -120,6 +120,19 @@ const PRESET_LEVELS = [
 
 const ASSET_LIST = ["NQ", "ES", "GC", "CL", "MNQ", "MES", "MGC", "MCL"];
 
+const NQ_POINT_VALUE = 20;
+const MNQ_POINT_VALUE = 2;
+
+const PRE_TRADE_CHECKLIST_ITEMS = [
+  { id: "htf_bias", label: "HTF Bias confirmed on Daily", icon: "trending-up" as const },
+  { id: "kill_zone", label: "In a Kill Zone right now", icon: "time" as const },
+  { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", icon: "water" as const },
+  { id: "displacement_fvg", label: "Displacement with FVG or MSS", icon: "flash" as const },
+];
+
+const RISK_CHECKLIST_STORAGE_KEY = "ict-checklist-state-mc";
+const RISK_CHECKLIST_TTL_HOURS = 4;
+
 function getESTNow(): Date {
   const now = new Date();
   const utc = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -152,6 +165,13 @@ function PlannerScreen() {
   const { shouldShow: showTour, completeTour } = useOnboardingTour();
   const { data: propAccount } = useGetPropAccount();
   const { data: apiTrades } = useListTrades();
+
+  const [showRiskGauges, setShowRiskGauges] = useState(false);
+  const [showPositionCalc, setShowPositionCalc] = useState(false);
+  const [showPreTradeChecklist, setShowPreTradeChecklist] = useState(false);
+  const [positionCalcPoints, setPositionCalcPoints] = useState("");
+  const [positionCalcBalance, setPositionCalcBalance] = useState("");
+  const [riskChecklistChecked, setRiskChecklistChecked] = useState<Record<string, boolean>>({});
   const trades = (apiTrades || []) as { isDraft?: boolean | null; outcome?: string | null; entryTime?: string | null; createdAt?: string; pnl?: number }[];
   const router = useRouter();
 
@@ -203,6 +223,38 @@ function PlannerScreen() {
       } catch {}
     })();
   }, []);
+
+  useEffect(() => {
+    const checkRiskTTL = () => {
+      AsyncStorage.getItem(RISK_CHECKLIST_STORAGE_KEY).then((raw) => {
+        if (!raw) return;
+        try {
+          const data = JSON.parse(raw);
+          const ageMs = Date.now() - (data.timestamp || 0);
+          if (ageMs > RISK_CHECKLIST_TTL_HOURS * 60 * 60 * 1000) {
+            AsyncStorage.removeItem(RISK_CHECKLIST_STORAGE_KEY);
+            setRiskChecklistChecked({});
+            return;
+          }
+          setRiskChecklistChecked(data.checked || {});
+        } catch {}
+      });
+    };
+    checkRiskTTL();
+    const interval = setInterval(checkRiskTTL, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  function toggleRiskChecklist(id: string) {
+    const next = { ...riskChecklistChecked, [id]: !riskChecklistChecked[id] };
+    setRiskChecklistChecked(next);
+    AsyncStorage.setItem(RISK_CHECKLIST_STORAGE_KEY, JSON.stringify({ checked: next, timestamp: Date.now() }));
+  }
+
+  function resetRiskChecklist() {
+    setRiskChecklistChecked({});
+    AsyncStorage.removeItem(RISK_CHECKLIST_STORAGE_KEY);
+  }
 
   const savePlan = useCallback((updated: TradePlan) => {
     setPlan(updated);
@@ -346,6 +398,23 @@ function PlannerScreen() {
   const stopTicks = parseFloat(plan.stopLossTicks) || 0;
   const contracts = stopTicks > 0 && tickInfo ? Math.floor((accountBalance * riskPct / 100) / (stopTicks * tickInfo.miniValue) * 10) / 10 : 0;
 
+  const riskGaugeMaxDailyLoss = propAccount?.maxDailyLossPct ? parseFloat(String(propAccount.maxDailyLossPct)) : 2;
+  const riskGaugeMaxTotalLoss = propAccount?.maxTotalDrawdownPct ? parseFloat(String(propAccount.maxTotalDrawdownPct)) : 10;
+  const riskGaugeBalance = propAccount?.currentBalance ? parseFloat(String(propAccount.currentBalance)) : 50000;
+  const riskGaugeStartingBalance = propAccount?.startingBalance ? parseFloat(String(propAccount.startingBalance)) : 50000;
+  const riskGaugeDailyLoss = propAccount?.dailyLoss ? parseFloat(String(propAccount.dailyLoss)) : 0;
+  const riskDailyLossPct = riskGaugeStartingBalance > 0 ? (riskGaugeDailyLoss / riskGaugeStartingBalance) * 100 : 0;
+  const riskTotalLossPct = riskGaugeStartingBalance > 0 ? ((riskGaugeStartingBalance - riskGaugeBalance) / riskGaugeStartingBalance) * 100 : 0;
+
+  const posCalcBalance = positionCalcBalance && !isNaN(parseFloat(positionCalcBalance)) && parseFloat(positionCalcBalance) > 0
+    ? parseFloat(positionCalcBalance) : riskGaugeBalance;
+  const posCalcRiskAmount = posCalcBalance * 0.005;
+  const posCalcPoints = parseFloat(positionCalcPoints) || 0;
+  const posCalcNQ = posCalcPoints > 0 ? posCalcRiskAmount / (posCalcPoints * NQ_POINT_VALUE) : 0;
+  const posCalcMNQ = posCalcPoints > 0 ? posCalcRiskAmount / (posCalcPoints * MNQ_POINT_VALUE) : 0;
+
+  const allRiskChecklistDone = PRE_TRADE_CHECKLIST_ITEMS.every((item) => riskChecklistChecked[item.id]);
+
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <OnboardingTour visible={showTour} onComplete={completeTour} />
@@ -354,7 +423,7 @@ function PlannerScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Daily Planner</Text>
+            <Text style={styles.title}>Mission Control</Text>
             <Text style={styles.dateText}>{dateStr}</Text>
           </View>
           <View style={styles.clockBadge}>
@@ -362,6 +431,156 @@ function PlannerScreen() {
             <Text style={styles.clockSub}>EST</Text>
           </View>
         </View>
+
+        {/* Risk Tool Buttons */}
+        <View style={styles.riskToolRow}>
+          <TouchableOpacity style={styles.riskToolBtn} onPress={() => setShowRiskGauges(true)}>
+            <Ionicons name="speedometer-outline" size={16} color={C.accent} />
+            <Text style={styles.riskToolBtnText}>Risk Gauges</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.riskToolBtn} onPress={() => setShowPositionCalc(true)}>
+            <Ionicons name="calculator-outline" size={16} color={C.accent} />
+            <Text style={styles.riskToolBtnText}>Position Calc</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.riskToolBtn, allRiskChecklistDone && styles.riskToolBtnDone]} onPress={() => setShowPreTradeChecklist(true)}>
+            <Ionicons name="checkmark-circle-outline" size={16} color={allRiskChecklistDone ? "#00C896" : C.accent} />
+            <Text style={[styles.riskToolBtnText, allRiskChecklistDone && { color: "#00C896" }]}>Pre-Trade</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Risk Gauges Modal */}
+        <Modal visible={showRiskGauges} animationType="slide" transparent onRequestClose={() => setShowRiskGauges(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Risk Gauges</Text>
+                <TouchableOpacity onPress={() => setShowRiskGauges(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close" size={22} color={C.textTertiary} />
+                </TouchableOpacity>
+              </View>
+              <View style={{ marginTop: 8 }}>
+                <View style={styles.gaugeContainer}>
+                  <View style={styles.gaugeHeader}>
+                    <Text style={styles.gaugeLabel}>Daily Drawdown</Text>
+                    <Text style={[styles.gaugeValue, { color: riskDailyLossPct / riskGaugeMaxDailyLoss >= 1 ? "#EF4444" : riskDailyLossPct / riskGaugeMaxDailyLoss >= 0.75 ? "#F59E0B" : C.accent }]}>
+                      {riskDailyLossPct.toFixed(2)}%
+                    </Text>
+                  </View>
+                  <View style={styles.gaugeTrack}>
+                    <View style={[styles.gaugeFill, { width: `${Math.min(riskDailyLossPct / riskGaugeMaxDailyLoss, 1) * 100}%` as any, backgroundColor: riskDailyLossPct / riskGaugeMaxDailyLoss >= 1 ? "#EF4444" : riskDailyLossPct / riskGaugeMaxDailyLoss >= 0.75 ? "#F59E0B" : C.accent }]} />
+                  </View>
+                  <Text style={styles.gaugeMax}>Limit: {riskGaugeMaxDailyLoss}%</Text>
+                </View>
+                <View style={[styles.gaugeContainer, { marginTop: 16 }]}>
+                  <View style={styles.gaugeHeader}>
+                    <Text style={styles.gaugeLabel}>Total Drawdown</Text>
+                    <Text style={[styles.gaugeValue, { color: riskTotalLossPct / riskGaugeMaxTotalLoss >= 1 ? "#EF4444" : riskTotalLossPct / riskGaugeMaxTotalLoss >= 0.75 ? "#F59E0B" : C.accent }]}>
+                      {riskTotalLossPct.toFixed(2)}%
+                    </Text>
+                  </View>
+                  <View style={styles.gaugeTrack}>
+                    <View style={[styles.gaugeFill, { width: `${Math.min(riskTotalLossPct / riskGaugeMaxTotalLoss, 1) * 100}%` as any, backgroundColor: riskTotalLossPct / riskGaugeMaxTotalLoss >= 1 ? "#EF4444" : riskTotalLossPct / riskGaugeMaxTotalLoss >= 0.75 ? "#F59E0B" : C.accent }]} />
+                  </View>
+                  <Text style={styles.gaugeMax}>Limit: {riskGaugeMaxTotalLoss}%</Text>
+                </View>
+                {!propAccount && (
+                  <Text style={{ color: C.textTertiary, fontSize: 12, textAlign: "center", marginTop: 16 }}>Set up your prop account in Risk Shield to see live gauges.</Text>
+                )}
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Position Calculator Modal */}
+        <Modal visible={showPositionCalc} animationType="slide" transparent onRequestClose={() => setShowPositionCalc(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Position Calculator</Text>
+                <TouchableOpacity onPress={() => setShowPositionCalc(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close" size={22} color={C.textTertiary} />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ color: C.textTertiary, fontSize: 12, marginBottom: 12 }}>0.5% risk per trade · NQ/MNQ sizing</Text>
+              <Text style={styles.inputLabel}>Points at Risk (Stop Size)</Text>
+              <TextInput
+                style={styles.inputField}
+                placeholder="e.g. 10"
+                placeholderTextColor={C.textTertiary}
+                keyboardType="decimal-pad"
+                value={positionCalcPoints}
+                onChangeText={setPositionCalcPoints}
+              />
+              <Text style={[styles.inputLabel, { marginTop: 12 }]}>Account Balance (optional)</Text>
+              <TextInput
+                style={styles.inputField}
+                placeholder={`Default: $${riskGaugeBalance.toLocaleString()}`}
+                placeholderTextColor={C.textTertiary}
+                keyboardType="decimal-pad"
+                value={positionCalcBalance}
+                onChangeText={setPositionCalcBalance}
+              />
+              {posCalcPoints > 0 && (
+                <View style={{ marginTop: 16, gap: 10 }}>
+                  <View style={styles.calcResultRow}>
+                    <Text style={styles.calcResultLabel}>NQ Contracts (0.5% risk)</Text>
+                    <Text style={styles.calcResultValue}>{posCalcNQ.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.calcResultRow}>
+                    <Text style={styles.calcResultLabel}>MNQ Contracts (0.5% risk)</Text>
+                    <Text style={styles.calcResultValue}>{posCalcMNQ.toFixed(2)}</Text>
+                  </View>
+                  <Text style={{ color: C.textTertiary, fontSize: 11, marginTop: 4 }}>
+                    Risk Amount: ${posCalcRiskAmount.toFixed(2)} · Balance: ${posCalcBalance.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Pre-Trade Checklist Modal */}
+        <Modal visible={showPreTradeChecklist} animationType="slide" transparent onRequestClose={() => setShowPreTradeChecklist(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Pre-Trade Checklist</Text>
+                <TouchableOpacity onPress={() => setShowPreTradeChecklist(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close" size={22} color={C.textTertiary} />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ color: C.textTertiary, fontSize: 12, marginBottom: 16 }}>All 4 must be green before you enter a trade.</Text>
+              {PRE_TRADE_CHECKLIST_ITEMS.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.checklistRow, riskChecklistChecked[item.id] && styles.checklistRowDone]}
+                  onPress={() => toggleRiskChecklist(item.id)}
+                >
+                  <Ionicons
+                    name={riskChecklistChecked[item.id] ? "checkmark-circle" : "ellipse-outline"}
+                    size={22}
+                    color={riskChecklistChecked[item.id] ? "#00C896" : C.textTertiary}
+                  />
+                  <Text style={[styles.checklistLabel, riskChecklistChecked[item.id] && styles.checklistLabelDone]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              {allRiskChecklistDone && (
+                <View style={styles.checklistAllDone}>
+                  <Ionicons name="shield-checkmark" size={20} color="#00C896" />
+                  <Text style={styles.checklistAllDoneText}>All clear — you're ready to trade</Text>
+                </View>
+              )}
+              <TouchableOpacity style={styles.checklistResetBtn} onPress={resetRiskChecklist}>
+                <Text style={styles.checklistResetText}>Reset Checklist</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {/* Daily Halt Banner */}
         {showHaltBanner && (
@@ -845,7 +1064,7 @@ function PlannerScreen() {
 
       {/* Send to Journal Modal */}
       <Modal visible={sendModalOpen} transparent animationType="fade" onRequestClose={() => setSendModalOpen(false)}>
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { justifyContent: "center", padding: 20 }]}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Ready to Trade</Text>
             <Text style={styles.modalSub}>Confirm your plan before logging.</Text>
@@ -997,9 +1216,12 @@ const styles = StyleSheet.create({
   addItemInput: { flex: 1, fontSize: 14, color: C.text, fontFamily: "Inter_500Medium", paddingVertical: 6 },
   addBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: C.accent, alignItems: "center", justifyContent: "center" },
   addBtnDisabled: { backgroundColor: C.cardBorder },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 20 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  modalSheet: { backgroundColor: C.backgroundSecondary, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36, borderWidth: 1, borderColor: C.cardBorder },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.cardBorder, alignSelf: "center", marginBottom: 16 },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   modalCard: { backgroundColor: C.backgroundSecondary, borderRadius: 20, padding: 24, width: "100%", borderWidth: 1, borderColor: C.cardBorder },
-  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 4 },
+  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text },
   modalSub: { fontSize: 13, color: C.textSecondary, marginBottom: 20 },
   modalRows: { gap: 12, marginBottom: 24 },
   modalRow: { flexDirection: "row", justifyContent: "space-between" },
@@ -1010,4 +1232,27 @@ const styles = StyleSheet.create({
   modalCancelLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.textSecondary },
   modalConfirmBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: C.accent, alignItems: "center" },
   modalConfirmLabel: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+  riskToolRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+  riskToolBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderRadius: 12, backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder },
+  riskToolBtnDone: { borderColor: "#00C896" + "66", backgroundColor: "#00C896" + "10" },
+  riskToolBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.accent },
+  gaugeContainer: { backgroundColor: C.backgroundTertiary, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.cardBorder },
+  gaugeHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  gaugeLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.text },
+  gaugeValue: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  gaugeTrack: { height: 8, backgroundColor: C.cardBorder, borderRadius: 4, overflow: "hidden" },
+  gaugeFill: { height: "100%", borderRadius: 4 },
+  gaugeMax: { fontSize: 11, color: C.textTertiary, marginTop: 6 },
+  inputField: { backgroundColor: C.backgroundTertiary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: C.text, fontFamily: "Inter_500Medium", borderWidth: 1, borderColor: C.cardBorder },
+  calcResultRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: C.backgroundTertiary, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.cardBorder },
+  calcResultLabel: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  calcResultValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.accent },
+  checklistRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
+  checklistRowDone: { opacity: 0.7 },
+  checklistLabel: { fontSize: 14, color: C.text, fontFamily: "Inter_500Medium", flex: 1 },
+  checklistLabelDone: { color: C.textSecondary, textDecorationLine: "line-through" },
+  checklistAllDone: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16, padding: 12, backgroundColor: "#00C896" + "14", borderRadius: 10, borderWidth: 1, borderColor: "#00C896" + "40" },
+  checklistAllDoneText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#00C896" },
+  checklistResetBtn: { marginTop: 16, alignItems: "center", paddingVertical: 10 },
+  checklistResetText: { fontSize: 13, color: C.textTertiary, fontFamily: "Inter_500Medium" },
 });

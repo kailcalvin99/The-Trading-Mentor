@@ -25,9 +25,7 @@ export const WIDGET_CONFIG: Array<{
   desc: string;
   icon: ComponentProps<typeof Ionicons>["name"];
 }> = [
-  { key: "todaySchedule", label: "Routine Progress", desc: "Compact routine progress ring with Planner link", icon: "calendar-outline" },
   { key: "morningRoutine", label: "Morning Routine", desc: "Progress ring & checklist", icon: "sunny-outline" },
-  { key: "preTradeChecklist", label: "Pre-Trade Checklist", desc: "4-point readiness check", icon: "checkmark-circle-outline" },
-  { key: "quickJournal", label: "Quick Journal", desc: "Log a quick note to journal", icon: "pencil-outline" },
+  { key: "quickJournal", label: "Quick Note", desc: "Log a quick note to journal", icon: "pencil-outline" },
   { key: "notes", label: "Quick Notes", desc: "Scratch-pad notes", icon: "create-outline" },
 ];
