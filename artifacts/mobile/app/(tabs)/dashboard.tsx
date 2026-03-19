@@ -533,8 +533,8 @@ function StatsStripWidget() {
   ];
 
   return (
-    <View style={styles.card}>
-      <View style={[styles.cardHeaderRow, { paddingBottom: 10 }]}>
+    <View style={styles.statsStrip}>
+      <View style={[styles.cardHeaderRow, { paddingBottom: 8 }]}>
         <Ionicons name="stats-chart-outline" size={14} color={C.accent} />
         <Text style={styles.cardLabel}>Today's Stats</Text>
         <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/analytics" })} activeOpacity={0.7}>
@@ -2002,6 +2002,18 @@ export default function DashboardScreen() {
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
+
+      {/* Log Trade FAB — always visible on dashboard */}
+      <TouchableOpacity
+        style={[styles.logTradeFab, { backgroundColor: C.accent }]}
+        onPress={() => router.navigate({ pathname: "/(tabs)/journal", params: { new: "1" } } as never)}
+        activeOpacity={0.85}
+        accessibilityLabel="Log a trade"
+        accessibilityRole="button"
+      >
+        <Ionicons name="add" size={20} color="#0A0A0F" />
+        <Text style={styles.logTradeFabText}>Log Trade</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -2010,6 +2022,44 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
   scroll: { flex: 1 },
   content: { padding: 16 },
+
+  logTradeFab: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 28 : 16,
+    right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 28,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+    zIndex: 50,
+  },
+  logTradeFabText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: "#0A0A0F",
+  },
+
+  statsStrip: {
+    marginHorizontal: -16,
+    marginTop: -16,
+    marginBottom: 12,
+    borderRadius: 0,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    backgroundColor: C.backgroundSecondary,
+    borderColor: C.cardBorder,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
 
   scheduleRow: { flexDirection: "row", alignItems: "flex-start", paddingLeft: 14, paddingRight: 14, paddingVertical: 10 },
   scheduleTimeCol: { width: 70, alignItems: "flex-end", paddingRight: 14, position: "relative" },
