@@ -6,6 +6,17 @@ export type ErrorType<T = unknown> = ApiError<T>;
 
 export type BodyType<T> = T;
 
+let _authTokenProvider: (() => string | null | Promise<string | null>) | null = null;
+let _defaultCredentials: RequestCredentials | undefined = undefined;
+
+export function configureAuth(opts: {
+  tokenProvider?: (() => string | null | Promise<string | null>) | null;
+  credentials?: RequestCredentials;
+}): void {
+  if (opts.tokenProvider !== undefined) _authTokenProvider = opts.tokenProvider;
+  if (opts.credentials !== undefined) _defaultCredentials = opts.credentials;
+}
+
 const NO_BODY_STATUS = new Set([204, 205, 304]);
 const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
@@ -295,6 +306,15 @@ export async function customFetch<T = unknown>(
 
   if (responseType === "json" && !headers.has("accept")) {
     headers.set("accept", DEFAULT_JSON_ACCEPT);
+  }
+
+  if (_authTokenProvider && !headers.has("authorization")) {
+    const token = await _authTokenProvider();
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
+
+  if (_defaultCredentials && !init.credentials) {
+    init.credentials = _defaultCredentials;
   }
 
   const requestInfo = { method, url: resolveUrl(input) };
