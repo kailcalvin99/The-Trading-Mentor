@@ -239,7 +239,7 @@ export default function JournalScreen() {
     useCallback(() => {
       if (newParam === "1") {
         router.setParams({ new: "" } as never);
-        proceedToNewForm();
+        openNewForm();
       }
     }, [newParam])
   );
