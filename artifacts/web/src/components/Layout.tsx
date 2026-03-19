@@ -9,6 +9,7 @@ import { FreeSidebar, useDailyStreak } from "@/components/CasinoElements";
 import AIAssistant from "@/components/AIAssistant";
 import { TourGuide } from "@/components/TourGuide";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
+import KillZoneStrip from "@/components/KillZoneStrip";
 
 const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
@@ -648,6 +649,8 @@ export default function Layout() {
           <AIAssistant />
           <HeaderGamificationBadges />
         </div>
+
+        <KillZoneStrip />
 
         <main className="flex-1 overflow-auto relative">
           <div className="flex h-full">

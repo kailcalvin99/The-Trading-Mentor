@@ -1,19 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  TrendingUp, BarChart3, Shield,
   Sparkles,
   FileText, StickyNote, ClipboardCheck, CheckSquare, Square,
-  Target, Settings, X,
+  Settings, X,
   CheckCircle2, Play, GraduationCap, Users, Lock,
 } from "lucide-react";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
-import { useListTrades } from "@workspace/api-client-react";
 import { usePlanner } from "@/contexts/PlannerContext";
-import { useGetPropAccount } from "@workspace/api-client-react";
 import { DASHBOARD_WIDGETS, useDashboardWidgets } from "@/hooks/useDashboardWidgets";
+import { useTodaySchedule } from "@/hooks/useTodaySchedule";
 import type { LucideIcon } from "lucide-react";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 
@@ -24,10 +22,6 @@ const SESSIONS = [
   { name: "London Close", emoji: "🔔", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8", time: "11:00 AM–12:00 PM EST" },
 ];
 
-const SLOT_SESSIONS = ["Silver Bullet 🎯", "NY Open 📈", "London 🌍", "Asian 🌏"];
-const SLOT_ACTIONS = ["FVG Entry", "OB Retest", "Liquidity Grab", "Market Structure"];
-const SLOT_GOALS = ["1 trade max", "Watch only", "Log in journal", "50-pt target"];
-
 const CHECKLIST_STORAGE_KEY = "ict-pretrade-checklist";
 const CHECKLIST_TTL_HOURS = 4;
 const CHECKLIST_ITEMS = [
@@ -35,15 +29,6 @@ const CHECKLIST_ITEMS = [
   { id: "kill_zone", label: "In a Kill Zone right now", desc: "You are trading during London Open (2-5 AM EST) or Silver Bullet (10-11 AM EST)." },
   { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", desc: "A liquidity sweep (stop hunt) or IDM (Inducement) has occurred on your entry timeframe." },
   { id: "displacement_fvg", label: "Displacement with FVG or MSS present", desc: "Big displacement candles created an FVG or MSS — Smart Money is behind this move." },
-];
-
-const TRADE_BIAS_CHIPS = [
-  { id: "bullish", label: "Bullish bias", color: "#00C896" },
-  { id: "bearish", label: "Bearish bias", color: "#EF4444" },
-  { id: "waiting", label: "Waiting for sweep", color: "#F59E0B" },
-  { id: "silver_bullet", label: "Silver Bullet only", color: "#818CF8" },
-  { id: "no_trade", label: "No trade — red news", color: "#6B7280" },
-  { id: "targeting_ny", label: "Targeting NY Open", color: "#00C896" },
 ];
 
 const QUICK_JOURNAL_KEY = "ict-quick-journal-notes";
@@ -102,24 +87,6 @@ function getESTNow(): Date {
   );
 }
 
-function formatCountdown(ms: number): string {
-  if (ms <= 0) return "LIVE";
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
-}
-
-function dateSeed(): number {
-  const d = new Date().toDateString();
-  let hash = 0;
-  for (let i = 0; i < d.length; i++) {
-    hash = ((hash << 5) - hash) + d.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
 function WidgetHeader({
   icon: Icon,
   title,
@@ -174,162 +141,6 @@ function CompactGreetingRow() {
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
         <span>Checklist: {checklistDone}/{checklistTotal}</span>
-      </div>
-    </div>
-  );
-}
-
-function SlotMachine() {
-  const [reelsStopped, setReelsStopped] = useState([false, false, false]);
-  const [results, setResults] = useState<string[]>(["", "", ""]);
-  const seed = dateSeed();
-
-  useEffect(() => {
-    const r1 = SLOT_SESSIONS[seed % SLOT_SESSIONS.length];
-    const r2 = SLOT_ACTIONS[Math.floor(seed / 7) % SLOT_ACTIONS.length];
-    const r3 = SLOT_GOALS[Math.floor(seed / 13) % SLOT_GOALS.length];
-    const finalResults = [r1, r2, r3];
-
-    const delays = [1200, 1800, 2400];
-    const timers = delays.map((delay, i) =>
-      setTimeout(() => {
-        setResults((prev) => { const next = [...prev]; next[i] = finalResults[i]; return next; });
-        setReelsStopped((prev) => { const next = [...prev]; next[i] = true; return next; });
-      }, delay)
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [seed]);
-
-  return (
-    <div className="bg-gradient-to-b from-red-600/5 to-card border border-red-600/20 rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Target className="h-5 w-5 text-red-500" />
-        <h3 className="text-base font-bold text-foreground">Today's Mission</h3>
-        <span className="text-[10px] bg-red-600/10 text-red-500 px-2 py-0.5 rounded-full font-bold">DAILY</span>
-      </div>
-
-      <div className="flex gap-3 justify-center mb-4">
-        {["Session", "Action", "Goal"].map((label, i) => (
-          <div key={label} className="flex-1 max-w-[140px]">
-            <p className="text-[10px] text-muted-foreground text-center mb-1 uppercase tracking-wider">{label}</p>
-            <div className="h-16 bg-muted/50 border border-border rounded-xl flex items-center justify-center overflow-hidden relative">
-              {!reelsStopped[i] ? (
-                <div className={`animate-slot-spin slot-reel-${i}`}>
-                  <div className="text-sm font-bold text-foreground/50 text-center space-y-2">
-                    {(i === 0 ? SLOT_SESSIONS : i === 1 ? SLOT_ACTIONS : SLOT_GOALS).map((item, j) => (
-                      <p key={j}>{item}</p>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm font-bold text-foreground text-center px-2 animate-in fade-in duration-500">
-                  {results[i]}
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {reelsStopped.every(Boolean) && (
-        <div className="bg-red-600/10 border border-red-600/20 rounded-xl p-3 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
-          <p className="text-sm font-medium text-foreground">
-            <span className="text-red-500 font-bold">Mission:</span> {results[0]} → {results[1]} → {results[2]}
-          </p>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes slotSpin {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(-100%); }
-        }
-        .animate-slot-spin {
-          animation: slotSpin 0.15s linear infinite;
-          filter: blur(2px);
-        }
-        .slot-reel-0 { animation-duration: 0.15s; animation-delay: 0s; }
-        .slot-reel-1 { animation-duration: 0.2s; }
-        .slot-reel-2 { animation-duration: 0.3s; filter: blur(3px); }
-      `}</style>
-    </div>
-  );
-}
-
-function KillZoneStripWidget() {
-  const navigate = useNavigate();
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const est = getESTNow();
-  const nowMins = est.getHours() * 60 + est.getMinutes();
-
-  return (
-    <div className="bg-card border border-border rounded-2xl p-4">
-      <WidgetHeader
-        icon={Target}
-        title="Kill Zones"
-        editLink="/planner"
-        editLabel="Planner ↗"
-      />
-      <div
-        className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide cursor-pointer"
-        style={{ height: 52 }}
-        onClick={() => navigate("/planner")}
-      >
-        {SESSIONS.map((session) => {
-          const startMins = session.startH * 60 + session.startM;
-          const endMins = session.endH * 60 + session.endM;
-          const isLive = endMins > startMins
-            ? nowMins >= startMins && nowMins < endMins
-            : nowMins >= startMins || nowMins < endMins;
-          const isEnded = endMins > startMins
-            ? nowMins >= endMins
-            : nowMins >= endMins && nowMins < startMins;
-
-          const target = new Date(est);
-          target.setHours(session.startH, session.startM, 0, 0);
-          if (!isLive && est >= target) target.setDate(target.getDate() + 1);
-          const msUntil = isLive ? 0 : target.getTime() - est.getTime();
-          const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
-
-          return (
-            <div
-              key={session.name}
-              className={`flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border rounded-xl transition-all ${
-                isLive ? "border-2" : "border-border"
-              }`}
-              style={isLive ? { borderColor: session.color, boxShadow: `0 0 8px ${session.color}25` } : undefined}
-            >
-              <div
-                className={`w-1.5 h-1.5 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
-                style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
-              />
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-foreground whitespace-nowrap leading-tight">{session.emoji} {session.name}</span>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight">{session.time}</span>
-              </div>
-              {isLive ? (
-                <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-1"
-                  style={{ backgroundColor: `${session.color}20`, color: session.color }}
-                >
-                  LIVE
-                </span>
-              ) : isEnded ? (
-                <span className="text-[10px] text-muted-foreground font-medium shrink-0 ml-1">Ended</span>
-              ) : (
-                <span className={`text-[10px] font-mono font-medium shrink-0 ml-1 ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
-                  {formatCountdown(msUntil)}
-                </span>
-              )}
-            </div>
-          );
-        })}
       </div>
     </div>
   );
@@ -483,252 +294,6 @@ function PreTradeChecklistWidget() {
   );
 }
 
-const PLANNER_DAY_KEY_PREFIX = "planner_day_";
-
-function getTodayPlannerKey() {
-  return `${PLANNER_DAY_KEY_PREFIX}${new Date().toISOString().split("T")[0]}`;
-}
-
-interface TodayTradePlan {
-  bias: string;
-  pairsToWatch: string;
-  sessionFocus: string;
-  maxTrades: string;
-}
-
-function loadTodayTradePlan(): TodayTradePlan {
-  try {
-    const raw = localStorage.getItem(getTodayPlannerKey());
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return parsed.tradePlan || {};
-    }
-  } catch {}
-  return { bias: "", pairsToWatch: "", sessionFocus: "", maxTrades: "" };
-}
-
-function saveTodayBias(bias: string) {
-  try {
-    const key = getTodayPlannerKey();
-    const raw = localStorage.getItem(key);
-    const data = raw ? JSON.parse(raw) : { tasks: [], notes: "", tradePlan: {} };
-    data.tradePlan = { ...data.tradePlan, bias };
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch {}
-}
-
-function TradePlanWidget() {
-  const navigate = useNavigate();
-  const [plan, setPlan] = useState<TodayTradePlan>(() => loadTodayTradePlan());
-
-  useEffect(() => {
-    const handleStorage = () => setPlan(loadTodayTradePlan());
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
-
-  const activeBiasChip = TRADE_BIAS_CHIPS.find((c) =>
-    plan.bias?.toLowerCase().includes(c.id.replace("_", " ")) ||
-    plan.bias?.toLowerCase().includes(c.label.toLowerCase().split(" ")[0])
-  );
-
-  function tapBias(chip: typeof TRADE_BIAS_CHIPS[0]) {
-    const newBias = plan.bias === chip.label ? "" : chip.label;
-    setPlan((prev) => ({ ...prev, bias: newBias }));
-    saveTodayBias(newBias);
-  }
-
-  const hasPlan = plan.bias || plan.pairsToWatch || plan.sessionFocus || plan.maxTrades;
-
-  return (
-    <div className="bg-card border border-border rounded-2xl p-4">
-      <WidgetHeader
-        icon={FileText}
-        title="Today's Trade Plan"
-        editLink="/planner"
-        editLabel="Edit ↗"
-      />
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        {TRADE_BIAS_CHIPS.map((chip) => {
-          const isActive = plan.bias === chip.label;
-          return (
-            <button
-              key={chip.id}
-              onClick={() => tapBias(chip)}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-all whitespace-nowrap"
-              style={{
-                borderColor: isActive ? chip.color : "var(--border)",
-                color: isActive ? chip.color : "var(--muted-foreground)",
-                backgroundColor: isActive ? `${chip.color}15` : "transparent",
-              }}
-            >
-              {chip.label}
-            </button>
-          );
-        })}
-      </div>
-      {hasPlan ? (
-        <div className="space-y-1.5">
-          {plan.bias && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-16 shrink-0">Bias</span>
-              <span
-                className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ color: activeBiasChip?.color || "var(--foreground)", backgroundColor: `${activeBiasChip?.color || "#666"}15` }}
-              >
-                {plan.bias}
-              </span>
-            </div>
-          )}
-          {plan.pairsToWatch && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-16 shrink-0">Pairs</span>
-              <span className="text-xs text-foreground">{plan.pairsToWatch}</span>
-            </div>
-          )}
-          {plan.sessionFocus && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-16 shrink-0">Session</span>
-              <span className="text-xs text-foreground">{plan.sessionFocus}</span>
-            </div>
-          )}
-          {plan.maxTrades && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider w-16 shrink-0">Max trades</span>
-              <span className="text-xs text-foreground">{plan.maxTrades}</span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">Tap a bias chip above or go to Planner to set today's plan.</p>
-      )}
-    </div>
-  );
-}
-
-function RiskShieldMiniWidget() {
-  const navigate = useNavigate();
-  const { data: account } = useGetPropAccount();
-
-  const startingBalance = account?.startingBalance ?? 0;
-  const dailyLoss = account?.dailyLoss ?? 0;
-  const maxDailyLossPct = account?.maxDailyLossPct ?? 2;
-  const maxDrawdownPct = account?.maxTotalDrawdownPct ?? 10;
-  const balance = account?.currentBalance ?? startingBalance;
-  const dailyLossPct = startingBalance > 0 ? (dailyLoss / startingBalance) * 100 : 0;
-  const totalDrawdownPct = startingBalance > 0 ? ((startingBalance - balance) / startingBalance) * 100 : 0;
-  const hasData = startingBalance > 0;
-
-  const dailyColor = dailyLossPct >= maxDailyLossPct ? "#EF4444" : dailyLossPct >= maxDailyLossPct * 0.75 ? "#F59E0B" : "#00C896";
-  const drawdownColor = totalDrawdownPct >= maxDrawdownPct ? "#EF4444" : totalDrawdownPct >= maxDrawdownPct * 0.75 ? "#F59E0B" : "#00C896";
-
-  const [accountSizeInput, setAccountSizeInput] = useState(
-    startingBalance > 0 ? String(startingBalance) : ""
-  );
-  const [riskPctInput, setRiskPctInput] = useState("1");
-  const [slPointsInput, setSlPointsInput] = useState("10");
-
-  const acctSize = parseFloat(accountSizeInput) || 0;
-  const riskPct = parseFloat(riskPctInput) || 1;
-  const slPoints = parseFloat(slPointsInput) || 0;
-  const dollarRisk = acctSize > 0 ? (acctSize * riskPct) / 100 : null;
-  const contractCount = dollarRisk !== null && slPoints > 0 ? dollarRisk / slPoints : null;
-
-  return (
-    <div className="bg-card border border-red-500/20 rounded-2xl p-4">
-      <WidgetHeader
-        icon={Shield}
-        title="Risk Shield"
-        editLink="/risk-shield"
-        editLabel="Full Shield ↗"
-      />
-      {hasData && (
-        <div className="space-y-3 mb-4">
-          <div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-              <span>Daily Loss</span>
-              <span style={{ color: dailyColor }}>{dailyLossPct.toFixed(2)}% / {maxDailyLossPct}% limit</span>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min((dailyLossPct / maxDailyLossPct) * 100, 100)}%`, backgroundColor: dailyColor }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-              <span>Drawdown</span>
-              <span style={{ color: drawdownColor }}>{totalDrawdownPct.toFixed(2)}% / {maxDrawdownPct}% limit</span>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min((totalDrawdownPct / maxDrawdownPct) * 100, 100)}%`, backgroundColor: drawdownColor }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Compact position sizer */}
-      <div className="rounded-xl border border-border bg-secondary/30 p-3">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Quick Position Sizer</p>
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex-1 min-w-0">
-            <label className="text-[10px] text-muted-foreground block mb-1">Account ($)</label>
-            <input
-              type="number"
-              value={accountSizeInput}
-              onChange={(e) => setAccountSizeInput(e.target.value)}
-              placeholder={startingBalance > 0 ? String(startingBalance) : "50000"}
-              className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div style={{ width: 60 }}>
-            <label className="text-[10px] text-muted-foreground block mb-1">Risk %</label>
-            <input
-              type="number"
-              step="0.1"
-              min="0.1"
-              max="5"
-              value={riskPctInput}
-              onChange={(e) => setRiskPctInput(e.target.value)}
-              className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div style={{ width: 60 }}>
-            <label className="text-[10px] text-muted-foreground block mb-1">SL (pts)</label>
-            <input
-              type="number"
-              step="1"
-              min="1"
-              value={slPointsInput}
-              onChange={(e) => setSlPointsInput(e.target.value)}
-              className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="10"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className={`flex items-center justify-between rounded-lg px-2.5 py-2 ${dollarRisk !== null ? "bg-primary/10 border border-primary/20" : "bg-card border border-border"}`}>
-            <span className="text-[10px] text-muted-foreground">$ Risk</span>
-            <span className="text-sm font-bold text-primary">
-              {dollarRisk !== null ? `$${dollarRisk.toFixed(0)}` : "—"}
-            </span>
-          </div>
-          <div className={`flex items-center justify-between rounded-lg px-2.5 py-2 ${contractCount !== null ? "bg-primary/10 border border-primary/20" : "bg-card border border-border"}`}>
-            <span className="text-[10px] text-muted-foreground">Contracts</span>
-            <span className="text-sm font-bold text-primary">
-              {contractCount !== null ? (contractCount < 0.1 ? contractCount.toFixed(2) : contractCount.toFixed(1)) : "—"}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function QuickJournalWidget() {
   const navigate = useNavigate();
   const [text, setText] = useState("");
@@ -797,87 +362,6 @@ function QuickJournalWidget() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function StatsTickerStrip() {
-  const navigate = useNavigate();
-  const { data: apiTrades } = useListTrades();
-  const { streak } = useDailyStreak();
-
-  const trades = (apiTrades || []) as Array<{
-    outcome?: string | null;
-    pnl?: string | number | null;
-    createdAt?: string | null;
-    isDraft?: boolean | null;
-  }>;
-
-  const today = new Date().toDateString();
-  const todayTrades = trades.filter((t) => {
-    if (t.isDraft) return false;
-    if (!t.createdAt) return false;
-    return new Date(t.createdAt).toDateString() === today;
-  });
-
-  const todayCompleted = todayTrades.filter((t) => t.outcome === "win" || t.outcome === "loss");
-  const todayWins = todayCompleted.filter((t) => t.outcome === "win").length;
-  const todayWinRate = todayCompleted.length > 0 ? Math.round((todayWins / todayCompleted.length) * 100) : null;
-
-  const todayPnL = todayTrades.reduce((sum, t) => {
-    const v = parseFloat(String(t.pnl ?? "0"));
-    return sum + (isNaN(v) ? 0 : v);
-  }, 0);
-
-  const hasTodayTrades = todayTrades.length > 0;
-  const pnlColor = todayPnL > 0 ? "text-emerald-400" : todayPnL < 0 ? "text-red-400" : "text-muted-foreground";
-
-  const pills = [
-    {
-      label: "Today's P&L",
-      value: hasTodayTrades ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—",
-      color: hasTodayTrades ? pnlColor : "text-muted-foreground",
-      bg: hasTodayTrades && todayPnL > 0 ? "bg-emerald-500/10 border-emerald-500/20" : hasTodayTrades && todayPnL < 0 ? "bg-red-500/10 border-red-500/20" : "bg-secondary border-border",
-    },
-    {
-      label: "Win Rate",
-      value: todayWinRate !== null ? `${todayWinRate}%` : "—",
-      color: todayWinRate !== null && todayWinRate >= 50 ? "text-emerald-400" : todayWinRate !== null ? "text-amber-400" : "text-muted-foreground",
-      bg: todayWinRate !== null && todayWinRate >= 50 ? "bg-emerald-500/10 border-emerald-500/20" : todayWinRate !== null ? "bg-amber-500/10 border-amber-500/20" : "bg-secondary border-border",
-    },
-    {
-      label: "Trades",
-      value: todayCompleted.length > 0 ? String(todayCompleted.length) : "—",
-      color: "text-foreground",
-      bg: "bg-secondary border-border",
-    },
-    {
-      label: "Streak",
-      value: `${streak}d`,
-      color: streak >= 7 ? "text-red-400" : streak >= 3 ? "text-amber-400" : "text-muted-foreground",
-      bg: streak >= 3 ? "bg-amber-500/10 border-amber-500/20" : "bg-secondary border-border",
-    },
-  ];
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide flex-1 min-w-0">
-        {pills.map((pill) => (
-          <div
-            key={pill.label}
-            className={`flex-shrink-0 flex items-center gap-2 border rounded-full px-3 py-1.5 ${pill.bg}`}
-          >
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">{pill.label}</span>
-            <span className={`text-xs font-bold whitespace-nowrap ${pill.color}`}>{pill.value}</span>
-          </div>
-        ))}
-      </div>
-      <button
-        onClick={() => navigate("/analytics")}
-        className="text-[10px] text-primary hover:text-primary/80 font-medium shrink-0 whitespace-nowrap transition-colors"
-      >
-        Analytics ↗
-      </button>
     </div>
   );
 }
@@ -1071,67 +555,6 @@ function CommunityWidget() {
           })
         )}
       </div>
-    </div>
-  );
-}
-
-function RiskShieldLockWidget() {
-  const { setAppMode } = useAuth();
-  const { data: account } = useGetPropAccount();
-  const hasAccount = account && account.startingBalance > 0;
-
-  if (hasAccount) {
-    const bal = account.startingBalance ?? 0;
-    const drawdown = account.maxDailyLoss ?? 0;
-    const drawdownPct = bal > 0 ? Math.round((drawdown / bal) * 100) : 0;
-    return (
-      <div className="bg-card border rounded-2xl p-4" style={{ borderColor: "rgba(0,200,150,0.15)" }}>
-        <div className="flex items-center gap-2 mb-3">
-          <Shield className="h-4 w-4 shrink-0" style={{ color: "#00C896" }} />
-          <h3 className="text-sm font-bold text-foreground flex-1">Risk Shield</h3>
-          <button onClick={() => setAppMode("full")} className="text-[10px] font-medium" style={{ color: "#00C896" }}>Full Mode ↗</button>
-        </div>
-        <div className="flex gap-4 mb-3">
-          <div className="text-center">
-            <p className="text-lg font-bold" style={{ color: "#00C896" }}>${bal.toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground">Balance</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-red-400">{drawdownPct}%</p>
-            <p className="text-[10px] text-muted-foreground">Max Daily DD</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2 border text-xs font-medium" style={{ backgroundColor: "rgba(0,200,150,0.05)", borderColor: "rgba(0,200,150,0.15)", color: "#00C896" }}>
-          <Shield className="h-3 w-3 shrink-0" />
-          <span>Risk Shield active — switch to Full Mode to manage</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-card border rounded-2xl p-4" style={{ borderColor: "rgba(239,68,68,0.15)" }}>
-      <div className="flex items-start gap-3 mb-3">
-        <div className="relative shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-            <Shield className="h-5 w-5 text-red-400" />
-          </div>
-          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
-            <Lock className="h-2 w-2 text-white" />
-          </div>
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-foreground mb-0.5">Risk Shield</h3>
-          <p className="text-xs text-muted-foreground">Activate your first prop firm account to unlock Risk Shield</p>
-        </div>
-      </div>
-      <button
-        onClick={() => setAppMode("full")}
-        className="w-full flex items-center justify-between bg-secondary/50 border border-border rounded-xl px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <span>Switch to Full Mode to set up</span>
-        <span>→</span>
-      </button>
     </div>
   );
 }
@@ -1352,6 +775,335 @@ function LessonCarouselWidget() {
   );
 }
 
+const CUSTOM_SCHEDULE_KEY = "custom_schedule_items_v1";
+
+interface CustomScheduleItem {
+  id: string;
+  time: string;
+  label: string;
+  done?: boolean;
+}
+
+function getCustomItems(): CustomScheduleItem[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SCHEDULE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveCustomItems(items: CustomScheduleItem[]) {
+  localStorage.setItem(CUSTOM_SCHEDULE_KEY, JSON.stringify(items));
+}
+
+function parseAmPmToH24(timeStr: string): { h: number; m: number } | null {
+  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return null;
+  let h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const ampm = match[3].toUpperCase();
+  if (ampm === "PM" && h < 12) h += 12;
+  if (ampm === "AM" && h === 12) h = 0;
+  if (isNaN(h) || isNaN(m)) return null;
+  return { h, m };
+}
+
+function parseHhmm(timeStr: string): { h: number; m: number } | null {
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return { h, m };
+}
+
+function exportScheduleToIcs(items: Array<{ time: string; label: string }>) {
+  const today = new Date();
+  const dateStr = today.toISOString().split("T")[0].replace(/-/g, "");
+  const events: string[] = [];
+  items.forEach((item, idx) => {
+    const parsed = parseAmPmToH24(item.time) || parseHhmm(item.time);
+    if (!parsed) return;
+    const { h, m } = parsed;
+    const startDT = `${dateStr}T${String(h).padStart(2, "0")}${String(m).padStart(2, "0")}00`;
+    const endMins = h * 60 + m + 30;
+    const endH = Math.floor(endMins / 60) % 24;
+    const endM = endMins % 60;
+    const endDT = `${dateStr}T${String(endH).padStart(2, "0")}${String(endM).padStart(2, "0")}00`;
+    events.push([
+      "BEGIN:VEVENT",
+      `UID:ict-schedule-${dateStr}-${idx}@ict-trading`,
+      `DTSTART:${startDT}`,
+      `DTEND:${endDT}`,
+      `SUMMARY:${item.label}`,
+      "END:VEVENT",
+    ].join("\r\n"));
+  });
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ICT Trading Mentor//EN", ...events, "END:VCALENDAR"].join("\r\n");
+  const blob = new Blob([ics], { type: "text/calendar" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ict-schedule-${dateStr}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function TodayScheduleWidget() {
+  const { routineItems, toggleItem } = usePlanner();
+  const { sortedSchedule, saveTime } = useTodaySchedule(routineItems);
+  const [customItems, setCustomItems] = useState<CustomScheduleItem[]>(() => getCustomItems());
+  const [addingAfter, setAddingAfter] = useState<number | null>(null);
+  const [newTime, setNewTime] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
+  const [editingTimeVal, setEditingTimeVal] = useState("");
+
+  type RowItem = {
+    id: string;
+    time: string;
+    label: string;
+    icon?: string;
+    done: boolean;
+    isRoutine: boolean;
+    routineKey?: string;
+    customId?: string;
+  };
+
+  function rowTimeToMins(timeStr: string): number {
+    if (!timeStr) return Infinity;
+    const ampm = parseAmPmToH24(timeStr);
+    if (ampm) return ampm.h * 60 + ampm.m;
+    const hhmm = parseHhmm(timeStr);
+    if (hhmm) return hhmm.h * 60 + hhmm.m;
+    return Infinity;
+  }
+
+  const allRows: RowItem[] = [
+    ...sortedSchedule.map((item): RowItem => ({
+      id: `routine_${item.id}`,
+      time: item.timeStr,
+      label: item.label,
+      icon: item.icon,
+      done: item.checked,
+      isRoutine: true,
+      routineKey: item.id,
+    })),
+    ...customItems.map((c): RowItem => ({
+      id: c.id,
+      time: c.time,
+      label: c.label,
+      done: c.done ?? false,
+      isRoutine: false,
+      customId: c.id,
+    })),
+  ].sort((a, b) => rowTimeToMins(a.time) - rowTimeToMins(b.time));
+
+  function addItem() {
+    if (!newLabel.trim()) return;
+    const id = `custom_${Date.now()}`;
+    const item: CustomScheduleItem = { id, time: newTime || "", label: newLabel.trim(), done: false };
+    const updated = [...customItems, item];
+    setCustomItems(updated);
+    saveCustomItems(updated);
+    setAddingAfter(null);
+    setNewTime("");
+    setNewLabel("");
+  }
+
+  function deleteItem(customId: string) {
+    const updated = customItems.filter((c) => c.id !== customId);
+    setCustomItems(updated);
+    saveCustomItems(updated);
+  }
+
+  function toggleCustomDone(customId: string) {
+    const updated = customItems.map((c) =>
+      c.id === customId ? { ...c, done: !c.done } : c
+    );
+    setCustomItems(updated);
+    saveCustomItems(updated);
+  }
+
+  function startEditRoutineTime(routineKey: string, currentTime: string) {
+    setEditingTimeId(`routine_${routineKey}`);
+    setEditingTimeVal(currentTime);
+  }
+
+  function saveRoutineTime(routineKey: string) {
+    saveTime(routineKey, editingTimeVal.trim());
+    setEditingTimeId(null);
+  }
+
+  function startEditCustomTime(customId: string, currentTime: string) {
+    setEditingTimeId(customId);
+    setEditingTimeVal(currentTime);
+  }
+
+  function saveCustomTime(customId: string) {
+    const updated = customItems.map((c) =>
+      c.id === customId ? { ...c, time: editingTimeVal.trim() } : c
+    );
+    setCustomItems(updated);
+    saveCustomItems(updated);
+    setEditingTimeId(null);
+  }
+
+  const allExportRows = allRows.map((r) => ({ time: r.time, label: r.label }));
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-bold text-foreground flex-1">Today's Schedule</h3>
+        <button
+          onClick={() => exportScheduleToIcs(allExportRows)}
+          className="text-[10px] text-primary hover:text-primary/80 font-medium shrink-0 transition-colors"
+          title="Export to .ics"
+        >
+          Export ↗
+        </button>
+      </div>
+
+      <div>
+        {allRows.map((row, idx) => (
+          <div key={row.id}>
+            <div className="flex items-center gap-2 py-1.5 group">
+              <div className="w-20 shrink-0">
+                {editingTimeId === row.id ? (
+                  <input
+                    type="text"
+                    value={editingTimeVal}
+                    onChange={(e) => setEditingTimeVal(e.target.value)}
+                    onBlur={() => {
+                      if (row.isRoutine && row.routineKey) saveRoutineTime(row.routineKey);
+                      else if (row.customId) saveCustomTime(row.customId);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        if (row.isRoutine && row.routineKey) saveRoutineTime(row.routineKey);
+                        else if (row.customId) saveCustomTime(row.customId);
+                      }
+                      if (e.key === "Escape") setEditingTimeId(null);
+                    }}
+                    placeholder="7:30 AM"
+                    autoFocus
+                    className="w-full bg-secondary border border-primary rounded px-1 py-0.5 text-[10px] text-foreground focus:outline-none"
+                  />
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (row.isRoutine && row.routineKey) startEditRoutineTime(row.routineKey, row.time);
+                      else if (row.customId) startEditCustomTime(row.customId, row.time);
+                    }}
+                    className="text-[10px] font-mono text-muted-foreground whitespace-nowrap leading-tight hover:text-primary cursor-pointer transition-colors"
+                  >
+                    {row.time || "—"}
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-col items-center self-stretch shrink-0" style={{ width: 14 }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0 mt-1" />
+                {idx < allRows.length - 1 && <div className="flex-1 w-px bg-border mt-0.5" />}
+              </div>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    if (row.isRoutine && row.routineKey) toggleItem(row.routineKey);
+                    else if (row.customId) toggleCustomDone(row.customId);
+                  }}
+                  className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
+                    row.done ? "bg-primary border-primary" : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  {row.done && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
+                </button>
+                {row.icon && (
+                  <span className="text-sm shrink-0 leading-none">{row.icon}</span>
+                )}
+                <span className={`text-xs leading-tight min-w-0 flex-1 ${row.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                  {row.label}
+                </span>
+                {!row.isRoutine && (
+                  <button
+                    onClick={() => row.customId && deleteItem(row.customId)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400 shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-center py-0.5 opacity-0 hover:opacity-100 transition-opacity">
+              {addingAfter === idx ? (
+                <div className="flex items-center gap-1.5 w-full pl-22">
+                  <input
+                    type="text"
+                    value={newTime}
+                    onChange={(e) => setNewTime(e.target.value)}
+                    placeholder="7:30 AM"
+                    className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <input
+                    type="text"
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") addItem(); if (e.key === "Escape") { setAddingAfter(null); setNewLabel(""); setNewTime(""); } }}
+                    placeholder="Label..."
+                    autoFocus
+                    className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-[10px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <button onClick={addItem} className="text-[10px] font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
+                  <button onClick={() => { setAddingAfter(null); setNewLabel(""); setNewTime(""); }} className="text-[10px] text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAddingAfter(idx)}
+                  className="text-[10px] text-muted-foreground hover:text-primary transition-colors px-2"
+                >
+                  +
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        <div className="flex justify-center py-0.5">
+          {addingAfter === allRows.length ? (
+            <div className="flex items-center gap-1.5 w-full pl-22">
+              <input
+                type="text"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                placeholder="7:30 AM"
+                className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <input
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addItem(); if (e.key === "Escape") { setAddingAfter(null); setNewLabel(""); setNewTime(""); } }}
+                placeholder="Label..."
+                autoFocus
+                className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-[10px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button onClick={addItem} className="text-[10px] font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
+              <button onClick={() => { setAddingAfter(null); setNewLabel(""); setNewTime(""); }} className="text-[10px] text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingAfter(allRows.length)}
+              className="text-[10px] text-muted-foreground hover:text-primary transition-colors px-2"
+            >
+              +
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustomizeDrawer({
   open,
   onClose,
@@ -1441,7 +1193,6 @@ export default function Dashboard() {
           <LessonCarouselWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <CommunityWidget />
-            <RiskShieldLockWidget />
           </div>
         </div>
       </div>
@@ -1471,20 +1222,16 @@ export default function Dashboard() {
         <div className="space-y-4">
           <NextWatchWidget />
           <MorningBriefingWidget />
-          {isEnabled("killzone") && <KillZoneStripWidget />}
           <CompactGreetingRow />
-          {isEnabled("stats") && <StatsTickerStrip />}
-          <SlotMachine />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {isEnabled("morningroutine") && <MorningRoutineWidget />}
             {isEnabled("checklist") && <PreTradeChecklistWidget />}
           </div>
 
-          {isEnabled("tradeplan") && <TradePlanWidget />}
+          {isEnabled("todayschedule") && <TodayScheduleWidget />}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {isEnabled("riskshield") && <RiskShieldMiniWidget />}
             {isEnabled("quickjournal") && <QuickJournalWidget />}
           </div>
 

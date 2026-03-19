@@ -9,12 +9,9 @@ export interface DashboardWidget {
 }
 
 export const DASHBOARD_WIDGETS: DashboardWidget[] = [
-  { id: "killzone", label: "Kill Zone Countdown", defaultOn: true },
-  { id: "stats", label: "Today's Stats Strip", defaultOn: true },
   { id: "morningroutine", label: "Morning Routine", defaultOn: true },
   { id: "checklist", label: "Pre-Trade Checklist", defaultOn: true },
-  { id: "tradeplan", label: "Today's Trade Plan", defaultOn: true },
-  { id: "riskshield", label: "Risk Shield Mini", defaultOn: true },
+  { id: "todayschedule", label: "Today's Schedule", defaultOn: true },
   { id: "quickjournal", label: "Quick Journal Entry", defaultOn: true },
 ];
 
