@@ -640,6 +640,7 @@ function exportScheduleToIcs(items: Array<{ time: string; label: string }>) {
   URL.revokeObjectURL(url);
 }
 
+function MasterMorningWidget() {
   const navigate = useNavigate();
   const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
   const { sortedSchedule, saveTime } = useTodaySchedule(routineItems);
