@@ -64,6 +64,23 @@ interface PostDetail extends Post {
   replies: Reply[];
 }
 
+interface LeaderEntry {
+  userId: number;
+  name: string;
+  isFounder: boolean;
+  founderNumber: number | null;
+  tradeCount?: number;
+  winRate?: number;
+  total?: number;
+  streak?: number;
+}
+
+interface Leaderboard {
+  byTradeCount: LeaderEntry[];
+  byWinRate: LeaderEntry[];
+  byStreak: LeaderEntry[];
+}
+
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -93,6 +110,173 @@ function AuthorBadge({ name, isFounder, founderNumber, role }: {
       )}
       {role === "admin" && (
         <span className="text-[9px] font-bold text-primary bg-primary/10 rounded-full px-1.5 py-0.5">ADMIN</span>
+      )}
+    </div>
+  );
+}
+
+function RankMedal({ rank }: { rank: number }) {
+  const medals = [
+    { bg: "bg-amber-500/10", border: "border-amber-500/30", text: "text-amber-500", label: "#1" },
+    { bg: "bg-slate-400/10", border: "border-slate-400/30", text: "text-slate-400", label: "#2" },
+    { bg: "bg-amber-700/10", border: "border-amber-700/30", text: "text-amber-700", label: "#3" },
+  ];
+  const m = medals[rank - 1];
+  if (!m) return <span className="text-xs text-muted-foreground font-medium">#{rank}</span>;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-bold ${m.bg} ${m.border} ${m.text}`}>
+      <Trophy className="h-3 w-3" />
+      {m.label}
+    </span>
+  );
+}
+
+function HallOfFame() {
+  const [data, setData] = useState<Leaderboard | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/community/leaderboard`, { credentials: "include" })
+      .then((r) => r.json())
+      .then(setData)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!data || (data.byTradeCount.length === 0 && data.byWinRate.length === 0 && data.byStreak.length === 0)) {
+    return (
+      <div className="text-center py-16 space-y-2">
+        <Trophy className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+        <p className="text-sm font-semibold text-muted-foreground">Hall of Fame coming soon</p>
+        <p className="text-xs text-muted-foreground">Keep trading and logging to appear here!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-center gap-3">
+        <Trophy className="h-6 w-6 text-red-500 shrink-0" />
+        <div>
+          <p className="text-sm font-bold text-foreground">Hall of Fame</p>
+          <p className="text-xs text-muted-foreground">Top traders by discipline &amp; performance</p>
+        </div>
+      </div>
+
+      {data.byWinRate.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-wide text-primary">Highest Win Rate</span>
+            <span className="text-xs text-muted-foreground">Min. 3 trades</span>
+          </div>
+          {data.byWinRate.map((entry, idx) => (
+            <div key={entry.userId} className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <RankMedal rank={idx + 1} />
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-xs font-bold text-primary">{entry.name.slice(0, 2).toUpperCase()}</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-foreground">{entry.name}</span>
+                    {entry.isFounder && (
+                      <span className="inline-flex items-center gap-0.5 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5">
+                        <Crown className="h-2.5 w-2.5 text-amber-500" />
+                        <span className="text-[9px] font-bold text-amber-500">#{entry.founderNumber}</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{entry.total} trades logged</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-base font-bold text-primary">{entry.winRate}%</p>
+                <p className="text-[10px] text-muted-foreground">Win Rate</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {data.byStreak.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-orange-500" />
+            <span className="text-xs font-bold uppercase tracking-wide text-orange-500">Longest Win Streak</span>
+            <span className="text-xs text-muted-foreground">Consecutive wins</span>
+          </div>
+          {data.byStreak.map((entry, idx) => (
+            <div key={entry.userId} className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <RankMedal rank={idx + 1} />
+                <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                  <span className="text-xs font-bold text-orange-500">{entry.name.slice(0, 2).toUpperCase()}</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-foreground">{entry.name}</span>
+                    {entry.isFounder && (
+                      <span className="inline-flex items-center gap-0.5 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5">
+                        <Crown className="h-2.5 w-2.5 text-amber-500" />
+                        <span className="text-[9px] font-bold text-amber-500">#{entry.founderNumber}</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{entry.total} trades logged</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-base font-bold text-orange-500">{entry.streak}</p>
+                <p className="text-[10px] text-muted-foreground">Best Streak</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {data.byTradeCount.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-indigo-400" />
+            <span className="text-xs font-bold uppercase tracking-wide text-indigo-400">Most Active</span>
+            <span className="text-xs text-muted-foreground">Total journal entries</span>
+          </div>
+          {data.byTradeCount.map((entry, idx) => (
+            <div key={entry.userId} className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <RankMedal rank={idx + 1} />
+                <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                  <span className="text-xs font-bold text-indigo-400">{entry.name.slice(0, 2).toUpperCase()}</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-foreground">{entry.name}</span>
+                    {entry.isFounder && (
+                      <span className="inline-flex items-center gap-0.5 bg-amber-500/10 border border-amber-500/30 rounded-full px-1.5 py-0.5">
+                        <Crown className="h-2.5 w-2.5 text-amber-500" />
+                        <span className="text-[9px] font-bold text-amber-500">#{entry.founderNumber}</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Consistent logger</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-base font-bold text-indigo-400">{entry.tradeCount}</p>
+                <p className="text-[10px] text-muted-foreground">Trades</p>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -129,6 +313,7 @@ export default function Community() {
   const [newCategory, setNewCategory] = useState("strategy-talk");
   const [replyBody, setReplyBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showHallOfFame, setShowHallOfFame] = useState(false);
   const [subscribedCategories, setSubscribedCategories] = useState<string[]>([]);
   const [togglingCategory, setTogglingCategory] = useState<string | null>(null);
 
@@ -365,15 +550,34 @@ export default function Community() {
           <h1 className="text-xl font-bold text-foreground">Community</h1>
           <p className="text-sm text-muted-foreground">Connect with fellow ICT traders</p>
         </div>
-        <button
-          onClick={() => setShowNewPost(true)}
-          className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-        >
-          <Plus className="h-4 w-4" />
-          New Post
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHallOfFame((v) => !v)}
+            title={showHallOfFame ? "Back to posts" : "Hall of Fame"}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+              showHallOfFame
+                ? "bg-red-500/10 border border-red-500/30 text-red-500"
+                : "bg-secondary text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Trophy className="h-4 w-4" />
+          </button>
+          {!showHallOfFame && (
+            <button
+              onClick={() => setShowNewPost(true)}
+              className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Plus className="h-4 w-4" />
+              New Post
+            </button>
+          )}
+        </div>
       </div>
 
+      {showHallOfFame ? (
+        <HallOfFame />
+      ) : (
+      <>
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide flex-wrap">
         <button
           onClick={() => setActiveCategory("all")}
@@ -531,6 +735,8 @@ export default function Community() {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );
