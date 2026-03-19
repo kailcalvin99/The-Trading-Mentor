@@ -33,20 +33,20 @@ function HeaderGamificationBadges() {
 
   return (
     <div className="flex items-center gap-1.5 ml-auto">
-      <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1" title={`Level ${level} — ${rank} · ${xpInLevel}/100 XP`}>
+      <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-2.5 py-1" title={`Level ${level} — ${rank} · ${xpInLevel}/100 XP`}>
         <Star className="h-3 w-3 text-primary" />
-        <span className="text-[10px] font-bold text-foreground">Lv {level}</span>
-        <div className="w-10 h-1 bg-muted rounded-full overflow-hidden">
+        <span className="text-xs font-bold text-foreground">Lv {level}</span>
+        <div className="w-10 h-1.5 bg-muted rounded-full overflow-hidden">
           <div className="h-full bg-primary rounded-full transition-all duration-1000" style={{ width: `${xpInLevel}%` }} />
         </div>
       </div>
-      <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1" title={`${streak}-day login streak`}>
+      <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-2.5 py-1" title={`${streak}-day login streak`}>
         <Flame className={`h-3 w-3 ${streak >= 3 ? "text-red-500" : "text-muted-foreground"}`} />
-        <span className="text-[10px] font-bold text-foreground">{streak}d</span>
+        <span className="text-xs font-bold text-foreground">{streak}d</span>
       </div>
-      <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2 py-1" title={`${earned}/8 badges earned`}>
+      <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-2.5 py-1" title={`${earned}/8 badges earned`}>
         <Trophy className="h-3 w-3 text-red-500" />
-        <span className="text-[10px] font-bold text-foreground">{earned}/8</span>
+        <span className="text-xs font-bold text-foreground">{earned}/8</span>
       </div>
     </div>
   );
@@ -132,10 +132,10 @@ function NavItem({
       end
       onClick={onClick}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border-l-2 ${
           isActive
-            ? "bg-primary/10 text-primary"
-            : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+            ? "bg-primary/10 text-primary border-primary"
+            : "text-muted-foreground hover:text-foreground hover:bg-secondary border-transparent"
         }`
       }
     >

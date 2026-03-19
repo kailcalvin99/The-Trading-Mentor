@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { LockedFeatureOverlay } from "@/components/CasinoElements";
@@ -204,6 +204,7 @@ export default function SmartJournal() {
   const { isRoutineComplete } = usePlanner();
   const { getNumber } = useAppConfig();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [showForm, setShowForm] = useState(false);
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
@@ -314,6 +315,13 @@ export default function SmartJournal() {
       toast({ title: "Plan loaded", description: "Your pre-trade plan has been loaded into the journal form." });
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setSearchParams({}, { replace: true });
+      setShowForm(true);
+    }
+  }, [searchParams, setSearchParams]);
   const [coachUpgrade, setCoachUpgrade] = useState<Record<number, boolean>>({});
 
   async function fetchCoachFeedback(tradeId: number) {

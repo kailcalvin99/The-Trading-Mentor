@@ -5,7 +5,7 @@ import {
   FileText, StickyNote, ClipboardCheck, CheckSquare, Square,
   Settings, X, Camera,
   CheckCircle2, Play, GraduationCap, Users, Lock,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Plus,
 } from "lucide-react";
 import { useListTrades } from "@workspace/api-client-react";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
@@ -89,6 +89,93 @@ function getESTNow(): Date {
   );
 }
 
+function SessionStatsBar() {
+  const navigate = useNavigate();
+  const { data: apiTrades } = useListTrades();
+  const trades = (apiTrades || []) as Array<{
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+  }>;
+
+  const estNow = getESTNow();
+  const todayStr = `${estNow.getFullYear()}-${String(estNow.getMonth() + 1).padStart(2, "0")}-${String(estNow.getDate()).padStart(2, "0")}`;
+  const weekStart = new Date(estNow);
+  weekStart.setDate(estNow.getDate() - ((estNow.getDay() + 6) % 7));
+  const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, "0")}-${String(weekStart.getDate()).padStart(2, "0")}`;
+
+  const completed = trades.filter(t => !t.isDraft && t.createdAt);
+  const todayTrades = completed.filter(t => (t.createdAt ?? "").slice(0, 10) === todayStr);
+  const todayPnl = todayTrades.reduce((sum, t) => sum + (parseFloat(String(t.pnl ?? "0")) || 0), 0);
+  const last20 = completed.filter(t => t.pnl !== null && t.pnl !== undefined).slice(0, 20);
+  const wins = last20.filter(t => parseFloat(String(t.pnl ?? "0")) > 0).length;
+  const winRate = last20.length > 0 ? Math.round((wins / last20.length) * 100) : null;
+  const weekTrades = completed.filter(t => (t.createdAt ?? "").slice(0, 10) >= weekStartStr).length;
+
+  const h = estNow.getHours();
+  const m = estNow.getMinutes();
+  const totalMin = h * 60 + m;
+  const activeSession = SESSIONS.find(s => totalMin >= s.startH * 60 + s.startM && totalMin < s.endH * 60 + s.endM);
+
+  const pnlIsPositive = todayPnl > 0;
+  const pnlIsNegative = todayPnl < 0;
+  const pnlColor = pnlIsPositive ? "text-emerald-400" : pnlIsNegative ? "text-red-400" : "text-muted-foreground";
+  const pnlSign = pnlIsPositive ? "+" : "";
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <button
+        onClick={() => navigate("/journal")}
+        className="bg-card border border-border rounded-xl px-4 py-3 text-left hover:border-primary/40 transition-colors group"
+      >
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Today P&L</p>
+        <p className={`text-xl font-bold font-mono leading-none ${pnlColor}`}>
+          {todayTrades.length === 0
+            ? <span className="text-sm text-muted-foreground font-sans font-normal">No trades</span>
+            : `${pnlSign}$${Math.abs(todayPnl).toFixed(2)}`}
+        </p>
+      </button>
+
+      <button
+        onClick={() => navigate("/analytics")}
+        className="bg-card border border-border rounded-xl px-4 py-3 text-left hover:border-primary/40 transition-colors"
+      >
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Win Rate</p>
+        <p className={`text-xl font-bold font-mono leading-none ${
+          winRate === null ? "text-muted-foreground"
+          : winRate >= 60 ? "text-emerald-400"
+          : winRate >= 40 ? "text-amber-400"
+          : "text-red-400"
+        }`}>
+          {winRate === null ? <span className="text-sm font-sans font-normal">—</span> : `${winRate}%`}
+        </p>
+        {winRate !== null && <p className="text-xs text-muted-foreground mt-0.5">last {last20.length} trades</p>}
+      </button>
+
+      <button
+        onClick={() => navigate("/journal")}
+        className="bg-card border border-border rounded-xl px-4 py-3 text-left hover:border-primary/40 transition-colors"
+      >
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">This Week</p>
+        <p className="text-xl font-bold font-mono leading-none text-foreground">{weekTrades}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">trades logged</p>
+      </button>
+
+      <div className="bg-card border border-border rounded-xl px-4 py-3">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Session</p>
+        {activeSession ? (
+          <>
+            <p className="text-sm font-bold leading-tight" style={{ color: activeSession.color }}>{activeSession.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{activeSession.time}</p>
+          </>
+        ) : (
+          <p className="text-sm font-semibold text-muted-foreground leading-none mt-1">Off-Hours</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function WidgetHeader({
   icon: Icon,
   title,
@@ -106,12 +193,12 @@ function WidgetHeader({
   return (
     <div className="flex items-center gap-2 mb-3">
       <Icon className="h-4 w-4 text-primary shrink-0" />
-      <h3 className="text-sm font-bold text-foreground flex-1">{title}</h3>
+      <h3 className="text-sm font-semibold text-foreground flex-1">{title}</h3>
       {badge}
       {editLink && (
         <button
           onClick={() => navigate(editLink)}
-          className="text-[10px] text-primary hover:text-primary/80 font-medium shrink-0 transition-colors"
+          className="text-xs text-primary hover:text-primary/80 font-medium shrink-0 transition-colors"
         >
           {editLabel}
         </button>
@@ -186,7 +273,7 @@ function PreTradeChecklistWidget() {
         icon={ClipboardCheck}
         title="Pre-Trade Checklist"
         badge={
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${allChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${allChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
             {doneCount}/{CHECKLIST_ITEMS.length}
           </span>
         }
@@ -283,7 +370,7 @@ function QuickJournalWidget() {
       {recentNotes.length > 0 && (
         <div className="space-y-1.5">
           {recentNotes.map((note) => (
-            <div key={note.id} className="flex items-start gap-2 text-[10px] text-muted-foreground">
+            <div key={note.id} className="flex items-start gap-2 text-xs text-muted-foreground">
               <span className="shrink-0 mt-0.5">·</span>
               <span className="line-clamp-1">{note.text}</span>
             </div>
@@ -354,15 +441,15 @@ function NextWatchWidget() {
       >
         <Play className="h-10 w-10" style={{ color: nextLesson.chapterColor }} />
         <div className="absolute bottom-2 right-3 flex items-center gap-1 bg-black/50 rounded-md px-2 py-1">
-          <span className="text-[10px] text-white font-medium">{nextLesson.estMins} min</span>
+          <span className="text-xs text-white font-medium">{nextLesson.estMins} min</span>
         </div>
       </div>
       <div className="p-4 flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Up Next</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Up Next</span>
             <span
-              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+              className="text-xs font-bold px-1.5 py-0.5 rounded-full"
               style={{ backgroundColor: `${nextLesson.chapterColor}20`, color: nextLesson.chapterColor }}
             >
               {nextLesson.chapterTitle}
@@ -404,20 +491,20 @@ function LearningProgressWidget() {
       <div className="flex items-center gap-2 mb-3">
         <GraduationCap className="h-4 w-4 text-primary shrink-0" />
         <h3 className="text-sm font-bold text-foreground flex-1">Learning Progress</h3>
-        <button onClick={() => navigate("/academy")} className="text-[10px] text-primary font-medium">Academy ↗</button>
+        <button onClick={() => navigate("/academy")} className="text-xs text-primary font-medium">Academy ↗</button>
       </div>
       <div className="flex items-center gap-4 mb-3">
         <div className="text-center">
           <p className="text-xl font-bold" style={{ color: streak >= 7 ? "#EF4444" : "#F59E0B" }}>{streak}</p>
-          <p className="text-[10px] text-muted-foreground">Day streak</p>
+          <p className="text-xs text-muted-foreground">Day streak</p>
         </div>
         <div className="text-center">
           <p className="text-xl font-bold text-primary">{pct}%</p>
-          <p className="text-[10px] text-muted-foreground">Complete</p>
+          <p className="text-xs text-muted-foreground">Complete</p>
         </div>
         <div className="text-center">
           <p className="text-xl font-bold text-foreground">{completed.size}/{total}</p>
-          <p className="text-[10px] text-muted-foreground">Lessons</p>
+          <p className="text-xs text-muted-foreground">Lessons</p>
         </div>
       </div>
       <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
@@ -472,7 +559,7 @@ function CommunityWidget() {
       <div className="flex items-center gap-2 mb-3">
         <Users className="h-4 w-4 text-violet-400 shrink-0" />
         <h3 className="text-sm font-bold text-foreground flex-1">Community</h3>
-        <button onClick={() => navigate("/community")} className="text-[10px] text-primary font-medium">See all ↗</button>
+        <button onClick={() => navigate("/community")} className="text-xs text-primary font-medium">See all ↗</button>
       </div>
       <div className="space-y-3">
         {posts.length === 0 ? (
@@ -488,14 +575,14 @@ function CommunityWidget() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <p className="text-[11px] font-semibold text-foreground truncate">{post.authorName ?? 'Unknown'}</p>
+                    <p className="text-xs font-semibold text-foreground truncate">{post.authorName ?? 'Unknown'}</p>
                     {post.createdAt && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(post.createdAt)}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{timeAgo(post.createdAt)}</span>
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{excerpt}</p>
+                  <p className="text-xs text-muted-foreground">{excerpt}</p>
                 </div>
-                <span className="text-[10px] text-muted-foreground shrink-0">❤ {post.likesCount ?? 0}</span>
+                <span className="text-xs text-muted-foreground shrink-0">❤ {post.likesCount ?? 0}</span>
               </button>
             );
           })
@@ -534,7 +621,7 @@ function LessonCarouselWidget() {
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <FileText className="h-4 w-4 text-primary shrink-0" />
         <h3 className="text-sm font-bold text-foreground flex-1">Up Next — ICT Lessons</h3>
-        <button onClick={() => navigate("/academy")} className="text-[10px] text-primary font-medium">View all ↗</button>
+        <button onClick={() => navigate("/academy")} className="text-xs text-primary font-medium">View all ↗</button>
       </div>
       <div className="flex gap-3 overflow-x-auto px-4 py-3 scrollbar-thin" style={{ scrollbarWidth: "none" }}>
         {lessonCards.map((lesson) => (
@@ -545,12 +632,12 @@ function LessonCarouselWidget() {
               style={{ borderColor: `${lesson.chapterColor}30` }}
             >
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: lesson.chapterColor }} />
-              <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">{lesson.chapterTitle}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{lesson.chapterTitle}</p>
               <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{lesson.title}</p>
-              <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2 mt-0.5">{lesson.takeaway}</p>
+              <p className="text-xs text-muted-foreground leading-tight line-clamp-2 mt-0.5">{lesson.takeaway}</p>
               <div className="flex items-center gap-1 mt-auto pt-1">
                 <Play className="h-3 w-3 text-primary" />
-                <span className="text-[10px] text-primary font-semibold">Watch</span>
+                <span className="text-xs text-primary font-semibold">Watch</span>
               </div>
             </button>
             <button
@@ -757,7 +844,7 @@ function MasterMorningWidget() {
         editLabel="Planner ↗"
         badge={
           isRoutineComplete ? (
-            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">All Done ✓</span>
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">All Done ✓</span>
           ) : undefined
         }
       />
@@ -780,7 +867,7 @@ function MasterMorningWidget() {
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[11px] font-bold text-foreground">{doneCount}/{totalCount}</span>
+            <span className="text-xs font-bold text-foreground">{doneCount}/{totalCount}</span>
           </div>
         </div>
         <div className="flex-1 grid grid-cols-2 gap-x-3 gap-y-1.5">
@@ -808,7 +895,7 @@ function MasterMorningWidget() {
 
       <div className="flex items-center gap-2 my-3">
         <div className="flex-1 h-px bg-border" />
-        <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider shrink-0">Today's Schedule</span>
+        <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider shrink-0">Today's Schedule</span>
         <div className="flex-1 h-px bg-border" />
       </div>
 
@@ -835,7 +922,7 @@ function MasterMorningWidget() {
                     }}
                     placeholder="7:30 AM"
                     autoFocus
-                    className="w-full bg-secondary border border-primary rounded px-1 py-0.5 text-[10px] text-foreground focus:outline-none"
+                    className="w-full bg-secondary border border-primary rounded px-1 py-0.5 text-xs text-foreground focus:outline-none"
                   />
                 ) : (
                   <button
@@ -843,7 +930,7 @@ function MasterMorningWidget() {
                       if (row.isRoutine && row.routineKey) startEditRoutineTime(row.routineKey, row.time);
                       else if (row.customId) startEditCustomTime(row.customId, row.time);
                     }}
-                    className="text-[10px] font-mono text-muted-foreground whitespace-nowrap leading-tight hover:text-primary cursor-pointer transition-colors"
+                    className="text-xs font-mono text-muted-foreground whitespace-nowrap leading-tight hover:text-primary cursor-pointer transition-colors"
                   >
                     {row.time || "—"}
                   </button>
@@ -890,7 +977,7 @@ function MasterMorningWidget() {
                     value={newTime}
                     onChange={(e) => setNewTime(e.target.value)}
                     placeholder="7:30 AM"
-                    className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                   <input
                     type="text"
@@ -899,15 +986,15 @@ function MasterMorningWidget() {
                     onKeyDown={(e) => { if (e.key === "Enter") addItem(); if (e.key === "Escape") { setAddingAfter(null); setNewLabel(""); setNewTime(""); } }}
                     placeholder="Label..."
                     autoFocus
-                    className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-[10px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
                   />
-                  <button onClick={addItem} className="text-[10px] font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
-                  <button onClick={() => { setAddingAfter(null); setNewLabel(""); setNewTime(""); }} className="text-[10px] text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
+                  <button onClick={addItem} className="text-xs font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
+                  <button onClick={() => { setAddingAfter(null); setNewLabel(""); setNewTime(""); }} className="text-xs text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
                 </div>
               ) : (
                 <button
                   onClick={() => setAddingAfter(idx)}
-                  className="text-[10px] text-muted-foreground hover:text-primary transition-colors px-2"
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors px-2"
                 >
                   +
                 </button>
@@ -924,7 +1011,7 @@ function MasterMorningWidget() {
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
                 placeholder="7:30 AM"
-                className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <input
                 type="text"
@@ -933,15 +1020,15 @@ function MasterMorningWidget() {
                 onKeyDown={(e) => { if (e.key === "Enter") addItem(); if (e.key === "Escape") { setAddingAfter(null); setNewLabel(""); setNewTime(""); } }}
                 placeholder="Label..."
                 autoFocus
-                className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-[10px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
               />
-              <button onClick={addItem} className="text-[10px] font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
-              <button onClick={() => { setAddingAfter(null); setNewLabel(""); setNewTime(""); }} className="text-[10px] text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
+              <button onClick={addItem} className="text-xs font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
+              <button onClick={() => { setAddingAfter(null); setNewLabel(""); setNewTime(""); }} className="text-xs text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
             </div>
           ) : (
             <button
               onClick={() => setAddingAfter(allRows.length)}
-              className="text-[10px] text-muted-foreground hover:text-primary transition-colors px-2"
+              className="text-xs text-muted-foreground hover:text-primary transition-colors px-2"
             >
               +
             </button>
@@ -952,7 +1039,7 @@ function MasterMorningWidget() {
       <div className="pt-3 mt-2 border-t border-border flex items-center justify-start">
         <button
           onClick={() => exportScheduleToIcs(allExportRows)}
-          className="text-[10px] text-primary hover:text-primary/80 font-medium transition-colors"
+          className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
         >
           Export to Calendar (.ics) ↗
         </button>
@@ -1033,7 +1120,7 @@ function TradingCalendarWidget() {
 
       <div className="grid grid-cols-7 gap-1 text-center mb-1">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <span key={d} className="text-[10px] text-muted-foreground font-medium">{d}</span>
+          <span key={d} className="text-xs text-muted-foreground font-medium">{d}</span>
         ))}
       </div>
 
@@ -1053,7 +1140,7 @@ function TradingCalendarWidget() {
             <button
               key={i}
               onClick={() => hasTrades ? navigate(`/journal?date=${dateStr}`) : undefined}
-              className={`aspect-square rounded-md text-[11px] font-semibold transition-all flex items-center justify-center ${
+              className={`aspect-square rounded-md text-xs font-semibold transition-all flex items-center justify-center ${
                 hasTrades ? "cursor-pointer hover:opacity-90" : "cursor-default"
               } ${
                 isProfit
@@ -1074,15 +1161,15 @@ function TradingCalendarWidget() {
       <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-border">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-primary/75" />
-          <span className="text-[10px] text-muted-foreground">Profit day</span>
+          <span className="text-xs text-muted-foreground">Profit day</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-red-500/75" />
-          <span className="text-[10px] text-muted-foreground">Loss day</span>
+          <span className="text-xs text-muted-foreground">Loss day</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded border border-border" />
-          <span className="text-[10px] text-muted-foreground">No trades</span>
+          <span className="text-xs text-muted-foreground">No trades</span>
         </div>
       </div>
     </div>
@@ -1361,16 +1448,26 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground mt-0.5">{dayLabel}</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowCustomize(true)}
-            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl px-3 py-2 transition-colors"
-          >
-            <Settings className="h-3.5 w-3.5" />
-            Customize
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/journal?new=1")}
+              className="flex items-center gap-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-xl px-3 py-2 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Log Trade
+            </button>
+            <button
+              onClick={() => setShowCustomize(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl px-3 py-2 transition-colors"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Customize
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4">
+          <SessionStatsBar />
           <NextWatchWidget />
           <MorningBriefingWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
