@@ -111,8 +111,6 @@ const STOCK_AVATARS_MOBILE = [
 ];
 
 function AIGreetingCard() {
-  const { user } = useAuth();
-  const firstName = user?.name?.split(" ")?.[0] || "Trader";
   const tips = [
     "Always wait for the liquidity sweep before entering!",
     "The best setups happen at session opens — be ready!",
@@ -124,12 +122,6 @@ function AIGreetingCard() {
 
   return (
     <View style={styles.aiCard}>
-      <View style={styles.aiHeader}>
-        <Ionicons name="hardware-chip-outline" size={26} color={C.accent} style={{ flexShrink: 0 }} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.aiGreeting}>Hi, {firstName}.</Text>
-        </View>
-      </View>
       <View style={styles.aiTipBox}>
         <Ionicons name="sparkles" size={13} color={C.accent} />
         <Text style={styles.aiTip}>{tip}</Text>
@@ -2714,9 +2706,6 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 14,
   },
-  aiHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12, flexShrink: 1 },
-  aiEmoji: { fontSize: 32, flexShrink: 0 },
-  aiGreeting: { fontSize: 15, fontFamily: "Inter_700Bold", color: C.text, flexShrink: 1 },
   aiSubtitle: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
   aiTipBox: {
     flexDirection: "row", alignItems: "flex-start", gap: 8,

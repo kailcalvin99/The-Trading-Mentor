@@ -501,6 +501,7 @@ const styles = StyleSheet.create({
   },
   dashGreeting: {
     flex: 1,
+    minWidth: 60,
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.1,
