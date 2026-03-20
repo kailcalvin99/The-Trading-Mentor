@@ -75,9 +75,16 @@ function getESTNow(): Date {
   );
 }
 
-function SessionStatsBar() {
-  const navigate = useNavigate();
-  const { data: apiTrades } = useListTrades();
+function useStatsData() {
+  const { data: apiTrades, refetch } = useListTrades();
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      refetch?.();
+    }, 60000);
+    return () => clearInterval(id);
+  }, [refetch]);
+
   const trades = (apiTrades || []) as Array<{
     pnl?: string | number | null;
     createdAt?: string | null;
@@ -92,7 +99,12 @@ function SessionStatsBar() {
 
   const completed = trades.filter(t => !t.isDraft && t.createdAt);
   const todayTrades = completed.filter(t => (t.createdAt ?? "").slice(0, 10) === todayStr);
-  const todayPnl = todayTrades.reduce((sum, t) => sum + (parseFloat(String(t.pnl ?? "0")) || 0), 0);
+
+  const todayRMultiple = todayTrades.reduce((sum, t) => {
+    const r = parseFloat(String(t.pnl ?? "0"));
+    return sum + (isNaN(r) ? 0 : r);
+  }, 0);
+
   const last20 = completed.filter(t => t.pnl !== null && t.pnl !== undefined).slice(0, 20);
   const wins = last20.filter(t => parseFloat(String(t.pnl ?? "0")) > 0).length;
   const winRate = last20.length > 0 ? Math.round((wins / last20.length) * 100) : null;
@@ -103,59 +115,64 @@ function SessionStatsBar() {
   const totalMin = h * 60 + m;
   const activeSession = SESSIONS.find(s => totalMin >= s.startH * 60 + s.startM && totalMin < s.endH * 60 + s.endM);
 
-  const pnlIsPositive = todayPnl > 0;
-  const pnlIsNegative = todayPnl < 0;
+  return { todayTrades, todayRMultiple, winRate, last20, weekTrades, activeSession };
+}
+
+function SessionStatsBar() {
+  const navigate = useNavigate();
+  const { todayTrades, todayRMultiple, winRate, last20, weekTrades, activeSession } = useStatsData();
+
+  const pnlIsPositive = todayRMultiple > 0;
+  const pnlIsNegative = todayRMultiple < 0;
   const pnlColor = pnlIsPositive ? "text-emerald-400" : pnlIsNegative ? "text-red-400" : "text-muted-foreground";
   const pnlSign = pnlIsPositive ? "+" : "";
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="flex flex-wrap items-center gap-2 py-1">
       <button
         onClick={() => navigate("/journal")}
-        className="bg-card border border-border rounded-xl px-4 py-3 text-left hover:border-primary/40 transition-colors group"
+        className="flex items-center gap-2 bg-secondary/60 hover:bg-secondary border border-border rounded-lg px-3 py-1.5 transition-colors"
       >
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Today P&L</p>
-        <p className={`text-xl font-bold font-mono leading-none ${pnlColor}`}>
+        <span className="text-xs text-muted-foreground">P&L</span>
+        <span className={`text-xs font-bold font-mono ${pnlColor}`}>
           {todayTrades.length === 0
-            ? <span className="text-sm text-muted-foreground font-sans font-normal">No trades</span>
-            : `${pnlSign}$${Math.abs(todayPnl).toFixed(2)}`}
-        </p>
+            ? "—"
+            : `${pnlSign}${Math.abs(todayRMultiple).toFixed(1)}R`}
+        </span>
       </button>
 
       <button
         onClick={() => navigate("/analytics")}
-        className="bg-card border border-border rounded-xl px-4 py-3 text-left hover:border-primary/40 transition-colors"
+        className="flex items-center gap-2 bg-secondary/60 hover:bg-secondary border border-border rounded-lg px-3 py-1.5 transition-colors"
       >
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Win Rate</p>
-        <p className={`text-xl font-bold font-mono leading-none ${
+        <span className="text-xs text-muted-foreground">Win Rate</span>
+        <span className={`text-xs font-bold font-mono ${
           winRate === null ? "text-muted-foreground"
           : winRate >= 60 ? "text-emerald-400"
           : winRate >= 40 ? "text-amber-400"
           : "text-red-400"
         }`}>
-          {winRate === null ? <span className="text-sm font-sans font-normal">—</span> : `${winRate}%`}
-        </p>
-        {winRate !== null && <p className="text-xs text-muted-foreground mt-0.5">last {last20.length} trades</p>}
+          {winRate === null ? "—" : `${winRate}%`}
+        </span>
+        {winRate !== null && <span className="text-xs text-muted-foreground/60 hidden sm:inline">({last20.length})</span>}
       </button>
 
       <button
         onClick={() => navigate("/journal")}
-        className="bg-card border border-border rounded-xl px-4 py-3 text-left hover:border-primary/40 transition-colors"
+        className="flex items-center gap-2 bg-secondary/60 hover:bg-secondary border border-border rounded-lg px-3 py-1.5 transition-colors"
       >
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">This Week</p>
-        <p className="text-xl font-bold font-mono leading-none text-foreground">{weekTrades}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">trades logged</p>
+        <span className="text-xs text-muted-foreground">This Week</span>
+        <span className="text-xs font-bold font-mono text-foreground">{weekTrades} trades</span>
       </button>
 
-      <div className="bg-card border border-border rounded-xl px-4 py-3">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Session</p>
+      <div className="flex items-center gap-2 bg-secondary/60 border border-border rounded-lg px-3 py-1.5">
+        <span className="text-xs text-muted-foreground">Session</span>
         {activeSession ? (
-          <>
-            <p className="text-sm font-bold leading-tight" style={{ color: activeSession.color }}>{activeSession.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{activeSession.time}</p>
-          </>
+          <span className="text-xs font-bold" style={{ color: activeSession.color }}>
+            {activeSession.emoji} {activeSession.name}
+          </span>
         ) : (
-          <p className="text-sm font-semibold text-muted-foreground leading-none mt-1">Off-Hours</p>
+          <span className="text-xs font-semibold text-muted-foreground">Closed</span>
         )}
       </div>
     </div>
