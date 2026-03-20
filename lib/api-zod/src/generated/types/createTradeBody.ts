@@ -21,4 +21,6 @@ export interface CreateTradeBody {
   followedTimeRule?: boolean;
   hasFvgConfirmation?: boolean;
   setupType?: string;
+  entryPrice?: string;
+  tradingSession?: string;
 }

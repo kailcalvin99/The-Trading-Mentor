@@ -128,6 +128,8 @@ router.post("/", authRequired, tierRequired(2), async (req, res) => {
       sideDirection,
       setupScore,
       setupType,
+      entryPrice,
+      tradingSession,
     } = req.body;
 
     if (!pair || !entryTime || riskPct === undefined) {
@@ -154,6 +156,8 @@ router.post("/", authRequired, tierRequired(2), async (req, res) => {
         sideDirection: sideDirection || null,
         setupScore: setupScore ?? null,
         setupType: setupType || null,
+        entryPrice: entryPrice ? entryPrice.toString() : null,
+        tradingSession: tradingSession || null,
       })
       .returning();
 

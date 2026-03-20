@@ -15,6 +15,7 @@ export const usersTable = pgTable("users", {
   preferredEntryStyle: text("preferred_entry_style"),
   defaultPairs: text("default_pairs"),
   appMode: text("app_mode").notNull().default("full"),
+  defaultRiskPct: text("default_risk_pct"),
   lastLoginAt: timestamp("last_login_at"),
   webhookToken: uuid("webhook_token").default(sql`gen_random_uuid()`),
   academyProgress: text("academy_progress"),

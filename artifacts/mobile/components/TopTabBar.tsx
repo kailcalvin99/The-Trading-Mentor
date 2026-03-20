@@ -75,6 +75,7 @@ interface TopTabBarProps {
   appMode?: "full" | "lite";
   userName?: string;
   communityBadge?: number;
+  journalDraftBadge?: number;
 }
 
 function BottomSheet({
@@ -139,6 +140,7 @@ export default function TopTabBar({
   appMode = "full",
   userName = "",
   communityBadge = 0,
+  journalDraftBadge = 0,
 }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
   const { colors: C } = useTheme();
@@ -299,7 +301,8 @@ export default function TopTabBar({
           const isLocked = !isAdmin && tierLevel < requiredTier;
           const color = isLocked ? C.textTertiary : isFocused ? C.accent : C.text;
 
-          const hasBadge = route === "community" && communityBadge > 0;
+          const hasBadge = (route === "community" && communityBadge > 0) || (route === "journal" && journalDraftBadge > 0);
+          const badgeCount = route === "community" ? communityBadge : route === "journal" ? journalDraftBadge : 0;
 
           return (
             <TouchableOpacity
@@ -326,14 +329,14 @@ export default function TopTabBar({
                 />
                 {hasBadge && (
                   <View style={styles.badgeDot}>
-                    <Text style={styles.badgeText}>{communityBadge > 9 ? "9+" : communityBadge}</Text>
+                    <Text style={styles.badgeText}>{badgeCount > 9 ? "9+" : badgeCount}</Text>
                   </View>
                 )}
               </View>
               <Text style={[styles.menuLabel, { color }]}>{label}</Text>
               {hasBadge && !isLocked && !isFocused && (
                 <View style={[styles.badgePill, { marginLeft: "auto" }]}>
-                  <Text style={styles.badgePillText}>{communityBadge > 99 ? "99+" : communityBadge} new</Text>
+                  <Text style={styles.badgePillText}>{badgeCount > 99 ? "99+" : badgeCount} new</Text>
                 </View>
               )}
               {isLocked && (

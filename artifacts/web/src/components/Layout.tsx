@@ -95,7 +95,7 @@ function NavItem({
   userTier: number;
   onLockedClick: () => void;
   collapsed: boolean;
-  badge?: boolean;
+  badge?: boolean | number;
   onClick?: () => void;
 }) {
   const isLocked = requiredTier > userTier;
@@ -125,6 +125,7 @@ function NavItem({
     return button;
   }
 
+  const badgeNum = typeof badge === "number" ? badge : badge ? 1 : 0;
   const link = (
     <NavLink
       to={to}
@@ -140,13 +141,17 @@ function NavItem({
     >
       <div className="relative shrink-0">
         <Icon className="h-5 w-5" />
-        {badge && (
-          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border border-background" />
+        {badgeNum > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full bg-red-500 border border-background text-[9px] font-bold text-white">
+            {badgeNum > 99 ? "99+" : badgeNum}
+          </span>
         )}
       </div>
       {!collapsed && <span>{label}</span>}
-      {!collapsed && badge && (
-        <span className="ml-auto w-2 h-2 rounded-full bg-red-500 shrink-0" />
+      {!collapsed && badgeNum > 0 && (
+        <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0">
+          {badgeNum > 99 ? "99+" : badgeNum}
+        </span>
       )}
     </NavLink>
   );
@@ -177,7 +182,7 @@ function MobileNavItem({
   requiredTier: number;
   userTier: number;
   onLockedClick: () => void;
-  badge?: boolean;
+  badge?: boolean | number;
 }) {
   const isLocked = requiredTier > userTier;
 
@@ -196,6 +201,7 @@ function MobileNavItem({
     );
   }
 
+  const badgeNum = typeof badge === "number" ? badge : badge ? 1 : 0;
   return (
     <NavLink
       to={to}
@@ -208,8 +214,10 @@ function MobileNavItem({
     >
       <div className="relative">
         <Icon className="h-5 w-5" />
-        {badge && (
-          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 border border-background" />
+        {badgeNum > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full bg-red-500 border border-background text-[9px] font-bold text-white">
+            {badgeNum > 99 ? "99+" : badgeNum}
+          </span>
         )}
       </div>
       <span>{mobileLabel}</span>
@@ -383,6 +391,7 @@ export default function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [communityHasNew, setCommunityHasNew] = useState(false);
   const communityPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [journalDraftCount, setJournalDraftCount] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const { state: tourState, dispatch: tourDispatch, closeTour, neverShowTour } = useTourGuideContext();
@@ -423,6 +432,26 @@ export default function Layout() {
       }
     }
   }, [location.pathname, tierLevel, isAdmin, navigate]);
+
+  useEffect(() => {
+    if (!user || tierLevel < 2) return;
+    const onJournalPage = location.pathname === "/journal";
+
+    async function pollDrafts() {
+      if (onJournalPage) return;
+      try {
+        const res = await fetch(`${API_BASE}/trades?isDraft=true`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setJournalDraftCount(Array.isArray(data) ? data.filter((t: { isDraft?: boolean }) => t.isDraft).length : 0);
+        }
+      } catch {}
+    }
+
+    pollDrafts();
+    const pollId = setInterval(pollDrafts, 60 * 1000);
+    return () => clearInterval(pollId);
+  }, [user, tierLevel, location.pathname]);
 
   useEffect(() => {
     const onCommunityPage = location.pathname === "/community";
@@ -505,7 +534,7 @@ export default function Layout() {
               userTier={tierLevel}
               onLockedClick={handleLockedClick}
               collapsed={false}
-              badge={item.to === "/community" ? communityHasNew : undefined}
+              badge={item.to === "/community" ? communityHasNew : item.to === "/journal" ? journalDraftCount : undefined}
               onClick={closeDrawer}
             />
           ))}
@@ -724,7 +753,7 @@ export default function Layout() {
               {...item}
               userTier={tierLevel}
               onLockedClick={handleLockedClick}
-              badge={item.to === "/community" ? communityHasNew : undefined}
+              badge={item.to === "/community" ? communityHasNew : item.to === "/journal" ? journalDraftCount : undefined}
             />
           ))}
         </nav>

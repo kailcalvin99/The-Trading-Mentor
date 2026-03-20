@@ -18,19 +18,36 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const ALERT_EXAMPLES = [
   {
-    label: "Long Entry (Buy)",
+    label: "Long Entry (Buy) — Full",
     payload: `{
   "ticker": "NQ1!",
   "side": "BUY",
-  "price": "{{close}}"
+  "price": "{{close}}",
+  "sl": "{{plot_0}}",
+  "tp": "{{plot_1}}",
+  "session": "NY Open",
+  "timestamp": "{{timenow}}"
 }`,
   },
   {
-    label: "Short Entry (Sell)",
+    label: "Short Entry (Sell) — Full",
     payload: `{
   "ticker": "NQ1!",
   "side": "SELL",
-  "price": "{{close}}"
+  "price": "{{close}}",
+  "sl": "{{plot_0}}",
+  "tp": "{{plot_1}}",
+  "session": "London Open",
+  "timestamp": "{{timenow}}"
+}`,
+  },
+  {
+    label: "Simple Buy (minimal)",
+    payload: `{
+  "ticker": "NQ1!",
+  "side": "BUY",
+  "price": "{{close}}",
+  "timestamp": "{{timenow}}"
 }`,
   },
   {
@@ -38,9 +55,20 @@ const ALERT_EXAMPLES = [
     payload: `{
   "ticker": "MNQ1!",
   "side": "BUY",
-  "price": "{{close}}"
+  "price": "{{close}}",
+  "timestamp": "{{timenow}}"
 }`,
   },
+];
+
+const FIELD_NOTES = [
+  { field: "ticker", required: true, desc: "Symbol (e.g. NQ1!, MNQ1!, ES1!)" },
+  { field: "side", required: true, desc: "BUY or SELL" },
+  { field: "price", required: true, desc: "Entry price — use {{close}} for current bar close" },
+  { field: "sl", required: false, desc: "Stop loss price — used to auto-calculate risk %" },
+  { field: "tp", required: false, desc: "Take profit price" },
+  { field: "timestamp", required: false, desc: "Alert time — use {{timenow}} for accurate session detection (London Open 02:00–05:00 ET, NY Open 09:30–10:30 ET, Silver Bullet 10:00–11:00 ET)" },
+  { field: "session", required: false, desc: "Override session label manually — skips auto-detection" },
 ];
 
 const SETUP_STEPS = [
@@ -211,8 +239,7 @@ export default function TradingViewWebhooks() {
           <h2 className="text-sm font-bold text-foreground">Alert Message Examples</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          Paste one of these into the TradingView alert message field. The{" "}
-          <code className="bg-secondary px-1 rounded text-[11px]">{"{{close}}"}</code> variable will be replaced with the current price automatically.
+          Paste one of these into the TradingView alert message field. Optional fields (<code className="bg-secondary px-1 rounded text-[11px]">sl</code>, <code className="bg-secondary px-1 rounded text-[11px]">tp</code>, <code className="bg-secondary px-1 rounded text-[11px]">session</code>) enable smarter pre-filling of your journal draft.
         </p>
 
         <div className="space-y-3">
@@ -245,14 +272,32 @@ export default function TradingViewWebhooks() {
         </div>
       </div>
 
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <h2 className="text-sm font-bold text-foreground">Payload Field Reference</h2>
+        <div className="divide-y divide-border">
+          {FIELD_NOTES.map((f) => (
+            <div key={f.field} className="py-2.5 flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <code className="text-xs font-mono text-foreground bg-secondary px-1.5 py-0.5 rounded">{f.field}</code>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${f.required ? "bg-red-500/10 text-red-500" : "bg-primary/10 text-primary"}`}>
+                  {f.required ? "required" : "optional"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="bg-card border border-border rounded-2xl p-5">
         <h2 className="text-sm font-bold text-foreground mb-3">How it works</h2>
         <div className="space-y-3">
           {[
             "When TradingView fires an alert with your webhook URL, our server receives the payload",
-            "A draft trade is automatically created in your Smart Journal with the ticker, side (BUY/SELL), and price",
-            "You'll see the draft in your Smart Journal — review it, add your notes and behavior tag, then confirm to save it",
-            "This keeps your journal accurate while letting TradingView do the heavy lifting",
+            "A draft trade is auto-created in your Smart Journal with ticker, side, price, and session",
+            "If sl (stop loss) is provided, risk % is calculated automatically",
+            "If session is not sent, it's detected from the alert timestamp using ICT kill zone windows",
+            "Open the draft in your journal, review, add your notes and behavior tag, then confirm",
           ].map((point, i) => (
             <div key={i} className="flex items-start gap-3">
               <div className="shrink-0 w-5 h-5 bg-primary/10 rounded-full flex items-center justify-center text-[10px] font-bold text-primary mt-0.5">

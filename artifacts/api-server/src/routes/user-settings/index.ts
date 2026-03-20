@@ -53,6 +53,7 @@ router.get("/", authRequired, async (req, res) => {
         defaultSession: user.defaultSession || "",
         preferredEntryStyle: user.preferredEntryStyle || "",
         defaultPairs: user.defaultPairs || "",
+        defaultRiskPct: user.defaultRiskPct || "0.5",
       },
       riskRules: {
         startingBalance: propAccount ? parseFloat(propAccount.startingBalance) : 50000,
@@ -204,10 +205,15 @@ router.patch("/", authRequired, async (req, res) => {
         defaultSession: string | null;
         preferredEntryStyle: string | null;
         defaultPairs: string | null;
+        defaultRiskPct: string | null;
       }> = {};
       if (data.defaultSession !== undefined) tradingUpdates.defaultSession = data.defaultSession || null;
       if (data.preferredEntryStyle !== undefined) tradingUpdates.preferredEntryStyle = data.preferredEntryStyle || null;
       if (data.defaultPairs !== undefined) tradingUpdates.defaultPairs = data.defaultPairs || null;
+      if (data.defaultRiskPct !== undefined) {
+        const val = parseFloat(data.defaultRiskPct);
+        tradingUpdates.defaultRiskPct = (!isNaN(val) && val > 0 && val <= 100) ? val.toString() : null;
+      }
 
       if (Object.keys(tradingUpdates).length > 0) {
         await db.update(usersTable).set(tradingUpdates).where(eq(usersTable.id, userId));

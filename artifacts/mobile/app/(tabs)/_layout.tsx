@@ -16,6 +16,7 @@ export default function TabLayout() {
   const router = useRouter();
   const { user, subscription, appMode } = useAuth();
   const [communityBadge, setCommunityBadge] = useState(0);
+  const [journalDraftBadge, setJournalDraftBadge] = useState(0);
 
   const isAdmin = user?.role === "admin";
   const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
@@ -37,6 +38,27 @@ export default function TabLayout() {
       return () => clearInterval(id);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!user || tierLevel < 2) return;
+    const isOnJournalPage = pathname.includes("journal");
+    if (isOnJournalPage) {
+      setJournalDraftBadge(0);
+      return;
+    }
+    async function pollDrafts() {
+      try {
+        const data = await apiGet<Array<{ isDraft?: boolean }>>("trades");
+        const count = Array.isArray(data) ? data.filter((t) => t.isDraft).length : 0;
+        setJournalDraftBadge(count);
+      } catch {
+        setJournalDraftBadge(0);
+      }
+    }
+    pollDrafts();
+    const id = setInterval(pollDrafts, 60 * 1000);
+    return () => clearInterval(id);
+  }, [user, tierLevel, pathname]);
 
   useEffect(() => {
     if (pathname.includes("community")) {
@@ -61,6 +83,7 @@ export default function TabLayout() {
         appMode={appMode}
         userName={user?.name ?? ""}
         communityBadge={communityBadge}
+        journalDraftBadge={journalDraftBadge}
       />
       {appMode !== "lite" && <KillZoneStrip />}
       <Tabs
@@ -112,6 +135,10 @@ export default function TabLayout() {
         <Tabs.Screen
           name="admin"
           options={{ title: "Admin" }}
+        />
+        <Tabs.Screen
+          name="webhooks"
+          options={{ title: "TradingView Webhooks" }}
         />
       </Tabs>
       <AIAssistant />

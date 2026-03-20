@@ -21,6 +21,8 @@ export const tradesTable = pgTable("trades", {
   coachFeedback: text("coach_feedback"),
   setupScore: integer("setup_score"),
   setupType: text("setup_type"),
+  entryPrice: numeric("entry_price", { precision: 12, scale: 4 }),
+  tradingSession: text("trading_session"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

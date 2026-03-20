@@ -75,6 +75,8 @@ interface ExtendedTrade extends Trade {
   hasFvgConfirmation?: boolean | null;
   ticker?: string | null;
   setupScore?: number | null;
+  tradingSession?: string | null;
+  entryPrice?: string | null;
 }
 
 const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: typeof Zap }[] = [
@@ -97,6 +99,9 @@ interface TradeFormData {
   notes: string;
   behaviorTag: BehaviorTag | "";
   stressLevel: number;
+  sideDirection: "BUY" | "SELL" | "";
+  tradingSession: string;
+  entryPrice: string;
 }
 
 const DEFAULT_FORM: TradeFormData = {
@@ -107,6 +112,9 @@ const DEFAULT_FORM: TradeFormData = {
   notes: "",
   behaviorTag: "",
   stressLevel: 5,
+  sideDirection: "",
+  tradingSession: "",
+  entryPrice: "",
 };
 
 function calculateSetupScore(stressLevel: number, riskPct: number): number {
@@ -165,6 +173,9 @@ export default function SmartJournal() {
   const { getNumber } = useAppConfig();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const [userSettings, setUserSettings] = useState<{ defaultPairs?: string; defaultRiskPct?: string } | null>(null);
+  const [draftCount, setDraftCount] = useState(0);
 
   const [showForm, setShowForm] = useState(false);
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
@@ -262,6 +273,33 @@ export default function SmartJournal() {
   const [coachError, setCoachError] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
+    fetch(`${API_BASE}/user/settings`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.tradingDefaults) {
+          const defaultPair = data.tradingDefaults.defaultPairs?.split(",")?.[0]?.trim() || "";
+          const defaultRisk = data.tradingDefaults.defaultRiskPct || "0.5";
+          setUserSettings({ defaultPairs: defaultPair, defaultRiskPct: defaultRisk });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const prevCount = draftCount;
+    if (draftTrades.length > prevCount && prevCount >= 0) {
+      const newCount = draftTrades.length - prevCount;
+      if (newCount > 0) {
+        toast({
+          title: `${newCount} new draft trade${newCount > 1 ? "s" : ""} from TradingView`,
+          description: "Click to review and complete your trade entries.",
+        });
+      }
+    }
+    setDraftCount(draftTrades.length);
+  }, [draftTrades.length]);
+
+  useEffect(() => {
     const raw = localStorage.getItem("planner_journal_draft");
     if (!raw) return;
     try {
@@ -343,6 +381,11 @@ export default function SmartJournal() {
     setForm({
       ...DEFAULT_FORM,
       entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
+      pair: userSettings?.defaultPairs || DEFAULT_FORM.pair,
+      riskPct: userSettings?.defaultRiskPct || DEFAULT_FORM.riskPct,
+      sideDirection: "",
+      tradingSession: "",
+      entryPrice: "",
     });
     setShowForm(true);
     dispatchAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
@@ -368,6 +411,9 @@ export default function SmartJournal() {
       notes: cleanNotes,
       behaviorTag: (draft.behaviorTag || "") as BehaviorTag | "",
       stressLevel: draft.stressLevel || 5,
+      sideDirection: (draft.sideDirection as "BUY" | "SELL" | "") || "",
+      tradingSession: draft.tradingSession || "",
+      entryPrice: draft.entryPrice || "",
     });
     setShowForm(true);
     dispatchAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
@@ -395,6 +441,9 @@ export default function SmartJournal() {
         stressLevel: form.stressLevel,
         isDraft: false,
         setupScore: liveSetupScore,
+        sideDirection: form.sideDirection || undefined,
+        entryPrice: form.entryPrice || undefined,
+        tradingSession: form.tradingSession || undefined,
       };
       const result = await createTradeMut({ data: payload });
       qc.setQueryData(getListTradesQueryKey(), (old: unknown) => {
@@ -740,15 +789,37 @@ export default function SmartJournal() {
                   </div>
                 </div>
 
-                {/* Entry Time & Risk */}
+                {/* Side Direction */}
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Side</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["BUY", "SELL"] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setField("sideDirection", form.sideDirection === s ? "" : s)}
+                        className={`py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                          form.sideDirection === s
+                            ? s === "BUY"
+                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                              : "bg-red-500/20 text-red-400 border-red-500/30"
+                            : "bg-card border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {s === "BUY" ? "Long (Buy)" : "Short (Sell)"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Entry Price, Entry Time & Risk */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Entry Time</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Entry Price</label>
                     <input
                       type="text"
-                      value={form.entryTime}
-                      onChange={(e) => setField("entryTime", e.target.value)}
-                      placeholder="10:15 AM"
+                      value={form.entryPrice}
+                      onChange={(e) => setField("entryPrice", e.target.value)}
+                      placeholder="21450.25"
                       className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
@@ -763,6 +834,24 @@ export default function SmartJournal() {
                     />
                   </div>
                 </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Entry Time</label>
+                  <input
+                    type="text"
+                    value={form.entryTime}
+                    onChange={(e) => setField("entryTime", e.target.value)}
+                    placeholder="10:15 AM"
+                    className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Session — auto-detected from draft */}
+                {form.tradingSession && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 text-xs">
+                    <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="text-primary font-semibold">Session detected: {form.tradingSession}</span>
+                  </div>
+                )}
 
                 {/* Outcome */}
                 <div>

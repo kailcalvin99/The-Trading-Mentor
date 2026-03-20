@@ -69,6 +69,9 @@ interface TradeFormData {
   notes: string;
   behaviorTag: BehaviorTag | "";
   stressLevel: number;
+  sideDirection: "BUY" | "SELL" | "";
+  tradingSession: string;
+  entryPrice: string;
 }
 
 const DEFAULT_FORM: TradeFormData = {
@@ -79,6 +82,9 @@ const DEFAULT_FORM: TradeFormData = {
   notes: "",
   behaviorTag: "",
   stressLevel: 5,
+  sideDirection: "",
+  tradingSession: "",
+  entryPrice: "",
 };
 
 function calculateSetupScore(stressLevel: number, riskPct: number): number {
@@ -133,10 +139,17 @@ export default function JournalScreen() {
   const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
   const { isRoutineComplete, routineCompletedToday } = usePlanner();
   const qc = useQueryClient();
+  const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+    : "http://localhost:8080/api";
+
   const [showForm, setShowForm] = useState(false);
   const [isMonkMode, setIsMonkMode] = useState(false);
   const [form, setForm] = useState<TradeFormData>({ ...DEFAULT_FORM });
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
+  const [userDefaultPair, setUserDefaultPair] = useState<string>("");
+  const [userDefaultRisk, setUserDefaultRisk] = useState<string>("0.5");
+  const [prevDraftCount, setPrevDraftCount] = useState<number>(-1);
   const [expandedTradeId, setExpandedTradeId] = useState<number | null>(null);
   const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
   const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
@@ -191,6 +204,23 @@ export default function JournalScreen() {
   }
 
   useEffect(() => {
+    if (user) {
+      fetch(`${API_BASE}/user/settings`, { credentials: "include" })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.tradingDefaults?.defaultPairs) {
+            const firstPair = data.tradingDefaults.defaultPairs.split(",")?.[0]?.trim();
+            if (firstPair) setUserDefaultPair(firstPair);
+          }
+          if (data.tradingDefaults?.defaultRiskPct) {
+            setUserDefaultRisk(data.tradingDefaults.defaultRiskPct);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
+
+  useEffect(() => {
     AsyncStorage.getItem("planner_journal_draft").then((raw) => {
       if (!raw) return;
       try {
@@ -224,6 +254,20 @@ export default function JournalScreen() {
   const draftTrades = trades.filter((t) => t.isDraft);
   const completedTrades = trades.filter((t) => !t.isDraft);
 
+  useEffect(() => {
+    const currentCount = draftTrades.length;
+    if (prevDraftCount >= 0 && currentCount > prevDraftCount) {
+      const newCount = currentCount - prevDraftCount;
+      Alert.alert(
+        `${newCount} New Draft Trade${newCount > 1 ? "s" : ""} from TradingView`,
+        "Open the journal to review and complete your trade entries."
+      );
+    }
+    if (prevDraftCount !== currentCount) {
+      setPrevDraftCount(currentCount);
+    }
+  }, [draftTrades.length]);
+
   const wins = completedTrades.filter((t) => t.outcome === "win").length;
   const losses = completedTrades.filter((t) => t.outcome === "loss").length;
   const total = wins + losses;
@@ -231,10 +275,6 @@ export default function JournalScreen() {
 
   const fomoCount = completedTrades.filter((t) => t.behaviorTag === "FOMO").length;
   const disciplinedCount = completedTrades.filter((t) => t.behaviorTag === "Disciplined").length;
-
-  const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-    : "http://localhost:8080/api";
 
   async function fetchCoachFeedback(tradeId: number) {
     if (coachFeedback[tradeId] || coachLoading[tradeId]) return;
@@ -293,6 +333,11 @@ export default function JournalScreen() {
     setForm({
       ...DEFAULT_FORM,
       entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
+      pair: userDefaultPair || DEFAULT_FORM.pair,
+      riskPct: userDefaultRisk || DEFAULT_FORM.riskPct,
+      sideDirection: "",
+      tradingSession: "",
+      entryPrice: "",
     });
     setShowForm(true);
     fireMobileAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
@@ -314,7 +359,7 @@ export default function JournalScreen() {
     proceedToNewForm();
   }
 
-  function openDraftForm(draft: Trade) {
+  function openDraftForm(draft: Trade & { sideDirection?: string | null; tradingSession?: string | null; entryPrice?: string | null }) {
     setEditingDraftId(draft.id);
     const draftNotes = draft.notes || "";
     const cleanNotes = draftNotes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "");
@@ -326,6 +371,9 @@ export default function JournalScreen() {
       notes: cleanNotes,
       behaviorTag: (draft.behaviorTag || "") as BehaviorTag | "",
       stressLevel: draft.stressLevel || 5,
+      sideDirection: (draft.sideDirection as "BUY" | "SELL" | "") || "",
+      tradingSession: draft.tradingSession || "",
+      entryPrice: draft.entryPrice || "",
     });
     setShowForm(true);
     fireMobileAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
@@ -350,6 +398,9 @@ export default function JournalScreen() {
           stressLevel: form.stressLevel,
           isDraft: false,
           setupScore: safeSetupScore,
+          sideDirection: form.sideDirection || undefined,
+          entryPrice: form.entryPrice || undefined,
+          tradingSession: form.tradingSession || undefined,
         },
       });
       if (appMode === "full") {
@@ -506,6 +557,14 @@ export default function JournalScreen() {
             <View style={styles.draftHeader}>
               <Ionicons name="radio" size={14} color="#F59E0B" />
               <Text style={styles.draftTitle}>{draftTrades.length} Draft{draftTrades.length > 1 ? "s" : ""} from TradingView</Text>
+              <TouchableOpacity
+                onPress={() => router.navigate("/webhooks" as never)}
+                style={styles.draftSetupLink}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="settings-outline" size={12} color="#F59E0B" />
+                <Text style={styles.draftSetupLinkText}>Setup</Text>
+              </TouchableOpacity>
             </View>
             {draftTrades.map((draft) => (
               <TouchableOpacity key={draft.id} style={styles.draftCard} onPress={() => openDraftForm(draft)} activeOpacity={0.8}>
@@ -816,16 +875,55 @@ export default function JournalScreen() {
               </View>
             </ScrollView>
 
-            {/* Entry Time & Risk */}
+            {/* Side */}
+            <Text style={formStyles.fieldLabel}>Side</Text>
+            <View style={[formStyles.row, { marginBottom: 16 }]}>
+              {(["BUY", "SELL"] as const).map((s) => (
+                <TouchableOpacity
+                  key={s}
+                  style={[
+                    formStyles.outcomeBtn,
+                    form.sideDirection === s && {
+                      backgroundColor: s === "BUY" ? "#00C89625" : "#EF444425",
+                      borderColor: s === "BUY" ? "#00C896" : "#EF4444",
+                    },
+                  ]}
+                  onPress={() => setField("sideDirection", form.sideDirection === s ? "" : s)}
+                >
+                  <Text style={[
+                    formStyles.outcomeBtnText,
+                    form.sideDirection === s && { color: s === "BUY" ? "#00C896" : "#EF4444", fontFamily: "Inter_700Bold" },
+                  ]}>
+                    {s === "BUY" ? "Long (Buy)" : "Short (Sell)"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Session auto-detected */}
+            {form.tradingSession ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#00C89615", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#00C89640", marginBottom: 16 }}>
+                <Ionicons name="flash" size={13} color={C.accent} />
+                <Text style={{ fontSize: 12, color: C.accent, fontFamily: "Inter_600SemiBold" }}>Session detected: {form.tradingSession}</Text>
+              </View>
+            ) : null}
+
+            {/* Entry Price & Risk */}
             <View style={formStyles.row}>
               <View style={{ flex: 1 }}>
-                <Text style={formStyles.fieldLabel}>Entry Time</Text>
-                <TextInput style={formStyles.input} value={form.entryTime} onChangeText={(v) => setField("entryTime", v)} placeholder="10:15 AM" placeholderTextColor={C.textSecondary} />
+                <Text style={formStyles.fieldLabel}>Entry Price</Text>
+                <TextInput style={formStyles.input} value={form.entryPrice} onChangeText={(v) => setField("entryPrice", v)} placeholder="21450.25" placeholderTextColor={C.textSecondary} keyboardType="decimal-pad" />
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={formStyles.fieldLabel}>Risk %</Text>
                 <TextInput style={formStyles.input} value={form.riskPct} onChangeText={(v) => setField("riskPct", v)} placeholder="0.5" placeholderTextColor={C.textSecondary} keyboardType="decimal-pad" />
               </View>
+            </View>
+
+            {/* Entry Time */}
+            <View>
+              <Text style={formStyles.fieldLabel}>Entry Time</Text>
+              <TextInput style={formStyles.input} value={form.entryTime} onChangeText={(v) => setField("entryTime", v)} placeholder="10:15 AM" placeholderTextColor={C.textSecondary} />
             </View>
 
             {/* Outcome */}
@@ -1038,7 +1136,9 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, color: C.textSecondary, marginTop: 2, textAlign: "center" },
   draftSection: { backgroundColor: "rgba(245,158,11,0.08)", borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "rgba(245,158,11,0.3)" },
   draftHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-  draftTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#F59E0B" },
+  draftTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#F59E0B", flex: 1 },
+  draftSetupLink: { flexDirection: "row", alignItems: "center", gap: 3 },
+  draftSetupLinkText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#F59E0B" },
   draftCard: { backgroundColor: "rgba(245,158,11,0.05)", borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: "rgba(245,158,11,0.2)" },
   draftInfo: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
   draftPair: { fontSize: 15, fontFamily: "Inter_700Bold", color: C.text },

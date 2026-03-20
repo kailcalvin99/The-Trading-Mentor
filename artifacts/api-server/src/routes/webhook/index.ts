@@ -5,6 +5,35 @@ import { authRequired } from "../../middleware/auth";
 
 const router: IRouter = Router();
 
+function getETHour(date: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: false,
+  }).formatToParts(date);
+  const hourPart = parts.find((p) => p.type === "hour");
+  const minutePart = parts.find((p) => p.type === "minute");
+  const hour = parseInt(hourPart?.value ?? "0", 10);
+  const minute = parseInt(minutePart?.value ?? "0", 10);
+  return hour + minute / 60;
+}
+
+function detectSession(date: Date): string {
+  const etHour = getETHour(date);
+  if (etHour >= 9.5 && etHour < 10.5) return "NY Open";
+  if (etHour >= 10.0 && etHour < 11.0) return "Silver Bullet";
+  if (etHour >= 2.0 && etHour < 5.0) return "London Open";
+  return "";
+}
+
+function calculateRiskPct(entryPrice: number, sl: number, side: string): number | null {
+  if (!entryPrice || !sl || entryPrice === sl) return null;
+  const riskPoints = Math.abs(entryPrice - sl);
+  const riskPct = (riskPoints / entryPrice) * 100;
+  return Math.round(riskPct * 100) / 100;
+}
+
 router.get("/tradingview/info", authRequired, async (req, res) => {
   try {
     const isAdmin = req.user?.role === "admin";
@@ -47,7 +76,7 @@ router.get("/tradingview/info", authRequired, async (req, res) => {
 router.post("/tradingview/:token", async (req, res) => {
   try {
     const { token } = req.params;
-    const { ticker, side, price, symbol } = req.body;
+    const { ticker, side, price, symbol, sl, tp, session, timestamp, timenow } = req.body;
 
     const [userRow] = await db
       .select({ id: usersTable.id, role: usersTable.role })
@@ -74,28 +103,53 @@ router.post("/tradingview/:token", async (req, res) => {
       }
     }
 
-    const user = userRow;
-
     const resolvedTicker = ticker || symbol || "NQ1!";
     const resolvedSide = (side || "BUY").toUpperCase();
-    const resolvedPrice = parseFloat(price) || 0;
+    const resolvedPrice = price ? parseFloat(price) : null;
+    const resolvedSl = sl ? parseFloat(sl) : null;
+    const resolvedTp = tp ? parseFloat(tp) : null;
+
+    const payloadTimestamp = timestamp || timenow;
+    const parsedAlertTime = payloadTimestamp ? new Date(payloadTimestamp) : null;
+    const safeAlertTime = parsedAlertTime && !isNaN(parsedAlertTime.getTime()) ? parsedAlertTime : new Date();
+    const detectedSession = session || detectSession(safeAlertTime);
+
+    let autoRiskPct: number | null = null;
+    if (resolvedPrice && resolvedSl) {
+      autoRiskPct = calculateRiskPct(resolvedPrice, resolvedSl, resolvedSide);
+    }
+
+    const entryTimeStr = safeAlertTime.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "America/New_York",
+    });
 
     const [draft] = await db
       .insert(tradesTable)
       .values({
-        userId: user.id,
+        userId: userRow.id,
         pair: resolvedTicker,
-        entryTime: new Date().toISOString(),
-        riskPct: "0.5",
+        entryTime: entryTimeStr,
+        riskPct: (autoRiskPct ?? 0.5).toString(),
         liquiditySweep: false,
         isDraft: true,
         ticker: resolvedTicker,
         sideDirection: resolvedSide,
-        notes: price ? `Auto-filled: ${resolvedSide} at ${resolvedPrice}` : undefined,
+        entryPrice: resolvedPrice ? resolvedPrice.toString() : undefined,
+        tradingSession: detectedSession || undefined,
+        notes: undefined,
       })
       .returning();
 
-    res.json({ success: true, draftId: draft.id, message: "Draft trade created from TradingView alert" });
+    res.json({
+      success: true,
+      draftId: draft.id,
+      message: "Draft trade created from TradingView alert",
+      session: detectedSession,
+      riskPct: autoRiskPct,
+    });
   } catch (err) {
     console.error("Webhook error:", err);
     res.status(500).json({ error: "Failed to process webhook" });
