@@ -1,25 +1,35 @@
 import { Href, Tabs, usePathname, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import { Animated, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AIAssistant from "@/components/AIAssistant";
 import TopTabBar from "@/components/TopTabBar";
 import KillZoneStrip from "@/components/KillZoneStrip";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
+import { ChromeCollapseProvider, useChromeCollapse } from "@/contexts/ChromeCollapseContext";
 
 const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 
-export default function TabLayout() {
+const TOP_TAB_BAR_HEIGHT = 42;
+const KILL_ZONE_STRIP_HEIGHT = 52;
+
+function TabLayoutInner() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, subscription, appMode } = useAuth();
   const [communityBadge, setCommunityBadge] = useState(0);
   const [journalDraftBadge, setJournalDraftBadge] = useState(0);
+  const insets = useSafeAreaInsets();
+
+  const { resetIdleTimer, headerAnim, headerLayoutAnim, isCollapsed } = useChromeCollapse();
 
   const isAdmin = user?.role === "admin";
   const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
+
+  const headerHeight = insets.top + TOP_TAB_BAR_HEIGHT + (appMode !== "lite" ? KILL_ZONE_STRIP_HEIGHT : 0);
 
   useEffect(() => {
     async function checkNewPosts() {
@@ -73,75 +83,121 @@ export default function TabLayout() {
     [router]
   );
 
+  const headerTranslateY = headerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -headerHeight],
+  });
+
+  const contentPaddingTop = headerLayoutAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [headerHeight, 0],
+  });
+
   return (
-    <View style={{ flex: 1 }}>
-      <TopTabBar
-        pathname={pathname}
-        onNavigate={handleNavigate}
-        isAdmin={isAdmin}
-        tierLevel={tierLevel}
-        appMode={appMode}
-        userName={user?.name ?? ""}
-        communityBadge={communityBadge}
-        journalDraftBadge={journalDraftBadge}
-      />
-      {appMode !== "lite" && <KillZoneStrip />}
-      <Tabs
-        tabBar={() => null}
-        screenOptions={{
-          headerShown: false,
-        }}
+    <View style={styles.root} onTouchStart={resetIdleTimer}>
+      <Animated.View style={[styles.tabsWrapper, { paddingTop: contentPaddingTop }]}>
+        <Tabs
+          tabBar={() => null}
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
+          <Tabs.Screen
+            name="dashboard"
+            options={{ title: "Dashboard" }}
+          />
+          <Tabs.Screen
+            name="index"
+            options={{ title: "Mission Control" }}
+          />
+          <Tabs.Screen
+            name="academy"
+            options={{ title: "Academy" }}
+          />
+          <Tabs.Screen
+            name="videos"
+            options={{ title: "Videos" }}
+          />
+          <Tabs.Screen
+            name="journal"
+            options={{ title: "Journal" }}
+          />
+          <Tabs.Screen
+            name="tags"
+            options={{ title: "Tags" }}
+          />
+          <Tabs.Screen
+            name="community"
+            options={{ title: "Community" }}
+          />
+          <Tabs.Screen
+            name="analytics"
+            options={{ title: "Analytics" }}
+          />
+          <Tabs.Screen
+            name="subscription"
+            options={{ title: "Subscription" }}
+          />
+          <Tabs.Screen
+            name="settings"
+            options={{ title: "Settings" }}
+          />
+          <Tabs.Screen
+            name="admin"
+            options={{ title: "Admin" }}
+          />
+          <Tabs.Screen
+            name="webhooks"
+            options={{ title: "TradingView Webhooks" }}
+          />
+        </Tabs>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.headerWrapper,
+          { transform: [{ translateY: headerTranslateY }] },
+        ]}
+        pointerEvents={isCollapsed ? "none" : "box-none"}
       >
-        <Tabs.Screen
-          name="dashboard"
-          options={{ title: "Dashboard" }}
+        <TopTabBar
+          pathname={pathname}
+          onNavigate={handleNavigate}
+          isAdmin={isAdmin}
+          tierLevel={tierLevel}
+          appMode={appMode}
+          userName={user?.name ?? ""}
+          communityBadge={communityBadge}
+          journalDraftBadge={journalDraftBadge}
         />
-        <Tabs.Screen
-          name="index"
-          options={{ title: "Mission Control" }}
-        />
-        <Tabs.Screen
-          name="academy"
-          options={{ title: "Academy" }}
-        />
-        <Tabs.Screen
-          name="videos"
-          options={{ title: "Videos" }}
-        />
-        <Tabs.Screen
-          name="journal"
-          options={{ title: "Journal" }}
-        />
-        <Tabs.Screen
-          name="tags"
-          options={{ title: "Tags" }}
-        />
-        <Tabs.Screen
-          name="community"
-          options={{ title: "Community" }}
-        />
-        <Tabs.Screen
-          name="analytics"
-          options={{ title: "Analytics" }}
-        />
-        <Tabs.Screen
-          name="subscription"
-          options={{ title: "Subscription" }}
-        />
-        <Tabs.Screen
-          name="settings"
-          options={{ title: "Settings" }}
-        />
-        <Tabs.Screen
-          name="admin"
-          options={{ title: "Admin" }}
-        />
-        <Tabs.Screen
-          name="webhooks"
-          options={{ title: "TradingView Webhooks" }}
-        />
-      </Tabs>
+        {appMode !== "lite" && <KillZoneStrip />}
+      </Animated.View>
+
       <AIAssistant />
     </View>
   );
 }
+
+export default function TabLayout() {
+  return (
+    <ChromeCollapseProvider>
+      <TabLayoutInner />
+    </ChromeCollapseProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  headerWrapper: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  tabsWrapper: {
+    flex: 1,
+  },
+});

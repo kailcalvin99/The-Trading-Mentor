@@ -30,6 +30,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { subscribeToAITrigger } from "@/lib/aiTrigger";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import Colors from "@/constants/colors";
+import { useChromeCollapse } from "@/contexts/ChromeCollapseContext";
 
 interface AITrigger {
   message: string;
@@ -94,6 +95,84 @@ const NAV_MAP: Record<string, string> = {
   community: "/(tabs)/community",
 };
 
+function IdlePill({ onPress }: { onPress: () => void }) {
+  const pulseAnim = useRef(new Animated.Value(0.7)).current;
+  const [clock, setClock] = useState(() => new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }));
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setClock(new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.7, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulseAnim]);
+
+  const scaleAnim = pulseAnim.interpolate({ inputRange: [0.7, 1], outputRange: [0.97, 1] });
+
+  return (
+    <TouchableOpacity
+      style={idlePillStyles.wrapperBase}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <Animated.View style={[idlePillStyles.pill, { opacity: pulseAnim, transform: [{ scale: scaleAnim }] }]}>
+        <Ionicons name="menu" size={18} color={C.text} />
+        <Text style={idlePillStyles.appName}>ICT Trading Mentor</Text>
+        <Text style={idlePillStyles.clock}>{clock}</Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+const idlePillStyles = StyleSheet.create({
+  wrapperBase: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 200,
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 30,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: C.accent + "80",
+    shadowColor: C.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  appName: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: C.text,
+    letterSpacing: 0.3,
+  },
+  clock: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: C.accent,
+  },
+});
+
 export default function AIAssistant() {
   const [visible, setVisible] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
@@ -118,6 +197,13 @@ export default function AIAssistant() {
 
   const { data: conversations, refetch } = useListGeminiConversations();
   const { data: propAccount } = useGetPropAccount();
+
+  const { isCollapsed, restore, footerAnim } = useChromeCollapse();
+
+  const footerTranslateY = footerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 160],
+  });
 
   const drawdownNudgedRef = useRef(false);
 
@@ -507,40 +593,43 @@ export default function AIAssistant() {
 
   return (
     <>
-      <View style={s.fabContainer}>
-        {nudgeExpanded && nudge && (
-          <Animated.View
-            style={[
-              s.nudgeCard,
-              {
-                opacity: nudgeAnim,
-                transform: [{ translateY: nudgeAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
-              },
-            ]}
+      {isCollapsed && <IdlePill onPress={restore} />}
+      <Animated.View style={{ transform: [{ translateY: footerTranslateY }] }}>
+        <View style={s.fabContainer}>
+          {nudgeExpanded && nudge && (
+            <Animated.View
+              style={[
+                s.nudgeCard,
+                {
+                  opacity: nudgeAnim,
+                  transform: [{ translateY: nudgeAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+                },
+              ]}
+            >
+              <TouchableOpacity style={s.nudgeDismiss} onPress={dismissNudge}>
+                <Ionicons name="close" size={14} color={C.textSecondary} />
+              </TouchableOpacity>
+              <View style={s.nudgeHeader}>
+                <Ionicons name="sparkles" size={12} color={C.accent} />
+                <Text style={s.nudgeLabel}>AI Coach</Text>
+              </View>
+              <Text style={s.nudgeMessage}>{nudge.message}</Text>
+              <TouchableOpacity onPress={openFromNudge} style={s.nudgeAction}>
+                <Text style={s.nudgeActionText}>Open AI</Text>
+                <Ionicons name="arrow-forward" size={12} color={C.accent} />
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+          <TouchableOpacity
+            style={nudgeExpanded ? s.fabExpanded : s.fabMini}
+            onPress={openDrawer}
+            activeOpacity={0.8}
           >
-            <TouchableOpacity style={s.nudgeDismiss} onPress={dismissNudge}>
-              <Ionicons name="close" size={14} color={C.textSecondary} />
-            </TouchableOpacity>
-            <View style={s.nudgeHeader}>
-              <Ionicons name="sparkles" size={12} color={C.accent} />
-              <Text style={s.nudgeLabel}>AI Coach</Text>
-            </View>
-            <Text style={s.nudgeMessage}>{nudge.message}</Text>
-            <TouchableOpacity onPress={openFromNudge} style={s.nudgeAction}>
-              <Text style={s.nudgeActionText}>Open AI</Text>
-              <Ionicons name="arrow-forward" size={12} color={C.accent} />
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-        <TouchableOpacity
-          style={nudgeExpanded ? s.fabExpanded : s.fabMini}
-          onPress={openDrawer}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="sparkles" size={nudgeExpanded ? 16 : 14} color="#0A0A0F" />
-          {nudgeExpanded && <Text style={s.fabLabel}>AI</Text>}
-        </TouchableOpacity>
-      </View>
+            <Ionicons name="sparkles" size={nudgeExpanded ? 16 : 14} color="#0A0A0F" />
+            {nudgeExpanded && <Text style={s.fabLabel}>AI</Text>}
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
 
       <Modal
         visible={visible}
