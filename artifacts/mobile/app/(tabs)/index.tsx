@@ -9,6 +9,7 @@ import {
   TextInput,
   Platform,
   Modal,
+  KeyboardAvoidingView,
 } from "react-native";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -493,6 +494,10 @@ function PlannerScreen() {
 
         {/* Position Calculator Modal */}
         <Modal visible={showPositionCalc} animationType="slide" transparent onRequestClose={() => setShowPositionCalc(false)}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
           <View style={styles.modalOverlay}>
             <View style={styles.modalSheet}>
               <View style={styles.modalHandle} />
@@ -538,6 +543,7 @@ function PlannerScreen() {
               )}
             </View>
           </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Pre-Trade Checklist Modal */}
