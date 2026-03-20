@@ -1,10 +1,7 @@
 import app from "./app";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripe/stripeClient";
-
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught exception:", err);
-});
+import { execSync } from "child_process";
 
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled promise rejection:", reason);
@@ -39,6 +36,46 @@ async function initStripe() {
   }
 }
 
+function killPortOccupant(port: number): boolean {
+  try {
+    const pid = execSync(`lsof -ti tcp:${port}`, { encoding: "utf8" }).trim();
+    if (pid) {
+      execSync(`kill -9 ${pid}`);
+      console.log(`Killed stale process (PID ${pid}) occupying port ${port}`);
+      return true;
+    }
+  } catch {
+  }
+  return false;
+}
+
+function startServer(port: number, attempt: number = 1): void {
+  const server = app.listen(port, () => {
+    console.log(`Server listening on port ${port}`);
+  });
+
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`Port ${port} is already in use (attempt ${attempt}).`);
+      server.close();
+
+      if (attempt === 1) {
+        const killed = killPortOccupant(port);
+        if (killed) {
+          console.log(`Retrying server start on port ${port} in 500ms...`);
+          setTimeout(() => startServer(port, 2), 500);
+          return;
+        }
+      }
+
+      console.error(`Unable to free port ${port}. Exiting so the workflow manager can restart.`);
+      process.exit(1);
+    } else {
+      console.error("Server error:", err);
+    }
+  });
+}
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
@@ -46,10 +83,10 @@ if (!rawPort) {
   process.exit(1);
 }
 
-const port = Number(rawPort);
+const port = parseInt(rawPort, 10);
 
-if (Number.isNaN(port) || port <= 0) {
-  console.error(`Invalid PORT value: "${rawPort}"`);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  console.error(`Invalid PORT value: "${rawPort}" — must be an integer between 1 and 65535`);
   process.exit(1);
 }
 
@@ -59,10 +96,4 @@ try {
   console.error("Stripe initialization failed, continuing without Stripe:", err?.message || err);
 }
 
-const server = app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
-});
-
-server.on("error", (err) => {
-  console.error("Server error:", err);
-});
+startServer(port);
