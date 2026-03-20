@@ -183,512 +183,12 @@ function getApiUrl(): string {
 
 const STREAK_KEY = "ict-learn-streak";
 const XP_KEY = "ict-learn-xp";
-const LAST_DATE_KEY = "ict-learn-last-date";
 
 function getStreak(): number {
   try { return parseInt(localStorage.getItem(STREAK_KEY) || "0", 10); } catch { return 0; }
 }
 function getXP(): number {
   try { return parseInt(localStorage.getItem(XP_KEY) || "0", 10); } catch { return 0; }
-}
-function getLastDate(): string {
-  try { return localStorage.getItem(LAST_DATE_KEY) || ""; } catch { return ""; }
-}
-
-function getAllCards(): { lesson: Lesson; chapter: Chapter; globalIdx: number }[] {
-  const cards: { lesson: Lesson; chapter: Chapter; globalIdx: number }[] = [];
-  let idx = 0;
-  for (const ch of COURSE_CHAPTERS) {
-    for (const l of ch.lessons) {
-      cards.push({ lesson: l, chapter: ch, globalIdx: idx++ });
-    }
-  }
-  return cards;
-}
-
-function ConfettiBurst({ onDone }: { onDone: () => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-
-    const colors = ["#00C896", "#818CF8", "#FFD700", "#EF4444", "#06B6D4", "#F59E0B"];
-    const particles: { x: number; y: number; vx: number; vy: number; r: number; color: string; life: number }[] = [];
-
-    for (let i = 0; i < 60; i++) {
-      particles.push({
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        vx: (Math.random() - 0.5) * 16,
-        vy: (Math.random() - 0.5) * 16 - 4,
-        r: Math.random() * 5 + 2,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        life: 1,
-      });
-    }
-
-    let frame = 0;
-    const maxFrames = 50;
-
-    function animate() {
-      if (!ctx || !canvas) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (const p of particles) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.3;
-        p.life -= 1 / maxFrames;
-        ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      frame++;
-      if (frame < maxFrames) requestAnimationFrame(animate);
-      else onDone();
-    }
-    animate();
-  }, [onDone]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 pointer-events-none z-50"
-      style={{ width: "100%", height: "100%" }}
-    />
-  );
-}
-
-function SwipeLearnView({ onExit, isFree }: { onExit: () => void; isFree?: boolean }) {
-  const allCards = getAllCards();
-  const availableCards = isFree ? allCards.slice(0, FREE_LESSON_CAP) : allCards;
-  const [completed, setCompleted] = useState<Set<string>>(getProgress);
-  const [currentIdx, setCurrentIdx] = useState(() => {
-    const prog = getProgress();
-    const cards = isFree ? allCards.slice(0, FREE_LESSON_CAP) : allCards;
-    const firstIncomplete = cards.findIndex((c) => !prog.has(c.lesson.id));
-    return firstIncomplete >= 0 ? firstIncomplete : 0;
-  });
-  const [cardStep, setCardStep] = useState(0);
-  const [swipeY, setSwipeY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [xp, setXp] = useState(getXP);
-  const [streak, setStreak] = useState(getStreak);
-  const [justCompleted, setJustCompleted] = useState(false);
-  const [xpPop, setXpPop] = useState(0);
-  const [lightboxKey, setLightboxKey] = useState<string | null>(null);
-  const dragStart = useRef(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const card = availableCards[currentIdx];
-  const lesson = card.lesson;
-  const chapter = card.chapter;
-  const isDone = completed.has(lesson.id);
-  const totalCards = availableCards.length;
-  const completedCount = availableCards.filter((c) => completed.has(c.lesson.id)).length;
-
-  const totalSteps = lesson.paragraphs.length + (lesson.chartImage ? 1 : 0) + (lesson.videoFile ? 1 : 0) + 1;
-
-  function markComplete() {
-    if (completed.has(lesson.id)) return;
-    const next = new Set(completed);
-    next.add(lesson.id);
-    setCompleted(next);
-    setProgress(next);
-    saveProgressToApi(next);
-
-    const today = new Date().toDateString();
-    const lastDate = getLastDate();
-    let newStreak = streak;
-    if (lastDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      newStreak = lastDate === yesterday.toDateString() ? streak + 1 : 1;
-      localStorage.setItem(STREAK_KEY, String(newStreak));
-      localStorage.setItem(LAST_DATE_KEY, today);
-      setStreak(newStreak);
-    }
-
-    const earnedXp = 25 * Math.max(1, newStreak);
-    const newXp = xp + earnedXp;
-    localStorage.setItem(XP_KEY, String(newXp));
-    setXp(newXp);
-    setXpPop(earnedXp);
-    setShowConfetti(true);
-    setJustCompleted(true);
-    setTimeout(() => { setXpPop(0); setJustCompleted(false); }, 1800);
-  }
-
-  function goNext() {
-    if (cardStep < totalSteps - 1) {
-      setCardStep(cardStep + 1);
-    } else {
-      if (!isDone && !completed.has(lesson.id)) markComplete();
-      if (currentIdx < totalCards - 1) {
-        setCurrentIdx(currentIdx + 1);
-        setCardStep(0);
-        setSwipeY(0);
-      }
-    }
-  }
-
-  function goPrev() {
-    if (cardStep > 0) {
-      setCardStep(cardStep - 1);
-    } else if (currentIdx > 0) {
-      setCurrentIdx(currentIdx - 1);
-      setCardStep(0);
-      setSwipeY(0);
-    }
-  }
-
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    dragStart.current = e.clientY;
-    setIsDragging(true);
-    setSwipeY(0);
-  }, []);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging) return;
-    setSwipeY(e.clientY - dragStart.current);
-  }, [isDragging]);
-
-  const handlePointerUp = useCallback(() => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    if (swipeY < -100) {
-      goNext();
-      setSwipeY(0);
-    } else if (swipeY > 100) {
-      goPrev();
-      setSwipeY(0);
-    } else {
-      setSwipeY(0);
-    }
-  }, [isDragging, swipeY, isDone, currentIdx]);
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "ArrowUp") { e.preventDefault(); goNext(); }
-      if (e.key === "ArrowDown") { e.preventDefault(); goPrev(); }
-      if (e.key === " ") { e.preventDefault(); goNext(); }
-      if (e.key === "Escape") onExit();
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  });
-
-  const stepContent = (() => {
-    const paraCount = lesson.paragraphs.length;
-    let step = cardStep;
-    if (step < paraCount) {
-      return { type: "paragraph" as const, text: lesson.paragraphs[step], stepLabel: `${cardStep + 1} of ${totalSteps}` };
-    }
-    step -= paraCount;
-    if (lesson.chartImage && step === 0) {
-      return { type: "chart" as const, stepLabel: `${cardStep + 1} of ${totalSteps}` };
-    }
-    if (lesson.chartImage) step--;
-    if (lesson.videoFile && step === 0) {
-      return { type: "video" as const, stepLabel: `${cardStep + 1} of ${totalSteps}` };
-    }
-    return { type: "takeaway" as const, stepLabel: `${cardStep + 1} of ${totalSteps}` };
-  })();
-
-  const swipeOpacity = Math.min(1, Math.abs(swipeY) / 150);
-
-  return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col" ref={containerRef}>
-      {lightboxKey && (
-        <ChartLightbox conceptKey={lightboxKey} onClose={() => setLightboxKey(null)} />
-      )}
-      {showConfetti && <ConfettiBurst onDone={() => setShowConfetti(false)} />}
-
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-        <button
-          onClick={onExit}
-          className="flex items-center gap-2 bg-card border border-border hover:bg-muted text-foreground font-semibold px-4 py-2 rounded-full text-sm transition-colors shadow-sm"
-        >
-          <X className="h-4 w-4" />
-          <span>Exit</span>
-        </button>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <Flame className="h-4 w-4 text-orange-500" />
-            <span className="text-sm font-bold text-orange-500">{streak}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Zap className="h-4 w-4 text-yellow-500" />
-            <span className="text-sm font-bold text-yellow-500">{xp} XP</span>
-          </div>
-        </div>
-
-        <div className="text-xs text-muted-foreground font-medium">
-          {completedCount}/{totalCards}
-        </div>
-      </div>
-
-      <div className="flex gap-0.5 px-4 pt-3">
-        {availableCards.map((_, i) => (
-          <div
-            key={i}
-            className="h-1 flex-1 rounded-full transition-all duration-300"
-            style={{
-              backgroundColor:
-                i < currentIdx || completed.has(availableCards[i].lesson.id)
-                  ? "#00C896"
-                  : i === currentIdx
-                  ? "#00C896"
-                  : "hsl(var(--border))",
-              opacity: i === currentIdx ? 1 : i < currentIdx || completed.has(availableCards[i].lesson.id) ? 0.5 : 0.2,
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden relative">
-        <button
-          onClick={() => {
-            if (stepContent.type === "takeaway" && !isDone) {
-              markComplete();
-            } else {
-              goNext();
-            }
-          }}
-          disabled={currentIdx === totalCards - 1 && cardStep === totalSteps - 1}
-          className="absolute left-0 right-0 top-0 h-16 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:hidden"
-          aria-label="Next"
-        >
-          <div className="bg-card/80 backdrop-blur border border-border rounded-full p-2">
-            <ChevronUp className="h-5 w-5 text-foreground" />
-          </div>
-        </button>
-
-        <button
-          onClick={goPrev}
-          disabled={currentIdx === 0 && cardStep === 0}
-          className="absolute left-0 right-0 bottom-0 h-16 z-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity disabled:hidden"
-          aria-label="Previous"
-        >
-          <div className="bg-card/80 backdrop-blur border border-border rounded-full p-2">
-            <ChevronDown className="h-5 w-5 text-foreground" />
-          </div>
-        </button>
-
-        <div
-          className="relative w-full max-w-lg select-none"
-          style={{
-            transform: `translateY(${swipeY}px)`,
-            transition: isDragging ? "none" : "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-          }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-        >
-          {swipeY < -20 && (
-            <div
-              className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-1.5 rounded-full font-bold text-sm z-10 shadow-lg"
-              style={{ opacity: swipeOpacity }}
-            >
-              NEXT ↑
-            </div>
-          )}
-          {swipeY > 20 && (
-            <div
-              className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-4 py-1.5 rounded-full font-bold text-sm z-10 shadow-lg"
-              style={{ opacity: swipeOpacity }}
-            >
-              BACK ↓
-            </div>
-          )}
-
-          <div
-            className="rounded-2xl border-2 overflow-hidden bg-card shadow-2xl"
-            style={{ borderColor: justCompleted ? "#00C896" : chapter.color + "40" }}
-          >
-            <div
-              className="px-5 py-4 flex items-center gap-3"
-              style={{ background: `linear-gradient(135deg, ${chapter.color}15, ${chapter.color}05)` }}
-            >
-              <span className="text-2xl">{chapter.icon}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: chapter.color }}>
-                  {chapter.title}
-                </div>
-                <div className="text-lg font-bold text-foreground truncate">{lesson.title}</div>
-              </div>
-              {isDone && (
-                <div className="shrink-0 bg-primary/20 rounded-full p-1.5">
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                </div>
-              )}
-            </div>
-
-            <div className="px-5 py-6 min-h-[280px] flex flex-col justify-center">
-              {stepContent.type === "paragraph" && (
-                <p className="text-base leading-relaxed text-foreground/90 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  {stepContent.text}
-                </p>
-              )}
-
-              {stepContent.type === "chart" && lesson.chartImage && (() => {
-                const ck = chartImageToConceptKey(lesson.chartImage);
-                return (
-                  <div className="animate-in fade-in zoom-in-95 duration-300">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-                      See it on the chart
-                    </p>
-                    {ck ? (
-                      <div className="relative cursor-pointer group" onClick={() => setLightboxKey(ck)}>
-                        {ck === "fvg" && <FVGDiagram className="w-full rounded-xl border" />}
-                        {ck === "ote" && <OTEDiagram className="w-full rounded-xl border" />}
-                        {ck === "mss" && <MSSDiagram className="w-full rounded-xl border" />}
-                        {ck === "liquidity-sweep" && <LiquiditySweepDiagram className="w-full rounded-xl border" />}
-                        {ck === "kill-zone" && <KillZoneDiagram className="w-full rounded-xl border" />}
-                        {ck === "silver-bullet" && <SilverBulletDiagram className="w-full rounded-xl border" />}
-                        {ck === "conservative-entry" && <ConservativeEntryDiagram className="w-full rounded-xl border" />}
-                        {ck === "exit-criteria" && <ExitCriteriaDiagram className="w-full rounded-xl border" />}
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full p-1.5">
-                          <Maximize2 className="h-3.5 w-3.5 text-white" />
-                        </div>
-                      </div>
-                    ) : (
-                      <img
-                        src={getImageUrl(lesson.chartImage)}
-                        alt={`${lesson.title} chart`}
-                        className="w-full rounded-xl border cursor-zoom-in"
-                        style={{ maxHeight: "400px", objectFit: "contain" }}
-                      />
-                    )}
-                    <p className="text-[10px] text-muted-foreground/50 text-center mt-1">Tap to enlarge</p>
-                  </div>
-                );
-              })()}
-
-              {stepContent.type === "video" && lesson.videoFile && (
-                <div className="animate-in fade-in zoom-in-95 duration-300">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Play className="h-3.5 w-3.5" />
-                    Watch it in action
-                  </p>
-                  <video
-                    src={getImageUrl(lesson.videoFile)}
-                    className="w-full rounded-xl border"
-                    style={{ maxHeight: "400px", objectFit: "contain" }}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    controls
-                  />
-                </div>
-              )}
-
-              {stepContent.type === "takeaway" && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div
-                    className="rounded-xl p-5 border-l-[4px]"
-                    style={{ borderLeftColor: chapter.color, backgroundColor: chapter.color + "12" }}
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <Sparkles className="h-4 w-4" style={{ color: chapter.color }} />
-                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: chapter.color }}>
-                        Key Takeaway
-                      </p>
-                    </div>
-                    <p className="text-base leading-relaxed font-semibold text-foreground">
-                      {lesson.takeaway}
-                    </p>
-                  </div>
-
-                  {!isDone && (
-                    <p className="text-center text-xs text-muted-foreground mt-4 animate-pulse">
-                      Swipe up or tap below to continue
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1 px-5 pb-2">
-              {Array.from({ length: totalSteps }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-1.5 flex-1 rounded-full transition-all duration-300 cursor-pointer"
-                  onClick={() => setCardStep(i)}
-                  style={{
-                    backgroundColor: i <= cardStep ? chapter.color : "hsl(var(--border))",
-                    opacity: i <= cardStep ? 1 : 0.3,
-                  }}
-                />
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between px-5 py-4 border-t border-border">
-              <button
-                onClick={goPrev}
-                disabled={currentIdx === 0 && cardStep === 0}
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back
-              </button>
-
-              <span className="text-xs text-muted-foreground">{stepContent.stepLabel}</span>
-
-              {stepContent.type === "takeaway" && !isDone ? (
-                <button
-                  onClick={markComplete}
-                  className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Got it!
-                </button>
-              ) : (
-                <button
-                  onClick={goNext}
-                  disabled={currentIdx === totalCards - 1 && cardStep === totalSteps - 1}
-                  className="flex items-center gap-1 text-sm text-primary font-semibold hover:opacity-80 disabled:opacity-30 transition-opacity"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {xpPop > 0 && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-50">
-              <div className="animate-bounce text-center">
-                <div className="text-3xl font-black text-yellow-400 drop-shadow-lg">
-                  +{xpPop} XP
-                </div>
-                {streak > 1 && (
-                  <div className="text-sm font-bold text-orange-400 mt-1">
-                    {streak}x streak bonus!
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="text-center py-3 text-xs text-muted-foreground/50 shrink-0">
-        Swipe up/down to navigate · ↑ next · ↓ back · Esc to exit
-      </div>
-    </div>
-  );
 }
 
 const FREE_LESSON_CAP = 5;
@@ -700,7 +200,6 @@ function LearnView() {
   const isFree = tierLevel === 0;
   const isBeginner = getSkillLevel() === "beginner";
   const [searchParams, setSearchParams] = useSearchParams();
-  const [swipeMode, setSwipeMode] = useState(() => searchParams.get("swipe") === "1");
   const [completed, setCompleted] = useState<Set<string>>(getProgress);
 
   useEffect(() => {
@@ -722,10 +221,6 @@ function LearnView() {
   const [pendingLessonId, setPendingLessonId] = useState<string | null>(() => searchParams.get("lesson"));
 
   useEffect(() => {
-    if (searchParams.get("swipe") === "1") {
-      setSwipeMode(true);
-      setSearchParams({}, { replace: true });
-    }
     const lessonParam = searchParams.get("lesson");
     if (lessonParam) {
       setPendingLessonId(lessonParam);
@@ -751,37 +246,11 @@ function LearnView() {
     saveProgressToApi(next);
   }
 
-  if (swipeMode) {
-    return <SwipeLearnView onExit={() => { setSwipeMode(false); setCompleted(getProgress()); }} isFree={isFree} />;
-  }
-
   const isAllDone = completedCount >= totalLessons;
   const quizPassed = (() => { try { return localStorage.getItem("ict-quiz-passed") === "true"; } catch { return false; } })();
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="rounded-2xl overflow-hidden border mb-6 bg-card">
-        <video
-          src={getImageUrl("video-academy-intro.mp4")}
-          className="w-full h-56 sm:h-72 object-cover"
-          autoPlay
-          loop
-          muted
-          playsInline
-        />
-        <div className="p-5">
-          <h2 className="text-xl font-bold mb-2">ICT Trading Course</h2>
-          <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-            Learn NQ Futures trading from scratch using the ICT methodology — a proven approach to understanding how markets really move.
-          </p>
-          <div className="bg-secondary/50 rounded-xl p-3 border border-border">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <span className="font-semibold text-foreground/80">Created with respect for Michael J. Huddleston</span> — the original Inner Circle Trader (ICT) who pioneered Smart Money Concepts, market structure analysis, and institutional order flow theory. His decades of teaching have transformed how traders worldwide understand price action. This course distills his core concepts into beginner-friendly lessons.
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 bg-orange-500/10 rounded-lg px-3 py-1.5">
@@ -808,14 +277,6 @@ function LearnView() {
           </div>
         </div>
       )}
-
-      <button
-        onClick={() => setSwipeMode(true)}
-        className="w-full mb-8 flex items-center justify-center gap-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-2xl py-4 px-6 font-bold text-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
-      >
-        <Play className="h-6 w-6" />
-        Start Swipe Mode
-      </button>
 
       <div className="h-2 bg-border rounded-full mb-8 overflow-hidden">
         <div
@@ -1955,10 +1416,16 @@ export default function IctAcademy() {
   const [tab, setTab] = useState<Tab>("learn");
   const { user } = useAuth();
   const { showCelebration, closeCelebration } = useGraduationCheck();
+  const [titleVisible, setTitleVisible] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(checkAndUnlock, 2000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTitleVisible(false), 2400);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -1969,14 +1436,29 @@ export default function IctAcademy() {
           onClose={closeCelebration}
         />
       )}
+      <style>{`
+        @keyframes ict-title-fade {
+          0% { opacity: 0; transform: translateY(-4px); }
+          15% { opacity: 1; transform: translateY(0); }
+          75% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-4px); }
+        }
+        .ict-title-animate {
+          animation: ict-title-fade 2.4s ease forwards;
+        }
+      `}</style>
       <header className="sticky top-0 z-30 bg-background px-6 pt-5 pb-3 border-b">
         <div className="flex items-center gap-3 mb-4">
           <GraduationCap className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">ICT Academy</h1>
           <span className="inline-flex items-center gap-1 bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary">
             <Sparkles className="h-2.5 w-2.5" />
             AI
           </span>
+          {titleVisible && (
+            <span className="ict-title-animate text-xl font-bold text-foreground pointer-events-none select-none">
+              ICT Academy
+            </span>
+          )}
         </div>
         <div className="flex bg-secondary rounded-xl p-1 max-w-lg">
           {TAB_CONFIG.map((t) => (
