@@ -1865,6 +1865,7 @@ export default function DashboardScreen() {
   const [showAchievements, setShowAchievements] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
   useFocusEffect(
     useCallback(() => {
       (async () => {
@@ -1919,6 +1920,31 @@ export default function DashboardScreen() {
         prefs={prefs}
         onToggle={toggleWidget}
       />
+
+      {/* Economic Calendar Modal */}
+      <Modal
+        visible={showCalendarModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCalendarModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: C.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "85%", paddingBottom: 24 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: C.border }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="calendar" size={20} color={C.accent} />
+                <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: C.text }}>Economic Calendar</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowCalendarModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Ionicons name="close" size={24} color={C.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+              <EconomicCalendarWidget showAll />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Avatar Picker Modal */}
       <Modal visible={showAvatarPicker} transparent animationType="slide" onRequestClose={() => setShowAvatarPicker(false)}>
@@ -2061,10 +2087,27 @@ export default function DashboardScreen() {
               </View>
             )}
 
-            {/* Economic Calendar */}
+            {/* Economic Calendar Icon Button */}
             {prefs.economiccalendar && (
-              <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
-                <EconomicCalendarWidget />
+              <View style={{ paddingHorizontal: 14, paddingBottom: 12, alignItems: "flex-start" }}>
+                <TouchableOpacity
+                  onPress={() => setShowCalendarModal(true)}
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 16,
+                    backgroundColor: C.surface,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="calendar" size={28} color={C.accent} />
+                  <Text style={{ fontSize: 9, color: C.textSecondary, fontFamily: "Inter_500Medium" }}>Calendar</Text>
+                </TouchableOpacity>
               </View>
             )}
 

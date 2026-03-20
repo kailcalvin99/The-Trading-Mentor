@@ -421,8 +421,9 @@ function isEventSoon(timeStr: string): boolean {
   } catch { return false; }
 }
 
-export function EconomicCalendarWidget() {
+export function EconomicCalendarWidget({ showAll = false }: { showAll?: boolean }) {
   const { events, loading } = useCalendarEvents();
+  const displayedEvents = showAll ? events : events.slice(0, 6);
 
   return (
     <View style={lmStyles.card}>
@@ -440,7 +441,7 @@ export function EconomicCalendarWidget() {
             No major events today.
           </Text>
         ) : (
-          events.slice(0, 6).map((ev, i) => {
+          displayedEvents.map((ev, i) => {
             const past = isEventPast(ev.time);
             const soon = !past && isEventSoon(ev.time);
             const isHigh = ev.impact?.toLowerCase() === "high";
