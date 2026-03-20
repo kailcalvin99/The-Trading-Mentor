@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { tradesTable } from "@workspace/db";
-import { eq, desc, gte, lte, and, type SQL } from "drizzle-orm";
+import { eq, desc, gte, lte, and, isNull, isNotNull, or, type SQL } from "drizzle-orm";
 import { authRequired, tierRequired } from "../../middleware/auth";
 import { ai } from "@workspace/integrations-gemini-ai";
 
@@ -225,6 +225,41 @@ Respond with ONLY the coaching feedback — no headers, no bullet points, just f
   } catch (err) {
     console.error("Coach error:", err);
     res.status(500).json({ error: "Failed to generate coaching feedback" });
+  }
+});
+
+router.get("/open", authRequired, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    // "Open" = has entry price + no outcome (exit) yet — covers both drafts and confirmed-entry trades
+    const openTrades = await db
+      .select()
+      .from(tradesTable)
+      .where(
+        and(
+          eq(tradesTable.userId, userId),
+          isNotNull(tradesTable.entryPrice),
+          isNull(tradesTable.outcome)
+        )
+      )
+      .orderBy(desc(tradesTable.createdAt))
+      .limit(5);
+
+    res.json(
+      openTrades.map((t) => ({
+        id: t.id,
+        instrument: t.ticker || t.pair,
+        side: t.sideDirection || "BUY",
+        entryPrice: t.entryPrice ? parseFloat(t.entryPrice) : null,
+        stopLoss: t.stopLoss ? parseFloat(t.stopLoss) : null,
+        takeProfit: t.takeProfit ? parseFloat(t.takeProfit) : null,
+        session: t.tradingSession,
+        createdAt: t.createdAt,
+        riskPct: parseFloat(t.riskPct),
+      }))
+    );
+  } catch {
+    res.status(500).json({ error: "Failed to fetch open trades" });
   }
 });
 

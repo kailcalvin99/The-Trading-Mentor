@@ -7,6 +7,13 @@ import {
   CheckCircle2, Play, GraduationCap, Users, Lock,
   ChevronLeft, ChevronRight, Plus, Bot, Calendar,
 } from "lucide-react";
+import {
+  LivePriceStrip,
+  OpenTradeCard,
+  EconomicCalendarWidget,
+  KillZoneCountdownWidget,
+  DailyRiskGaugeWidget,
+} from "@/components/LiveMarketWidgets";
 import { useListTrades } from "@workspace/api-client-react";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1502,13 +1509,25 @@ export default function Dashboard() {
 
         <div className="space-y-4">
           <NextWatchWidget />
+
+          {isEnabled("liveprices") && <LivePriceStrip />}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            {isEnabled("killzonetimer") && <KillZoneCountdownWidget />}
+            {isEnabled("riskgauge") && <DailyRiskGaugeWidget />}
+            {isEnabled("opentrade") && <OpenTradeCard />}
+          </div>
+
           <MorningBriefingWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <MasterMorningWidget />
             <PreTradePlanSummaryWidget />
           </div>
 
-          {isEnabled("tradingcalendar") && <TradingCalendarWidget />}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {isEnabled("economiccalendar") && <EconomicCalendarWidget />}
+            {isEnabled("tradingcalendar") && <TradingCalendarWidget />}
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {isEnabled("quickjournal") && <QuickJournalWidget />}

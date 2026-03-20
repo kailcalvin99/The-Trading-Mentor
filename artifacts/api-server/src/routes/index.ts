@@ -14,6 +14,8 @@ import videosRouter from "./videos";
 import academyRouter from "./academy";
 import plannerRouter from "./planner";
 import tagsRouter from "./tags";
+import pricesRouter from "./prices";
+import calendarRouter from "./calendar";
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -32,5 +34,7 @@ router.use("/videos", videosRouter);
 router.use("/academy", academyRouter);
 router.use("/planner", plannerRouter);
 router.use("/tags", tagsRouter);
+router.use("/prices", pricesRouter);
+router.use("/calendar", calendarRouter);
 
 export default router;

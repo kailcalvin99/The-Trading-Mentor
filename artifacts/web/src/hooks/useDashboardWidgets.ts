@@ -12,6 +12,11 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   { id: "mastermorning", label: "Master Morning Plan", defaultOn: true },
   { id: "tradingcalendar", label: "Trading Calendar", defaultOn: true },
   { id: "quickjournal", label: "Quick Note", defaultOn: true },
+  { id: "liveprices", label: "Live Market Prices", defaultOn: true },
+  { id: "opentrade", label: "Open Trade Card", defaultOn: true },
+  { id: "economiccalendar", label: "Today's Economic Events", defaultOn: true },
+  { id: "killzonetimer", label: "Kill Zone Countdown", defaultOn: true },
+  { id: "riskgauge", label: "Daily Risk Gauge", defaultOn: true },
 ];
 
 export const ALWAYS_ON_WIDGETS = ["greeting", "mission"] as const;

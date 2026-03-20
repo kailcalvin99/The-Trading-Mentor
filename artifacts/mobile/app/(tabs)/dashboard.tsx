@@ -32,6 +32,13 @@ import {
   WIDGET_CONFIG,
   type WidgetPrefs,
 } from "@/constants/dashboardWidgets";
+import {
+  LivePriceStripWidget,
+  OpenTradeCardWidget,
+  EconomicCalendarWidget,
+  DailyRiskGaugeWidget,
+  KillZoneCountdownWidget,
+} from "@/components/LiveMarketWidgets";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
 import { registerAvatarPickerListener, unregisterAvatarPickerListener } from "@/lib/avatarPickerBus";
@@ -1856,6 +1863,41 @@ export default function DashboardScreen() {
           <>
             {/* Full Mode Dashboard */}
             <AIGreetingCard />
+
+            {/* Live Market Prices Strip */}
+            {prefs.liveprices && (
+              <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+                <LivePriceStripWidget />
+              </View>
+            )}
+
+            {/* Kill Zone Countdown */}
+            {prefs.killzonetimer && (
+              <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+                <KillZoneCountdownWidget />
+              </View>
+            )}
+
+            {/* Open Trade Card */}
+            {prefs.opentrade && (
+              <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+                <OpenTradeCardWidget />
+              </View>
+            )}
+
+            {/* Daily Risk Gauge */}
+            {prefs.riskgauge && (
+              <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+                <DailyRiskGaugeWidget />
+              </View>
+            )}
+
+            {/* Economic Calendar */}
+            {prefs.economiccalendar && (
+              <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+                <EconomicCalendarWidget />
+              </View>
+            )}
 
             <NextWatchCard />
 

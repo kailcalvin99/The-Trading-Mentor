@@ -22,6 +22,8 @@ export const tradesTable = pgTable("trades", {
   setupScore: integer("setup_score"),
   setupType: text("setup_type"),
   entryPrice: numeric("entry_price", { precision: 12, scale: 4 }),
+  stopLoss: numeric("stop_loss", { precision: 12, scale: 4 }),
+  takeProfit: numeric("take_profit", { precision: 12, scale: 4 }),
   tradingSession: text("trading_session"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

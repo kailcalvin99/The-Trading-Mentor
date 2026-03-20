@@ -140,6 +140,8 @@ router.post("/tradingview/:token", async (req, res) => {
         entryPrice: resolvedPrice ? resolvedPrice.toString() : undefined,
         tradingSession: detectedSession || undefined,
         notes: undefined,
+        stopLoss: resolvedSl ? resolvedSl.toString() : undefined,
+        takeProfit: resolvedTp ? resolvedTp.toString() : undefined,
       })
       .returning();
 
