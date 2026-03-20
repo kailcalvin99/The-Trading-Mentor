@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import FullModeGate from "@/components/FullModeGate";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
+import { apiGet } from "@/lib/api";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -463,6 +464,8 @@ function AnalyticsScreen() {
           </View>
           <Text style={s.discSub}>{discLabel}</Text>
         </View>
+
+        <IctBreakdownMobileSection />
       </ScrollView>
 
       {expandedChart !== null && (
@@ -488,6 +491,156 @@ function AnalyticsScreen() {
         </Modal>
       )}
     </SafeAreaView>
+  );
+}
+
+interface MobileSessionPerf {
+  session: string;
+  wins: number;
+  losses: number;
+  total: number;
+  winRate: number;
+  avgR: number;
+}
+
+interface MobileFvgHitRate {
+  total: number;
+  tp: number;
+  sl: number;
+  hitRate: number;
+}
+
+interface MobileNewsDayImpact {
+  newsDay: { total: number; wins: number; winRate: number };
+  cleanDay: { total: number; wins: number; winRate: number };
+}
+
+interface MobileIctBreakdownData {
+  sessionPerformance: MobileSessionPerf[];
+  fvgHitRate: MobileFvgHitRate;
+  newsDayImpact: MobileNewsDayImpact;
+}
+
+function IctBreakdownMobileSection() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [data, setData] = useState<MobileIctBreakdownData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    apiGet<MobileIctBreakdownData>("analytics/ict-breakdown")
+      .then((d) => { setData(d); setLoading(false); })
+      .catch(() => { setError("Unable to load ICT analytics"); setLoading(false); });
+  }, []);
+
+  const newsBarData = data ? [
+    { label: "News Days", winRate: data.newsDayImpact.newsDay.winRate, total: data.newsDayImpact.newsDay.total, color: "#EF4444" },
+    { label: "Clean Days", winRate: data.newsDayImpact.cleanDay.winRate, total: data.newsDayImpact.cleanDay.total, color: "#00C896" },
+  ] : [];
+
+  const newsBarMaxRate = newsBarData.length > 0 ? Math.max(...newsBarData.map((d) => d.winRate), 1) : 100;
+
+  return (
+    <View style={[s.discCard, { gap: 0 }]}>
+      <TouchableOpacity
+        style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: collapsed ? 0 : 12, borderBottomWidth: collapsed ? 0 : 1, borderBottomColor: C.cardBorder }}
+        onPress={() => setCollapsed((c) => !c)}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="shield-checkmark-outline" size={16} color={C.accent} />
+        <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: C.text, flex: 1 }}>ICT Breakdown</Text>
+        <Ionicons name={collapsed ? "chevron-down" : "chevron-up"} size={16} color={C.textSecondary} />
+      </TouchableOpacity>
+
+      {!collapsed && (
+        <View style={{ gap: 16, paddingTop: 12 }}>
+          {loading && <Text style={{ fontSize: 12, color: C.textSecondary, textAlign: "center" }}>Loading…</Text>}
+          {error && <Text style={{ fontSize: 12, color: "#EF4444", textAlign: "center" }}>{error}</Text>}
+
+          {data && (
+            <>
+              <View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <Ionicons name="time-outline" size={14} color={C.accent} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: C.text }}>Session Performance</Text>
+                </View>
+                {data.sessionPerformance.length === 0 ? (
+                  <Text style={{ fontSize: 12, color: C.textSecondary }}>No session data yet.</Text>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    {data.sessionPerformance.map((row) => (
+                      <View key={row.session} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text style={{ width: 80, fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.text }}>{row.session}</Text>
+                        <Text style={{ width: 50, fontSize: 12, fontFamily: "Inter_700Bold", color: row.winRate >= 50 ? "#00C896" : "#EF4444", textAlign: "center" }}>{row.winRate}%</Text>
+                        <Text style={{ fontSize: 11, color: row.avgR >= 0 ? "#00C896" : "#EF4444", fontFamily: "Inter_600SemiBold" }}>{row.avgR >= 0 ? "+" : ""}{row.avgR}R</Text>
+                        <Text style={{ fontSize: 11, color: C.textTertiary, fontFamily: "Inter_400Regular", marginLeft: "auto" }}>{row.total} trades</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              <View style={{ borderTopWidth: 1, borderTopColor: C.cardBorder, paddingTop: 14 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <Ionicons name="flash-outline" size={14} color={C.accent} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: C.text }}>FVG Hit Rate</Text>
+                </View>
+                {data.fvgHitRate.total === 0 ? (
+                  <Text style={{ fontSize: 12, color: C.textSecondary }}>No FVG-tagged trades yet.</Text>
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                    <Text style={{ fontSize: 32, fontFamily: "Inter_700Bold", color: C.accent }}>{data.fvgHitRate.hitRate}%</Text>
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text style={{ width: 60, fontSize: 11, color: "#00C896", fontFamily: "Inter_600SemiBold" }}>TP: {data.fvgHitRate.tp}</Text>
+                        <View style={{ flex: 1, height: 6, backgroundColor: C.backgroundTertiary, borderRadius: 3, overflow: "hidden" }}>
+                          <View style={{ height: 6, backgroundColor: "#00C896", width: `${data.fvgHitRate.total > 0 ? (data.fvgHitRate.tp / data.fvgHitRate.total) * 100 : 0}%` }} />
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text style={{ width: 60, fontSize: 11, color: "#EF4444", fontFamily: "Inter_600SemiBold" }}>SL: {data.fvgHitRate.sl}</Text>
+                        <View style={{ flex: 1, height: 6, backgroundColor: C.backgroundTertiary, borderRadius: 3, overflow: "hidden" }}>
+                          <View style={{ height: 6, backgroundColor: "#EF4444", width: `${data.fvgHitRate.total > 0 ? (data.fvgHitRate.sl / data.fvgHitRate.total) * 100 : 0}%` }} />
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              <View style={{ borderTopWidth: 1, borderTopColor: C.cardBorder, paddingTop: 14 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <Ionicons name="calendar-outline" size={14} color={C.accent} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: C.text }}>News Day Impact</Text>
+                </View>
+                {newsBarData.every((d) => d.total === 0) ? (
+                  <Text style={{ fontSize: 12, color: C.textSecondary }}>No trade data yet.</Text>
+                ) : (
+                  <Svg width={SCREEN_W - 80} height={100}>
+                    {newsBarData.map((d, i) => {
+                      const barH = newsBarMaxRate > 0 ? (d.winRate / newsBarMaxRate) * 60 : 0;
+                      const barW = 60;
+                      const gap = (SCREEN_W - 80 - newsBarData.length * barW) / (newsBarData.length + 1);
+                      const x = gap + i * (barW + gap);
+                      const y = 70 - barH;
+                      return (
+                        <G key={d.label}>
+                          <Rect x={x} y={y} width={barW} height={barH} rx={4} fill={d.color} opacity={0.85} />
+                          <SvgText x={x + barW / 2} y={y - 4} fontSize={11} fill={d.color} textAnchor="middle" fontWeight="700">{d.winRate}%</SvgText>
+                          <SvgText x={x + barW / 2} y={88} fontSize={10} fill={C.textSecondary} textAnchor="middle">{d.label}</SvgText>
+                          <SvgText x={x + barW / 2} y={100} fontSize={9} fill={C.textTertiary} textAnchor="middle">{d.total} trades</SvgText>
+                        </G>
+                      );
+                    })}
+                  </Svg>
+                )}
+              </View>
+            </>
+          )}
+        </View>
+      )}
+    </View>
   );
 }
 

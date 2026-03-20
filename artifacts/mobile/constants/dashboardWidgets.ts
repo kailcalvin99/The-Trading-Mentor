@@ -14,6 +14,8 @@ export interface WidgetPrefs {
   economiccalendar: boolean;
   riskgauge: boolean;
   killzonetimer: boolean;
+  fvgSignal: boolean;
+  confidenceScore: boolean;
 }
 
 export const DEFAULT_WIDGET_PREFS: WidgetPrefs = {
@@ -27,6 +29,8 @@ export const DEFAULT_WIDGET_PREFS: WidgetPrefs = {
   economiccalendar: true,
   riskgauge: true,
   killzonetimer: true,
+  fvgSignal: true,
+  confidenceScore: true,
 };
 
 export const WIDGET_CONFIG: Array<{
@@ -43,4 +47,6 @@ export const WIDGET_CONFIG: Array<{
   { key: "morningRoutine", label: "Morning Routine", desc: "Progress ring & checklist", icon: "sunny-outline" },
   { key: "quickJournal", label: "Quick Note", desc: "Log a quick note to journal", icon: "pencil-outline" },
   { key: "notes", label: "Quick Notes", desc: "Scratch-pad notes", icon: "create-outline" },
+  { key: "fvgSignal", label: "FVG Signal", desc: "Fair Value Gap detection on 5m chart", icon: "flash-outline" },
+  { key: "confidenceScore", label: "ICT Confidence Score", desc: "Alignment score for active setups", icon: "shield-checkmark-outline" },
 ];

@@ -1226,6 +1226,168 @@ function TradingCalendarWidget() {
   );
 }
 
+interface FvgSignal {
+  direction: "bullish" | "bearish" | "none";
+  level: number;
+  instrument: string;
+  detected_at: string;
+}
+
+interface ConfidenceFactor {
+  label: string;
+  met: boolean;
+}
+
+interface ConfidenceData {
+  score: number;
+  factors: ConfidenceFactor[];
+}
+
+function useLiveSignals(instrument = "NQ") {
+  const [fvg, setFvg] = useState<FvgSignal | null>(null);
+  const [confidence, setConfidence] = useState<ConfidenceData | null>(null);
+
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL || "/api";
+
+    async function fetchSignals() {
+      try {
+        const [fvgRes, confRes] = await Promise.all([
+          fetch(`${apiBase}/signals/fvg?instrument=${instrument}`, { credentials: "include" }),
+          fetch(`${apiBase}/signals/confidence?instrument=${instrument}`, { credentials: "include" }),
+        ]);
+        if (fvgRes.ok) setFvg(await fvgRes.json());
+        if (confRes.ok) setConfidence(await confRes.json());
+      } catch {}
+    }
+
+    fetchSignals();
+    const id = setInterval(fetchSignals, 15000);
+    return () => clearInterval(id);
+  }, [instrument]);
+
+  return { fvg, confidence };
+}
+
+function FvgSignalCard() {
+  const { fvg } = useLiveSignals();
+
+  const isBullish = fvg?.direction === "bullish";
+  const isBearish = fvg?.direction === "bearish";
+  const hasGap = isBullish || isBearish;
+
+  const directionColor = isBullish ? "text-emerald-400" : isBearish ? "text-red-400" : "text-muted-foreground";
+  const directionBg = isBullish ? "bg-emerald-500/15 border-emerald-500/30" : isBearish ? "bg-red-500/15 border-red-500/30" : "bg-secondary/30 border-border";
+
+  function formatRelativeTime(isoStr: string): string {
+    const diff = Date.now() - new Date(isoStr).getTime();
+    const secs = Math.floor(diff / 1000);
+    if (secs < 60) return `${secs}s ago`;
+    return `${Math.floor(secs / 60)}m ago`;
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <WidgetHeader icon={Sparkles} title="Fair Value Gap (FVG)" />
+      {!fvg ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="animate-pulse">Scanning 5m chart…</span>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${directionBg} ${directionColor}`}>
+            {hasGap ? (
+              <>
+                <span>{isBullish ? "▲" : "▼"}</span>
+                <span>{isBullish ? "Bullish FVG" : "Bearish FVG"} detected</span>
+              </>
+            ) : (
+              <span>No FVG detected</span>
+            )}
+          </div>
+          {hasGap && (
+            <div className="flex items-center gap-4 text-xs">
+              <div>
+                <span className="text-muted-foreground">Instrument: </span>
+                <span className="font-semibold text-foreground">{fvg.instrument}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">~Level: </span>
+                <span className="font-mono font-semibold text-foreground">{fvg.level.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Last scan: {formatRelativeTime(fvg.detected_at)}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConfidenceScoreCard() {
+  const { confidence } = useLiveSignals();
+
+  const score = confidence?.score ?? null;
+  const scoreColor =
+    score === null ? "text-muted-foreground"
+    : score >= 75 ? "text-emerald-400"
+    : score >= 50 ? "text-amber-400"
+    : "text-red-400";
+
+  const barColor =
+    score === null ? "bg-muted"
+    : score >= 75 ? "bg-emerald-500"
+    : score >= 50 ? "bg-amber-500"
+    : "bg-red-500";
+
+  const gradeLabel =
+    score === null ? ""
+    : score >= 75 ? "High Probability"
+    : score >= 50 ? "Moderate Setup"
+    : "Wait for Alignment";
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <WidgetHeader icon={Shield} title="ICT Confidence Score" />
+      {!confidence ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="animate-pulse">Computing…</span>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <span className={`text-3xl font-bold font-mono ${scoreColor}`}>{score}</span>
+            <div>
+              <p className="text-xs text-muted-foreground">/100</p>
+              <p className={`text-xs font-semibold ${scoreColor}`}>{gradeLabel}</p>
+            </div>
+            <div className="flex-1">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                  style={{ width: `${score ?? 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {confidence.factors.map((f, i) => (
+              <div key={i} className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg border ${
+                f.met ? "bg-emerald-500/10 border-emerald-500/25" : "bg-secondary/30 border-border"
+              }`}>
+                <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.met ? "✓" : "○"}</span>
+                <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CustomizeDrawer({
   open,
   onClose,
@@ -1544,6 +1706,11 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {isEnabled("economiccalendar") && <EconomicCalendarWidget />}
             {isEnabled("tradingcalendar") && <TradingCalendarWidget />}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {isEnabled("fvgsignal") && <FvgSignalCard />}
+            {isEnabled("confidencescore") && <ConfidenceScoreCard />}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

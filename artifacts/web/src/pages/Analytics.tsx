@@ -684,50 +684,59 @@ export default function Analytics() {
 
   if (!isPremium) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-4 text-center max-w-sm">
-          <div className="rounded-full bg-muted p-4">
-            <Lock className="h-8 w-8 text-muted-foreground" />
+      <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+            <div className="rounded-full bg-muted p-4">
+              <Lock className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-lg font-semibold">Premium Feature</h2>
+            <p className="text-sm text-muted-foreground">
+              Analytics are available on the Premium plan. Upgrade to unlock full trade history charts, insights, and performance scores.
+            </p>
+            <Link
+              to="/pricing"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              View Pricing
+            </Link>
           </div>
-          <h2 className="text-lg font-semibold">Premium Feature</h2>
-          <p className="text-sm text-muted-foreground">
-            Analytics are available on the Premium plan. Upgrade to unlock full trade history charts, insights, and performance scores.
-          </p>
-          <Link
-            to="/pricing"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            View Pricing
-          </Link>
         </div>
+        <IctBreakdownSection />
       </div>
     );
   }
 
   if (trades.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-4 text-center max-w-sm">
-          <BarChart3 className="h-12 w-12 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">No Trade Data Yet</h2>
-          <p className="text-sm text-muted-foreground">
-            Log trades in your Smart Journal and your charts, win rate, and performance scores will appear here automatically.
-          </p>
-          <Link
-            to="/journal"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
-          >
-            Log Your First Trade &rarr;
-          </Link>
+      <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+            <BarChart3 className="h-12 w-12 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">No Trade Data Yet</h2>
+            <p className="text-sm text-muted-foreground">
+              Log trades in your Smart Journal and your charts, win rate, and performance scores will appear here automatically.
+            </p>
+            <Link
+              to="/journal"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
+            >
+              Log Your First Trade &rarr;
+            </Link>
+          </div>
         </div>
+        <IctBreakdownSection />
       </div>
     );
   }
 
   if (tierLevel < 2) {
     return (
-      <div className="relative min-h-[60vh] flex items-center justify-center">
-        <LockedFeatureOverlay featureName="Analytics Dashboard" tierRequired="Premium" />
+      <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+        <div className="relative min-h-[40vh] flex items-center justify-center">
+          <LockedFeatureOverlay featureName="Analytics Dashboard" tierRequired="Premium" />
+        </div>
+        <IctBreakdownSection />
       </div>
     );
   }
@@ -1356,6 +1365,196 @@ export default function Analytics() {
           </CardContent>
         </Card>
       )}
+
+      <IctBreakdownSection />
     </div>
+  );
+}
+
+interface SessionPerf {
+  session: string;
+  wins: number;
+  losses: number;
+  total: number;
+  winRate: number;
+  avgR: number;
+}
+
+interface FvgHitRate {
+  total: number;
+  tp: number;
+  sl: number;
+  hitRate: number;
+}
+
+interface NewsDayImpact {
+  newsDay: { total: number; wins: number; winRate: number };
+  cleanDay: { total: number; wins: number; winRate: number };
+}
+
+interface IctBreakdownData {
+  sessionPerformance: SessionPerf[];
+  fvgHitRate: FvgHitRate;
+  newsDayImpact: NewsDayImpact;
+}
+
+function IctBreakdownSection() {
+  const [open, setOpen] = useState(true);
+  const [data, setData] = useState<IctBreakdownData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || data) return;
+    const apiBase = import.meta.env.VITE_API_URL || "/api";
+    setLoading(true);
+    fetch(`${apiBase}/analytics/ict-breakdown`, { credentials: "include" })
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed");
+        return r.json();
+      })
+      .then((d) => { setData(d); setLoading(false); })
+      .catch(() => { setError("Unable to load ICT analytics"); setLoading(false); });
+  }, [open, data]);
+
+  const sessionChartConfig: ChartConfig = {
+    winRate: { label: "Win Rate %", color: "hsl(142, 76%, 36%)" },
+  };
+
+  const newsChartConfig: ChartConfig = {
+    winRate: { label: "Win Rate %", color: "hsl(217, 91%, 60%)" },
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center justify-between w-full text-left group"
+        >
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" />
+              ICT Breakdown
+            </CardTitle>
+            <CardDescription>Session performance, FVG hit rate, and news day impact</CardDescription>
+          </div>
+          <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+            {open ? "▲ Collapse" : "▼ Expand"}
+          </span>
+        </button>
+      </CardHeader>
+
+      {open && (
+        <CardContent className="space-y-6">
+          {loading && <p className="text-sm text-muted-foreground text-center py-4">Loading ICT analytics…</p>}
+          {error && <p className="text-sm text-red-500 text-center py-4">{error}</p>}
+
+          {data && (
+            <>
+              <div>
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-primary" /> Session Performance
+                </h4>
+                {data.sessionPerformance.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No session data yet. Log trades with entry times to populate.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-2 text-xs font-semibold text-muted-foreground">Session</th>
+                          <th className="text-center py-2 text-xs font-semibold text-muted-foreground">Trades</th>
+                          <th className="text-center py-2 text-xs font-semibold text-muted-foreground">Win Rate</th>
+                          <th className="text-center py-2 text-xs font-semibold text-muted-foreground">Avg R</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.sessionPerformance.map((row) => (
+                          <tr key={row.session} className="border-b border-border/50">
+                            <td className="py-2 font-medium">{row.session}</td>
+                            <td className="text-center py-2 text-muted-foreground">{row.total}</td>
+                            <td className={cn("text-center py-2 font-bold", row.winRate >= 50 ? "text-green-600" : "text-red-500")}>
+                              {row.winRate}%
+                            </td>
+                            <td className={cn("text-center py-2 font-semibold", row.avgR >= 0 ? "text-green-600" : "text-red-500")}>
+                              {row.avgR >= 0 ? "+" : ""}{row.avgR}R
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+                  <Shield className="h-4 w-4 text-primary" /> FVG Trade Hit Rate
+                </h4>
+                {data.fvgHitRate.total === 0 ? (
+                  <p className="text-xs text-muted-foreground">No FVG-tagged trades yet. Enable "FVG Confirmation" when logging trades.</p>
+                ) : (
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-primary">{data.fvgHitRate.hitRate}%</p>
+                      <p className="text-xs text-muted-foreground">Hit Rate</p>
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="text-green-600 font-semibold w-20">TP Hit: {data.fvgHitRate.tp}</span>
+                        <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${data.fvgHitRate.total > 0 ? (data.fvgHitRate.tp / data.fvgHitRate.total) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="text-red-500 font-semibold w-20">SL Hit: {data.fvgHitRate.sl}</span>
+                        <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-red-500 rounded-full" style={{ width: `${data.fvgHitRate.total > 0 ? (data.fvgHitRate.sl / data.fvgHitRate.total) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{data.fvgHitRate.total} total FVG trades</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4 text-primary" /> News Day Impact
+                </h4>
+                {data.newsDayImpact.newsDay.total === 0 && data.newsDayImpact.cleanDay.total === 0 ? (
+                  <p className="text-xs text-muted-foreground">No trade data yet.</p>
+                ) : (
+                  <ChartContainer config={newsChartConfig} className="h-[160px] w-full">
+                    <BarChart
+                      data={[
+                        { label: "News Days", winRate: data.newsDayImpact.newsDay.winRate, total: data.newsDayImpact.newsDay.total },
+                        { label: "Clean Days", winRate: data.newsDayImpact.cleanDay.winRate, total: data.newsDayImpact.cleanDay.total },
+                      ]}
+                      margin={{ top: 5, right: 20, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
+                      <Tooltip
+                        formatter={(value: number, _: string, props: { payload?: { total?: number } }) => [
+                          `${value}% (${props.payload?.total ?? 0} trades)`,
+                          "Win Rate",
+                        ]}
+                      />
+                      <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
+                        <Cell fill="hsl(0, 84%, 60%)" />
+                        <Cell fill="hsl(142, 76%, 36%)" />
+                      </Bar>
+                    </BarChart>
+                  </ChartContainer>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      )}
+    </Card>
   );
 }

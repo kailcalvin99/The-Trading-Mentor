@@ -1,0 +1,66 @@
+import React, { useState, useEffect } from 'react';
+
+// This is the master file for the Replit AI to read. 
+// It contains the core ICT (Inner Circle Trader) logic outline.
+
+export default function ICTMasterDashboard() {
+  const [marketData, setMarketData] = useState({
+    price: 0,
+    trend: 'Neutral',
+    killZoneActive: false,
+    newsWarning: false
+  });
+
+  const [signals, setSignals] = useState([]);
+
+  // Replit AI Task 1: Build the time logic for London (2-5 AM EST) and NY (7-10 AM EST)
+  const checkKillZones = () => {
+    return "New York Kill Zone Active"; 
+  };
+
+  // Replit AI Task 2: Code the 3-candle imbalance rule using free Futures data
+  const findFairValueGaps = () => {
+    return "Bullish FVG found on 5-minute chart";
+  };
+
+  // Replit AI Task 3: Connect to Finnhub API to find 'Red Folder' events
+  const checkNewsEvents = () => {
+    return "Warning: High Impact News in 15 mins";
+  };
+
+  // This runs when the page loads to scan the market
+  useEffect(() => {
+    const currentZone = checkKillZones();
+    const currentGaps = findFairValueGaps();
+    const currentNews = checkNewsEvents();
+
+    setSignals([currentZone, currentGaps, currentNews]);
+  }, []);
+
+  return (
+    <div style={{ padding: '20px', backgroundColor: '#121212', color: '#ffffff', fontFamily: 'Arial' }}>
+      <h1>ICT & SMC Futures Dashboard</h1>
+      <p>Your AI Mentor is analyzing the charts.</p>
+      
+      <div style={{ border: '2px solid #444', padding: '15px', borderRadius: '8px', marginTop: '20px' }}>
+        <h2>Live Market Status</h2>
+        <ul style={{ listStyleType: 'square', paddingLeft: '20px' }}>
+          {signals.map((signal, index) => (
+            <li key={index} style={{ padding: '8px 0', fontSize: '18px' }}>{signal}</li>
+          ))}
+        </ul>
+        
+        <h3 style={{ color: '#00ff00', marginTop: '15px' }}>Confidence Score: 85%</h3>
+        <p>Why? Price is in a Discount Zone during the NY Kill Zone.</p>
+      </div>
+
+      <button style={{ marginTop: '20px', padding: '12px 24px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '16px', cursor: 'pointer' }}>
+        Save This Setup
+      </button>
+      
+      <p style={{ marginTop: '30px', fontSize: '12px', color: '#888' }}>
+        Note for Replit AI: Please connect the Alpha Vantage API to the findFairValueGaps function to make this live.
+      </p>
+    </div>
+  );
+}

@@ -313,6 +313,60 @@ declare global {
   }
 }
 
+function PlannerConfidenceScorePanel() {
+  const [confidence, setConfidence] = useState<{ score: number; factors: Array<{ label: string; met: boolean }> } | null>(null);
+
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL || "/api";
+    fetch(`${apiBase}/signals/confidence`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setConfidence(d); })
+      .catch(() => {});
+    const id = setInterval(() => {
+      fetch(`${apiBase}/signals/confidence`, { credentials: "include" })
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => { if (d) setConfidence(d); })
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!confidence) return null;
+
+  const score = confidence.score;
+  const scoreColor =
+    score >= 75 ? "text-emerald-400"
+    : score >= 50 ? "text-amber-400"
+    : "text-red-400";
+  const barColor =
+    score >= 75 ? "bg-emerald-500"
+    : score >= 50 ? "bg-amber-500"
+    : "bg-red-500";
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Shield className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-semibold text-foreground flex-1">ICT Confidence Score</h3>
+        <span className={`text-lg font-bold font-mono ${scoreColor}`}>{score}/100</span>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
+        <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${score}%` }} />
+      </div>
+      <div className="space-y-1.5">
+        {confidence.factors.map((f, i) => (
+          <div key={i} className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg border ${
+            f.met ? "bg-emerald-500/10 border-emerald-500/25" : "bg-secondary/30 border-border"
+          }`}>
+            <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.met ? "✓" : "○"}</span>
+            <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function DailyPlanner() {
   const navigate = useNavigate();
   const { routineItems, routineConfig, isRoutineComplete, routineCompletedToday, toggleItem } = usePlanner();
@@ -581,6 +635,8 @@ export default function DailyPlanner() {
       <div className="flex justify-center mb-6">
         <ProbabilityMeter score={probScore} />
       </div>
+
+      <PlannerConfidenceScorePanel />
 
       <p className="text-muted-foreground mb-6 text-sm">
         Plan your trading day. Complete your routine, set your goals, and stay disciplined.

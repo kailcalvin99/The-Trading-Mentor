@@ -16,6 +16,9 @@ import plannerRouter from "./planner";
 import tagsRouter from "./tags";
 import pricesRouter from "./prices";
 import calendarRouter from "./calendar";
+import signalsRouter from "./signals";
+import analyticsRouter from "./analytics";
+
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -36,5 +39,7 @@ router.use("/planner", plannerRouter);
 router.use("/tags", tagsRouter);
 router.use("/prices", pricesRouter);
 router.use("/calendar", calendarRouter);
+router.use("/signals", signalsRouter);
+router.use("/analytics", analyticsRouter);
 
 export default router;
