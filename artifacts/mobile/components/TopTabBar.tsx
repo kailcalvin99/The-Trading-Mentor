@@ -7,6 +7,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -132,6 +133,86 @@ function BottomSheet({
   );
 }
 
+function NavDropdown({
+  visible,
+  onClose,
+  topBarHeight,
+  topInset,
+  children,
+  C,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  topBarHeight: number;
+  topInset: number;
+  children: React.ReactNode;
+  C: typeof Colors.dark;
+}) {
+  const translateY = useRef(new Animated.Value(-300)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scaleY = useRef(new Animated.Value(0.7)).current;
+  const bgAnim = useRef(new Animated.Value(0)).current;
+
+  const [rendered, setRendered] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setRendered(true);
+      Animated.parallel([
+        Animated.spring(translateY, { toValue: 0, useNativeDriver: true, damping: 18, stiffness: 220, mass: 0.8 }),
+        Animated.spring(scaleY, { toValue: 1, useNativeDriver: true, damping: 18, stiffness: 220, mass: 0.8 }),
+        Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+        Animated.timing(bgAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(translateY, { toValue: -300, duration: 220, useNativeDriver: true }),
+        Animated.timing(scaleY, { toValue: 0.7, duration: 220, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: false }),
+      ]).start(() => setRendered(false));
+    }
+  }, [visible]);
+
+  const backdropColor = bgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(0,0,0,0)", "rgba(0,0,0,0.55)"],
+  });
+
+  if (!rendered && !visible) return null;
+
+  return (
+    <Modal visible={rendered} transparent animationType="none" onRequestClose={onClose}>
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: backdropColor }]} pointerEvents="box-none">
+          <Pressable
+            style={[StyleSheet.absoluteFill, { top: topInset + topBarHeight }]}
+            onPress={onClose}
+          />
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.dropdownContainer,
+            {
+              top: topInset + topBarHeight,
+              backgroundColor: C.backgroundSecondary,
+              borderColor: C.cardBorder,
+              transform: [
+                { translateY },
+                { scaleY },
+              ],
+              opacity,
+            },
+          ]}
+        >
+          {children}
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function TopTabBar({
   pathname,
   onNavigate,
@@ -181,12 +262,22 @@ export default function TopTabBar({
     setTimeout(() => router.navigate("/"), 200);
   }
 
+  async function handleInviteFriends() {
+    try {
+      await Share.share({
+        message: "Join me on ICT Trading Mentor — the best app for mastering ICT concepts and leveling up your trading! Download it now.",
+        title: "Invite Friends to ICT Trading Mentor",
+      });
+    } catch {
+    }
+  }
+
   function renderDashboardBar() {
     return (
       <View style={styles.bar}>
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={() => setMenuOpen(true)}
+          onPress={() => setMenuOpen((v) => !v)}
           accessibilityLabel="Open navigation menu"
           accessibilityRole="button"
         >
@@ -238,10 +329,12 @@ export default function TopTabBar({
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => setProfileOpen(true)}
-            accessibilityLabel="Open settings"
+            accessibilityLabel="Open profile"
             accessibilityRole="button"
           >
-            <Ionicons name="settings-outline" size={20} color={C.textSecondary} />
+            <View style={[styles.avatar, { backgroundColor: C.accent + "25", borderColor: C.accent + "50" }]}>
+              <Text style={[styles.avatarText, { color: C.accent }]}>{initials}</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -253,7 +346,7 @@ export default function TopTabBar({
       <View style={styles.bar}>
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={() => setMenuOpen(true)}
+          onPress={() => setMenuOpen((v) => !v)}
           accessibilityLabel="Open navigation menu"
           accessibilityRole="button"
         >
@@ -291,7 +384,40 @@ export default function TopTabBar({
         {isDashboard ? renderDashboardBar() : renderDefaultBar()}
       </View>
 
-      <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} C={C}>
+      <NavDropdown
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        topBarHeight={42}
+        topInset={insets.top}
+        C={C}
+      >
+        {/* Full Mode toggle — prominent, at the top */}
+        <View style={[styles.fullModeRow, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}>
+          <View style={[styles.fullModeIconBox, { backgroundColor: appMode === "full" ? C.accent + "20" : C.backgroundSecondary }]}>
+            <Ionicons
+              name={appMode === "full" ? "flash" : "flash-outline"}
+              size={18}
+              color={appMode === "full" ? C.accent : C.textSecondary}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.fullModeLabel, { color: appMode === "full" ? C.accent : C.text }]}>Full Mode</Text>
+            <Text style={[styles.fullModeSub, { color: C.textSecondary }]}>
+              {appMode === "full" ? "All features enabled" : "Learning Mode active"}
+            </Text>
+          </View>
+          <Switch
+            value={appMode === "full"}
+            onValueChange={(val) => setAppMode(val ? "full" : "lite")}
+            trackColor={{ false: "#3A3A55", true: C.accent + "80" }}
+            thumbColor={appMode === "full" ? C.accent : "#55556A"}
+            ios_backgroundColor="#3A3A55"
+            style={styles.switch}
+          />
+        </View>
+
+        <View style={[styles.dropdownDivider, { backgroundColor: C.cardBorder }]} />
+
         <Text style={[styles.sheetTitle, { color: C.textSecondary }]}>NAVIGATION</Text>
         {TAB_ROUTES.map((route) => {
           const isFocused = activeRoute === route;
@@ -348,24 +474,7 @@ export default function TopTabBar({
             </TouchableOpacity>
           );
         })}
-
-        {/* Learning Mode divider + toggle */}
-        <View style={[styles.menuDivider, { backgroundColor: C.cardBorder }]} />
-        <View style={styles.learningToggleRow}>
-          <View style={[styles.menuIconBox, { backgroundColor: appMode === "lite" ? C.accent + "20" : C.backgroundTertiary }]}>
-            <Ionicons name="school-outline" size={20} color={appMode === "lite" ? C.accent : C.textSecondary} />
-          </View>
-          <Text style={[styles.menuLabel, { color: appMode === "lite" ? C.accent : C.text, flex: 1 }]}>Learning Mode</Text>
-          <Switch
-            value={appMode === "lite"}
-            onValueChange={(val) => setAppMode(val ? "lite" : "full")}
-            trackColor={{ false: "#3A3A55", true: C.accent + "60" }}
-            thumbColor={appMode === "lite" ? C.accent : "#55556A"}
-            ios_backgroundColor="#3A3A55"
-            style={styles.switch}
-          />
-        </View>
-      </BottomSheet>
+      </NavDropdown>
 
       <BottomSheet visible={profileOpen} onClose={() => setProfileOpen(false)} C={C}>
         <View style={styles.profileHeader}>
@@ -379,27 +488,60 @@ export default function TopTabBar({
         </View>
         <View style={[styles.profileDivider, { backgroundColor: C.cardBorder }]} />
 
-        {[
-          { icon: "card-outline" as const, label: "Subscription", href: "/subscription" as Href },
-          { icon: "settings-outline" as const, label: "Settings", href: "/settings" as Href },
-          ...(isAdmin ? [{ icon: "shield-half-outline" as const, label: "Admin Panel", href: "/admin" as Href }] : []),
-        ].map(({ icon, label, href }) => (
-          <TouchableOpacity
-            key={label}
-            onPress={() => navigate(href)}
-            style={styles.profileItem}
-          >
-            <Ionicons name={icon} size={20} color={C.textSecondary} />
-            <Text style={[styles.profileItemLabel, { color: C.text }]}>{label}</Text>
-            <Ionicons name="chevron-forward" size={16} color={C.textTertiary} style={{ marginLeft: "auto" }} />
-          </TouchableOpacity>
-        ))}
-
-        <TouchableOpacity onPress={handleTourRestart} style={styles.profileItem}>
-          <Ionicons name="help-circle-outline" size={20} color={C.textSecondary} />
-          <Text style={[styles.profileItemLabel, { color: C.text }]}>Help & Tour</Text>
+        {/* Subscription full row */}
+        <TouchableOpacity
+          onPress={() => navigate("/subscription" as Href)}
+          style={styles.profileItem}
+        >
+          <Ionicons name="card-outline" size={20} color={C.textSecondary} />
+          <Text style={[styles.profileItemLabel, { color: C.text }]}>Subscription</Text>
           <Ionicons name="chevron-forward" size={16} color={C.textTertiary} style={{ marginLeft: "auto" }} />
         </TouchableOpacity>
+
+        {/* Settings + Admin as compact icon+label grid row */}
+        <View style={styles.compactRow}>
+          <TouchableOpacity
+            onPress={() => navigate("/settings" as Href)}
+            style={[styles.compactItem, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}
+          >
+            <Ionicons name="settings-outline" size={18} color={C.textSecondary} />
+            <Text style={[styles.compactItemLabel, { color: C.text }]}>Settings</Text>
+          </TouchableOpacity>
+          {isAdmin && (
+            <TouchableOpacity
+              onPress={() => navigate("/admin" as Href)}
+              style={[styles.compactItem, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}
+            >
+              <Ionicons name="shield-half-outline" size={18} color={C.textSecondary} />
+              <Text style={[styles.compactItemLabel, { color: C.text }]}>Admin</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={[styles.profileDivider, { backgroundColor: C.cardBorder, marginTop: 8 }]} />
+
+        {/* Help & Tour + Invite Friends as icon-only row */}
+        <View style={styles.iconActionRow}>
+          <TouchableOpacity
+            onPress={handleTourRestart}
+            style={styles.iconActionBtn}
+          >
+            <View style={[styles.iconActionCircle, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}>
+              <Ionicons name="help-circle-outline" size={22} color={C.textSecondary} />
+            </View>
+            <Text style={[styles.iconActionLabel, { color: C.textSecondary }]}>Help & Tour</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleInviteFriends}
+            style={styles.iconActionBtn}
+          >
+            <View style={[styles.iconActionCircle, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}>
+              <Ionicons name="person-add-outline" size={22} color={C.textSecondary} />
+            </View>
+            <Text style={[styles.iconActionLabel, { color: C.textSecondary }]}>Invite Friends</Text>
+          </TouchableOpacity>
+        </View>
       </BottomSheet>
     </>
   );
@@ -515,6 +657,58 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
 
+  dropdownContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    borderBottomWidth: 1,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+    maxHeight: 600,
+  },
+  dropdownDivider: {
+    height: 1,
+    marginVertical: 10,
+  },
+  fullModeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 2,
+  },
+  fullModeIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fullModeLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.1,
+  },
+  fullModeSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+
   sheetContainer: {
     position: "absolute",
     bottom: 0,
@@ -544,22 +738,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    paddingVertical: 11,
+    paddingVertical: 9,
     paddingHorizontal: 12,
     borderRadius: 12,
-    marginBottom: 4,
+    marginBottom: 3,
     borderWidth: 1,
   },
   menuIconBox: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
     borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
     overflow: "visible",
   },
   menuLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: "Inter_500Medium",
   },
 
@@ -607,6 +801,55 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_500Medium",
   },
+
+  compactRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 4,
+    marginBottom: 4,
+  },
+  compactItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  compactItemLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+
+  iconActionRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 4,
+    paddingTop: 4,
+    paddingBottom: 4,
+    justifyContent: "flex-start",
+  },
+  iconActionBtn: {
+    alignItems: "center",
+    gap: 5,
+    minWidth: 64,
+  },
+  iconActionCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconActionLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+
   badgeDot: {
     position: "absolute",
     top: -4,
@@ -640,14 +883,5 @@ const styles = StyleSheet.create({
   menuDivider: {
     height: 1,
     marginVertical: 8,
-  },
-  learningToggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 4,
   },
 });
