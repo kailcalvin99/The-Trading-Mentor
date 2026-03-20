@@ -42,6 +42,7 @@ import {
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
 import { registerAvatarPickerListener, unregisterAvatarPickerListener } from "@/lib/avatarPickerBus";
+import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 
 const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; why: string }> = [
   { key: "water", label: "Drink water", icon: "water-outline", why: "Dehydration reduces focus and decision-making quality." },
@@ -1674,6 +1675,7 @@ function CustomizeModal({
 }
 
 export default function DashboardScreen() {
+  const scrollCollapseProps = useScrollCollapseProps();
   const { user, setAvatarUrl, appMode } = useAuth();
   const router = useRouter();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
@@ -1835,7 +1837,7 @@ export default function DashboardScreen() {
         </View>
       </Modal>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} {...scrollCollapseProps}>
         {/* Stats strip — always visible, sits above all other content */}
         <StatsStripWidget />
 

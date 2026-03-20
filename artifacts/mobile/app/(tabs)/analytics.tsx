@@ -19,6 +19,7 @@ import type { Trade } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import FullModeGate from "@/components/FullModeGate";
+import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -146,6 +147,7 @@ export default function AnalyticsScreenGated() {
 }
 
 function AnalyticsScreen() {
+  const scrollCollapseProps = useScrollCollapseProps();
   const { user, subscription } = useAuth();
   const router = useRouter();
   const [expandedChart, setExpandedChart] = useState<"pnl" | "wlb" | null>(null);
@@ -391,6 +393,7 @@ function AnalyticsScreen() {
         style={s.scroll}
         contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
+        {...scrollCollapseProps}
       >
         <View style={s.heroCard}>
           <View style={s.chartCardHeader}>

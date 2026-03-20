@@ -1,5 +1,5 @@
 import { Href, Tabs, usePathname, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,11 +10,14 @@ import KillZoneStrip from "@/components/KillZoneStrip";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { ChromeCollapseProvider, useChromeCollapse } from "@/contexts/ChromeCollapseContext";
+import { ScrollDirectionProvider } from "@/contexts/ScrollDirectionContext";
 
 const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 
 const TOP_TAB_BAR_HEIGHT = 42;
 const KILL_ZONE_STRIP_HEIGHT = 52;
+
+const TAP_MOVE_THRESHOLD = 10;
 
 function TabLayoutInner() {
   const pathname = usePathname();
@@ -30,6 +33,8 @@ function TabLayoutInner() {
   const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
 
   const headerHeight = insets.top + TOP_TAB_BAR_HEIGHT + (appMode !== "lite" ? KILL_ZONE_STRIP_HEIGHT : 0);
+
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     async function checkNewPosts() {
@@ -93,8 +98,26 @@ function TabLayoutInner() {
     outputRange: [headerHeight, 0],
   });
 
+  function handleTouchStart(e: { nativeEvent: { pageX: number; pageY: number } }) {
+    touchStartRef.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+  }
+
+  function handleTouchEnd(e: { nativeEvent: { pageX: number; pageY: number } }) {
+    if (!touchStartRef.current) return;
+    const dx = Math.abs(e.nativeEvent.pageX - touchStartRef.current.x);
+    const dy = Math.abs(e.nativeEvent.pageY - touchStartRef.current.y);
+    touchStartRef.current = null;
+    if (dx < TAP_MOVE_THRESHOLD && dy < TAP_MOVE_THRESHOLD) {
+      resetIdleTimer();
+    }
+  }
+
   return (
-    <View style={styles.root} onTouchStart={resetIdleTimer}>
+    <View
+      style={styles.root}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <Animated.View style={[styles.tabsWrapper, { paddingTop: contentPaddingTop }]}>
         <Tabs
           tabBar={() => null}
@@ -181,7 +204,9 @@ function TabLayoutInner() {
 export default function TabLayout() {
   return (
     <ChromeCollapseProvider>
-      <TabLayoutInner />
+      <ScrollDirectionProvider>
+        <TabLayoutInner />
+      </ScrollDirectionProvider>
     </ChromeCollapseProvider>
   );
 }

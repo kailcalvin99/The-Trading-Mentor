@@ -18,6 +18,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import { useRouter } from "expo-router";
 import { usePlanner } from "@/contexts/PlannerContext";
+import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 import Colors from "@/constants/colors";
 import OnboardingTour, { useOnboardingTour } from "@/components/OnboardingTour";
 import FullModeGate from "@/components/FullModeGate";
@@ -149,6 +150,7 @@ export default function PlannerScreenGated() {
 }
 
 function PlannerScreen() {
+  const scrollCollapseProps = useScrollCollapseProps();
   const {
     routineItems, isRoutineComplete, routineCompletedToday, hasRedNews, toggleItem, toggleRedNews,
   } = usePlanner();
@@ -418,7 +420,7 @@ function PlannerScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <OnboardingTour visible={showTour} onComplete={completeTour} />
-      <KeyboardAwareScrollViewCompat ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.content}>
+      <KeyboardAwareScrollViewCompat ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.content} {...scrollCollapseProps}>
 
         {/* Header */}
         <View style={styles.header}>

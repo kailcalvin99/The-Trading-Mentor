@@ -4,6 +4,7 @@ import { useIdleTimer } from "@/hooks/useIdleTimer";
 
 interface ChromeCollapseContextValue {
   isCollapsed: boolean;
+  collapse: () => void;
   restore: () => void;
   resetIdleTimer: () => void;
   headerAnim: Animated.Value;
@@ -66,14 +67,12 @@ export function ChromeCollapseProvider({ children }: { children: React.ReactNode
   const resetIdleTimer = useCallback(() => {
     if (isCollapsed) {
       restore();
-      resetTimer();
-    } else {
-      resetTimer();
     }
+    resetTimer();
   }, [isCollapsed, restore, resetTimer]);
 
   return (
-    <ChromeCollapseContext.Provider value={{ isCollapsed, restore, resetIdleTimer, headerAnim, headerLayoutAnim, footerAnim }}>
+    <ChromeCollapseContext.Provider value={{ isCollapsed, collapse, restore, resetIdleTimer, headerAnim, headerLayoutAnim, footerAnim }}>
       {children}
     </ChromeCollapseContext.Provider>
   );

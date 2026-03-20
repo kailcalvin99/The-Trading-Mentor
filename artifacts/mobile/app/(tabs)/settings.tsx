@@ -29,6 +29,7 @@ import {
   DEFAULT_WIDGET_PREFS,
   type WidgetPrefs,
 } from "@/constants/dashboardWidgets";
+import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 
 const C = Colors.dark;
 
@@ -320,6 +321,7 @@ const tpS = StyleSheet.create({
 });
 
 export default function SettingsScreen() {
+  const scrollCollapseProps = useScrollCollapseProps();
   const router = useRouter();
   const { logout, appMode, setAppMode } = useAuth();
   const [currentAppMode, setCurrentAppMode] = useState<"full" | "lite">(appMode);
@@ -533,6 +535,7 @@ export default function SettingsScreen() {
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        {...scrollCollapseProps}
       >
         {/* Account card */}
         <View style={s.card}>

@@ -18,6 +18,7 @@ import { useListTrades, useCreateTrade, useDeleteTrade } from "@workspace/api-cl
 import type { Trade } from "@workspace/api-client-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import { fireMobileAITrigger } from "@/lib/aiTrigger";
+import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -133,6 +134,7 @@ const TILT_COOLDOWN_KEY = "ict-tilt-cooldown-end";
 const NEGATIVE_TAGS = ["FOMO", "Chased", "Revenge", "Greedy", "Angry", "Overtrading"];
 
 export default function JournalScreen() {
+  const scrollCollapseProps = useScrollCollapseProps();
   const { user, subscription, appMode } = useAuth();
   const router = useRouter();
   const { new: newParam } = useLocalSearchParams<{ new?: string }>();
@@ -512,7 +514,7 @@ export default function JournalScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} {...scrollCollapseProps}>
 
         {/* Header */}
         <View style={styles.headerRow}>

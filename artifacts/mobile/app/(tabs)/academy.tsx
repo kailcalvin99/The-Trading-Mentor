@@ -39,6 +39,7 @@ import {
   JudasSwingDiagram,
   PremiumDiscountDiagram,
 } from "@/components/GlossaryDiagrams";
+import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 
 const C = Colors.dark;
 
@@ -140,6 +141,7 @@ async function syncProgressFromServer(current: Set<string>, onUpdate: (merged: S
 
 
 function LearnView({ onAskMentor, pendingLessonId }: { onAskMentor: (topic: string) => void; pendingLessonId?: string | null }) {
+  const scrollCollapseProps = useScrollCollapseProps();
   const [expandedChapter, setExpandedChapter] = useState<string | null>("ch1");
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
@@ -187,7 +189,7 @@ function LearnView({ onAskMentor, pendingLessonId }: { onAskMentor: (topic: stri
   );
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} {...scrollCollapseProps}>
       <View style={learnStyles.headerRow}>
         <View style={{ flex: 1 }}>
           <Text style={learnStyles.heading}>ICT Trading Course</Text>
@@ -315,9 +317,10 @@ function LearnView({ onAskMentor, pendingLessonId }: { onAskMentor: (topic: stri
 }
 
 function GlossaryView() {
+  const scrollCollapseProps = useScrollCollapseProps();
   const [expanded, setExpanded] = useState<string | null>(null);
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} {...scrollCollapseProps}>
       <Text style={glossStyles.heading}>ICT Concepts</Text>
       <Text style={glossStyles.subheading}>Tap any term for the full definition + trader tip</Text>
       {GLOSSARY_DATA.map((item) => {
@@ -365,6 +368,7 @@ function GlossaryView() {
 }
 
 function QuizView() {
+  const scrollCollapseProps = useScrollCollapseProps();
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [answered, setAnswered] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -455,7 +459,7 @@ function QuizView() {
 
   if (done) {
     return (
-      <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }} {...scrollCollapseProps}>
         <View style={quizStyles.resultCard}>
           <Text style={quizStyles.resultEmoji}>{pct >= 70 ? "🏆" : pct >= 40 ? "📈" : "📚"}</Text>
           <Text style={quizStyles.resultScore}>{score}/{maxScore}</Text>
@@ -476,7 +480,7 @@ function QuizView() {
 
   if (!q) {
     return (
-      <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }} {...scrollCollapseProps}>
         <Text style={{ color: C.text, fontSize: 16 }}>No more questions available!</Text>
         <TouchableOpacity style={quizStyles.retryBtn} onPress={handleReset}>
           <Text style={quizStyles.retryText}>Start Over</Text>
@@ -488,7 +492,7 @@ function QuizView() {
   const diffColor = DIFFICULTY_COLORS[q.difficulty];
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} {...scrollCollapseProps}>
       <View style={quizStyles.progressRow}>
         <Text style={quizStyles.progressText}>Question {answered + 1} of {TOTAL_QUIZ_QUESTIONS}</Text>
         <Text style={quizStyles.scoreText}>Score: {score}</Text>
@@ -572,8 +576,9 @@ const PLAN_ICONS: Record<string, IoniconsName> = {
 const DEFAULT_PLAN_ICON: IoniconsName = "document-outline";
 
 function PlanView() {
+  const scrollCollapseProps = useScrollCollapseProps();
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} {...scrollCollapseProps}>
       <Text style={planStyles.heading}>NQ Futures: ICT Trading Plan</Text>
       <Text style={planStyles.subheading}>Your mechanical, top-down trading framework</Text>
       {PLAN_DATA.map((section) => (

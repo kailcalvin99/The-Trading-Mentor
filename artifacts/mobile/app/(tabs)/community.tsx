@@ -20,6 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiGet, apiPost } from "@/lib/api";
 import Colors from "@/constants/colors";
 import FullModeGate from "@/components/FullModeGate";
+import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 
 const C = Colors.dark;
 
@@ -288,6 +289,7 @@ export default function CommunityScreenGated() {
 }
 
 function CommunityScreen() {
+  const scrollCollapseProps = useScrollCollapseProps();
   const insets = useSafeAreaInsets();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -552,6 +554,7 @@ function CommunityScreen() {
                   tintColor={C.accent}
                 />
               }
+              {...scrollCollapseProps}
             >
               {posts.map((post) => (
                 <TouchableOpacity key={post.id} style={s.card} activeOpacity={0.7} onPress={() => openThread(post.id)}>
