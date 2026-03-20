@@ -2,24 +2,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
-  Droplets,
-  Wind,
-  Newspaper,
-  BarChart3,
-  CheckCircle2,
   Plus,
   Trash2,
   Target,
   StickyNote,
   TrendingUp,
-  Clock,
   ChevronDown,
   ChevronUp,
   ArrowLeft,
   ArrowRight,
-  AlertTriangle,
   Activity,
-  Download,
   Mic,
   MicOff,
   Send,
@@ -30,13 +22,10 @@ import {
   CheckSquare,
   Square,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import ProbabilityMeter from "@/components/ProbabilityMeter";
 
 import CoolDownOverlay, { FailureAnalysis } from "@/components/CoolDownOverlay";
 import { recordDisciplinedDay } from "@/components/HallOfFame";
@@ -48,10 +37,6 @@ import {
   savePretradeChecklistState as saveRiskChecklistState,
   resetPretradeChecklistState as resetRiskChecklistState,
 } from "@/lib/pretradeChecklist";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  Droplets, Wind, Newspaper, BarChart3, CheckCircle2, Target, Clock, Activity, AlertTriangle,
-};
 
 const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
@@ -249,47 +234,6 @@ function computeWinRate(trades: TradeRecord[], bias: string, sessionFocus: strin
   return { winRate: overallRate, trades: completed.length, message: `Overall win rate: ${overallRate}% across ${completed.length} trades` };
 }
 
-const SESSION_WINDOWS: Record<string, { start: string; end: string; label: string }> = {
-  "london": { start: "02:00", end: "05:00", label: "London Open" },
-  "silver-bullet": { start: "10:00", end: "11:00", label: "Silver Bullet" },
-  "new-york": { start: "09:30", end: "11:00", label: "NY Open" },
-};
-
-function exportToIcs(sessionFocus: string, date: Date) {
-  const session = SESSION_WINDOWS[sessionFocus] || SESSION_WINDOWS["new-york"];
-  const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
-  const startDT = `${dateStr}T${session.start.replace(":", "")}00Z`;
-  const endDT = `${dateStr}T${session.end.replace(":", "")}00Z`;
-  const uid = `ict-session-${dateStr}-${sessionFocus}@ict-trading`;
-
-  const ics = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//ICT Trading Mentor//EN",
-    "BEGIN:VEVENT",
-    `UID:${uid}`,
-    `DTSTART:${startDT}`,
-    `DTEND:${endDT}`,
-    `SUMMARY:${session.label} - Trading Session`,
-    `DESCRIPTION:ICT ${session.label} trading window`,
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ].join("\r\n");
-
-  const blob = new Blob([ics], { type: "text/calendar" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `ict-session-${dateStr}.ics`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-const SESSION_CARDS = [
-  { value: "london", label: "London Open", time: "2:00-5:00 AM EST", color: "bg-blue-500/10 border-blue-500/30 text-blue-400" },
-  { value: "silver-bullet", label: "Silver Bullet", time: "10:00-11:00 AM EST", color: "bg-amber-500/10 border-amber-500/30 text-amber-400" },
-  { value: "new-york", label: "NY Open", time: "9:30-11:00 AM EST", color: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" },
-];
 
 type SpeechRecognitionInstance = {
   lang: string;
@@ -313,6 +257,69 @@ declare global {
   }
 }
 
+function ConfidenceGauge({ score }: { score: number }) {
+  const radius = 54;
+  const stroke = 10;
+  const normalizedRadius = radius - stroke / 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const arc = circumference * 0.75;
+  const offset = arc - (score / 100) * arc;
+  const color = score >= 75 ? "#10b981" : score >= 50 ? "#f59e0b" : "#ef4444";
+  const startAngle = 135;
+  const cx = radius;
+  const cy = radius;
+  const r = normalizedRadius;
+
+  return (
+    <svg width={radius * 2} height={radius * 2} viewBox={`0 0 ${radius * 2} ${radius * 2}`} className="block">
+      <circle
+        cx={cx} cy={cy} r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={stroke}
+        strokeDasharray={`${arc} ${circumference}`}
+        strokeLinecap="round"
+        className="text-muted/30"
+        style={{ transform: `rotate(${startAngle}deg)`, transformOrigin: "center" }}
+      />
+      <circle
+        cx={cx} cy={cy} r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={stroke}
+        strokeDasharray={`${arc - offset} ${circumference}`}
+        strokeLinecap="round"
+        style={{
+          transform: `rotate(${startAngle}deg)`,
+          transformOrigin: "center",
+          transition: "stroke-dasharray 0.6s ease",
+        }}
+      />
+      <text
+        x={cx} y={cy - 4}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="20"
+        fontWeight="bold"
+        fill={color}
+        fontFamily="monospace"
+      >
+        {score}
+      </text>
+      <text
+        x={cx} y={cy + 16}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="9"
+        fill="#6b7280"
+        fontFamily="sans-serif"
+      >
+        / 100
+      </text>
+    </svg>
+  );
+}
+
 function PlannerConfidenceScorePanel() {
   const [confidence, setConfidence] = useState<{ score: number; factors: Array<{ label: string; met: boolean }> } | null>(null);
 
@@ -334,34 +341,27 @@ function PlannerConfidenceScorePanel() {
   if (!confidence) return null;
 
   const score = confidence.score;
-  const scoreColor =
-    score >= 75 ? "text-emerald-400"
-    : score >= 50 ? "text-amber-400"
-    : "text-red-400";
-  const barColor =
-    score >= 75 ? "bg-emerald-500"
-    : score >= 50 ? "bg-amber-500"
-    : "bg-red-500";
 
   return (
     <div className="bg-card border border-border rounded-2xl p-4 mb-6">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-4">
         <Shield className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground flex-1">ICT Confidence Score</h3>
-        <span className={`text-lg font-bold font-mono ${scoreColor}`}>{score}/100</span>
+        <h3 className="text-sm font-semibold text-foreground">ICT Confidence Score</h3>
       </div>
-      <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
-        <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${score}%` }} />
-      </div>
-      <div className="space-y-1.5">
-        {confidence.factors.map((f, i) => (
-          <div key={i} className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg border ${
-            f.met ? "bg-emerald-500/10 border-emerald-500/25" : "bg-secondary/30 border-border"
-          }`}>
-            <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.met ? "✓" : "○"}</span>
-            <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.label}</span>
-          </div>
-        ))}
+      <div className="flex items-center gap-5">
+        <div className="shrink-0">
+          <ConfidenceGauge score={score} />
+        </div>
+        <div className="flex-1 space-y-1.5">
+          {confidence.factors.map((f, i) => (
+            <div key={i} className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg border ${
+              f.met ? "bg-emerald-500/10 border-emerald-500/25" : "bg-secondary/30 border-border"
+            }`}>
+              <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.met ? "✓" : "○"}</span>
+              <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -369,7 +369,7 @@ function PlannerConfidenceScorePanel() {
 
 export default function DailyPlanner() {
   const navigate = useNavigate();
-  const { routineItems, routineConfig, isRoutineComplete, routineCompletedToday, toggleItem } = usePlanner();
+  const { isRoutineComplete } = usePlanner();
   const { isFeatureEnabled } = useAppConfig();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dayData, setDayData] = useState<DayData>(() => loadDayDataLocal(new Date()));
@@ -393,7 +393,7 @@ export default function DailyPlanner() {
 
   const isToday = selectedDate.toISOString().split("T")[0] === new Date().toISOString().split("T")[0];
   const keyLevels = migrateKeyLevels(dayData.tradePlan.keyLevels);
-  const winRateEstimate = computeWinRate(trades, dayData.tradePlan.bias, dayData.tradePlan.sessionFocus);
+  const winRateEstimate = computeWinRate(trades, dayData.tradePlan.bias, "");
 
   const maxDailyLossPctVal = propAccount?.maxDailyLossPct ?? 2;
   const propStartingBalance = propAccount?.startingBalance ?? 50000;
@@ -438,7 +438,6 @@ export default function DailyPlanner() {
   const probScore = (() => {
     let score = 0;
     if (biasSelected) score++;
-    if (dayData.tradePlan.sessionFocus) score++;
     if (keyLevels.length >= 1) score++;
     if (riskChecked["htf_bias"]) score++;
     if (riskChecked["sweep_idm"] || riskChecked["displacement_fvg"]) score++;
@@ -592,7 +591,7 @@ export default function DailyPlanner() {
       </div>
     )}
 
-    <div className="p-6 max-w-3xl mx-auto pb-28">
+    <div className="p-6 max-w-3xl mx-auto pb-24">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Calendar className="h-6 w-6 text-primary" />
@@ -630,10 +629,6 @@ export default function DailyPlanner() {
           <Calculator className="h-3.5 w-3.5 text-blue-400" />
           Position Calc
         </button>
-      </div>
-
-      <div className="flex justify-center mb-6">
-        <ProbabilityMeter score={probScore} />
       </div>
 
       <PlannerConfidenceScorePanel />
@@ -738,126 +733,7 @@ export default function DailyPlanner() {
         </div>
       )}
 
-      <Card className="mb-4" id="morning-routine">
-        <CardContent className="p-4 space-y-0">
-          {isToday && (
-            <>
-              <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 className={`h-4 w-4 ${isRoutineComplete ? "text-primary" : "text-muted-foreground"}`} />
-                <h2 className="font-semibold text-sm">Morning Routine</h2>
-                {isRoutineComplete && (
-                  <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                    Done
-                  </span>
-                )}
-              </div>
-              <div className="space-y-2 mb-4">
-                <p className="text-xs text-muted-foreground mb-2">
-                  Finish all steps to unlock trade logging in the Smart Journal.
-                </p>
-                {routineConfig.map((item) => {
-                  const Icon = ICON_MAP[item.icon] || CheckCircle2;
-                  return (
-                    <label key={item.key} className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                      <Checkbox checked={routineItems[item.key]} onCheckedChange={() => toggleItem(item.key)} className="mt-0.5" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className={`text-sm font-medium ${routineItems[item.key] ? "text-primary line-through opacity-70" : ""}`}>{item.label}</span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">{item.desc}</span>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-
-              <div className="border-t border-border my-4" />
-            </>
-          )}
-
-          {isToday && (
-            <>
-              <div className="flex items-center gap-2 mb-3">
-                <Clock className="h-4 w-4 text-cyan-400" />
-                <h2 className="font-semibold text-sm">Session Schedule</h2>
-              </div>
-              <div className="relative pl-5 mb-4">
-                <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-border rounded-full" />
-                <div className="space-y-3">
-                  {routineConfig.map((item) => {
-                    const done = routineItems[item.key] || false;
-                    return (
-                      <div key={`timeline-routine-${item.key}`} className="flex items-start gap-3">
-                        <div className={`w-3 h-3 rounded-full shrink-0 -ml-1.5 mt-0.5 border-2 border-background transition-colors ${
-                          done ? "bg-primary" : "bg-border"
-                        }`} />
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium leading-tight ${done ? "text-primary" : "text-foreground"}`}>
-                            {item.label}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
-                        </div>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                          done ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
-                        }`}>
-                          {done ? "Done" : "Routine"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  {SESSION_CARDS.map((s) => {
-                    const isSelected = dayData.tradePlan.sessionFocus === s.value;
-                    return (
-                      <div key={`timeline-session-${s.value}`} className="flex items-start gap-3">
-                        <div className={`w-3 h-3 rounded-full shrink-0 -ml-1.5 mt-0.5 border-2 border-background transition-colors ${
-                          isSelected ? "bg-primary" : "bg-border"
-                        }`} />
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium leading-tight ${isSelected ? "text-primary" : "text-foreground"}`}>
-                            {s.label}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{s.time}</p>
-                        </div>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                          isSelected ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30" : "bg-secondary text-muted-foreground"
-                        }`}>
-                          {isSelected ? "Selected" : "Session"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="border-t border-border my-4" />
-            </>
-          )}
-
-        </CardContent>
-      </Card>
-
-      {isToday && !routineCompletedToday && (
-        <div className="mb-4 flex flex-col items-center gap-4 py-6 px-6 rounded-xl border border-amber-500/20 bg-amber-500/5 text-center">
-          <div className="p-3 rounded-full bg-amber-500/10 border border-amber-500/20">
-            <Lock className="h-7 w-7 text-amber-400" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold mb-1">Complete Your Routine First</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              The trade planning tools are locked until you finish your morning routine above.
-            </p>
-          </div>
-          <a
-            href="#morning-routine"
-            className="px-5 py-2 rounded-xl text-sm font-bold bg-amber-500 text-black hover:bg-amber-400 transition-colors"
-          >
-            Go to Morning Routine ↑
-          </a>
-        </div>
-      )}
-
-      <div className={isToday && !routineCompletedToday ? "pointer-events-none opacity-40 select-none" : ""}>
+      <div>
       <Card className="mb-4">
         <CardContent className="p-4">
           <button onClick={() => setTradePlanOpen(!tradePlanOpen)} className="flex items-center justify-between w-full">
@@ -902,7 +778,7 @@ export default function DailyPlanner() {
                     <span className="text-xs text-muted-foreground font-medium">Select your Bias above to unlock tools</span>
                   </div>
                   <div className="p-4 opacity-30 pointer-events-none select-none">
-                    <p className="text-sm text-muted-foreground">Strategy · Session Focus · Key Levels · Position Sizer</p>
+                    <p className="text-sm text-muted-foreground">Strategy · Key Levels · Position Sizer</p>
                   </div>
                 </div>
               )}
@@ -942,37 +818,6 @@ export default function DailyPlanner() {
                       <div className="mt-2 p-2.5 bg-orange-500/5 border border-orange-500/20 rounded-lg">
                         <p className="text-xs text-orange-400/80 font-medium">Aggressive: Bias confirmed · At least 1 key level · FVG present · 1% risk</p>
                       </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                      <Clock className="h-3 w-3" />
-                      Session Focus
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {SESSION_CARDS.map((s) => (
-                        <button
-                          key={s.value}
-                          onClick={() => updateTradePlan("sessionFocus", dayData.tradePlan.sessionFocus === s.value ? "" : s.value)}
-                          className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-center transition-all ${
-                            dayData.tradePlan.sessionFocus === s.value
-                              ? s.color
-                              : "bg-secondary border-border text-muted-foreground hover:border-foreground/30"
-                          }`}
-                        >
-                          <span className="text-xs font-bold leading-tight">{s.label}</span>
-                          <span className="text-[10px] opacity-70 leading-tight">{s.time}</span>
-                        </button>
-                      ))}
-                    </div>
-                    {dayData.tradePlan.sessionFocus && SESSION_WINDOWS[dayData.tradePlan.sessionFocus] && (
-                      <button
-                        onClick={() => exportToIcs(dayData.tradePlan.sessionFocus, selectedDate)}
-                        className="mt-2 flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
-                      >
-                        <Download className="h-3 w-3" />
-                        Export to Calendar (.ics)
-                      </button>
                     )}
                   </div>
 
@@ -1278,35 +1123,62 @@ export default function DailyPlanner() {
       </div>
     </div>
 
-    {/* Sticky footer — always-visible action bar */}
-    <div className="sticky bottom-0 z-10 bg-background border-t border-border px-4 py-3">
-      <div className="flex gap-3 items-center max-w-4xl mx-auto">
-        {speechSupported && (
+    {/* Floating Probability Score — top-right corner */}
+    <div className="fixed top-16 right-4 z-40 pointer-events-none">
+      <div className="pointer-events-auto bg-card/90 backdrop-blur-md border border-border rounded-2xl px-4 py-3 shadow-xl flex flex-col items-center min-w-[88px]">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Setup</span>
+        <span className={`text-2xl font-bold font-mono leading-none ${probScore >= 80 ? "text-emerald-400" : probScore >= 60 ? "text-amber-400" : "text-red-400"}`}>
+          {probScore}
+        </span>
+        <span className="text-[10px] text-muted-foreground mt-0.5">/ 100</span>
+        <div className="w-full mt-2 h-1.5 bg-muted/40 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${probScore}%`,
+              backgroundColor: probScore >= 80 ? "#10b981" : probScore >= 60 ? "#f59e0b" : "#ef4444",
+            }}
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* Floating Action Buttons — bottom-right */}
+    <div className="fixed bottom-6 right-4 z-40 flex flex-col items-end gap-3">
+      {speechSupported && (
+        <div className="relative group">
           <button
             onClick={isListening ? stopVoiceNote : startVoiceNote}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+            title={isListening ? "Stop recording" : "Voice Note"}
+            className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all ${
               isListening
-                ? "bg-red-500/20 border-red-500 text-red-400 animate-pulse"
-                : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                ? "bg-red-500 text-white animate-pulse"
+                : "bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:scale-105"
             }`}
           >
-            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            {isListening ? "Stop" : "Voice Note"}
+            {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           </button>
-        )}
+          <span className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold bg-card border border-border rounded-lg px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow">
+            {isListening ? "Stop Recording" : "Voice Note"}
+          </span>
+        </div>
+      )}
+      <div className="relative group">
         <button
           onClick={handleSendToJournal}
           disabled={showHaltBanner}
           title={showHaltBanner ? "Trading halted" : "Ready to Trade"}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+          className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all ${
             showHaltBanner
               ? "bg-secondary border border-border text-muted-foreground cursor-not-allowed opacity-50"
-              : "bg-primary text-primary-foreground hover:brightness-110"
+              : "bg-primary text-primary-foreground hover:brightness-110 hover:scale-105"
           }`}
         >
-          <Send className="h-4 w-4" />
-          {showHaltBanner ? "Trading Halted" : "Ready to Trade"}
+          <Send className="h-5 w-5" />
         </button>
+        <span className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold bg-card border border-border rounded-lg px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow">
+          {showHaltBanner ? "Trading Halted" : "Ready to Trade"}
+        </span>
       </div>
     </div>
 
@@ -1323,10 +1195,6 @@ export default function DailyPlanner() {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Strategy</span>
               <span className="font-semibold capitalize">{dayData.tradePlan.strategy || "—"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Session</span>
-              <span className="font-semibold">{dayData.tradePlan.sessionFocus || "—"}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Key Levels</span>
@@ -1356,7 +1224,6 @@ export default function DailyPlanner() {
                 const planPayload = {
                   bias: dayData.tradePlan.bias,
                   strategy: dayData.tradePlan.strategy,
-                  session: dayData.tradePlan.sessionFocus,
                   keyLevels: keyLevels.map((l) => `${l.label || ""} ${l.price} (${l.type})`).join(", "),
                   pairs: dayData.tradePlan.pairsToWatch,
                   setupScore: probScore,
@@ -1368,7 +1235,7 @@ export default function DailyPlanner() {
                     .join(", "),
                 };
                 const notes = [
-                  `Pre-Trade Plan: ${planPayload.bias} | ${planPayload.strategy || "no strategy"} | ${planPayload.session || "no session"}`,
+                  `Pre-Trade Plan: ${planPayload.bias} | ${planPayload.strategy || "no strategy"}`,
                   planPayload.keyLevels ? `Key Levels: ${planPayload.keyLevels}` : "",
                   planPayload.pairs ? `Pairs: ${planPayload.pairs}` : "",
                   `Setup Score: ${planPayload.setupScore}%`,
