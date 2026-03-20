@@ -1,7 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { apiGet, apiPost, apiPatch, apiPut, saveToken, deleteToken } from "@/lib/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
+
+const SESSION_CLEARED_KEY = "session_cleared_v1";
+
+async function clearSessionOnce(): Promise<void> {
+  try {
+    const already = await AsyncStorage.getItem(SESSION_CLEARED_KEY);
+    if (!already) {
+      await SecureStore.deleteItemAsync("auth_token");
+      await AsyncStorage.setItem(SESSION_CLEARED_KEY, "1");
+    }
+  } catch {}
+}
 
 const ACADEMY_PROGRESS_KEY = "ict-academy-progress";
 
@@ -126,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refresh();
+    clearSessionOnce().then(() => refresh());
   }, [refresh]);
 
   return (

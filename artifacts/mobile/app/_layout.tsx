@@ -36,10 +36,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    const inLoginScreen = segments[0] === "login";
-    if (!user && !inLoginScreen) {
+    const inAuthScreen = segments[0] === "login" || segments[0] === "register";
+    if (!user && !inAuthScreen) {
       router.replace("/login");
-    } else if (user && inLoginScreen) {
+    } else if (user && inAuthScreen) {
       router.replace("/(tabs)/dashboard");
     }
   }, [user, loading, segments, router]);
@@ -57,6 +57,7 @@ function RootLayoutNav() {
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="register" options={{ headerShown: false }} />
     </Stack>
   );
 }

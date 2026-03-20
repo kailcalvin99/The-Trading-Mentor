@@ -20,28 +20,43 @@ import Colors from "@/constants/colors";
 
 const C = Colors.dark;
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const router = useRouter();
   const { refresh } = useAuth();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin() {
-    if (!email.trim() || !password) {
-      Alert.alert("Error", "Please enter your email and password");
+  async function handleRegister() {
+    if (!name.trim() || !email.trim() || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
+    if (password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters");
       return;
     }
     setLoading(true);
     try {
-      const data = await apiPost<{ token?: string; user: unknown }>("auth/login", { email: email.trim(), password });
+      const data = await apiPost<{ token?: string; user: unknown }>("auth/register", {
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
       await handleAuthResponse(data as Parameters<typeof handleAuthResponse>[0]);
       await refresh();
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/dashboard");
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Login failed";
-      Alert.alert("Login Failed", msg);
+      const msg = e instanceof Error ? e.message : "Registration failed";
+      Alert.alert("Registration Failed", msg);
     } finally {
       setLoading(false);
     }
@@ -63,11 +78,23 @@ export default function LoginScreen() {
               <Ionicons name="trending-up" size={32} color={C.accent} />
             </View>
             <Text style={s.title}>ICT Trading Mentor</Text>
-            <Text style={s.subtitle}>Sign in to your account</Text>
+            <Text style={s.subtitle}>Create your account</Text>
           </View>
 
           <View style={s.form}>
-            <Text style={s.label}>Email</Text>
+            <Text style={s.label}>Name</Text>
+            <TextInput
+              style={s.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Your full name"
+              placeholderTextColor={C.textSecondary}
+              autoCapitalize="words"
+              autoCorrect={false}
+              returnKeyType="next"
+            />
+
+            <Text style={[s.label, s.mt]}>Email</Text>
             <TextInput
               style={s.input}
               value={email}
@@ -86,11 +113,10 @@ export default function LoginScreen() {
                 style={[s.input, s.pwInput]}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Your password"
+                placeholder="At least 8 characters"
                 placeholderTextColor={C.textSecondary}
                 secureTextEntry={!showPassword}
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
+                returnKeyType="next"
               />
               <TouchableOpacity
                 style={s.eyeBtn}
@@ -104,23 +130,47 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
+            <Text style={[s.label, s.mt]}>Confirm Password</Text>
+            <View style={s.pwRow}>
+              <TextInput
+                style={[s.input, s.pwInput]}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Repeat your password"
+                placeholderTextColor={C.textSecondary}
+                secureTextEntry={!showConfirmPassword}
+                returnKeyType="done"
+                onSubmitEditing={handleRegister}
+              />
+              <TouchableOpacity
+                style={s.eyeBtn}
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color={C.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
               style={[s.btn, loading && s.btnLoading]}
-              onPress={handleLogin}
+              onPress={handleRegister}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#0A0A0F" />
               ) : (
-                <Text style={s.btnText}>Sign In</Text>
+                <Text style={s.btnText}>Create Account</Text>
               )}
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={s.registerLink} onPress={() => router.push("/register")}>
-            <Text style={s.registerLinkText}>
-              Don't have an account?{" "}
-              <Text style={s.registerLinkAccent}>Create one</Text>
+          <TouchableOpacity style={s.loginLink} onPress={() => router.replace("/login")}>
+            <Text style={s.loginLinkText}>
+              Already have an account?{" "}
+              <Text style={s.loginLinkAccent}>Sign In</Text>
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -218,15 +268,15 @@ const s = StyleSheet.create({
     fontWeight: "700",
     color: "#0A0A0F",
   },
-  registerLink: {
+  loginLink: {
     alignItems: "center",
     marginTop: 28,
   },
-  registerLinkText: {
+  loginLinkText: {
     fontSize: 14,
     color: C.textSecondary,
   },
-  registerLinkAccent: {
+  loginLinkAccent: {
     color: C.accent,
     fontWeight: "600",
   },

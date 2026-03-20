@@ -47,7 +47,15 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
     credentials: "include",
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) {
+    let message = `Request failed (${res.status})`;
+    try {
+      const json = await res.json() as { error?: string; message?: string };
+      if (json.error) message = json.error;
+      else if (json.message) message = json.message;
+    } catch {}
+    throw new Error(message);
+  }
   return res.json() as Promise<T>;
 }
 
