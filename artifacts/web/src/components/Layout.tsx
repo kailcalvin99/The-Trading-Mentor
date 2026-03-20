@@ -2,9 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, Video, Zap, Layers, Flame, Star, Menu } from "lucide-react";
-import Logo from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAppConfig } from "@/contexts/AppConfigContext";
 import { FreeSidebar, useDailyStreak } from "@/components/CasinoElements";
 import AIAssistant from "@/components/AIAssistant";
 import { TourGuide } from "@/components/TourGuide";
@@ -381,7 +379,6 @@ function resizeImageToBase64(file: File, maxSize = 200): Promise<string> {
 
 export default function Layout() {
   const { user, subscription, tierLevel, isAdmin, logout, appMode, setAppMode, setAvatarUrl } = useAuth();
-  const { config } = useAppConfig();
   const [showLockToast, setShowLockToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -511,21 +508,8 @@ export default function Layout() {
         />
       )}
       <div
-        className={`fixed left-0 top-0 h-full w-72 bg-sidebar border-r border-sidebar-border z-50 flex flex-col overflow-y-auto transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed left-0 top-12 w-full bg-sidebar border-b border-sidebar-border z-50 flex flex-col overflow-y-auto transition-all duration-300 ${drawerOpen ? "max-h-[calc(100vh-3rem)] opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}
       >
-        <div className="flex items-center gap-2 h-12 border-b border-sidebar-border px-3 shrink-0">
-          <Logo size={32} />
-          <span className="text-sm font-semibold text-sidebar-foreground truncate flex-1">
-            {config.app_name || "ICT AI Trading Mentor"}
-          </span>
-          <button
-            onClick={closeDrawer}
-            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
         <nav className="flex flex-col gap-1 p-2 flex-1">
           {visibleNavItems.map((item) => (
             <NavItem
@@ -714,16 +698,13 @@ export default function Layout() {
       <div className="flex flex-col flex-1 min-w-0">
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-sidebar shrink-0 h-12">
           <button
-            onClick={() => setDrawerOpen(true)}
+            onClick={() => setDrawerOpen((prev) => !prev)}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-            aria-label="Open navigation"
+            aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={drawerOpen}
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Logo size={28} />
-          <span className="text-sm font-semibold text-foreground hidden sm:block truncate">
-            {config.app_name || "ICT AI Trading Mentor"}
-          </span>
           <div className="ml-auto flex items-center gap-2">
             <AIAssistant />
             <HeaderGamificationBadges />
