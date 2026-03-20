@@ -1,40 +1,32 @@
-import { useState, useEffect, useRef, type ChangeEvent } from "react";
+import { useState, useEffect, useRef, useCallback, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Sparkles,
-  FileText, StickyNote, ClipboardCheck, CheckSquare, Square,
-  Settings, X, Camera, Shield, Pencil,
+  FileText, StickyNote, CheckSquare, Square,
+  X, Camera, Shield, Pencil,
   CheckCircle2, Play, GraduationCap, Users, Lock,
   ChevronLeft, ChevronRight, Plus, Bot, Calendar,
+  Radio, Activity, ChevronDown, Edit2, ChevronUp,
 } from "lucide-react";
 import {
-  LivePriceStrip,
-  OpenTradeCard,
   EconomicCalendarWidget,
-  KillZoneCountdownWidget,
-  DailyRiskGaugeWidget,
 } from "@/components/LiveMarketWidgets";
 import { useListTrades } from "@workspace/api-client-react";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { useAuth } from "@/contexts/AuthContext";
-import { useDailyStreak, AchievementBadges, PremiumTeaser } from "@/components/CasinoElements";
+import { PremiumTeaser } from "@/components/CasinoElements";
 import { usePlanner } from "@/contexts/PlannerContext";
-import { DASHBOARD_WIDGETS, useDashboardWidgets } from "@/hooks/useDashboardWidgets";
 import { useTodaySchedule } from "@/hooks/useTodaySchedule";
 import type { LucideIcon } from "lucide-react";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
-import {
-  PRETRADE_CHECKLIST_ITEMS,
-  getPretradeChecklistState,
-} from "@/lib/pretradeChecklist";
+import { usePrices, useOpenTrades } from "@/hooks/useLiveMarket";
 
 const SESSIONS = [
-  { name: "London", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", time: "2:00–5:00 AM EST" },
-  { name: "NY Open", emoji: "📈", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896", time: "9:30–10:00 AM EST" },
-  { name: "Silver Bullet", emoji: "🎯", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444", time: "10:00–11:00 AM EST" },
-  { name: "London Close", emoji: "🔔", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8", time: "11:00 AM–12:00 PM EST" },
+  { name: "London", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B" },
+  { name: "NY Open", emoji: "📈", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896" },
+  { name: "Silver Bullet", emoji: "🎯", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444" },
+  { name: "London Close", emoji: "🔔", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8" },
 ];
-
 
 const QUICK_JOURNAL_KEY = "ict-quick-journal-notes";
 
@@ -54,10 +46,8 @@ function getQuickNotes(): QuickNote[] {
 function saveQuickNote(note: QuickNote) {
   const notes = getQuickNotes();
   notes.unshift(note);
-  const trimmed = notes.slice(0, 100);
-  localStorage.setItem(QUICK_JOURNAL_KEY, JSON.stringify(trimmed));
+  localStorage.setItem(QUICK_JOURNAL_KEY, JSON.stringify(notes.slice(0, 100)));
 }
-
 
 function getESTNow(): Date {
   const fmt = new Intl.DateTimeFormat("en-US", {
@@ -75,13 +65,41 @@ function getESTNow(): Date {
   );
 }
 
+function useEstClock() {
+  const [time, setTime] = useState(() => getESTNow());
+  useEffect(() => {
+    const id = setInterval(() => setTime(getESTNow()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return time;
+}
+
+function useScrollDirection() {
+  const [scrollDir, setScrollDir] = useState<"up" | "down" | null>(null);
+  const lastY = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function onScroll() {
+      const y = window.scrollY;
+      const dir = y < lastY.current ? "up" : "down";
+      lastY.current = y;
+      setScrollDir(dir);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => setScrollDir(null), 1500);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return scrollDir;
+}
+
 function useStatsData() {
   const { data: apiTrades, refetch } = useListTrades();
 
   useEffect(() => {
-    const id = setInterval(() => {
-      refetch?.();
-    }, 60000);
+    const id = setInterval(() => refetch?.(), 60000);
     return () => clearInterval(id);
   }, [refetch]);
 
@@ -118,67 +136,6 @@ function useStatsData() {
   return { todayTrades, todayRMultiple, winRate, last20, weekTrades, activeSession };
 }
 
-function SessionStatsBar() {
-  const navigate = useNavigate();
-  const { todayTrades, todayRMultiple, winRate, last20, weekTrades, activeSession } = useStatsData();
-
-  const pnlIsPositive = todayRMultiple > 0;
-  const pnlIsNegative = todayRMultiple < 0;
-  const pnlColor = pnlIsPositive ? "text-emerald-400" : pnlIsNegative ? "text-red-400" : "text-muted-foreground";
-  const pnlSign = pnlIsPositive ? "+" : "";
-
-  return (
-    <div className="flex flex-wrap items-center gap-2 py-1">
-      <button
-        onClick={() => navigate("/journal")}
-        className="flex items-center gap-2 bg-secondary/60 hover:bg-secondary border border-border rounded-lg px-3 py-1.5 transition-colors"
-      >
-        <span className="text-xs text-muted-foreground">P&L</span>
-        <span className={`text-xs font-bold font-mono ${pnlColor}`}>
-          {todayTrades.length === 0
-            ? "—"
-            : `${pnlSign}${Math.abs(todayRMultiple).toFixed(1)}R`}
-        </span>
-      </button>
-
-      <button
-        onClick={() => navigate("/analytics")}
-        className="flex items-center gap-2 bg-secondary/60 hover:bg-secondary border border-border rounded-lg px-3 py-1.5 transition-colors"
-      >
-        <span className="text-xs text-muted-foreground">Win Rate</span>
-        <span className={`text-xs font-bold font-mono ${
-          winRate === null ? "text-muted-foreground"
-          : winRate >= 60 ? "text-emerald-400"
-          : winRate >= 40 ? "text-amber-400"
-          : "text-red-400"
-        }`}>
-          {winRate === null ? "—" : `${winRate}%`}
-        </span>
-        {winRate !== null && <span className="text-xs text-muted-foreground/60 hidden sm:inline">({last20.length})</span>}
-      </button>
-
-      <button
-        onClick={() => navigate("/journal")}
-        className="flex items-center gap-2 bg-secondary/60 hover:bg-secondary border border-border rounded-lg px-3 py-1.5 transition-colors"
-      >
-        <span className="text-xs text-muted-foreground">This Week</span>
-        <span className="text-xs font-bold font-mono text-foreground">{weekTrades} trades</span>
-      </button>
-
-      <div className="flex items-center gap-2 bg-secondary/60 border border-border rounded-lg px-3 py-1.5">
-        <span className="text-xs text-muted-foreground">Session</span>
-        {activeSession ? (
-          <span className="text-xs font-bold" style={{ color: activeSession.color }}>
-            {activeSession.emoji} {activeSession.name}
-          </span>
-        ) : (
-          <span className="text-xs font-semibold text-muted-foreground">Closed</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function WidgetHeader({
   icon: Icon,
   title,
@@ -210,174 +167,331 @@ function WidgetHeader({
   );
 }
 
+function DashboardBanner({
+  user,
+  onAvatarClick,
+}: {
+  user: { avatarUrl?: string | null; name?: string | null } | null | undefined;
+  onAvatarClick: () => void;
+}) {
+  const { prices, loading: pricesLoading, hasKey } = usePrices();
+  const { trades: openTrades } = useOpenTrades();
+  const estTime = useEstClock();
+  const { todayRMultiple, winRate, activeSession } = useStatsData();
 
-function CompactGreetingRow() {
-  const { user } = useAuth();
   const firstName = user?.name?.split(" ")[0] || "Trader";
+  const h = estTime.getHours();
+  const timeGreeting = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
 
-  const est = getESTNow();
-  const greetingHour = est.getHours();
-  const timeGreeting = greetingHour < 12 ? "Good morning" : greetingHour < 17 ? "Good afternoon" : "Good evening";
+  const timeStr = estTime.toLocaleTimeString("en-US", {
+    hour: "2-digit", minute: "2-digit", hour12: true,
+  });
+
+  const dateStr = new Date().toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+  });
+
+  const anyDelayed = prices.some(p => p.delayed);
+  const hasData = prices.some(p => p.price !== null);
+
+  const pnlIsPositive = todayRMultiple > 0;
+  const pnlIsNegative = todayRMultiple < 0;
 
   return (
-    <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
-      <Bot className="h-4 w-4 text-primary shrink-0" />
-      <span className="text-sm font-semibold text-foreground">
-        {timeGreeting}, {firstName}
-      </span>
+    <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
+      <div className="max-w-6xl mx-auto px-3 md:px-6">
+        <div className="flex items-center gap-3 py-1.5">
+          <button
+            onClick={onAvatarClick}
+            className="w-8 h-8 rounded-full bg-primary/20 border border-border flex items-center justify-center shrink-0 overflow-hidden hover:ring-2 hover:ring-primary/60 transition-all"
+            title="Change avatar"
+          >
+            {user?.avatarUrl ? (
+              user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
+                <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-base leading-none">{user.avatarUrl}</span>
+              )
+            ) : (
+              <span className="text-xs font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "T"}</span>
+            )}
+          </button>
+
+          <div className="shrink-0 hidden sm:block">
+            <p className="text-xs font-semibold text-foreground leading-none">{timeGreeting}, {firstName}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{dateStr}</p>
+          </div>
+
+          <div className="shrink-0 text-right hidden md:block">
+            <p className="text-xs font-bold font-mono text-foreground leading-none">{timeStr}</p>
+            <p className="text-[10px] text-muted-foreground">EST</p>
+          </div>
+
+          <div className="w-px h-5 bg-border shrink-0 hidden sm:block" />
+
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              {!hasKey ? (
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">No market data</span>
+              ) : pricesLoading && prices.length === 0 ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="shrink-0 h-5 w-14 rounded bg-secondary/40 animate-pulse" />
+                ))
+              ) : hasData ? (
+                prices.map((item) => (
+                  <div
+                    key={item.symbol}
+                    className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/50 border border-border/60"
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        item.delayed ? "bg-amber-400" : "bg-emerald-400 animate-pulse"
+                      }`}
+                    />
+                    <span className="text-[10px] font-semibold text-foreground whitespace-nowrap">{item.label}</span>
+                  </div>
+                ))
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0 ml-1">
+            {openTrades.length > 0 && (
+              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                openTrades[0].side === "BUY"
+                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                  : "bg-red-500/15 border-red-500/30 text-red-400"
+              }`}>
+                <Activity className="h-2.5 w-2.5" />
+                <span>{openTrades[0].instrument} {openTrades[0].side}</span>
+              </div>
+            )}
+
+            {activeSession && (
+              <div
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border border-border/60 bg-secondary/50"
+                style={{ color: activeSession.color }}
+              >
+                <span>{activeSession.emoji}</span>
+                <span className="hidden sm:inline">{activeSession.name}</span>
+              </div>
+            )}
+
+            {todayRMultiple !== 0 && (
+              <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                pnlIsPositive ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                : pnlIsNegative ? "bg-red-500/15 border-red-500/30 text-red-400"
+                : "bg-secondary/50 border-border/60 text-muted-foreground"
+              }`}>
+                {pnlIsPositive ? "+" : ""}{Math.abs(todayRMultiple).toFixed(1)}R
+              </div>
+            )}
+
+            {anyDelayed && (
+              <span className="text-[9px] text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded-full border border-amber-500/20 hidden lg:inline">
+                DELAYED
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function PreTradePlanSummaryWidget() {
-  const navigate = useNavigate();
-  const [checked, setChecked] = useState<Record<string, boolean>>(() => getPretradeChecklistState());
-  const doneCount = PRETRADE_CHECKLIST_ITEMS.filter((item) => checked[item.id]).length;
-  const allChecked = doneCount === PRETRADE_CHECKLIST_ITEMS.length;
+function LiveMarketPopover() {
+  const [open, setOpen] = useState(false);
+  const { prices, loading } = usePrices();
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setChecked(getPretradeChecklistState());
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
+    function onClickOut(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", onClickOut);
+    return () => document.removeEventListener("mousedown", onClickOut);
+  }, [open]);
 
-  const todayBias = (() => {
-    try {
-      const todayKey = `planner_day_${new Date().toISOString().split("T")[0]}`;
-      const raw = localStorage.getItem(todayKey);
-      if (raw) {
-        const data = JSON.parse(raw);
-        return data?.tradePlan?.bias || "";
-      }
-    } catch {}
-    return "";
-  })();
+  const futuresPrices = prices.filter(p =>
+    ["QQQ", "SPY", "DIA", "IWM"].includes(p.symbol)
+  );
+
+  const FUTURES_MAP: Record<string, string> = {
+    QQQ: "NQ (QQQ proxy)",
+    SPY: "ES (SPY proxy)",
+    DIA: "YM (DIA proxy)",
+    IWM: "RTY (IWM proxy)",
+  };
+
+  function formatPrice(p: number, sym: string) {
+    return p.toFixed(2);
+  }
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-4">
-      <WidgetHeader
-        icon={ClipboardCheck}
-        title="Pre-Trade Plan"
-        editLink="/planner"
-        editLabel="Mission Control ↗"
-        badge={
-          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${allChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
-            {doneCount}/{PRETRADE_CHECKLIST_ITEMS.length}
-          </span>
-        }
-      />
-      {todayBias && (
-        <div className={`mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-          todayBias === "bullish" ? "bg-emerald-500/20 text-emerald-400" :
-          todayBias === "bearish" ? "bg-red-500/20 text-red-400" :
-          "bg-amber-500/20 text-amber-400"
-        }`}>
-          {todayBias === "bullish" ? "↑" : todayBias === "bearish" ? "↓" : "–"} {todayBias.charAt(0).toUpperCase() + todayBias.slice(1)} bias
+    <div ref={ref} className="fixed right-4 top-16 z-30">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all border ${
+          open
+            ? "bg-primary text-primary-foreground border-primary"
+            : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-primary/50"
+        }`}
+        title="Live Market"
+      >
+        <Radio className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-11 w-64 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
+            <Radio className="h-3.5 w-3.5 text-emerald-400" />
+            <h3 className="text-xs font-bold text-foreground flex-1">Futures (US)</h3>
+            <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="p-3 space-y-2">
+            {loading && futuresPrices.length === 0 ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-8 rounded-lg bg-secondary/40 animate-pulse" />
+              ))
+            ) : futuresPrices.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-2">No futures data</p>
+            ) : (
+              futuresPrices.map((item) => {
+                const isPositive = (item.changePct ?? 0) >= 0;
+                return (
+                  <div
+                    key={item.symbol}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl bg-secondary/40 border border-border"
+                  >
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{FUTURES_MAP[item.symbol] || item.label}</p>
+                      {item.price !== null && (
+                        <p className="text-sm font-bold font-mono text-foreground leading-none mt-0.5">
+                          {formatPrice(item.price, item.symbol)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-1 justify-end">
+                        <span className={`w-1.5 h-1.5 rounded-full ${item.delayed ? "bg-amber-400" : "bg-emerald-400 animate-pulse"}`} />
+                        <span className="text-[9px] font-bold text-muted-foreground">{item.delayed ? "DELAYED" : "LIVE"}</span>
+                      </div>
+                      {item.changePct !== null && (
+                        <p className={`text-xs font-bold ${isPositive ? "text-emerald-400" : "text-red-400"}`}>
+                          {isPositive ? "+" : ""}{(item.changePct ?? 0).toFixed(2)}%
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="px-4 pb-3">
+            <p className="text-[9px] text-muted-foreground">ETF proxies: QQQ≈NQ, SPY≈ES, DIA≈YM, IWM≈RTY</p>
+          </div>
         </div>
       )}
-      <div className="space-y-1.5 mb-3">
-        {PRETRADE_CHECKLIST_ITEMS.map((item) => (
-          <div
-            key={item.id}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${
-              checked[item.id]
-                ? "bg-emerald-500/10 border-emerald-500/30"
-                : "bg-secondary/30 border-border"
-            }`}
-          >
-            {checked[item.id]
-              ? <CheckSquare className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-              : <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-            <span className={`text-xs font-medium ${checked[item.id] ? "text-emerald-400" : "text-muted-foreground"}`}>
-              {item.label}
-            </span>
-          </div>
-        ))}
-      </div>
-      <button
-        onClick={() => navigate("/planner")}
-        className={`w-full rounded-lg border px-3 py-2 text-center text-xs font-bold transition-all ${
-          allChecked
-            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-            : "bg-secondary/30 border-border text-muted-foreground hover:border-primary/40 hover:text-primary"
-        }`}
-      >
-        {allChecked ? "✓ Ready to Trade" : "Set up in Mission Control →"}
-      </button>
     </div>
   );
 }
 
+function QuickNoteFAB({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      onClick={onOpen}
+      className="fixed bottom-6 right-6 z-30 w-10 h-10 rounded-full bg-secondary border border-border shadow-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all"
+      title="Quick Note"
+    >
+      <StickyNote className="h-4 w-4" />
+    </button>
+  );
+}
 
-function QuickJournalWidget() {
+function QuickNoteModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const [text, setText] = useState("");
   const [saved, setSaved] = useState(false);
-  const [recentNotes, setRecentNotes] = useState<QuickNote[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setRecentNotes(getQuickNotes().slice(0, 2));
+    inputRef.current?.focus();
   }, []);
 
   function handleLog() {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const note: QuickNote = {
+    saveQuickNote({
       id: `qn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       text: trimmed,
       timestamp: new Date().toISOString(),
-    };
-    saveQuickNote(note);
-    setRecentNotes(getQuickNotes().slice(0, 2));
+    });
     setText("");
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    inputRef.current?.focus();
+    setTimeout(() => setSaved(false), 1500);
   }
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-4">
-      <WidgetHeader
-        icon={StickyNote}
-        title="Quick Note"
-        editLink="/journal"
-        editLabel="Open Journal ↗"
-      />
-      <div className="flex items-center gap-2 mb-3">
-        <input
-          ref={inputRef}
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleLog()}
-          placeholder="Quick note for today..."
-          className="flex-1 bg-secondary/40 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary min-w-0"
-          maxLength={500}
-        />
-        {saved ? (
-          <span className="text-xs text-emerald-400 font-semibold whitespace-nowrap shrink-0">Saved ✓</span>
-        ) : (
-          <button
-            onClick={handleLog}
-            disabled={!text.trim()}
-            className="text-xs font-semibold bg-primary text-primary-foreground px-3 py-2 rounded-lg hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
-          >
-            Log
+    <div className="fixed inset-0 z-50 flex items-end justify-end p-6 pointer-events-none">
+      <div className="pointer-events-auto w-72 bg-card border border-border rounded-2xl shadow-2xl p-4 animate-in slide-in-from-bottom-2 duration-200">
+        <div className="flex items-center gap-2 mb-3">
+          <StickyNote className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold flex-1">Quick Note</span>
+          <button onClick={() => navigate("/journal")} className="text-xs text-primary font-medium">Journal ↗</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground ml-1">
+            <X className="h-4 w-4" />
           </button>
-        )}
-      </div>
-      {recentNotes.length > 0 && (
-        <div className="space-y-1.5">
-          {recentNotes.map((note) => (
-            <div key={note.id} className="flex items-start gap-2 text-xs text-muted-foreground">
-              <span className="shrink-0 mt-0.5">·</span>
-              <span className="line-clamp-1">{note.text}</span>
-            </div>
-          ))}
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleLog()}
+            placeholder="Note something..."
+            className="flex-1 bg-secondary/40 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary min-w-0"
+            maxLength={500}
+          />
+          {saved ? (
+            <span className="text-xs text-emerald-400 font-semibold whitespace-nowrap">✓</span>
+          ) : (
+            <button
+              onClick={handleLog}
+              disabled={!text.trim()}
+              className="text-xs font-semibold bg-primary text-primary-foreground px-3 py-2 rounded-lg hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
+            >
+              Log
+            </button>
+          )}
+        </div>
+        {getQuickNotes().slice(0, 2).map((note) => (
+          <div key={note.id} className="flex items-start gap-2 text-xs text-muted-foreground mt-2">
+            <span className="shrink-0 mt-0.5">·</span>
+            <span className="line-clamp-1">{note.text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AskAIFloater({ visible, onOpen }: { visible: boolean; onOpen: () => void }) {
+  return (
+    <div
+      className={`fixed left-1/2 -translate-x-1/2 z-30 transition-all duration-300 ${
+        visible ? "top-20 opacity-100 pointer-events-auto" : "-top-12 opacity-0 pointer-events-none"
+      }`}
+    >
+      <button
+        onClick={onOpen}
+        className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground shadow-lg text-xs font-bold hover:opacity-90 transition-opacity"
+      >
+        <Bot className="h-3.5 w-3.5" />
+        Ask AI Mentor
+      </button>
     </div>
   );
 }
@@ -391,88 +505,8 @@ function getAcademyProgress(): Set<string> {
   } catch { return new Set(); }
 }
 
-function NextWatchWidget() {
-  const navigate = useNavigate();
-  const [nextLesson, setNextLesson] = useState<{ id: string; title: string; chapterTitle: string; chapterColor: string; estMins: number } | null>(null);
-
-  useEffect(() => {
-    let completed = getAcademyProgress();
-
-    fetch("/api/academy/progress", { credentials: "include" })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.lessonIds?.length) {
-          const merged = new Set([...completed, ...data.lessonIds]);
-          localStorage.setItem(ICT_ACADEMY_PROGRESS_KEY_WEB, JSON.stringify([...merged]));
-          completed = merged;
-          findNext(completed);
-        }
-      })
-      .catch(() => {});
-
-    findNext(completed);
-
-    function findNext(comp: Set<string>) {
-      let lessonIndex = 0;
-      for (const chapter of COURSE_CHAPTERS) {
-        for (const lesson of chapter.lessons) {
-          if (!comp.has(lesson.id)) {
-            const estMins = 8 + (lessonIndex % 7) * 2;
-            setNextLesson({ id: lesson.id, title: lesson.title, chapterTitle: chapter.title, chapterColor: chapter.color, estMins });
-            return;
-          }
-          lessonIndex++;
-        }
-      }
-      setNextLesson(null);
-    }
-  }, []);
-
-  if (!nextLesson) return null;
-
-  return (
-    <div
-      className="bg-card border rounded-2xl overflow-hidden cursor-pointer hover:bg-card/80 transition-colors"
-      style={{ borderColor: `${nextLesson.chapterColor}30` }}
-      onClick={() => navigate(`/academy?lesson=${nextLesson.id}`)}
-    >
-      <div
-        className="relative h-24 flex items-center justify-center"
-        style={{ backgroundColor: `${nextLesson.chapterColor}20` }}
-      >
-        <Play className="h-10 w-10" style={{ color: nextLesson.chapterColor }} />
-        <div className="absolute bottom-2 right-3 flex items-center gap-1 bg-black/50 rounded-md px-2 py-1">
-          <span className="text-xs text-white font-medium">{nextLesson.estMins} min</span>
-        </div>
-      </div>
-      <div className="p-4 flex items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Up Next</span>
-            <span
-              className="text-xs font-bold px-1.5 py-0.5 rounded-full"
-              style={{ backgroundColor: `${nextLesson.chapterColor}20`, color: nextLesson.chapterColor }}
-            >
-              {nextLesson.chapterTitle}
-            </span>
-          </div>
-          <p className="text-sm font-bold text-foreground leading-tight line-clamp-2">{nextLesson.title}</p>
-        </div>
-        <button
-          className="shrink-0 text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
-          style={{ backgroundColor: nextLesson.chapterColor, color: "#0A0A0F" }}
-          onClick={(e) => { e.stopPropagation(); navigate(`/academy?lesson=${nextLesson.id}`); }}
-        >
-          Watch Now
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function LearningProgressWidget() {
   const navigate = useNavigate();
-  const { streak } = useDailyStreak();
 
   const completed = getAcademyProgress();
   let total = 0;
@@ -496,10 +530,6 @@ function LearningProgressWidget() {
       </div>
       <div className="flex items-center gap-4 mb-3">
         <div className="text-center">
-          <p className="text-xl font-bold" style={{ color: streak >= 7 ? "#EF4444" : "#F59E0B" }}>{streak}</p>
-          <p className="text-xs text-muted-foreground">Day streak</p>
-        </div>
-        <div className="text-center">
           <p className="text-xl font-bold text-primary">{pct}%</p>
           <p className="text-xs text-muted-foreground">Complete</p>
         </div>
@@ -513,7 +543,7 @@ function LearningProgressWidget() {
       </div>
       {nextTitle && (
         <p className="text-xs text-muted-foreground mb-2">
-          <span className="text-primary">▶</span> Next: {nextTitle}
+          <span className="text-primary">▶</span> Up Next: {nextTitle}
         </p>
       )}
       <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2 mb-3">
@@ -527,6 +557,63 @@ function LearningProgressWidget() {
       >
         Continue Learning
       </button>
+    </div>
+  );
+}
+
+function LessonCarouselWidget() {
+  const navigate = useNavigate();
+  const [completed, setCompleted] = useState<Set<string>>(() => getAcademyProgress());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const id = setInterval(() => setCompleted(getAcademyProgress()), 2000);
+    return () => clearInterval(id);
+  }, []);
+
+  const allLessons = COURSE_CHAPTERS.flatMap((ch) =>
+    ch.lessons.map((l) => ({ ...l, chapterTitle: ch.title, chapterColor: ch.color }))
+  );
+
+  const lessonCards = allLessons
+    .filter((l) => !completed.has(l.id) && !dismissed.has(l.id))
+    .slice(0, 3);
+
+  if (lessonCards.length === 0) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+        <FileText className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-semibold text-foreground flex-1">Up Next — ICT Lessons</h3>
+        <button onClick={() => navigate("/academy")} className="text-xs text-primary font-medium">View all ↗</button>
+      </div>
+      <div className="flex gap-3 overflow-x-auto px-4 py-3 scrollbar-thin" style={{ scrollbarWidth: "none" }}>
+        {lessonCards.map((lesson) => (
+          <div key={lesson.id} className="relative shrink-0 w-44">
+            <button
+              onClick={() => navigate(`/academy?lesson=${lesson.id}`)}
+              className="w-full flex flex-col gap-1 p-3 pt-5 rounded-xl border text-left transition-colors hover:bg-secondary/50"
+              style={{ borderColor: `${lesson.chapterColor}30` }}
+            >
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: lesson.chapterColor }} />
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{lesson.chapterTitle}</p>
+              <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{lesson.title}</p>
+              <p className="text-xs text-muted-foreground leading-tight line-clamp-2 mt-0.5">{lesson.takeaway}</p>
+              <div className="flex items-center gap-1 mt-auto pt-1">
+                <Play className="h-3 w-3 text-primary" />
+                <span className="text-xs text-primary font-semibold">Watch</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setDismissed((prev) => new Set([...prev, lesson.id]))}
+              className="absolute top-1.5 right-1.5 p-0.5 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -593,68 +680,9 @@ function CommunityWidget() {
   );
 }
 
-function LessonCarouselWidget() {
-  const navigate = useNavigate();
-  const [completed, setCompleted] = useState<Set<string>>(() => getAcademyProgress());
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const id = setInterval(() => setCompleted(getAcademyProgress()), 2000);
-    return () => clearInterval(id);
-  }, []);
-
-  const allLessons = COURSE_CHAPTERS.flatMap((ch) =>
-    ch.lessons.map((l) => ({ ...l, chapterTitle: ch.title, chapterColor: ch.color }))
-  );
-
-  const lessonCards = allLessons
-    .filter((l) => !completed.has(l.id) && !dismissed.has(l.id))
-    .slice(0, 3);
-
-  function dismissCard(id: string) {
-    setDismissed((prev) => new Set([...prev, id]));
-  }
-
-  if (lessonCards.length === 0) return null;
-
-  return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-        <FileText className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground flex-1">Up Next — ICT Lessons</h3>
-        <button onClick={() => navigate("/academy")} className="text-xs text-primary font-medium">View all ↗</button>
-      </div>
-      <div className="flex gap-3 overflow-x-auto px-4 py-3 scrollbar-thin" style={{ scrollbarWidth: "none" }}>
-        {lessonCards.map((lesson) => (
-          <div key={lesson.id} className="relative shrink-0 w-44">
-            <button
-              onClick={() => navigate(`/academy?lesson=${lesson.id}`)}
-              className="w-full flex flex-col gap-1 p-3 pt-5 rounded-xl border text-left transition-colors hover:bg-secondary/50"
-              style={{ borderColor: `${lesson.chapterColor}30` }}
-            >
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: lesson.chapterColor }} />
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{lesson.chapterTitle}</p>
-              <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{lesson.title}</p>
-              <p className="text-xs text-muted-foreground leading-tight line-clamp-2 mt-0.5">{lesson.takeaway}</p>
-              <div className="flex items-center gap-1 mt-auto pt-1">
-                <Play className="h-3 w-3 text-primary" />
-                <span className="text-xs text-primary font-semibold">Watch</span>
-              </div>
-            </button>
-            <button
-              onClick={() => dismissCard(lesson.id)}
-              className="absolute top-1.5 right-1.5 p-0.5 rounded-full text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 const CUSTOM_SCHEDULE_KEY = "custom_schedule_items_v1";
+const SCHEDULE_LOCKED_KEY = "today_schedule_locked_v1";
+const SCHEDULE_COMPLETE_KEY = "schedule_completed_";
 
 interface CustomScheduleItem {
   id: string;
@@ -695,39 +723,7 @@ function parseHhmm(timeStr: string): { h: number; m: number } | null {
   return { h, m };
 }
 
-function exportScheduleToIcs(items: Array<{ time: string; label: string }>) {
-  const today = new Date();
-  const dateStr = today.toISOString().split("T")[0].replace(/-/g, "");
-  const events: string[] = [];
-  items.forEach((item, idx) => {
-    const parsed = parseAmPmToH24(item.time) || parseHhmm(item.time);
-    if (!parsed) return;
-    const { h, m } = parsed;
-    const startDT = `${dateStr}T${String(h).padStart(2, "0")}${String(m).padStart(2, "0")}00`;
-    const endMins = h * 60 + m + 30;
-    const endH = Math.floor(endMins / 60) % 24;
-    const endM = endMins % 60;
-    const endDT = `${dateStr}T${String(endH).padStart(2, "0")}${String(endM).padStart(2, "0")}00`;
-    events.push([
-      "BEGIN:VEVENT",
-      `UID:ict-schedule-${dateStr}-${idx}@ict-trading`,
-      `DTSTART:${startDT}`,
-      `DTEND:${endDT}`,
-      `SUMMARY:${item.label}`,
-      "END:VEVENT",
-    ].join("\r\n"));
-  });
-  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ICT Trading Mentor//EN", ...events, "END:VCALENDAR"].join("\r\n");
-  const blob = new Blob([ics], { type: "text/calendar" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `ict-schedule-${dateStr}.ics`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function MasterMorningWidget() {
+function TodayScheduleWidget() {
   const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
   const { sortedSchedule, saveTime } = useTodaySchedule(routineItems);
   const [customItems, setCustomItems] = useState<CustomScheduleItem[]>(() => getCustomItems());
@@ -738,23 +734,23 @@ function MasterMorningWidget() {
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingLabelVal, setEditingLabelVal] = useState("");
   const [showAddCustom, setShowAddCustom] = useState(false);
+  const [isLocked, setIsLocked] = useState(() => {
+    try { return localStorage.getItem(SCHEDULE_LOCKED_KEY) === "true"; } catch { return false; }
+  });
+  const [slidOff, setSlidOff] = useState(false);
 
-  const doneCount = routineConfig.filter((item) => routineItems[item.key]).length;
-  const totalCount = routineConfig.length;
-  const pct = totalCount > 0 ? doneCount / totalCount : 0;
-  const radius = 20;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - pct);
+  const todayKey = new Date().toISOString().split("T")[0];
+  const completedTodayKey = SCHEDULE_COMPLETE_KEY + todayKey;
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(completedTodayKey) === "true") setSlidOff(true);
+    } catch {}
+  }, [completedTodayKey]);
 
   type RowItem = {
-    id: string;
-    time: string;
-    label: string;
-    icon?: string;
-    done: boolean;
-    isRoutine: boolean;
-    routineKey?: string;
-    customId?: string;
+    id: string; time: string; label: string; icon?: string;
+    done: boolean; isRoutine: boolean; routineKey?: string; customId?: string;
   };
 
   function rowTimeToMins(timeStr: string): number {
@@ -767,25 +763,39 @@ function MasterMorningWidget() {
   }
 
   const routineRows: RowItem[] = sortedSchedule.map((item): RowItem => ({
-    id: `routine_${item.id}`,
-    time: item.timeStr,
-    label: item.label,
-    icon: item.icon,
-    done: item.checked,
-    isRoutine: true,
-    routineKey: item.id,
+    id: `routine_${item.id}`, time: item.timeStr, label: item.label,
+    icon: item.icon, done: item.checked, isRoutine: true, routineKey: item.id,
   }));
 
   const customRows: RowItem[] = customItems.map((c): RowItem => ({
-    id: c.id,
-    time: c.time,
-    label: c.label,
-    done: c.done ?? false,
-    isRoutine: false,
-    customId: c.id,
+    id: c.id, time: c.time, label: c.label, done: c.done ?? false,
+    isRoutine: false, customId: c.id,
   }));
 
-  const allRows: RowItem[] = [...routineRows, ...customRows].sort((a, b) => rowTimeToMins(a.time) - rowTimeToMins(b.time));
+  const allRows: RowItem[] = [...routineRows, ...customRows].sort(
+    (a, b) => rowTimeToMins(a.time) - rowTimeToMins(b.time)
+  );
+
+  const allDone = allRows.length > 0 && allRows.every(r => r.done);
+
+  useEffect(() => {
+    if (!allDone || slidOff) return;
+    const t = setTimeout(() => {
+      setSlidOff(true);
+      try { localStorage.setItem(completedTodayKey, "true"); } catch {}
+    }, 800);
+    return () => clearTimeout(t);
+  }, [allDone, slidOff, completedTodayKey]);
+
+  function lockSchedule() {
+    setIsLocked(true);
+    try { localStorage.setItem(SCHEDULE_LOCKED_KEY, "true"); } catch {}
+  }
+
+  function unlockSchedule() {
+    setIsLocked(false);
+    try { localStorage.setItem(SCHEDULE_LOCKED_KEY, "false"); } catch {}
+  }
 
   function addItem() {
     if (!newLabel.trim()) return;
@@ -817,7 +827,7 @@ function MasterMorningWidget() {
     setEditingTimeVal(currentTime);
   }
 
-  function saveRoutineTime(routineKey: string) {
+  function saveRoutineTimeEdit(routineKey: string) {
     saveTime(routineKey, editingTimeVal.trim());
     setEditingTimeId(null);
   }
@@ -854,174 +864,62 @@ function MasterMorningWidget() {
     setEditingLabelId(null);
   }
 
-  const allExportRows = allRows.map((r) => ({ time: r.time, label: r.label }));
-
   return (
-    <div className="bg-card border border-border rounded-2xl p-4">
-      <WidgetHeader
-        icon={CheckCircle2}
-        title="Master Routine"
-        editLink="/planner"
-        editLabel="Planner ↗"
-        badge={
-          isRoutineComplete ? (
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">All Done ✓</span>
-          ) : undefined
-        }
-      />
-
-      {/* Morning Routine checklist */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="relative shrink-0">
-          <svg width="52" height="52" viewBox="0 0 52 52">
-            <circle cx="26" cy="26" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
-            <circle
-              cx="26"
-              cy="26"
-              r={radius}
-              fill="none"
-              stroke={isRoutineComplete ? "#00C896" : "#818CF8"}
-              strokeWidth="5"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              style={{ transform: "rotate(-90deg)", transformOrigin: "center", transition: "stroke-dashoffset 0.4s ease" }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs font-bold text-foreground">{doneCount}/{totalCount}</span>
-          </div>
-        </div>
-        <div className="flex-1 grid grid-cols-2 gap-x-3 gap-y-1.5">
-          {routineConfig.map((item) => {
-            const done = routineItems[item.key];
-            return (
-              <label
-                key={item.key}
-                className="flex items-center gap-2 cursor-pointer group"
-                onClick={(e) => { e.preventDefault(); toggleItem(item.key); }}
-              >
-                <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors border ${
-                  done ? "bg-primary border-primary" : "border-border group-hover:border-primary/50"
-                }`}>
-                  {done && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
-                </div>
-                <span className={`text-xs leading-tight ${done ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                  {item.label}
-                </span>
-              </label>
-            );
-          })}
-        </div>
+    <div
+      className={`bg-card border border-border rounded-2xl p-4 transition-all duration-700 overflow-hidden ${
+        slidOff ? "opacity-0 max-h-0 py-0 px-0 my-0 border-0" : "opacity-100 max-h-[9999px]"
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-semibold text-foreground flex-1">Today's Schedule</h3>
+        {allDone && !slidOff && (
+          <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold animate-pulse">
+            All Done ✓
+          </span>
+        )}
+        {isLocked ? (
+          <button
+            onClick={unlockSchedule}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+          >
+            <Edit2 className="h-3 w-3" />
+            Edit
+          </button>
+        ) : (
+          <button
+            onClick={lockSchedule}
+            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+          >
+            <Lock className="h-3 w-3" />
+            Lock
+          </button>
+        )}
       </div>
 
-      {/* Today's Schedule — routine items only */}
-      <div className="flex items-center gap-2 my-3">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider shrink-0">Today's Schedule</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
-
-      <div className="mb-2">
-        {routineRows.map((row, idx) => (
-          <div key={row.id} className="flex items-center gap-2 py-1.5 group">
-            <div className="w-20 shrink-0">
-              {editingTimeId === row.id ? (
-                <input
-                  type="text"
-                  value={editingTimeVal}
-                  onChange={(e) => setEditingTimeVal(e.target.value)}
-                  onBlur={() => row.routineKey && saveRoutineTime(row.routineKey)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && row.routineKey) saveRoutineTime(row.routineKey);
-                    if (e.key === "Escape") setEditingTimeId(null);
-                  }}
-                  placeholder="7:30 AM"
-                  autoFocus
-                  className="w-full bg-secondary border border-primary rounded px-1 py-0.5 text-xs text-foreground focus:outline-none"
-                />
-              ) : (
-                <button
-                  onClick={() => row.routineKey && startEditRoutineTime(row.routineKey, row.time)}
-                  className="text-xs font-mono text-muted-foreground whitespace-nowrap leading-tight hover:text-primary cursor-pointer transition-colors"
-                >
-                  {row.time || "—"}
-                </button>
-              )}
-            </div>
-            <div className="flex flex-col items-center self-stretch shrink-0" style={{ width: 14 }}>
-              <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0 mt-1" />
-              {idx < routineRows.length - 1 && <div className="flex-1 w-px bg-border mt-0.5" />}
-            </div>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <button
-                onClick={() => row.routineKey && toggleItem(row.routineKey)}
-                className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
-                  row.done ? "bg-primary border-primary" : "border-border hover:border-primary/50"
-                }`}
-              >
-                {row.done && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
-              </button>
-              {row.icon && <span className="text-sm shrink-0 leading-none">{row.icon}</span>}
-              <span className={`text-xs leading-tight min-w-0 flex-1 ${row.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                {row.label}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* My Routine section — Add control + persistent custom items */}
-      <div className="flex items-center gap-2 my-3">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider shrink-0">My Routine</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
-
-      {showAddCustom ? (
-        <div className="flex items-center gap-1.5 mb-2">
-          <input
-            type="text"
-            value={newTime}
-            onChange={(e) => setNewTime(e.target.value)}
-            placeholder="7:30 AM"
-            className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <input
-            type="text"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { addItem(); setShowAddCustom(false); } if (e.key === "Escape") { setShowAddCustom(false); setNewLabel(""); setNewTime(""); } }}
-            placeholder="Add to My Routine..."
-            autoFocus
-            className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <button onClick={() => { addItem(); setShowAddCustom(false); }} className="text-xs font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
-          <button onClick={() => { setShowAddCustom(false); setNewLabel(""); setNewTime(""); }} className="text-xs text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setShowAddCustom(true)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary/40 text-xs text-muted-foreground hover:text-primary transition-colors mb-2"
-        >
-          <Plus className="h-3 w-3" />
-          + Add to My Routine
-        </button>
+      {allRows.length === 0 && !isLocked && (
+        <p className="text-xs text-muted-foreground mb-3">Add items to your schedule to get started.</p>
       )}
 
-      {customRows.length > 0 && (
-        <div className="space-y-1">
-          {customRows.map((row) => (
+      {allRows.length > 0 && (
+        <div className="mb-2 space-y-0.5">
+          {allRows.map((row, idx) => (
             <div key={row.id} className="flex items-center gap-2 py-1.5 group">
-              <div className="w-20 shrink-0">
-                {editingTimeId === row.id ? (
+              <div className="w-16 shrink-0">
+                {!isLocked && editingTimeId === row.id ? (
                   <input
                     type="text"
                     value={editingTimeVal}
                     onChange={(e) => setEditingTimeVal(e.target.value)}
-                    onBlur={() => row.customId && saveCustomTime(row.customId)}
+                    onBlur={() => {
+                      if (row.routineKey) saveRoutineTimeEdit(row.routineKey);
+                      else if (row.customId) saveCustomTime(row.customId);
+                    }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && row.customId) saveCustomTime(row.customId);
+                      if (e.key === "Enter") {
+                        if (row.routineKey) saveRoutineTimeEdit(row.routineKey);
+                        else if (row.customId) saveCustomTime(row.customId);
+                      }
                       if (e.key === "Escape") setEditingTimeId(null);
                     }}
                     placeholder="7:30 AM"
@@ -1030,23 +928,34 @@ function MasterMorningWidget() {
                   />
                 ) : (
                   <button
-                    onClick={() => row.customId && startEditCustomTime(row.customId, row.time)}
-                    className="text-xs font-mono text-muted-foreground whitespace-nowrap leading-tight hover:text-primary cursor-pointer transition-colors"
+                    onClick={() => {
+                      if (isLocked) return;
+                      if (row.routineKey) startEditRoutineTime(row.routineKey, row.time);
+                      else if (row.customId) startEditCustomTime(row.customId, row.time);
+                    }}
+                    className={`text-xs font-mono text-muted-foreground whitespace-nowrap leading-tight transition-colors ${
+                      isLocked ? "cursor-default" : "hover:text-primary cursor-pointer"
+                    }`}
                   >
                     {row.time || "—"}
                   </button>
                 )}
               </div>
+              <div className="flex flex-col items-center self-stretch shrink-0" style={{ width: 14 }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0 mt-1" />
+                {idx < allRows.length - 1 && <div className="flex-1 w-px bg-border mt-0.5" />}
+              </div>
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <button
-                  onClick={() => row.customId && toggleCustomDone(row.customId)}
+                  onClick={() => row.isRoutine ? toggleItem(row.routineKey!) : row.customId && toggleCustomDone(row.customId)}
                   className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
                     row.done ? "bg-primary border-primary" : "border-border hover:border-primary/50"
                   }`}
                 >
                   {row.done && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
                 </button>
-                {editingLabelId === row.customId ? (
+                {row.icon && <span className="text-sm shrink-0 leading-none">{row.icon}</span>}
+                {!row.isRoutine && editingLabelId === row.customId ? (
                   <input
                     type="text"
                     value={editingLabelVal}
@@ -1064,7 +973,7 @@ function MasterMorningWidget() {
                     {row.label}
                   </span>
                 )}
-                {editingLabelId !== row.customId && (
+                {!isLocked && !row.isRoutine && editingLabelId !== row.customId && (
                   <>
                     <button
                       onClick={() => row.customId && startEditCustomLabel(row.customId, row.label)}
@@ -1086,14 +995,43 @@ function MasterMorningWidget() {
         </div>
       )}
 
-      <div className="pt-3 mt-2 border-t border-border flex items-center justify-start">
-        <button
-          onClick={() => exportScheduleToIcs(allExportRows)}
-          className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
-        >
-          Export to Calendar (.ics) ↗
-        </button>
-      </div>
+      {!isLocked && (
+        <div className="mt-2">
+          {showAddCustom ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                placeholder="7:30 AM"
+                className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <input
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { addItem(); setShowAddCustom(false); }
+                  if (e.key === "Escape") { setShowAddCustom(false); setNewLabel(""); setNewTime(""); }
+                }}
+                placeholder="Add to schedule..."
+                autoFocus
+                className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button onClick={() => { addItem(); setShowAddCustom(false); }} className="text-xs font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
+              <button onClick={() => { setShowAddCustom(false); setNewLabel(""); setNewTime(""); }} className="text-xs text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAddCustom(true)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary/40 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              + Add to schedule
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1104,6 +1042,7 @@ function TradingCalendarWidget() {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
+  const [expanded, setExpanded] = useState(false);
 
   const { data: apiTrades } = useListTrades();
   const trades = (apiTrades || []) as Array<{
@@ -1117,30 +1056,24 @@ function TradingCalendarWidget() {
     if (t.isDraft || !t.createdAt) return;
     const dateStr = new Date(t.createdAt).toISOString().split("T")[0];
     const pnl = parseFloat(String(t.pnl ?? "0"));
-    if (!isNaN(pnl)) {
-      dailyPnl[dateStr] = (dailyPnl[dateStr] ?? 0) + pnl;
-    }
+    if (!isNaN(pnl)) dailyPnl[dateStr] = (dailyPnl[dateStr] ?? 0) + pnl;
   });
 
   const today = new Date();
   const todayStr = today.toISOString().split("T")[0];
-
   const { year, month } = viewMonth;
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const daysInMonth = lastDay.getDate();
   const startDow = firstDay.getDay();
-
   const monthName = firstDay.toLocaleString("en-US", { month: "long" });
 
-  const prevMonth = () => setViewMonth(({ year: y, month: m }) => {
-    if (m === 0) return { year: y - 1, month: 11 };
-    return { year: y, month: m - 1 };
-  });
-  const nextMonth = () => setViewMonth(({ year: y, month: m }) => {
-    if (m === 11) return { year: y + 1, month: 0 };
-    return { year: y, month: m + 1 };
-  });
+  const prevMonth = () => setViewMonth(({ year: y, month: m }) =>
+    m === 0 ? { year: y - 1, month: 11 } : { year: y, month: m - 1 }
+  );
+  const nextMonth = () => setViewMonth(({ year: y, month: m }) =>
+    m === 11 ? { year: y + 1, month: 0 } : { year: y, month: m + 1 }
+  );
 
   const monFirstOffset = (startDow + 6) % 7;
   const cells: (number | null)[] = [];
@@ -1149,79 +1082,75 @@ function TradingCalendarWidget() {
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-4">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-secondary/30 transition-colors"
+      >
         <Calendar className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground flex-1">Trading Calendar</h3>
-        <button
-          onClick={prevMonth}
-          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <span className="text-xs font-semibold text-foreground w-24 text-center">{monthName} {year}</span>
-        <button
-          onClick={nextMonth}
-          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
+        <h3 className="text-sm font-semibold text-foreground flex-1 text-left">Trading Calendar</h3>
+        {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+      </button>
 
-      <div className="grid grid-cols-7 gap-1 text-center mb-1">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <span key={d} className="text-xs text-muted-foreground font-medium">{d}</span>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 gap-1">
-        {cells.map((day, i) => {
-          if (!day) return <div key={i} className="aspect-square" />;
-          const mm = String(month + 1).padStart(2, "0");
-          const dd = String(day).padStart(2, "0");
-          const dateStr = `${year}-${mm}-${dd}`;
-          const pnl = dailyPnl[dateStr];
-          const hasTrades = pnl !== undefined;
-          const isProfit = hasTrades && pnl > 0;
-          const isLoss = hasTrades && pnl < 0;
-          const isToday = dateStr === todayStr;
-
-          return (
-            <button
-              key={i}
-              onClick={() => hasTrades ? navigate(`/journal?date=${dateStr}`) : undefined}
-              className={`aspect-square rounded-md text-xs font-semibold transition-all flex items-center justify-center ${
-                hasTrades ? "cursor-pointer hover:opacity-90" : "cursor-default"
-              } ${
-                isProfit
-                  ? "bg-primary/75 text-primary-foreground"
-                  : isLoss
-                    ? "bg-red-500/75 text-white"
-                    : "border border-border/40 text-muted-foreground/60"
-              } ${
-                isToday ? "ring-2 ring-primary ring-offset-1 ring-offset-card font-bold" : ""
-              }`}
-            >
-              {day}
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-border">
+          <div className="flex items-center justify-between py-2">
+            <button onClick={prevMonth} className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronLeft className="h-4 w-4" />
             </button>
-          );
-        })}
-      </div>
+            <span className="text-xs font-semibold text-foreground">{monthName} {year}</span>
+            <button onClick={nextMonth} className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
 
-      <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-border">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-primary/75" />
-          <span className="text-xs text-muted-foreground">Profit day</span>
+          <div className="grid grid-cols-7 gap-1 text-center mb-1">
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+              <span key={d} className="text-[10px] text-muted-foreground font-medium">{d}</span>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((day, i) => {
+              if (!day) return <div key={i} className="aspect-square" />;
+              const mm = String(month + 1).padStart(2, "0");
+              const dd = String(day).padStart(2, "0");
+              const dateStr = `${year}-${mm}-${dd}`;
+              const pnl = dailyPnl[dateStr];
+              const hasTrades = pnl !== undefined;
+              const isProfit = hasTrades && pnl > 0;
+              const isLoss = hasTrades && pnl < 0;
+              const isToday = dateStr === todayStr;
+              return (
+                <button
+                  key={i}
+                  onClick={() => hasTrades ? navigate(`/journal?date=${dateStr}`) : undefined}
+                  className={`aspect-square rounded-md text-xs font-semibold transition-all flex items-center justify-center ${
+                    hasTrades ? "cursor-pointer hover:opacity-90" : "cursor-default"
+                  } ${
+                    isProfit ? "bg-primary/75 text-primary-foreground"
+                    : isLoss ? "bg-red-500/75 text-white"
+                    : "border border-border/40 text-muted-foreground/60"
+                  } ${isToday ? "ring-2 ring-primary ring-offset-1 ring-offset-card font-bold" : ""}`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-4 mt-3 pt-2 border-t border-border">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-primary/75" />
+              <span className="text-[10px] text-muted-foreground">Profit</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-red-500/75" />
+              <span className="text-[10px] text-muted-foreground">Loss</span>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-red-500/75" />
-          <span className="text-xs text-muted-foreground">Loss day</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded border border-border" />
-          <span className="text-xs text-muted-foreground">No trades</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1249,7 +1178,6 @@ function useLiveSignals(instrument = "NQ") {
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL || "/api";
-
     async function fetchSignals() {
       try {
         const [fvgRes, confRes] = await Promise.all([
@@ -1260,7 +1188,6 @@ function useLiveSignals(instrument = "NQ") {
         if (confRes.ok) setConfidence(await confRes.json());
       } catch {}
     }
-
     fetchSignals();
     const id = setInterval(fetchSignals, 15000);
     return () => clearInterval(id);
@@ -1271,11 +1198,9 @@ function useLiveSignals(instrument = "NQ") {
 
 function FvgSignalCard() {
   const { fvg } = useLiveSignals();
-
   const isBullish = fvg?.direction === "bullish";
   const isBearish = fvg?.direction === "bearish";
   const hasGap = isBullish || isBearish;
-
   const directionColor = isBullish ? "text-emerald-400" : isBearish ? "text-red-400" : "text-muted-foreground";
   const directionBg = isBullish ? "bg-emerald-500/15 border-emerald-500/30" : isBearish ? "bg-red-500/15 border-red-500/30" : "bg-secondary/30 border-border";
 
@@ -1290,36 +1215,23 @@ function FvgSignalCard() {
     <div className="bg-card border border-border rounded-2xl p-4">
       <WidgetHeader icon={Sparkles} title="Fair Value Gap (FVG)" />
       {!fvg ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="animate-pulse">Scanning 5m chart…</span>
-        </div>
+        <div className="text-xs text-muted-foreground animate-pulse">Scanning 5m chart…</div>
       ) : (
         <div className="space-y-3">
           <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${directionBg} ${directionColor}`}>
             {hasGap ? (
-              <>
-                <span>{isBullish ? "▲" : "▼"}</span>
-                <span>{isBullish ? "Bullish FVG" : "Bearish FVG"} detected</span>
-              </>
+              <><span>{isBullish ? "▲" : "▼"}</span><span>{isBullish ? "Bullish FVG" : "Bearish FVG"} detected</span></>
             ) : (
               <span>No FVG detected</span>
             )}
           </div>
           {hasGap && (
             <div className="flex items-center gap-4 text-xs">
-              <div>
-                <span className="text-muted-foreground">Instrument: </span>
-                <span className="font-semibold text-foreground">{fvg.instrument}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">~Level: </span>
-                <span className="font-mono font-semibold text-foreground">{fvg.level.toFixed(2)}</span>
-              </div>
+              <div><span className="text-muted-foreground">Instrument: </span><span className="font-semibold text-foreground">{fvg.instrument}</span></div>
+              <div><span className="text-muted-foreground">~Level: </span><span className="font-mono font-semibold text-foreground">{fvg.level.toFixed(2)}</span></div>
             </div>
           )}
-          <p className="text-xs text-muted-foreground">
-            Last scan: {formatRelativeTime(fvg.detected_at)}
-          </p>
+          <p className="text-xs text-muted-foreground">Last scan: {formatRelativeTime(fvg.detected_at)}</p>
         </div>
       )}
     </div>
@@ -1328,33 +1240,16 @@ function FvgSignalCard() {
 
 function ConfidenceScoreCard() {
   const { confidence } = useLiveSignals();
-
   const score = confidence?.score ?? null;
-  const scoreColor =
-    score === null ? "text-muted-foreground"
-    : score >= 75 ? "text-emerald-400"
-    : score >= 50 ? "text-amber-400"
-    : "text-red-400";
-
-  const barColor =
-    score === null ? "bg-muted"
-    : score >= 75 ? "bg-emerald-500"
-    : score >= 50 ? "bg-amber-500"
-    : "bg-red-500";
-
-  const gradeLabel =
-    score === null ? ""
-    : score >= 75 ? "High Probability"
-    : score >= 50 ? "Moderate Setup"
-    : "Wait for Alignment";
+  const scoreColor = score === null ? "text-muted-foreground" : score >= 75 ? "text-emerald-400" : score >= 50 ? "text-amber-400" : "text-red-400";
+  const barColor = score === null ? "bg-muted" : score >= 75 ? "bg-emerald-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
+  const gradeLabel = score === null ? "" : score >= 75 ? "High Probability" : score >= 50 ? "Moderate Setup" : "Wait for Alignment";
 
   return (
     <div className="bg-card border border-border rounded-2xl p-4">
       <WidgetHeader icon={Shield} title="ICT Confidence Score" />
       {!confidence ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="animate-pulse">Computing…</span>
-        </div>
+        <div className="text-xs text-muted-foreground animate-pulse">Computing…</div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
@@ -1365,18 +1260,13 @@ function ConfidenceScoreCard() {
             </div>
             <div className="flex-1">
               <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                  style={{ width: `${score ?? 0}%` }}
-                />
+                <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${score ?? 0}%` }} />
               </div>
             </div>
           </div>
           <div className="space-y-1.5">
             {confidence.factors.map((f, i) => (
-              <div key={i} className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg border ${
-                f.met ? "bg-emerald-500/10 border-emerald-500/25" : "bg-secondary/30 border-border"
-              }`}>
+              <div key={i} className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg border ${f.met ? "bg-emerald-500/10 border-emerald-500/25" : "bg-secondary/30 border-border"}`}>
                 <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.met ? "✓" : "○"}</span>
                 <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.label}</span>
               </div>
@@ -1385,65 +1275,6 @@ function ConfidenceScoreCard() {
         </div>
       )}
     </div>
-  );
-}
-
-function CustomizeDrawer({
-  open,
-  onClose,
-  prefs,
-  onToggle,
-}: {
-  open: boolean;
-  onClose: () => void;
-  prefs: Record<string, boolean>;
-  onToggle: (id: string) => void;
-}) {
-  if (!open) return null;
-
-  return (
-    <>
-      <div
-        className="fixed inset-0 bg-black/60 z-40 animate-in fade-in duration-200"
-        onClick={onClose}
-      />
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-3xl p-6 animate-in slide-in-from-bottom duration-300 max-h-[80vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Customize Dashboard</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Toggle widgets on or off</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-secondary transition-colors"
-          >
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
-        </div>
-        <div className="space-y-3">
-          {DASHBOARD_WIDGETS.map((widget) => {
-            const enabled = prefs[widget.id] !== false;
-            return (
-              <div key={widget.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                <span className="text-sm font-medium text-foreground">{widget.label}</span>
-                <button
-                  onClick={() => onToggle(widget.id)}
-                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
-                    enabled ? "bg-primary" : "bg-muted"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                      enabled ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </>
   );
 }
 
@@ -1504,26 +1335,18 @@ function DashAvatarPickerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div
-        className="bg-card border border-border rounded-2xl shadow-2xl p-6 w-80"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 w-80" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold">Choose Avatar</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
-          </button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
-
         <div className="grid grid-cols-4 gap-2 mb-4">
           {DASH_STOCK_AVATARS.map((a) => (
             <button
               key={a.id}
               onClick={() => onSelect(a.emoji)}
               className={`w-full aspect-square rounded-xl text-2xl flex items-center justify-center border transition-all ${
-                user?.avatarUrl === a.emoji
-                  ? "border-primary bg-primary/10 ring-2 ring-primary"
-                  : "border-border hover:border-primary/50 bg-secondary"
+                user?.avatarUrl === a.emoji ? "border-primary bg-primary/10 ring-2 ring-primary" : "border-border hover:border-primary/50 bg-secondary"
               }`}
               title={a.label}
             >
@@ -1531,7 +1354,6 @@ function DashAvatarPickerModal({
             </button>
           ))}
         </div>
-
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
         <div className="flex gap-2">
           <button
@@ -1543,10 +1365,7 @@ function DashAvatarPickerModal({
             {uploading ? "Uploading…" : "Upload Photo"}
           </button>
           {user?.avatarUrl && (
-            <button
-              onClick={() => onSelect("")}
-              className="px-3 py-2 text-xs rounded-lg border border-border hover:bg-secondary transition-colors text-muted-foreground"
-            >
+            <button onClick={() => onSelect("")} className="px-3 py-2 text-xs rounded-lg border border-border hover:bg-secondary transition-colors text-muted-foreground">
               Remove
             </button>
           )}
@@ -1560,20 +1379,24 @@ export default function Dashboard() {
   const { user, tierLevel, appMode, setAvatarUrl } = useAuth();
   const isFreeUser = tierLevel === 0;
   const isLearningMode = appMode === "lite";
-  const { prefs, toggle, isEnabled } = useDashboardWidgets();
   const navigate = useNavigate();
-  const [showCustomize, setShowCustomize] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showQuickNote, setShowQuickNote] = useState(false);
+  const scrollDir = useScrollDirection();
+
+  const firstName = user?.name?.split(" ")[0] || "Trader";
+
+  function handleAIClick() {
+    const btn = document.querySelector<HTMLButtonElement>("[data-ai-trigger]");
+    if (btn) btn.click();
+    else navigate("/dashboard");
+  }
 
   useEffect(() => {
     if (!localStorage.getItem("dashboard-visited")) {
       localStorage.setItem("dashboard-visited", "true");
     }
   }, []);
-
-  const firstName = user?.name?.split(" ")[0] || "Trader";
-  const _now = new Date();
-  const dayLabel = `${_now.toLocaleDateString("en-US", { weekday: "long" })} · ${_now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
   if (isLearningMode) {
     return (
@@ -1597,7 +1420,9 @@ export default function Dashboard() {
             </button>
             <div>
               <h1 className="text-xl font-bold text-foreground">Hi, {firstName}! 👋</h1>
-              <p className="text-xs text-amber-500 font-medium mt-0.5">Learning Mode · {dayLabel}</p>
+              <p className="text-xs text-amber-500 font-medium mt-0.5">
+                Learning Mode · {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+              </p>
             </div>
           </div>
         </div>
@@ -1610,16 +1435,10 @@ export default function Dashboard() {
           />
         )}
         <div className="space-y-4">
-          <CompactGreetingRow />
           <LearningProgressWidget />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <MasterMorningWidget />
-            <PreTradePlanSummaryWidget />
-          </div>
+          <TodayScheduleWidget />
           <LessonCarouselWidget />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <CommunityWidget />
-          </div>
+          <CommunityWidget />
         </div>
       </div>
     );
@@ -1627,12 +1446,12 @@ export default function Dashboard() {
 
   return (
     <>
-      <CustomizeDrawer
-        open={showCustomize}
-        onClose={() => setShowCustomize(false)}
-        prefs={prefs}
-        onToggle={toggle}
-      />
+      <DashboardBanner user={user} onAvatarClick={() => setShowAvatarPicker(true)} />
+
+      <LiveMarketPopover />
+
+      <AskAIFloater visible={scrollDir === "up"} onOpen={handleAIClick} />
+
       {showAvatarPicker && (
         <DashAvatarPickerModal
           user={user}
@@ -1640,33 +1459,14 @@ export default function Dashboard() {
           onSelect={async (val) => { await setAvatarUrl(val); setShowAvatarPicker(false); }}
         />
       )}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-2">
-          <SessionStatsBar />
-        </div>
-      </div>
-      <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
+
+      {showQuickNote && <QuickNoteModal onClose={() => setShowQuickNote(false)} />}
+      <QuickNoteFAB onOpen={() => setShowQuickNote(true)} />
+
+      <div className="max-w-6xl mx-auto p-4 md:p-6 pb-28">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowAvatarPicker(true)}
-              className="w-10 h-10 rounded-full bg-primary/20 border border-border flex items-center justify-center shrink-0 overflow-hidden hover:ring-2 hover:ring-primary/60 transition-all"
-              title="Change avatar"
-            >
-              {user?.avatarUrl ? (
-                user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
-                  <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-lg leading-none">{user.avatarUrl}</span>
-                )
-              ) : (
-                <span className="text-sm font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "T"}</span>
-              )}
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Hi, {firstName}.</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">{dayLabel}</p>
-            </div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1676,48 +1476,25 @@ export default function Dashboard() {
               <Plus className="h-3.5 w-3.5" />
               Log Trade
             </button>
-            <button
-              onClick={() => setShowCustomize(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl px-3 py-2 transition-colors"
-            >
-              <Settings className="h-3.5 w-3.5" />
-              Customize
-            </button>
           </div>
         </div>
 
         <div className="space-y-4">
-          <NextWatchWidget />
-
-          {isEnabled("liveprices") && <LivePriceStrip />}
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            {isEnabled("killzonetimer") && <KillZoneCountdownWidget />}
-            {isEnabled("riskgauge") && <DailyRiskGaugeWidget />}
-            {isEnabled("opentrade") && <OpenTradeCard />}
-          </div>
-
           <MorningBriefingWidget />
+
+          <TodayScheduleWidget />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <MasterMorningWidget />
-            <PreTradePlanSummaryWidget />
+            <EconomicCalendarWidget />
+            <TradingCalendarWidget />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {isEnabled("economiccalendar") && <EconomicCalendarWidget />}
-            {isEnabled("tradingcalendar") && <TradingCalendarWidget />}
+            <FvgSignalCard />
+            <ConfidenceScoreCard />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {isEnabled("fvgsignal") && <FvgSignalCard />}
-            {isEnabled("confidencescore") && <ConfidenceScoreCard />}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {isEnabled("quickjournal") && <QuickJournalWidget />}
-          </div>
-
-          {!isFreeUser && <AchievementBadges />}
+          <CommunityWidget />
         </div>
 
         {isFreeUser && (
