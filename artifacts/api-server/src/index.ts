@@ -37,14 +37,17 @@ async function initStripe() {
 }
 
 function killPortOccupant(port: number): boolean {
-  try {
-    const pid = execSync(`lsof -ti tcp:${port}`, { encoding: "utf8" }).trim();
-    if (pid) {
-      execSync(`kill -9 ${pid}`);
-      console.log(`Killed stale process (PID ${pid}) occupying port ${port}`);
+  const commands = [
+    `fuser -k -n tcp ${port}`,
+    `ss -tlnp "sport = :${port}" | awk 'NR>1{print $6}' | grep -oP 'pid=\\K[0-9]+' | xargs -r kill -9`,
+  ];
+  for (const cmd of commands) {
+    try {
+      execSync(cmd, { stdio: "pipe" });
+      console.log(`Freed port ${port} via: ${cmd.split(" ")[0]}`);
       return true;
+    } catch {
     }
-  } catch {
   }
   return false;
 }
@@ -62,8 +65,8 @@ function startServer(port: number, attempt: number = 1): void {
       if (attempt === 1) {
         const killed = killPortOccupant(port);
         if (killed) {
-          console.log(`Retrying server start on port ${port} in 500ms...`);
-          setTimeout(() => startServer(port, 2), 500);
+          console.log(`Retrying server start on port ${port} in 800ms...`);
+          setTimeout(() => startServer(port, 2), 800);
           return;
         }
       }

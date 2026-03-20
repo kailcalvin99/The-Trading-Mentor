@@ -501,16 +501,29 @@ export default function Layout() {
   return (
     <TooltipProvider delayDuration={300}>
     <div className="flex h-screen overflow-hidden">
-      {drawerOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={closeDrawer}
-        />
-      )}
+      {/* Dimming backdrop — blurs and darkens the page content behind the drawer */}
       <div
-        className={`fixed left-0 top-12 w-full bg-sidebar border-b border-sidebar-border z-50 flex flex-col overflow-y-auto transition-all duration-300 ${drawerOpen ? "max-h-[calc(100vh-3rem)] opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}
+        className={`fixed inset-0 z-40 transition-opacity duration-300 bg-black/60 backdrop-blur-[2px] ${drawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        onClick={closeDrawer}
+      />
+
+      {/* Left-slide drawer — slides in from behind the hamburger */}
+      <div
+        className={`fixed left-0 top-0 h-full w-72 bg-sidebar border-r border-sidebar-border z-50 flex flex-col shadow-2xl transition-transform duration-300 ease-out ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <nav className="flex flex-col gap-1 p-2 flex-1">
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-3 py-3 border-b border-sidebar-border shrink-0 h-12">
+          <span className="text-sm font-bold text-foreground tracking-wide">ICT Trading Mentor</span>
+          <button
+            onClick={closeDrawer}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            aria-label="Close navigation"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <nav className="flex flex-col gap-1 p-2 flex-1 overflow-y-auto">
           {visibleNavItems.map((item) => (
             <NavItem
               key={item.to}
