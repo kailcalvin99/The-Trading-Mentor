@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Animated,
   type DimensionValue,
 } from "react-native";
 import { Image } from "expo-image";
@@ -621,6 +622,20 @@ export default function AcademyScreen() {
   const [pendingLessonId, setPendingLessonId] = useState<string | null>(null);
   const { showCelebration, closeCelebration } = useGraduationCheck();
   const { openWithTopic } = useAIAssistant();
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      titleOpacity.setValue(0);
+      const anim = Animated.sequence([
+        Animated.timing(titleOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.delay(2000),
+        Animated.timing(titleOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
+      ]);
+      anim.start();
+      return () => anim.stop();
+    }, [])
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -640,8 +655,15 @@ export default function AcademyScreen() {
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <GraduationCelebration visible={showCelebration} onClose={closeCelebration} />
 
+      <View style={styles.topRow}>
+        <Image source={require("@/assets/images/icon.png")} style={styles.logoIcon} contentFit="contain" />
+        <Animated.Text style={[styles.animatedTitle, { opacity: titleOpacity }]}>ICT Academy</Animated.Text>
+        <TouchableOpacity style={styles.aiBtn} onPress={() => openWithTopic("")} activeOpacity={0.8}>
+          <Ionicons name="sparkles" size={16} color="#0A0A0F" />
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.header}>
-        <Text style={styles.title}>ICT Academy</Text>
         <View style={styles.tabBar}>
           {(["learn", "glossary", "quiz", "plan"] as Tab[]).map((t) => (
             <TouchableOpacity key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
@@ -664,8 +686,30 @@ export default function AcademyScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
-  header: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 0 },
-  title: { fontSize: 28, fontFamily: "Inter_700Bold", color: C.text, marginBottom: 14 },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+    gap: 10,
+  },
+  logoIcon: { width: 32, height: 32, borderRadius: 8 },
+  animatedTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: C.text,
+  },
+  aiBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: C.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  header: { paddingHorizontal: 16, paddingBottom: 0 },
   tabBar: { flexDirection: "row", backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 4 },
   tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center" },
   tabBtnActive: { backgroundColor: C.accent },
