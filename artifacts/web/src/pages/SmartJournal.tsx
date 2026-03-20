@@ -446,6 +446,10 @@ export default function SmartJournal() {
         setupScore: liveSetupScore,
       };
       const result = await createTradeMut({ data: payload });
+      qc.setQueryData(getListTradesQueryKey(), (old: unknown) => {
+        if (!Array.isArray(old)) return [result];
+        return [result, ...old];
+      });
       if (editingDraftId) {
         await deleteTradeMut({ id: editingDraftId });
       }
@@ -476,7 +480,7 @@ export default function SmartJournal() {
           }).catch(() => {});
         }
       }
-      qc.invalidateQueries({ queryKey: getListTradesQueryKey() });
+      await qc.invalidateQueries({ queryKey: getListTradesQueryKey() });
       setShowForm(false);
       setEditingDraftId(null);
       toast({ title: "Trade saved", description: `${form.pair} trade logged successfully.` });
@@ -502,7 +506,7 @@ export default function SmartJournal() {
   const handleDelete = useCallback(async (id: number) => {
     try {
       await deleteTradeMut({ id });
-      qc.invalidateQueries({ queryKey: getListTradesQueryKey() });
+      await qc.invalidateQueries({ queryKey: getListTradesQueryKey() });
       setDeleteConfirmId(null);
       toast({ title: "Trade deleted" });
     } catch (err: unknown) {

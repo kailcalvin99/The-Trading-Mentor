@@ -415,7 +415,7 @@ export default function Analytics() {
   const navigate = useNavigate();
   const { tierLevel, isAdmin } = useAuth();
   const isPremium = isAdmin || (tierLevel ?? 0) >= 2;
-  const { data: rawTrades, isLoading: tradesLoading } = useListTrades();
+  const { data: rawTrades, isLoading: tradesLoading } = useListTrades({ query: { refetchOnMount: "always" } });
   const { data: propAccount } = useGetPropAccount();
   const [expandedChart, setExpandedChart] = useState<ExpandedChart>(null);
 

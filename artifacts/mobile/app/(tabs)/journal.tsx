@@ -435,7 +435,11 @@ export default function JournalScreen() {
           }).catch(() => {});
         }
       }
-      qc.invalidateQueries({ queryKey: [`/api/trades`] });
+      qc.setQueryData([`/api/trades`], (old: unknown) => {
+        if (!Array.isArray(old)) return [result];
+        return [result, ...old];
+      });
+      await qc.invalidateQueries({ queryKey: [`/api/trades`] });
       setShowForm(false);
       setEditingDraftId(null);
       fireMobileAITrigger({ message: "Trade saved! Want a post-trade coaching review?" });
@@ -466,7 +470,7 @@ export default function JournalScreen() {
         style: "destructive",
         onPress: async () => {
           await deleteTradeMut({ id });
-          qc.invalidateQueries({ queryKey: [`/api/trades`] });
+          await qc.invalidateQueries({ queryKey: [`/api/trades`] });
         },
       },
     ]);
