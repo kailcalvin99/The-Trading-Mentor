@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { apiGet, apiPost, apiPatch, apiPut, saveToken, deleteToken } from "@/lib/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { COURSE_CHAPTERS } from "@/data/academy-data";
 
 const ACADEMY_PROGRESS_KEY = "ict-academy-progress";
 
@@ -79,10 +80,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await apiGet<AuthMeResponse>("auth/me");
       setUser(data.user ?? null);
       setSubscription(data.subscription ?? null);
-      if (data.user?.appMode === "lite" || data.user?.appMode === "full") {
-        setAppModeState(data.user.appMode);
-      }
       if (data.user) {
+        const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
+        let completedIds: string[] = [];
+        try {
+          const progressData = await apiGet<{ lessonIds: string[] }>("academy/progress");
+          completedIds = progressData.lessonIds || [];
+        } catch {
+          try {
+            const raw = await AsyncStorage.getItem(ACADEMY_PROGRESS_KEY);
+            completedIds = raw ? JSON.parse(raw).filter(Boolean) : [];
+          } catch {}
+        }
+        const uniqueCompleted = new Set<string>(completedIds).size;
+        const allDone = totalLessons > 0 && uniqueCompleted >= totalLessons;
+        setAppModeState(allDone ? "full" : "lite");
         prewarmAcademyProgress();
       }
     } catch {
@@ -93,11 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setAppMode = useCallback(async (mode: "full" | "lite") => {
+  const setAppMode = useCallback((mode: "full" | "lite") => {
     setAppModeState(mode);
-    try {
-      await apiPatch("user/settings", { section: "appMode", data: { mode } });
-    } catch {}
   }, []);
 
   const setAvatarUrl = useCallback(async (url: string | null) => {

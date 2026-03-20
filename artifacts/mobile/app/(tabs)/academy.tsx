@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiGet, apiPut } from "@/lib/api";
 import GraduationCelebration, { useGraduationCheck } from "@/components/GraduationCelebration";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   COURSE_CHAPTERS,
   GLOSSARY as GLOSSARY_DATA,
@@ -142,6 +143,7 @@ function LearnView({ onAskMentor, pendingLessonId }: { onAskMentor: (topic: stri
   const [expandedChapter, setExpandedChapter] = useState<string | null>("ch1");
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const { setAppMode } = useAuth();
 
   useEffect(() => {
     loadLocalProgress().then((local) => {
@@ -175,6 +177,7 @@ function LearnView({ onAskMentor, pendingLessonId }: { onAskMentor: (topic: stri
     if (allDone) {
       AsyncStorage.setItem(ACADEMY_UNLOCKED_KEY, "true");
     }
+    setAppMode(allDone ? "full" : "lite");
   }
 
   const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
