@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Shield, BookOpen, Calendar, Brain, CheckCircle2, AlertTriangle,
-  ArrowRight, ChevronDown, Star, Zap, Crown, Check, Mail, Menu, X,
+  ArrowRight, ChevronDown, Star, Zap, Crown, Check, Mail,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 
@@ -145,20 +145,6 @@ export default function Welcome() {
   const [tiersError, setTiersError] = useState(false);
   const [tiersLoading, setTiersLoading] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isMenuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isMenuOpen]);
-
   useEffect(() => {
     fetch(`${API_BASE}/subscriptions/tiers`)
       .then((r) => {
@@ -192,19 +178,9 @@ export default function Welcome() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* ── Sticky Header ── */}
-      <header ref={menuRef} className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
         <div className="px-6 py-3 flex items-center justify-between">
-          {/* Hamburger button */}
-          <button
-            onClick={() => setIsMenuOpen((v) => !v)}
-            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={isMenuOpen}
-            className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-muted transition-colors text-foreground"
-          >
-            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-
-          {/* Desktop nav links (hidden on mobile) */}
+          {/* Nav links */}
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
@@ -212,8 +188,8 @@ export default function Welcome() {
             <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
           </nav>
 
-          {/* Auth buttons — desktop only; mobile uses the hamburger menu */}
-          <div className="hidden sm:flex items-center gap-3">
+          {/* Auth buttons */}
+          <div className="flex items-center gap-3">
             <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Log In
             </Link>
@@ -224,46 +200,6 @@ export default function Welcome() {
               Sign Up Free
             </Link>
           </div>
-        </div>
-
-        {/* Slide-down mobile/hamburger menu */}
-        <div
-          className="overflow-hidden transition-all duration-300 ease-in-out"
-          style={{ maxHeight: isMenuOpen ? "320px" : "0px", opacity: isMenuOpen ? 1 : 0 }}
-        >
-          <nav className="flex flex-col border-t border-border px-6 py-4 gap-1">
-            {[
-              { label: "Features", href: "#features" },
-              { label: "How It Works", href: "#how-it-works" },
-              { label: "Pricing", href: "#pricing" },
-              { label: "FAQ", href: "#faq" },
-            ].map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMenuOpen(false)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2.5 border-b border-border/50 last:border-0"
-              >
-                {item.label}
-              </a>
-            ))}
-            <div className="flex flex-col gap-2 pt-3">
-              <Link
-                to="/login"
-                onClick={() => setIsMenuOpen(false)}
-                className="text-sm text-center text-muted-foreground hover:text-foreground transition-colors py-2.5 border border-border rounded-lg"
-              >
-                Log In
-              </Link>
-              <Link
-                to="/signup"
-                onClick={() => setIsMenuOpen(false)}
-                className="text-sm text-center bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-lg hover:opacity-90 transition-opacity"
-              >
-                Sign Up Free
-              </Link>
-            </div>
-          </nav>
         </div>
       </header>
 
