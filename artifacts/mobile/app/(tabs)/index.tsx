@@ -313,7 +313,7 @@ function PlannerScreen() {
   function handleAddLevel() {
     const trimmed = newLevelInput.trim();
     if (!trimmed) return;
-    const level: KeyLevel = { id: Date.now().toString(), price: trimmed, type: newLevelType };
+    const level: KeyLevel = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), price: trimmed, type: newLevelType };
     savePlan({ ...plan, keyLevels: [...plan.keyLevels, level] });
     setNewLevelInput("");
   }
@@ -323,7 +323,7 @@ function PlannerScreen() {
     if (existing !== -1) {
       savePlan({ ...plan, keyLevels: plan.keyLevels.filter((_, i) => i !== existing) });
     } else {
-      const level: KeyLevel = { id: Date.now().toString(), price: "", type: preset.type, label: preset.label };
+      const level: KeyLevel = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), price: "", type: preset.type, label: preset.label };
       savePlan({ ...plan, keyLevels: [...plan.keyLevels, level] });
     }
   }
@@ -724,8 +724,8 @@ function PlannerScreen() {
                 <View style={styles.priceLadder}>
                   {[...plan.keyLevels]
                     .sort((a, b) => parseFloat(b.price || "0") - parseFloat(a.price || "0"))
-                    .map((level) => (
-                      <View key={level.id} style={styles.ladderRow}>
+                    .map((level, idx) => (
+                      <View key={level.id || String(idx)} style={styles.ladderRow}>
                         <View style={[styles.ladderDot, { backgroundColor: level.type === "resistance" ? "#EF4444" : "#00C896" }]} />
                         <View style={[styles.ladderLine, { borderColor: level.type === "resistance" ? "#EF444444" : "#00C89644" }]} />
                         {level.label && (
