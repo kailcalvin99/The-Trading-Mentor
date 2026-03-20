@@ -12,6 +12,7 @@ interface PlannerState {
   routineItems: Record<string, boolean>;
   routineConfig: RoutineItem[];
   isRoutineComplete: boolean;
+  routineCompletedToday: boolean;
   toggleItem: (key: string) => void;
   resetRoutine: () => void;
 }
@@ -32,6 +33,7 @@ const FALLBACK_ITEMS: RoutineItem[] = [
 export function PlannerProvider({ children }: { children: ReactNode }) {
   const { config } = useAppConfig();
   const [routineItems, setRoutineItems] = useState<Record<string, boolean>>({});
+  const [todayKey, setTodayKey] = useState(getTodayKey);
 
   let routineConfig: RoutineItem[] = FALLBACK_ITEMS;
   try {
@@ -42,7 +44,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   const routineKeys = routineConfig.map((r) => r.key);
 
   useEffect(() => {
-    const key = getTodayKey();
+    const key = todayKey;
     const stored = localStorage.getItem(key);
     if (stored) {
       try {
@@ -56,7 +58,24 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const defaults: Record<string, boolean> = {};
     routineKeys.forEach((k) => { defaults[k] = false; });
     setRoutineItems(defaults);
-  }, [config.routine_items]);
+  }, [config.routine_items, todayKey]);
+
+  useEffect(() => {
+    const msUntilMidnight = () => {
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+      return midnight.getTime() - now.getTime();
+    };
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const scheduleReset = () => {
+      timeoutId = setTimeout(() => {
+        setTodayKey(getTodayKey());
+        scheduleReset();
+      }, msUntilMidnight());
+    };
+    scheduleReset();
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   const persist = useCallback((items: Record<string, boolean>) => {
     localStorage.setItem(getTodayKey(), JSON.stringify(items));
@@ -80,7 +99,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   const isRoutineComplete = routineKeys.length > 0 && routineKeys.every((k) => routineItems[k]);
 
   return (
-    <PlannerContext.Provider value={{ routineItems, routineConfig, isRoutineComplete, toggleItem, resetRoutine }}>
+    <PlannerContext.Provider value={{ routineItems, routineConfig, isRoutineComplete, routineCompletedToday: isRoutineComplete, toggleItem, resetRoutine }}>
       {children}
     </PlannerContext.Provider>
   );

@@ -131,7 +131,7 @@ export default function JournalScreen() {
   const router = useRouter();
   const { new: newParam } = useLocalSearchParams<{ new?: string }>();
   const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
-  const { isRoutineComplete } = usePlanner();
+  const { isRoutineComplete, routineCompletedToday } = usePlanner();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [isMonkMode, setIsMonkMode] = useState(false);
@@ -299,7 +299,7 @@ export default function JournalScreen() {
   }
 
   function openNewForm() {
-    if (!isRoutineComplete) {
+    if (!routineCompletedToday) {
       Alert.alert(
         "Morning Routine Required",
         "Complete your morning routine checklist on the Planner tab before logging a trade.",
@@ -437,6 +437,28 @@ export default function JournalScreen() {
     );
   }
 
+  if (!routineCompletedToday) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["bottom"]}>
+        <View style={[styles.headerRow, { paddingTop: 20 }]}>
+          <Text style={styles.title}>Smart Journal</Text>
+        </View>
+        <View style={styles.lockedCenter}>
+          <View style={styles.routineLockIconWrap}>
+            <Ionicons name="lock-closed" size={36} color="#F59E0B" />
+          </View>
+          <Text style={styles.lockedTitle}>Complete Your Routine First</Text>
+          <Text style={styles.lockedSubtitle}>
+            The Smart Journal is locked until you finish your morning routine. Build the discipline habit — routine first, then trade, then log.
+          </Text>
+          <TouchableOpacity style={styles.lockedBtn} onPress={() => router.navigate("/(tabs)/index" as never)}>
+            <Text style={styles.lockedBtnText}>Go to Morning Routine</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -455,14 +477,6 @@ export default function JournalScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, backgroundColor: C.accent + "18", borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: C.accent + "44" }}>
             <Ionicons name="eye-off" size={14} color={C.accent} />
             <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.accent, flex: 1 }}>MONK MODE — Outcomes hidden. Focus on process, not results.</Text>
-          </View>
-        )}
-
-        {/* Routine Lockout Banner */}
-        {!isRoutineComplete && (
-          <View style={styles.lockBanner}>
-            <Ionicons name="lock-closed" size={16} color="#F59E0B" />
-            <Text style={styles.lockText}>Complete your Morning Routine to unlock trade logging</Text>
           </View>
         )}
 
@@ -1004,6 +1018,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 16, paddingTop: 20 },
   lockedCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 8 },
+  routineLockIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(245,158,11,0.12)", borderWidth: 1, borderColor: "rgba(245,158,11,0.25)", alignItems: "center", justifyContent: "center" },
   lockedTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text, marginTop: 8 },
   lockedSubtitle: { fontSize: 13, color: C.textSecondary, textAlign: "center", lineHeight: 20, paddingHorizontal: 16 },
   lockedBtn: { marginTop: 12, backgroundColor: C.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },

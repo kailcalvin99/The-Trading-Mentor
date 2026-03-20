@@ -161,7 +161,7 @@ function StressSliderControl({ value, onChange }: { value: number; onChange: (v:
 
 export default function SmartJournal() {
   const { tierLevel, appMode } = useAuth();
-  const { isRoutineComplete } = usePlanner();
+  const { isRoutineComplete, routineCompletedToday } = usePlanner();
   const { getNumber } = useAppConfig();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -519,6 +519,28 @@ export default function SmartJournal() {
     return (
       <div className="relative min-h-[60vh] flex items-center justify-center">
         <LockedFeatureOverlay featureName="Smart Journal" tierRequired="Premium" />
+      </div>
+    );
+  }
+
+  if (!routineCompletedToday) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-8 text-center">
+        <div className="p-5 rounded-full bg-amber-500/10 border border-amber-500/20">
+          <Lock className="h-10 w-10 text-amber-400" />
+        </div>
+        <div className="max-w-sm">
+          <h2 className="text-2xl font-bold mb-3">Complete Your Routine First</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            The Smart Journal is locked until you finish your morning routine. Build the discipline habit — routine first, then trade, then log.
+          </p>
+        </div>
+        <Link
+          to="/planner"
+          className="px-6 py-3 rounded-xl font-bold text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Go to Morning Routine
+        </Link>
       </div>
     );
   }

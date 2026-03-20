@@ -384,7 +384,7 @@ declare global {
 
 export default function DailyPlanner() {
   const navigate = useNavigate();
-  const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
+  const { routineItems, routineConfig, isRoutineComplete, routineCompletedToday, toggleItem } = usePlanner();
   const { isFeatureEnabled } = useAppConfig();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dayData, setDayData] = useState<DayData>(() => loadDayDataLocal(new Date()));
@@ -826,7 +826,7 @@ export default function DailyPlanner() {
         </div>
       )}
 
-      <Card className="mb-4">
+      <Card className="mb-4" id="morning-routine">
         <CardContent className="p-4 space-y-0">
           {isToday && (
             <>
@@ -925,6 +925,27 @@ export default function DailyPlanner() {
         </CardContent>
       </Card>
 
+      {isToday && !routineCompletedToday && (
+        <div className="mb-4 flex flex-col items-center gap-4 py-6 px-6 rounded-xl border border-amber-500/20 bg-amber-500/5 text-center">
+          <div className="p-3 rounded-full bg-amber-500/10 border border-amber-500/20">
+            <Lock className="h-7 w-7 text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold mb-1">Complete Your Routine First</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+              The trade planning tools are locked until you finish your morning routine above.
+            </p>
+          </div>
+          <a
+            href="#morning-routine"
+            className="px-5 py-2 rounded-xl text-sm font-bold bg-amber-500 text-black hover:bg-amber-400 transition-colors"
+          >
+            Go to Morning Routine ↑
+          </a>
+        </div>
+      )}
+
+      <div className={isToday && !routineCompletedToday ? "pointer-events-none opacity-40 select-none" : ""}>
       <Card className="mb-4">
         <CardContent className="p-4">
           <button onClick={() => setTradePlanOpen(!tradePlanOpen)} className="flex items-center justify-between w-full">
@@ -1343,6 +1364,7 @@ export default function DailyPlanner() {
           </button>
         </div>
       )}
+      </div>
     </div>
 
     {/* Sticky footer — always-visible action bar */}

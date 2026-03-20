@@ -14,6 +14,7 @@ interface CustomRoutineItem {
 interface PlannerState {
   routineItems: Record<RoutineKey, boolean>;
   isRoutineComplete: boolean;
+  routineCompletedToday: boolean;
   hasRedNews: boolean;
   toggleItem: (key: RoutineKey) => void;
   toggleRedNews: () => void;
@@ -203,6 +204,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       value={{
         routineItems,
         isRoutineComplete,
+        routineCompletedToday: isRoutineComplete,
         hasRedNews,
         toggleItem,
         toggleRedNews,

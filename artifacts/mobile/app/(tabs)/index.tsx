@@ -149,7 +149,7 @@ export default function PlannerScreenGated() {
 
 function PlannerScreen() {
   const {
-    routineItems, isRoutineComplete, hasRedNews, toggleItem, toggleRedNews,
+    routineItems, isRoutineComplete, routineCompletedToday, hasRedNews, toggleItem, toggleRedNews,
   } = usePlanner();
 
   const [plan, setPlan] = useState<TradePlan>({ ...DEFAULT_PLAN });
@@ -160,6 +160,7 @@ function PlannerScreen() {
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const { shouldShow: showTour, completeTour } = useOnboardingTour();
   const { data: propAccount } = useGetPropAccount();
   const { data: apiTrades } = useListTrades();
@@ -416,7 +417,7 @@ function PlannerScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <OnboardingTour visible={showTour} onComplete={completeTour} />
-      <KeyboardAwareScrollViewCompat style={styles.scroll} contentContainerStyle={styles.content}>
+      <KeyboardAwareScrollViewCompat ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.content}>
 
         {/* Header */}
         <View style={styles.header}>
@@ -631,6 +632,26 @@ function PlannerScreen() {
         </View>
 
         {/* ─── TRADE PLAN SECTION ─── */}
+        <View style={{ position: "relative" }}>
+        {!routineCompletedToday && (
+          <View style={styles.routineLockOverlay}>
+            <View style={styles.routineLockCard}>
+              <View style={styles.routineLockIconWrap}>
+                <Ionicons name="lock-closed" size={32} color="#F59E0B" />
+              </View>
+              <Text style={styles.routineLockTitle}>Routine Required</Text>
+              <Text style={styles.routineLockDesc}>
+                Complete your morning routine above to unlock the Trade Plan.
+              </Text>
+              <TouchableOpacity
+                style={styles.routineLockBtn}
+                onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
+              >
+                <Text style={styles.routineLockBtnText}>Go to Morning Routine ↑</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         <Text style={styles.sectionTitle}>Trade Plan</Text>
 
         {/* Market Bias */}
@@ -975,6 +996,7 @@ function PlannerScreen() {
         </View>
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
+        </View>
       </KeyboardAwareScrollViewCompat>
 
       {/* Send to Journal Modal */}
@@ -1170,4 +1192,11 @@ const styles = StyleSheet.create({
   checklistAllDoneText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#00C896" },
   checklistResetBtn: { marginTop: 16, alignItems: "center", paddingVertical: 10 },
   checklistResetText: { fontSize: 13, color: C.textTertiary, fontFamily: "Inter_500Medium" },
+  routineLockOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, backgroundColor: "rgba(10,10,15,0.88)", borderRadius: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 20, paddingVertical: 40 },
+  routineLockCard: { alignItems: "center", gap: 14, maxWidth: 280 },
+  routineLockIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(245,158,11,0.12)", borderWidth: 1, borderColor: "rgba(245,158,11,0.25)", alignItems: "center", justifyContent: "center" },
+  routineLockTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text, textAlign: "center" },
+  routineLockDesc: { fontSize: 13, color: C.textSecondary, textAlign: "center", lineHeight: 20 },
+  routineLockBtn: { marginTop: 4, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, backgroundColor: C.accent },
+  routineLockBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 });
