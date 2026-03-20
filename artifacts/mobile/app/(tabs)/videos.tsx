@@ -17,6 +17,7 @@ import { Image } from "expo-image";
 import WebView from "react-native-webview";
 import Colors from "@/constants/colors";
 import FullModeGate from "@/components/FullModeGate";
+import { VideosDemoSnapshot } from "@/components/DemoSnapshots";
 import {
   VIDEO_CHAPTERS,
   ALL_VIDEOS,
@@ -311,7 +312,7 @@ const DIFFICULTIES: VideoDifficulty[] = ["Beginner", "Intermediate", "Advanced"]
 
 export default function VideosScreenGated() {
   return (
-    <FullModeGate>
+    <FullModeGate demoContent={<VideosDemoSnapshot />}>
       <VideosScreen />
     </FullModeGate>
   );

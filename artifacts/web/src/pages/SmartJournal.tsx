@@ -2,7 +2,8 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { LockedFeatureOverlay } from "@/components/CasinoElements";
+import FrostedGateOverlay from "@/components/FrostedGateOverlay";
+import { JournalDemoSnapshot } from "@/components/DemoSnapshots";
 import {
   useListTrades,
   useCreateTrade,
@@ -566,9 +567,9 @@ export default function SmartJournal() {
 
   if (tierLevel < 2) {
     return (
-      <div className="relative min-h-[60vh] flex items-center justify-center">
-        <LockedFeatureOverlay featureName="Smart Journal" tierRequired="Premium" />
-      </div>
+      <FrostedGateOverlay mode="premium">
+        <JournalDemoSnapshot />
+      </FrostedGateOverlay>
     );
   }
 

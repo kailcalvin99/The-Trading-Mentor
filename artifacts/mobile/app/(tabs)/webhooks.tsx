@@ -14,6 +14,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
+import FrostedGate from "@/components/FrostedGate";
+import FullModeGate from "@/components/FullModeGate";
+import { WebhooksDemoSnapshot } from "@/components/DemoSnapshots";
 
 const C = Colors.dark;
 
@@ -104,7 +107,15 @@ const FIELD_NOTES = [
   { field: "session", required: false, desc: "Override session label manually — skips auto-detection" },
 ];
 
-export default function WebhooksScreen() {
+export default function WebhooksScreenGated() {
+  return (
+    <FullModeGate demoContent={<WebhooksDemoSnapshot />}>
+      <WebhooksScreen />
+    </FullModeGate>
+  );
+}
+
+function WebhooksScreen() {
   const { user, subscription } = useAuth();
   const router = useRouter();
   const isAdmin = user?.role === "admin";
@@ -136,19 +147,9 @@ export default function WebhooksScreen() {
   if (tierLevel < 2) {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom"]}>
-        <View style={[styles.headerRow, { paddingTop: 20 }]}>
-          <Text style={styles.title}>TradingView Webhooks</Text>
-        </View>
-        <View style={styles.lockedCenter}>
-          <Ionicons name="lock-closed-outline" size={48} color={C.accent} />
-          <Text style={styles.lockedTitle}>Premium Feature</Text>
-          <Text style={styles.lockedSubtitle}>
-            Upgrade to Premium to use TradingView webhooks and auto-create draft trades.
-          </Text>
-          <TouchableOpacity style={styles.lockedBtn} onPress={() => router.navigate("/subscription" as never)}>
-            <Text style={styles.lockedBtnText}>View Plans</Text>
-          </TouchableOpacity>
-        </View>
+        <FrostedGate mode="premium">
+          <WebhooksDemoSnapshot />
+        </FrostedGate>
       </SafeAreaView>
     );
   }

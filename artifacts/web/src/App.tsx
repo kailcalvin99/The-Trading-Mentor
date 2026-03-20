@@ -10,6 +10,15 @@ import { AppConfigProvider } from "@/contexts/AppConfigContext";
 import { TourGuideProvider } from "@/contexts/TourGuideContext";
 import Layout from "@/components/Layout";
 import OnboardingQuiz, { hasCompletedQuiz, hasExistingAcademyProgress } from "@/components/OnboardingQuiz";
+import FrostedGateOverlay from "@/components/FrostedGateOverlay";
+import {
+  DailyPlannerDemoSnapshot,
+  PropTrackerDemoSnapshot,
+  AnalyticsDemoSnapshot,
+  VideoLibraryDemoSnapshot,
+  LeaderboardDemoSnapshot,
+  WebhooksDemoSnapshot,
+} from "@/components/DemoSnapshots";
 import Welcome from "@/pages/Welcome";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -115,37 +124,31 @@ function OpenRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function FullModeGate({ children }: { children: React.ReactNode }) {
+const ROUTE_DEMO_SNAPSHOTS: Record<string, React.ReactNode> = {
+  planner: <DailyPlannerDemoSnapshot />,
+  "prop-tracker": <PropTrackerDemoSnapshot />,
+  analytics: <AnalyticsDemoSnapshot />,
+  videos: <VideoLibraryDemoSnapshot />,
+  leaderboard: <LeaderboardDemoSnapshot />,
+  webhooks: <WebhooksDemoSnapshot />,
+};
+
+function FullModeGate({ children, routeKey }: { children: React.ReactNode; routeKey?: string }) {
   const { appMode, setAppMode } = useAuth();
   const navigate = useNavigate();
 
   if (appMode === "lite") {
+    const demoContent = routeKey ? ROUTE_DEMO_SNAPSHOTS[routeKey] : null;
     return (
-      <div className="min-h-[60vh] flex items-center justify-center p-8">
-        <div className="max-w-md text-center space-y-6">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </div>
-          <h2 className="text-2xl font-bold text-foreground">Full Mode Feature</h2>
-          <p className="text-muted-foreground leading-relaxed">
-            This section is available in Full Mode. Learning Mode keeps things simple with Dashboard, Academy, and Journal.
-          </p>
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => setAppMode("full")}
-              className="w-full py-3 px-6 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
-            >
-              Switch to Full Mode
-            </button>
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="w-full py-3 px-6 rounded-xl border border-border text-muted-foreground font-medium hover:text-foreground transition-colors"
-            >
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
+      <FrostedGateOverlay
+        mode="academy"
+        onAction={() => {
+          setAppMode("full");
+          navigate("/academy");
+        }}
+      >
+        {demoContent ?? <DailyPlannerDemoSnapshot />}
+      </FrostedGateOverlay>
     );
   }
 
@@ -193,15 +196,15 @@ function App() {
                 <Route element={<ProtectedRoute><TourGuideProvider><Layout /></TourGuideProvider></ProtectedRoute>}>
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="academy" element={<IctAcademy />} />
-                  <Route path="planner" element={<FullModeGate><DailyPlanner /></FullModeGate>} />
+                  <Route path="planner" element={<FullModeGate routeKey="planner"><DailyPlanner /></FullModeGate>} />
                   <Route path="risk-shield" element={<Navigate to="/planner" replace />} />
-                  <Route path="prop-tracker" element={<FullModeGate><PropTracker /></FullModeGate>} />
+                  <Route path="prop-tracker" element={<FullModeGate routeKey="prop-tracker"><PropTracker /></FullModeGate>} />
                   <Route path="journal" element={<SmartJournal />} />
-                  <Route path="analytics" element={<FullModeGate><Analytics /></FullModeGate>} />
-                  <Route path="videos" element={<FullModeGate><VideoLibrary /></FullModeGate>} />
+                  <Route path="analytics" element={<FullModeGate routeKey="analytics"><Analytics /></FullModeGate>} />
+                  <Route path="videos" element={<FullModeGate routeKey="videos"><VideoLibrary /></FullModeGate>} />
                   <Route path="community" element={<Community />} />
-                  <Route path="leaderboard" element={<FullModeGate><Leaderboard /></FullModeGate>} />
-                  <Route path="webhooks" element={<FullModeGate><TradingViewWebhooks /></FullModeGate>} />
+                  <Route path="leaderboard" element={<FullModeGate routeKey="leaderboard"><Leaderboard /></FullModeGate>} />
+                  <Route path="webhooks" element={<FullModeGate routeKey="webhooks"><TradingViewWebhooks /></FullModeGate>} />
                   <Route path="admin" element={<Admin />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />

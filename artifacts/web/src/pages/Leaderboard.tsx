@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { LockedFeatureOverlay } from "@/components/CasinoElements";
+import FrostedGateOverlay from "@/components/FrostedGateOverlay";
+import { LeaderboardDemoSnapshot } from "@/components/DemoSnapshots";
 import {
   Trophy,
   Crown,
@@ -78,9 +79,9 @@ export default function Leaderboard() {
 
   if (tierLevel < 2) {
     return (
-      <div className="relative min-h-[60vh] flex items-center justify-center">
-        <LockedFeatureOverlay featureName="Leaderboard" tierRequired="Premium" />
-      </div>
+      <FrostedGateOverlay mode="premium">
+        <LeaderboardDemoSnapshot />
+      </FrostedGateOverlay>
     );
   }
 

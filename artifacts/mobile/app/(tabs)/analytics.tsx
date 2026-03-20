@@ -19,6 +19,8 @@ import type { Trade } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import FullModeGate from "@/components/FullModeGate";
+import FrostedGate from "@/components/FrostedGate";
+import { AnalyticsDemoSnapshot } from "@/components/DemoSnapshots";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 import { apiGet } from "@/lib/api";
 
@@ -141,7 +143,7 @@ function WinLossBarChart({ wins, losses, breakeven, width, height }: { wins: num
 
 export default function AnalyticsScreenGated() {
   return (
-    <FullModeGate>
+    <FullModeGate demoContent={<AnalyticsDemoSnapshot />}>
       <AnalyticsScreen />
     </FullModeGate>
   );
@@ -259,19 +261,9 @@ function AnalyticsScreen() {
   if (tierLevel < 2) {
     return (
       <SafeAreaView style={s.safe} edges={["bottom"]}>
-        <View style={s.header}>
-          <Text style={s.title}>Analytics</Text>
-        </View>
-        <View style={s.center}>
-          <Ionicons name="lock-closed-outline" size={48} color={C.accent} />
-          <Text style={s.emptyText}>Premium Feature</Text>
-          <Text style={s.emptySubtext}>
-            Upgrade to Premium to access analytics, win-rate tracking, and AI-powered performance insights.
-          </Text>
-          <TouchableOpacity style={s.upgradeBtn} onPress={() => router.navigate("/subscription" as never)}>
-            <Text style={s.upgradeBtnText}>View Plans</Text>
-          </TouchableOpacity>
-        </View>
+        <FrostedGate mode="premium">
+          <AnalyticsDemoSnapshot />
+        </FrostedGate>
       </SafeAreaView>
     );
   }

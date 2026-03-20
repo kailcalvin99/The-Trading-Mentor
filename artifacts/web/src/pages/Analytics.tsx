@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LockedFeatureOverlay } from "@/components/CasinoElements";
+import FrostedGateOverlay from "@/components/FrostedGateOverlay";
+import { AnalyticsDemoSnapshot } from "@/components/DemoSnapshots";
 import { ShareButton } from "@/components/ShareButton";
 import {
   Card,
@@ -735,9 +736,9 @@ export default function Analytics() {
   if (tierLevel < 2) {
     return (
       <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-        <div className="relative min-h-[40vh] flex items-center justify-center">
-          <LockedFeatureOverlay featureName="Analytics Dashboard" tierRequired="Premium" />
-        </div>
+        <FrostedGateOverlay mode="premium">
+          <AnalyticsDemoSnapshot />
+        </FrostedGateOverlay>
         <IctBreakdownSection />
       </div>
     );

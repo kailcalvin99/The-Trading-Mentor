@@ -22,6 +22,7 @@ import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 import Colors from "@/constants/colors";
 import OnboardingTour, { useOnboardingTour } from "@/components/OnboardingTour";
 import FullModeGate from "@/components/FullModeGate";
+import { PropTrackerDemoSnapshot } from "@/components/DemoSnapshots";
 import ProbabilityMeter from "@/components/ProbabilityMeter";
 import { useGetPropAccount, useListTrades } from "@workspace/api-client-react";
 
@@ -143,7 +144,7 @@ function getESTNow(): Date {
 
 export default function PlannerScreenGated() {
   return (
-    <FullModeGate>
+    <FullModeGate demoContent={<PropTrackerDemoSnapshot />}>
       <PlannerScreen />
     </FullModeGate>
   );

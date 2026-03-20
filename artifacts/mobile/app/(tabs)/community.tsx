@@ -20,6 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiGet, apiPost } from "@/lib/api";
 import Colors from "@/constants/colors";
 import FullModeGate from "@/components/FullModeGate";
+import { CommunityDemoSnapshot } from "@/components/DemoSnapshots";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 
 const C = Colors.dark;
@@ -282,7 +283,7 @@ function HallOfFame() {
 
 export default function CommunityScreenGated() {
   return (
-    <FullModeGate>
+    <FullModeGate demoContent={<CommunityDemoSnapshot />}>
       <CommunityScreen />
     </FullModeGate>
   );

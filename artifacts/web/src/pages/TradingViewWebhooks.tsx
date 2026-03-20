@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LockedFeatureOverlay } from "@/components/CasinoElements";
+import FrostedGateOverlay from "@/components/FrostedGateOverlay";
+import { WebhooksDemoSnapshot } from "@/components/DemoSnapshots";
 import {
   Copy,
   Check,
@@ -127,9 +128,9 @@ export default function TradingViewWebhooks() {
 
   if (tierLevel < 2) {
     return (
-      <div className="relative min-h-[60vh] flex items-center justify-center">
-        <LockedFeatureOverlay featureName="TradingView Webhooks" tierRequired="Premium" />
-      </div>
+      <FrostedGateOverlay mode="premium">
+        <WebhooksDemoSnapshot />
+      </FrostedGateOverlay>
     );
   }
 
