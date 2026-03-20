@@ -34,7 +34,8 @@ type TourAction =
   | { type: "COMPLETE_TOUR" }
   | { type: "TOGGLE_CHECKLIST" }
   | { type: "NAVIGATE_DONE" }
-  | { type: "RESET_TOUR" };
+  | { type: "RESET_TOUR" }
+  | { type: "LOAD_STATE"; payload: TourState };
 
 function tourReducer(state: TourState, action: TourAction): TourState {
   switch (action.type) {
@@ -60,6 +61,9 @@ function tourReducer(state: TourState, action: TourAction): TourState {
         currentStep: 0,
         completedSteps: [],
       };
+
+    case "LOAD_STATE":
+      return { ...action.payload };
 
     case "PLAY_VIDEO":
       return {
@@ -168,16 +172,26 @@ function loadPersistedState(stateKey: string): TourState {
 }
 
 export function useTourGuide(userId?: string | number) {
-  const stateKey = userId !== undefined ? makeStorageKey(userId, "state") : TOUR_STORAGE_KEY;
+  const stateKey = userId !== undefined ? makeStorageKey(userId, "state") : null;
   const autoShownKey = userId !== undefined ? makeStorageKey(userId, "auto-shown") : null;
 
-  const [state, dispatch] = useReducer(tourReducer, undefined, () => loadPersistedState(stateKey));
+  const [state, dispatch] = useReducer(tourReducer, DEFAULT_TOUR_STATE);
+
+  const [activeKey, setActiveKey] = useState<string | null>(null);
 
   useEffect(() => {
+    if (stateKey && stateKey !== activeKey) {
+      dispatch({ type: "LOAD_STATE", payload: loadPersistedState(stateKey) });
+      setActiveKey(stateKey);
+    }
+  }, [stateKey, activeKey]);
+
+  useEffect(() => {
+    if (!activeKey) return;
     try {
-      localStorage.setItem(stateKey, JSON.stringify(state));
+      localStorage.setItem(activeKey, JSON.stringify(state));
     } catch {}
-  }, [state, stateKey]);
+  }, [state, activeKey]);
 
   useEffect(() => {
     if (autoShownKey === null) return undefined;

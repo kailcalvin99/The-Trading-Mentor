@@ -106,10 +106,10 @@ export function useOnboardingTour() {
       try {
         const done = await AsyncStorage.getItem(TOUR_DONE_KEY);
         if (!done) {
-          timer = setTimeout(async () => {
-            try {
-              await AsyncStorage.setItem(TOUR_DONE_KEY, "1");
-            } catch {}
+          try {
+            await AsyncStorage.setItem(TOUR_DONE_KEY, "1");
+          } catch {}
+          timer = setTimeout(() => {
             setShouldShow(true);
           }, 1200);
         }
