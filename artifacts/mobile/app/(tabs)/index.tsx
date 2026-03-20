@@ -1053,6 +1053,7 @@ function PlannerScreen() {
                   isDraft: true,
                   voiceNoteUri: plan.voiceNoteUri || null,
                 }));
+                savePlan({ ...DEFAULT_PLAN });
                 router.push("/(tabs)/journal");
               }}>
                 <Text style={styles.modalConfirmLabel}>Log to Journal</Text>
