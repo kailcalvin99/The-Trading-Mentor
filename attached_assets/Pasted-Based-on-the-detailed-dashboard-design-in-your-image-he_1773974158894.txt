@@ -1,0 +1,53 @@
+Based on the detailed dashboard design in your image, here is a structured prompt you can paste directly into Replit to build this exact interface.
+Prompt for Replit Agent (Web Dashboard)
+Copy and paste everything below into the Replit prompt box.
+Title: Comprehensive Trading Mentor Dashboard UI
+Description:
+Build a high-fidelity web-based dashboard interface for a trading mentorship platform, focusing on the layout and features visible in the user-provided design. The goal is to create a clean, modern, data-rich environment for mentors to track performance and student progress.
+1. Overall Style and Palette
+ * Colors: Use a modern, professional palette: Deep blues and charcoal grays for the background and text, with bright teal/aqua accents for interactive elements and data highlights. Keep the design clean and spacious.
+ * Aesthetics: Use rounded corners, distinct card-based modules, and sophisticated typography.
+2. Layout Structure
+Implement a fixed side navigation bar on the left and a large, multi-column dynamic content area on the right.
+Left Sidebar Navigation (Fixed)
+ * Logo/Header: Text "TRADING MENTOR HUB" with a subtle arrow/chart icon.
+ * Menu Items (with Icons):
+   * Dashboard Overview (Primary call-to-action color, perhaps teal)
+   * Live Sessions
+   * My Students
+   * Market Analysis
+   * Courses
+   * Trade Journal
+   * Settings
+ * Footer: A secondary 'Settings' link.
+Right Content Area (Dynamic Grid)
+ * Top Bar:
+   * Search Bar (with icon)
+   * Notification Icon (Bell)
+   * User Profile Dropdown (e.g., 'Jane Currey')
+ * Below Top Bar:
+   * Date/Range Picker (e.g., 'My toyear')
+   * Action Button: '+ Dashboard' (or equivalent)
+3. Key Modules (Dynamic Cards)
+Implement the following distinct card modules within the content area. All data should be clearly labeled and well-rendered. Use simple line and candlestick charts.
+ * "Mentor's Performance" (Two Column Chart):
+   * Title: "Mentor's Performance"
+   * Subtitle: Metric indicators (Value: $103,597, High: +3.92%, Low: +1.76%).
+   * Chart 1 (Jan-Mar): Line chart showing volatile growth.
+   * Chart 2 (Apr-Jun): Line chart showing steady upward trend.
+ * "Current Trade Ideas" (Candlestick Chart):
+   * Title: "Current Trade Ideas" with a 'New' dropdown.
+   * Render a vertical candlestick chart for a 1-hour time frame (May-Nov), with standard price and date axes.
+   * Annotations: Vertical dashed line ("Previous London Opens"); Solid green horizontal support line ("Entry Zone: Retest of Previous H4 Range High"); annotations for context (e.g., 'Daily HTF Context', 'Current Market Drivers').
+ * "Upcoming Webinars" (List):
+   * Title: "Upcoming Webinars" with 'See all' link.
+   * Render a scheduled list (3 entries): Date/Month (Dec 14), Time (09:30 AM), Title ('Mentor's Planniry'), location ('Search Tonana').
+ * "Top Students" (List):
+   * Title: "Top Students"
+   * Render a list of 5 students with their profile photos, names (e.g., 'Jasn Student 1'), and a labeled horizontal "Progress" bar chart (e.g., 70%, 65%, etc.).
+ * "Community Feed" (Social Stream):
+   * Title: "Community Feed"
+   * Render a feed of short posts (2 entries): Profile photo, Name (e.g., 'Johson Fentors'), Time (3 months ago), Text Content, 'Like/Reply' icons with counts.
+4. Interactive Elements
+ * Buttons: The 'Log Trade' button at the bottom right of the main content area should be prominent (Teal).
+ * Chat Icon: A fixed chat bubble icon in the far bottom right.
