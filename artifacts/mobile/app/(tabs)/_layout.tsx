@@ -15,7 +15,7 @@ import { ScrollDirectionProvider } from "@/contexts/ScrollDirectionContext";
 const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 
 const TOP_TAB_BAR_HEIGHT = 42;
-const KILL_ZONE_STRIP_HEIGHT = 52;
+const KILL_ZONE_STRIP_HEIGHT = 40;
 
 const TAP_MOVE_THRESHOLD = 10;
 

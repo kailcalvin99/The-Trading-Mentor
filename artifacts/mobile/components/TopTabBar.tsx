@@ -284,6 +284,12 @@ export default function TopTabBar({
           <Ionicons name="menu" size={24} color={C.text} />
         </TouchableOpacity>
 
+        <Image
+          source={require("../assets/images/icon.png")}
+          style={styles.appIcon}
+          resizeMode="contain"
+        />
+
         <TouchableOpacity
           style={[styles.dashAvatar, { backgroundColor: C.accent + "20", borderColor: C.accent + "40" }]}
           onPress={emitOpenAvatarPicker}
@@ -352,6 +358,12 @@ export default function TopTabBar({
         >
           <Ionicons name="menu" size={24} color={C.text} />
         </TouchableOpacity>
+
+        <Image
+          source={require("../assets/images/icon.png")}
+          style={styles.appIcon}
+          resizeMode="contain"
+        />
 
         <View style={styles.rightRow}>
           <TouchableOpacity
@@ -655,6 +667,11 @@ const styles = StyleSheet.create({
   dashBadgeText: {
     fontSize: 11,
     fontFamily: "Inter_700Bold",
+  },
+  appIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
   },
 
   dropdownContainer: {

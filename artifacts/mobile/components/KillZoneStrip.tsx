@@ -35,8 +35,8 @@ function formatCountdown(ms: number): string {
   if (ms <= 0) return "LIVE NOW";
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+  return `${m}m`;
 }
 
 function formatESTTime(date: Date): string {
@@ -97,20 +97,24 @@ export default function KillZoneStrip() {
 
   return (
     <View style={styles.wrapper}>
-      {/* Fixed EST Clock — always visible */}
-      <View style={[styles.kzCard, styles.estClockCard]}>
-        <View style={styles.kzCardRow1}>
-          <Ionicons name="time-outline" size={10} color={C.accent} />
-          <Text style={styles.kzStatLabel}>EST</Text>
+      {/* Fixed EST Clock — always visible, clips scrolling content */}
+      <View style={styles.clockContainer}>
+        <View style={[styles.kzCard, styles.estClockCard]}>
+          <View style={styles.kzCardRow1}>
+            <Ionicons name="time-outline" size={9} color={C.accent} />
+            <Text style={styles.kzStatLabel}>EST</Text>
+          </View>
+          <Text style={styles.estTimeText} numberOfLines={1}>
+            {formatESTTime(estNowForClock)}
+          </Text>
         </View>
-        <Text style={styles.estTimeText} numberOfLines={1}>
-          {formatESTTime(estNowForClock)}
-        </Text>
       </View>
 
       {/* Vertical divider */}
       <View style={styles.divider} />
 
+      {/* Scrollable area — clipped so content cannot slide over the clock card */}
+      <View style={styles.scrollClip}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -200,54 +204,65 @@ export default function KillZoneStrip() {
           </Text>
         </View>
       </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
     borderBottomWidth: 1,
     borderBottomColor: C.cardBorder,
     flexDirection: "row",
     alignItems: "center",
+    height: 40,
+  },
+  clockContainer: {
+    flexShrink: 0,
+    zIndex: 2,
+  },
+  scrollClip: {
+    flex: 1,
+    overflow: "hidden",
   },
   divider: {
     width: 1,
-    height: 32,
+    height: 26,
     backgroundColor: C.cardBorder,
-    marginHorizontal: 6,
+    marginHorizontal: 5,
+    flexShrink: 0,
   },
-  strip: { flex: 1, height: 44 },
-  stripContent: { gap: 6, paddingRight: 6, alignItems: "center" },
+  strip: { flex: 1, height: 36 },
+  stripContent: { gap: 5, paddingRight: 6, alignItems: "center" },
   kzCard: {
     backgroundColor: C.backgroundSecondary,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: C.cardBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minWidth: 105,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    minWidth: 90,
     justifyContent: "center",
     gap: 1,
   },
   estClockCard: {
     borderColor: C.accent + "40",
     backgroundColor: C.accent + "08",
-    minWidth: 118,
+    minWidth: 108,
     flexShrink: 0,
   },
-  kzCardRow1: { flexDirection: "row", alignItems: "center", gap: 4 },
-  kzSub: { fontSize: 8, color: C.textSecondary, fontFamily: "Inter_400Regular", marginLeft: 10 },
-  kzDot: { width: 6, height: 6, borderRadius: 3 },
-  kzName: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.text },
-  kzBadge: { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1, marginLeft: "auto" },
-  kzBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold" },
-  kzEnded: { fontSize: 9, color: C.textSecondary, marginLeft: "auto" },
-  kzCountdown: { fontSize: 9, fontFamily: "Inter_700Bold", color: C.text, marginLeft: "auto" },
-  kzStatCard: { minWidth: 105, gap: 2 },
-  kzStatLabel: { fontSize: 8, color: C.textSecondary, fontFamily: "Inter_500Medium", marginLeft: 3 },
-  kzStatValue: { fontSize: 13, fontFamily: "Inter_700Bold", marginLeft: 2 },
-  estTimeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.accent, marginLeft: 2 },
+  kzCardRow1: { flexDirection: "row", alignItems: "center", gap: 3 },
+  kzSub: { fontSize: 7, color: C.textSecondary, fontFamily: "Inter_400Regular", marginLeft: 9 },
+  kzDot: { width: 5, height: 5, borderRadius: 3 },
+  kzName: { fontSize: 10, fontFamily: "Inter_700Bold", color: C.text, flexShrink: 1 },
+  kzBadge: { borderRadius: 6, paddingHorizontal: 4, paddingVertical: 1, marginLeft: "auto" },
+  kzBadgeText: { fontSize: 7, fontFamily: "Inter_700Bold" },
+  kzEnded: { fontSize: 8, color: C.textSecondary, marginLeft: "auto" },
+  kzCountdown: { fontSize: 8, fontFamily: "Inter_700Bold", color: C.text, marginLeft: "auto", flexShrink: 1 },
+  kzStatCard: { minWidth: 72, gap: 1 },
+  kzStatLabel: { fontSize: 7, color: C.textSecondary, fontFamily: "Inter_500Medium", marginLeft: 2 },
+  kzStatValue: { fontSize: 11, fontFamily: "Inter_700Bold", marginLeft: 2 },
+  estTimeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: C.accent, marginLeft: 2 },
 });
