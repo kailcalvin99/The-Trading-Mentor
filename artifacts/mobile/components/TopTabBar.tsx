@@ -159,7 +159,6 @@ export default function TopTabBar({
     (route) => normalizedPath === TAB_HREFS[route]
   );
 
-  const activeLabel = activeRoute ? TAB_LABELS[activeRoute] : "ICT Mentor";
   const isDashboard = normalizedPath === "/dashboard";
 
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
@@ -258,10 +257,6 @@ export default function TopTabBar({
         >
           <Ionicons name="menu" size={24} color={C.text} />
         </TouchableOpacity>
-
-        <Text style={[styles.activeLabel, { color: C.text }]} numberOfLines={1}>
-          {activeLabel}
-        </Text>
 
         <View style={styles.rightRow}>
           <TouchableOpacity
@@ -429,16 +424,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 8,
   },
-  activeLabel: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.2,
-  },
   rightRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    marginLeft: "auto",
   },
   toggleRow: {
     flexDirection: "row",
