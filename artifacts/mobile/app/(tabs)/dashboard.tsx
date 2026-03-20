@@ -12,6 +12,7 @@ import {
   Switch,
   PanResponder,
   Animated,
+  Alert,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -314,6 +315,173 @@ function MorningRoutineWidget({ showWhy = false }: { showWhy?: boolean }) {
     </View>
   );
 }
+
+function MasterRoutineWidget() {
+  const { routineItems, isRoutineComplete, toggleItem, customItems, addCustomItem, removeCustomItem, renameCustomItem, toggleCustomItem } = usePlanner();
+  const [newItemText, setNewItemText] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
+  const totalCount = ROUTINE_DISPLAY.length;
+
+  function handleAdd() {
+    const trimmed = newItemText.trim();
+    if (!trimmed) return;
+    addCustomItem(trimmed);
+    setNewItemText("");
+    setShowAdd(false);
+  }
+
+  function startEdit(item: { id: string; label: string }) {
+    setEditingId(item.id);
+    setEditText(item.label);
+  }
+
+  function saveEdit() {
+    if (!editingId) return;
+    renameCustomItem(editingId, editText);
+    setEditingId(null);
+    setEditText("");
+  }
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="sunny-outline" size={14} color="#E53E3E" />
+        <Text style={styles.cardLabel}>Master Routine</Text>
+        {isRoutineComplete && (
+          <View style={styles.doneBadge}>
+            <Text style={styles.doneBadgeText}>Done ✓</Text>
+          </View>
+        )}
+        <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={{ fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" }}>{doneCount}/{totalCount}</Text>
+        </View>
+      </View>
+
+      {/* Morning Routine items */}
+      {ROUTINE_DISPLAY.map((item) => {
+        const done = routineItems[item.key];
+        return (
+          <TouchableOpacity
+            key={item.key}
+            style={mrStyles.routineRow}
+            onPress={() => toggleItem(item.key)}
+            activeOpacity={0.7}
+          >
+            <View style={[mrStyles.checkbox, done && mrStyles.checkboxDone]}>
+              {done && <Ionicons name="checkmark" size={11} color="#0A0A0F" />}
+            </View>
+            <Text style={[mrStyles.routineLabel, done && mrStyles.routineLabelDone]}>{item.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+
+      {/* Add to My Routine control sits here, between Morning Routine and My Routine */}
+      <View style={mrStyles.divider} />
+
+      {showAdd ? (
+        <View style={mrStyles.addRow}>
+          <TextInput
+            style={mrStyles.addInput}
+            value={newItemText}
+            onChangeText={setNewItemText}
+            placeholder="Add to My Routine..."
+            placeholderTextColor={C.textTertiary}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={handleAdd}
+          />
+          <TouchableOpacity onPress={handleAdd} style={[mrStyles.addBtn, !newItemText.trim() && { opacity: 0.4 }]} disabled={!newItemText.trim()}>
+            <Ionicons name="checkmark" size={16} color="#0A0A0F" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { setShowAdd(false); setNewItemText(""); }} style={{ padding: 6 }}>
+            <Ionicons name="close" size={16} color={C.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity style={mrStyles.addTrigger} onPress={() => setShowAdd(true)} activeOpacity={0.7}>
+          <Ionicons name="add-circle-outline" size={14} color={C.accent} />
+          <Text style={mrStyles.addTriggerText}>+ Add to My Routine</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* My Routine — user's persistent custom items */}
+      {customItems.length > 0 && (
+        <>
+          <View style={mrStyles.divider} />
+          <Text style={mrStyles.sectionLabel}>My Routine</Text>
+          {customItems.map((item) => (
+            <View key={item.id} style={mrStyles.customRow}>
+              {editingId === item.id ? (
+                <>
+                  <TextInput
+                    style={[mrStyles.addInput, { flex: 1 }]}
+                    value={editText}
+                    onChangeText={setEditText}
+                    autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={saveEdit}
+                  />
+                  <TouchableOpacity onPress={saveEdit} style={[mrStyles.addBtn, !editText.trim() && { opacity: 0.4 }]} disabled={!editText.trim()}>
+                    <Ionicons name="checkmark" size={14} color="#0A0A0F" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setEditingId(null)} style={{ padding: 6 }}>
+                    <Ionicons name="close" size={14} color={C.textSecondary} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity style={mrStyles.customLeft} onPress={() => toggleCustomItem(item.id)} activeOpacity={0.7}>
+                    <View style={[mrStyles.checkbox, item.checked && mrStyles.checkboxDone]}>
+                      {item.checked && <Ionicons name="checkmark" size={11} color="#0A0A0F" />}
+                    </View>
+                    <Text style={[mrStyles.routineLabel, item.checked && mrStyles.routineLabelDone]}>{item.label}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => startEdit(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ padding: 6 }}>
+                    <Ionicons name="pencil-outline" size={14} color={C.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() =>
+                      Alert.alert("Remove", `Remove "${item.label}" from routine?`, [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Remove", style: "destructive", onPress: () => removeCustomItem(item.id) },
+                      ])
+                    }
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ padding: 6 }}
+                  >
+                    <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          ))}
+        </>
+      )}
+    </View>
+  );
+}
+
+
+const mrStyles = StyleSheet.create({
+  routineRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 9, gap: 10 },
+  checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
+  checkboxDone: { backgroundColor: C.accent, borderColor: C.accent },
+  routineLabel: { fontSize: 14, fontFamily: "Inter_500Medium", color: C.text, flex: 1 },
+  routineLabelDone: { textDecorationLine: "line-through", color: C.textSecondary },
+  divider: { height: 1, backgroundColor: C.cardBorder, marginHorizontal: 14 },
+  customRow: { flexDirection: "row", alignItems: "center", paddingLeft: 14, paddingRight: 6, paddingVertical: 9, gap: 4 },
+  customLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  addRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 8, gap: 6 },
+  addInput: { flex: 1, fontSize: 14, color: C.text, fontFamily: "Inter_500Medium", paddingVertical: 6 },
+  addBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: C.accent, alignItems: "center", justifyContent: "center" },
+  addTrigger: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, gap: 6 },
+  addTriggerText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.accent },
+  sectionLabel: { fontSize: 10, fontFamily: "Inter_700Bold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.8, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 2 },
+});
 
 const BIAS_TO_API: Record<string, string> = { bull: "bullish", bear: "bearish", neutral: "neutral" };
 const BIAS_FROM_API: Record<string, string> = { bullish: "bull", bearish: "bear", neutral: "neutral" };
@@ -618,8 +786,8 @@ function PreTradeChecklistWidget() {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
-        <Ionicons name="checkmark-circle-outline" size={14} color="#00C896" />
-        <Text style={styles.cardLabel}>Pre-Trade Checklist</Text>
+        <Ionicons name="shield-checkmark-outline" size={14} color="#F59E0B" />
+        <Text style={styles.cardLabel}>Rules Before I Trade</Text>
         <View style={[styles.checklistBadge, allDone && styles.checklistBadgeDone]}>
           <Text style={[styles.checklistBadgeText, allDone && styles.checklistBadgeTextDone]}>
             {doneCount}/{PRE_TRADE_ITEMS.length}
@@ -1672,6 +1840,10 @@ export default function DashboardScreen() {
           userId={user?.id}
         />
 
+        {/* Master Routine and Rules Before I Trade are always shown on dashboard */}
+        <MasterRoutineWidget />
+        <PreTradeChecklistWidget />
+
         {appMode === "lite" ? (
           <>
             {/* Learning Mode Dashboard — NextWatch lives inside TodayRoutineWidget > Learn pill */}
@@ -1686,9 +1858,6 @@ export default function DashboardScreen() {
             <AIGreetingCard />
 
             <NextWatchCard />
-
-            {/* Morning Routine */}
-            {prefs.morningRoutine && <MorningRoutineWidget />}
 
             {/* Quick Journal */}
             {prefs.quickJournal && <QuickJournalWidget />}
@@ -2083,6 +2252,36 @@ const styles = StyleSheet.create({
   routineItemLabelDone: {
     color: C.textTertiary,
     textDecorationLine: "line-through",
+  },
+  ruleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 10,
+  },
+  ruleRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+  },
+  ruleNum: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#F59E0B20",
+    textAlign: "center",
+    lineHeight: 18,
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#F59E0B",
+    overflow: "hidden",
+  },
+  ruleText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: C.text,
+    lineHeight: 19,
   },
   doneBadge: {
     backgroundColor: C.accent + "20",

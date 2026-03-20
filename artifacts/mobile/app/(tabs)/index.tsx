@@ -150,13 +150,11 @@ export default function PlannerScreenGated() {
 function PlannerScreen() {
   const {
     routineItems, isRoutineComplete, hasRedNews, toggleItem, toggleRedNews,
-    customItems, addCustomItem, removeCustomItem, toggleCustomItem, snoozeCustomItem,
   } = usePlanner();
 
   const [plan, setPlan] = useState<TradePlan>({ ...DEFAULT_PLAN });
   const [newLevelInput, setNewLevelInput] = useState("");
   const [newLevelType, setNewLevelType] = useState<"support" | "resistance">("support");
-  const [newItemText, setNewItemText] = useState("");
   const [, setTick] = useState(0);
   const [haltDismissed, setHaltDismissed] = useState(false);
   const [sendModalOpen, setSendModalOpen] = useState(false);
@@ -957,89 +955,6 @@ function PlannerScreen() {
             <Ionicons name="send" size={16} color="#0A0A0F" />
             <Text style={styles.sendBtnLabel}>Send to Journal</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* My Routine */}
-        <Text style={styles.sectionTitle}>My Routine</Text>
-        <View style={styles.card}>
-          {customItems.filter((item) => item.snoozedDate !== todayDate).length === 0 && !newItemText ? (
-            <View style={styles.emptyRoutine}>
-              <Ionicons name="add-circle-outline" size={20} color={C.textTertiary} />
-              <Text style={styles.emptyRoutineText}>Add personal routine items below</Text>
-            </View>
-          ) : (
-            customItems
-              .filter((item) => item.snoozedDate !== todayDate)
-              .map((item, idx) => (
-                <View key={item.id}>
-                  {idx > 0 && <View style={styles.divider} />}
-                  <View style={styles.customRow}>
-                    <TouchableOpacity
-                      style={styles.customRowLeft}
-                      onPress={() => toggleCustomItem(item.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.checkbox, item.checked && styles.customCheckboxChecked]}>
-                        {item.checked && <Ionicons name="checkmark" size={13} color="#0A0A0F" />}
-                      </View>
-                      <Text style={[styles.routineLabel, item.checked && styles.routineLabelDone]}>
-                        {item.label}
-                      </Text>
-                    </TouchableOpacity>
-                    <View style={styles.customActions}>
-                      <TouchableOpacity
-                        onPress={() => snoozeCustomItem(item.id)}
-                        style={styles.actionBtn}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="time-outline" size={18} color={C.textSecondary} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() =>
-                          Alert.alert("Delete Item", `Remove "${item.label}" from your routine?`, [
-                            { text: "Cancel", style: "cancel" },
-                            { text: "Delete", style: "destructive", onPress: () => removeCustomItem(item.id) },
-                          ])
-                        }
-                        style={styles.actionBtn}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              ))
-          )}
-          <View style={styles.divider} />
-          <View style={styles.addItemRow}>
-            <TextInput
-              style={styles.addItemInput}
-              placeholder="Add a routine item..."
-              placeholderTextColor={C.textTertiary}
-              value={newItemText}
-              onChangeText={setNewItemText}
-              onSubmitEditing={() => {
-                if (newItemText.trim()) {
-                  addCustomItem(newItemText);
-                  setNewItemText("");
-                }
-              }}
-              returnKeyType="done"
-            />
-            <TouchableOpacity
-              onPress={() => {
-                if (newItemText.trim()) {
-                  addCustomItem(newItemText);
-                  setNewItemText("");
-                }
-              }}
-              style={[styles.addBtn, !newItemText.trim() && styles.addBtnDisabled]}
-              disabled={!newItemText.trim()}
-            >
-              <Ionicons name="add" size={20} color={newItemText.trim() ? "#0A0A0F" : C.textTertiary} />
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Rules Before I Trade */}

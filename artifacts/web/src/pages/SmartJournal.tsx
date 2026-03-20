@@ -14,8 +14,6 @@ import { useAppConfig } from "@/contexts/AppConfigContext";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import {
   BookOpen,
@@ -32,7 +30,6 @@ import {
   ChevronUp,
   Radio,
   Plus,
-  CheckCircle2,
   X,
   Sparkles,
   Loader2,
@@ -69,8 +66,6 @@ const EXAMPLE_JOURNAL_ENTRIES_WEB = [
 
 type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge" | "Angry" | "Overtrading";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
-type EntryMode = "conservative" | "aggressive";
-
 interface ExtendedTrade extends Trade {
   behaviorTag?: string | null;
   stressLevel?: number | null;
@@ -81,23 +76,6 @@ interface ExtendedTrade extends Trade {
   ticker?: string | null;
   setupScore?: number | null;
 }
-
-
-const CONSERVATIVE_CRITERIA = [
-  { key: "bias", label: "Bias Check", desc: "Is the 1-Hour chart clearly going up (Bullish) or down (Bearish)?" },
-  { key: "sweep", label: "The Sweep", desc: "Did price take out a 15-min high or low?" },
-  { key: "shift", label: "The Shift (MSS)", desc: "Is there a 5-min MSS (Market Structure Shift) with a fast move?" },
-  { key: "gap", label: "The Gap (FVG)", desc: "Can you see a FVG (Fair Value Gap) on the chart?" },
-  { key: "fib", label: "The Fib — OTE (Optimal Trade Entry)", desc: "Is your entry in Discount (for buys) or Premium (for sells)?" },
-  { key: "trigger", label: "The Trigger", desc: "Did you place your Limit Order at the start of the FVG?" },
-];
-
-const AGGRESSIVE_CRITERIA = [
-  { key: "time", label: "Time Check", desc: "Is it between 10:00 AM and 11:00 AM EST?" },
-  { key: "poi", label: "POI Identified", desc: "Is price heading toward a clear high or low?" },
-  { key: "fvg1m", label: "1m FVG Entry", desc: "Is this the first 1-min FVG (Fair Value Gap) after a liquidity grab?" },
-  { key: "risk", label: "Risk ≤ 1%", desc: "Are you risking 1% or less on this trade?" },
-];
 
 const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: typeof Zap }[] = [
   { tag: "Disciplined", label: "I followed my plan", color: "text-emerald-400", icon: Shield },
@@ -111,50 +89,32 @@ const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: typ
 
 const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
 
-const SETUP_TYPES = ["FVG", "Order Block", "Liquidity Sweep", "Turtle Soup", "BOS/CHoCH"] as const;
-
 interface TradeFormData {
   pair: string;
   entryTime: string;
   riskPct: string;
-  sideDirection: string;
-  liquiditySweep: boolean;
   outcome: OutcomeType;
   notes: string;
   behaviorTag: BehaviorTag | "";
   stressLevel: number;
-  setupTypes: string[];
 }
 
 const DEFAULT_FORM: TradeFormData = {
   pair: "NQ1!",
   entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
   riskPct: "0.5",
-  sideDirection: "BUY",
-  liquiditySweep: false,
   outcome: "",
   notes: "",
   behaviorTag: "",
   stressLevel: 5,
-  setupTypes: [],
 };
 
-function calculateSetupScore(
-  criteriaChecked: number,
-  totalCriteria: number,
-  hasFvgConfirmation: boolean,
-  liquiditySweep: boolean,
-  followedTimeRule: boolean,
-  stressLevel: number,
-  riskPct: number
-): number {
-  let score = 0;
-  score += Math.round((criteriaChecked / totalCriteria) * 40);
-  if (hasFvgConfirmation) score += 15;
-  if (liquiditySweep) score += 15;
-  if (followedTimeRule) score += 10;
-  if (stressLevel <= 5) score += 10;
-  if (riskPct <= 1) score += 10;
+function calculateSetupScore(stressLevel: number, riskPct: number): number {
+  let score = 40;
+  if (stressLevel <= 5) score += 30;
+  else if (stressLevel <= 7) score += 15;
+  if (riskPct <= 1) score += 30;
+  else if (riskPct <= 2) score += 15;
   return Math.min(100, Math.max(0, score));
 }
 
@@ -209,12 +169,28 @@ export default function SmartJournal() {
   const [showForm, setShowForm] = useState(false);
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
   const [form, setForm] = useState<TradeFormData>({ ...DEFAULT_FORM });
-  const [entryMode, setEntryMode] = useState<EntryMode>("conservative");
-  const [entryCriteria, setEntryCriteria] = useState<Record<string, boolean>>({});
   const [expandedTradeId, setExpandedTradeId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
   const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
+  type TradeReflection = { criteria: string; setup: string; notes: string };
+  const [reflections, setReflections] = useState<Record<number, TradeReflection>>(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem("web_trade_reflections_v1") || "{}");
+      const migrated: Record<number, TradeReflection> = {};
+      for (const key of Object.keys(parsed)) {
+        const val = parsed[key];
+        if (typeof val === "string") {
+          migrated[Number(key)] = { criteria: "", setup: "", notes: val };
+        } else {
+          migrated[Number(key)] = val;
+        }
+      }
+      return migrated;
+    } catch { return {}; }
+  });
+  const [reflectionEditing, setReflectionEditing] = useState<number | null>(null);
+  const [reflectionDraft, setReflectionDraft] = useState<TradeReflection>({ criteria: "", setup: "", notes: "" });
   const [showSitOutWarning, setShowSitOutWarning] = useState(false);
   const [showTiltCooldown, setShowTiltCooldown] = useState(() => {
     const stored = localStorage.getItem("ict-tilt-cooldown-end");
@@ -266,24 +242,10 @@ export default function SmartJournal() {
     return { total: completedTrades.length, wins, winRate, fomoCount, disciplinedCount };
   }, [completedTrades]);
 
-  const activeCriteria = entryMode === "conservative" ? CONSERVATIVE_CRITERIA : AGGRESSIVE_CRITERIA;
-  const criteriaChecked = activeCriteria.filter((c) => entryCriteria[c.key]).length;
-  const allCriteriaMet = criteriaChecked === activeCriteria.length;
-
   const liveSetupScore = useMemo(() => {
     const parsedRisk = parseFloat(form.riskPct) || 0;
-    const hasFvg = entryMode === "conservative" ? !!entryCriteria["gap"] : !!entryCriteria["fvg1m"];
-    const followedTime = entryMode === "aggressive" ? !!entryCriteria["time"] : true;
-    return calculateSetupScore(
-      criteriaChecked,
-      activeCriteria.length,
-      hasFvg,
-      form.liquiditySweep,
-      followedTime,
-      form.stressLevel,
-      parsedRisk
-    );
-  }, [criteriaChecked, activeCriteria.length, entryCriteria, form.liquiditySweep, form.stressLevel, form.riskPct, entryMode]);
+    return calculateSetupScore(form.stressLevel, parsedRisk);
+  }, [form.stressLevel, form.riskPct]);
 
   const shouldSitOut = useMemo(() => {
     const sorted = [...allCompletedTrades].sort(
@@ -368,14 +330,16 @@ export default function SmartJournal() {
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
-  function toggleCriterion(key: string) {
-    setEntryCriteria((prev) => ({ ...prev, [key]: !prev[key] }));
+  function saveReflection(tradeId: number, draft: TradeReflection) {
+    const next = { ...reflections, [tradeId]: draft };
+    setReflections(next);
+    localStorage.setItem("web_trade_reflections_v1", JSON.stringify(next));
+    setReflectionEditing(null);
+    setReflectionDraft({ criteria: "", setup: "", notes: "" });
   }
 
   function proceedToNewForm() {
     setEditingDraftId(null);
-    setEntryMode("conservative");
-    setEntryCriteria({});
     setForm({
       ...DEFAULT_FORM,
       entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
@@ -395,21 +359,15 @@ export default function SmartJournal() {
   function openDraftForm(draft: ExtendedTrade) {
     setEditingDraftId(draft.id);
     const draftNotes = draft.notes || "";
-    const inferredMode: EntryMode = draftNotes.startsWith("[Silver Bullet]") ? "aggressive" : "conservative";
-    setEntryMode(inferredMode);
-    setEntryCriteria({});
     const cleanNotes = draftNotes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "");
     setForm({
       pair: draft.pair || "NQ1!",
       entryTime: draft.entryTime || new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
       riskPct: draft.riskPct?.toString() || "0.5",
-      sideDirection: draft.sideDirection || "BUY",
-      liquiditySweep: draft.liquiditySweep || false,
       outcome: (draft.outcome || "") as OutcomeType,
       notes: cleanNotes,
       behaviorTag: (draft.behaviorTag || "") as BehaviorTag | "",
       stressLevel: draft.stressLevel || 5,
-      setupTypes: [],
     });
     setShowForm(true);
     dispatchAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
@@ -425,24 +383,17 @@ export default function SmartJournal() {
       toast({ title: "Invalid Risk %", description: "Enter a valid positive number for risk percentage.", variant: "destructive" });
       return;
     }
-    if (!allCriteriaMet) {
-      toast({ title: "Entry Criteria Required", description: "Check off all entry criteria before saving.", variant: "destructive" });
-      return;
-    }
     try {
-      const modeTag = entryMode === "conservative" ? "[Conservative]" : "[Silver Bullet]";
-      const notesWithMode = form.notes ? `${modeTag} ${form.notes}` : modeTag;
+      const notesWithMode = form.notes || "";
       const payload: CreateTradeBody = {
         pair: form.pair,
         entryTime: form.entryTime,
         riskPct: parsedRisk,
-        liquiditySweep: form.liquiditySweep,
         outcome: form.outcome || undefined,
         notes: notesWithMode,
         behaviorTag: form.behaviorTag || undefined,
         stressLevel: form.stressLevel,
         isDraft: false,
-        sideDirection: form.sideDirection,
         setupScore: liveSetupScore,
       };
       const result = await createTradeMut({ data: payload });
@@ -501,7 +452,7 @@ export default function SmartJournal() {
         toast({ title: "Error", description: "Could not save trade.", variant: "destructive" });
       }
     }
-  }, [form, editingDraftId, entryMode, allCriteriaMet, createTradeMut, deleteTradeMut, qc, appMode]);
+  }, [form, editingDraftId, createTradeMut, deleteTradeMut, qc, appMode]);
 
   const handleDelete = useCallback(async (id: number) => {
     try {
@@ -747,72 +698,6 @@ export default function SmartJournal() {
                   </div>
                 )}
 
-                {/* Entry Mode Toggle */}
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Entry Mode</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => { setEntryMode("conservative"); setEntryCriteria({}); }}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold border transition-colors ${
-                        entryMode === "conservative"
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Shield className="h-3.5 w-3.5" />
-                      Conservative
-                    </button>
-                    <button
-                      onClick={() => { setEntryMode("aggressive"); setEntryCriteria({}); }}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold border transition-colors ${
-                        entryMode === "aggressive"
-                          ? "bg-amber-500 text-black border-amber-500"
-                          : "bg-card border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Zap className="h-3.5 w-3.5" />
-                      Silver Bullet
-                    </button>
-                  </div>
-                </div>
-
-                {/* Entry Criteria Checklist */}
-                <div className="rounded-lg border border-primary/20 bg-card p-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className={`h-3.5 w-3.5 ${allCriteriaMet ? "text-primary" : "text-amber-400"}`} />
-                      <span className={`text-xs font-bold uppercase tracking-wider ${allCriteriaMet ? "text-primary" : "text-amber-400"}`}>
-                        Entry Criteria
-                      </span>
-                    </div>
-                    <Badge variant="outline" className={`text-[10px] ${allCriteriaMet ? "text-primary border-primary/30" : "text-amber-400 border-amber-400/30"}`}>
-                      {criteriaChecked}/{activeCriteria.length}
-                    </Badge>
-                  </div>
-                  <div className="w-full bg-border rounded-full h-1">
-                    <div
-                      className={`h-1 rounded-full transition-all ${allCriteriaMet ? "bg-primary" : "bg-amber-400"}`}
-                      style={{ width: `${(criteriaChecked / activeCriteria.length) * 100}%` }}
-                    />
-                  </div>
-                  {activeCriteria.map((c) => (
-                    <label key={c.key} className="flex items-start gap-3 cursor-pointer group">
-                      <Checkbox
-                        checked={!!entryCriteria[c.key]}
-                        onCheckedChange={() => toggleCriterion(c.key)}
-                        className="mt-0.5"
-                      />
-                      <div>
-                        <div className={`text-sm font-medium ${entryCriteria[c.key] ? "text-primary" : "text-foreground"}`}>{c.label}</div>
-                        <div className="text-xs text-muted-foreground">{c.desc}</div>
-                      </div>
-                    </label>
-                  ))}
-                  {!allCriteriaMet && (
-                    <p className="text-[11px] text-amber-400 text-center">All criteria must be checked to save this trade</p>
-                  )}
-                </div>
-
                 {/* Pair/Ticker */}
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Pair / Ticker</label>
@@ -855,45 +740,6 @@ export default function SmartJournal() {
                       className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
-                </div>
-
-                {/* Side */}
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Side</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => setField("sideDirection", "BUY")}
-                      className={`py-2 rounded-lg text-sm font-semibold border transition-colors ${
-                        form.sideDirection === "BUY"
-                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                          : "bg-card border-border text-muted-foreground"
-                      }`}
-                    >
-                      Long
-                    </button>
-                    <button
-                      onClick={() => setField("sideDirection", "SELL")}
-                      className={`py-2 rounded-lg text-sm font-semibold border transition-colors ${
-                        form.sideDirection === "SELL"
-                          ? "bg-red-500/20 text-red-400 border-red-500/30"
-                          : "bg-card border-border text-muted-foreground"
-                      }`}
-                    >
-                      Short
-                    </button>
-                  </div>
-                </div>
-
-                {/* Liquidity Sweep */}
-                <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
-                  <div>
-                    <div className="text-sm font-medium">Liquidity Sweep</div>
-                    <div className="text-xs text-muted-foreground">Did price take out a swing high or low before your entry?</div>
-                  </div>
-                  <Switch
-                    checked={form.liquiditySweep}
-                    onCheckedChange={(v) => setField("liquiditySweep", v)}
-                  />
                 </div>
 
                 {/* Outcome */}
@@ -944,32 +790,6 @@ export default function SmartJournal() {
                   </div>
                 </div>
 
-                {/* Setup Types */}
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Setup Type (Confluence)</label>
-                  <div className="flex flex-wrap gap-2">
-                    {SETUP_TYPES.map((st) => (
-                      <button
-                        key={st}
-                        onClick={() => {
-                          const current = form.setupTypes;
-                          setField(
-                            "setupTypes",
-                            current.includes(st) ? current.filter((s) => s !== st) : [...current, st]
-                          );
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                          form.setupTypes.includes(st)
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-card border-border text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {st}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Notes */}
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Notes</label>
@@ -1000,9 +820,9 @@ export default function SmartJournal() {
                 {/* Save */}
                 <button
                   onClick={handleSubmit}
-                  disabled={!allCriteriaMet || isCreating || !isRoutineComplete}
+                  disabled={isCreating || !isRoutineComplete}
                   className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${
-                    allCriteriaMet && isRoutineComplete
+                    isRoutineComplete
                       ? "bg-primary text-primary-foreground hover:bg-primary/90"
                       : "bg-border text-muted-foreground cursor-not-allowed"
                   }`}
@@ -1011,8 +831,6 @@ export default function SmartJournal() {
                     ? "Saving..."
                     : !isRoutineComplete
                     ? "Routine Required"
-                    : !allCriteriaMet
-                    ? `${criteriaChecked}/${activeCriteria.length} Criteria Met`
                     : editingDraftId
                     ? "Complete Trade Entry"
                     : "Save Trade"}
@@ -1224,6 +1042,93 @@ export default function SmartJournal() {
                               )}
                             </div>
                           )}
+
+                          {/* Reflection section */}
+                          <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <BookOpen className="h-3.5 w-3.5 text-indigo-400" />
+                              <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Reflection</span>
+                            </div>
+                            {reflectionEditing === trade.id ? (
+                              <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                                <div>
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide block mb-1">Entry Criteria Review</label>
+                                  <textarea
+                                    value={reflectionDraft.criteria}
+                                    onChange={(e) => setReflectionDraft((d) => ({ ...d, criteria: e.target.value }))}
+                                    placeholder="Were your entry criteria met? Any misses?"
+                                    rows={2}
+                                    className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide block mb-1">Setup Type / Confluence</label>
+                                  <textarea
+                                    value={reflectionDraft.setup}
+                                    onChange={(e) => setReflectionDraft((d) => ({ ...d, setup: e.target.value }))}
+                                    placeholder="e.g. Silver Bullet, FVG + MSS, Kill Zone sweep..."
+                                    rows={2}
+                                    className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide block mb-1">Lessons / Notes</label>
+                                  <textarea
+                                    value={reflectionDraft.notes}
+                                    onChange={(e) => setReflectionDraft((d) => ({ ...d, notes: e.target.value }))}
+                                    placeholder="What would you do differently next time?"
+                                    rows={2}
+                                    autoFocus
+                                    className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); saveReflection(trade.id, reflectionDraft); }}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setReflectionEditing(null); setReflectionDraft({ criteria: "", setup: "", notes: "" }); }}
+                                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                className="cursor-pointer space-y-2"
+                                onClick={(e) => { e.stopPropagation(); setReflectionEditing(trade.id); setReflectionDraft(reflections[trade.id] || { criteria: "", setup: "", notes: "" }); }}
+                              >
+                                {reflections[trade.id] && (reflections[trade.id].criteria || reflections[trade.id].setup || reflections[trade.id].notes) ? (
+                                  <>
+                                    {reflections[trade.id].criteria && (
+                                      <div>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-0.5">Entry Criteria</p>
+                                        <p className="text-sm text-foreground leading-relaxed">{reflections[trade.id].criteria}</p>
+                                      </div>
+                                    )}
+                                    {reflections[trade.id].setup && (
+                                      <div>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-0.5">Setup / Confluence</p>
+                                        <p className="text-sm text-foreground leading-relaxed">{reflections[trade.id].setup}</p>
+                                      </div>
+                                    )}
+                                    {reflections[trade.id].notes && (
+                                      <div>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-0.5">Lessons</p>
+                                        <p className="text-sm text-foreground leading-relaxed">{reflections[trade.id].notes}</p>
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground italic">Click to add reflection...</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
 
                           <div className="text-xs text-muted-foreground">
                             {trade.createdAt && new Date(trade.createdAt).toLocaleDateString("en-US", {

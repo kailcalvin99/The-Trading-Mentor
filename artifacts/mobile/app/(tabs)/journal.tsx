@@ -26,23 +26,6 @@ const C = Colors.dark;
 
 type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge" | "Angry" | "Overtrading";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
-type EntryMode = "conservative" | "aggressive";
-
-const CONSERVATIVE_CRITERIA = [
-  { key: "bias", label: "Bias Check", desc: "Is the 1-Hour chart clearly going up (Bullish) or down (Bearish)?" },
-  { key: "sweep", label: "The Sweep", desc: "Did price take out a 15-min high or low?" },
-  { key: "shift", label: "The Shift (MSS)", desc: "Is there a 5-min MSS (Market Structure Shift) with a fast move?" },
-  { key: "gap", label: "The Gap (FVG)", desc: "Can you see a FVG (Fair Value Gap) on the chart?" },
-  { key: "fib", label: "The Fib — OTE (Optimal Trade Entry)", desc: "Is your entry in Discount (for buys) or Premium (for sells)?" },
-  { key: "trigger", label: "The Trigger", desc: "Did you place your Limit Order at the start of the FVG?" },
-];
-
-const AGGRESSIVE_CRITERIA = [
-  { key: "time", label: "Time Check", desc: "Is it between 10:00 AM and 11:00 AM EST?" },
-  { key: "poi", label: "POI Identified", desc: "Is price heading toward a clear high or low?" },
-  { key: "fvg1m", label: "1m FVG Entry", desc: "Is this the first 1-min FVG (Fair Value Gap) after a liquidity grab?" },
-  { key: "risk", label: "Risk ≤ 1%", desc: "Are you risking 1% or less on this trade?" },
-];
 
 const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: string }[] = [
   { tag: "Disciplined", label: "I followed my plan", color: "#00C896", icon: "shield-checkmark-outline" },
@@ -56,7 +39,6 @@ const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: str
 
 const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
 
-const SETUP_TYPES = ["FVG", "Order Block", "Liquidity Sweep", "Turtle Soup", "BOS/CHoCH"] as const;
 
 const EXAMPLE_JOURNAL_ENTRIES = [
   {
@@ -83,68 +65,28 @@ interface TradeFormData {
   pair: string;
   entryTime: string;
   riskPct: string;
-  liquiditySweep: boolean;
   outcome: OutcomeType;
   notes: string;
   behaviorTag: BehaviorTag | "";
-  followedTimeRule: boolean | null;
-  hasFvgConfirmation: boolean | null;
   stressLevel: number;
-  setupTypes: string[];
 }
 
 const DEFAULT_FORM: TradeFormData = {
   pair: "NQ1!",
   entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
   riskPct: "0.5",
-  liquiditySweep: false,
   outcome: "",
   notes: "",
   behaviorTag: "",
-  followedTimeRule: null,
-  hasFvgConfirmation: null,
   stressLevel: 5,
-  setupTypes: [],
 };
 
-function YesNoToggle({ value, onChange, label }: { value: boolean | null; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <View style={ynStyles.row}>
-      <Text style={ynStyles.label}>{label}</Text>
-      <View style={ynStyles.btns}>
-        <TouchableOpacity
-          style={[ynStyles.btn, value === true && ynStyles.yesActive]}
-          onPress={() => onChange(true)}
-        >
-          <Text style={[ynStyles.btnText, value === true && { color: "#0A0A0F" }]}>Yes</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[ynStyles.btn, value === false && ynStyles.noActive]}
-          onPress={() => onChange(false)}
-        >
-          <Text style={[ynStyles.btnText, value === false && { color: "#0A0A0F" }]}>No</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-function calculateSetupScore(
-  criteriaChecked: number,
-  totalCriteria: number,
-  hasFvgConfirmation: boolean,
-  liquiditySweep: boolean,
-  followedTimeRule: boolean,
-  stressLevel: number,
-  riskPct: number
-): number {
-  let score = 0;
-  score += Math.round((criteriaChecked / totalCriteria) * 40);
-  if (hasFvgConfirmation) score += 15;
-  if (liquiditySweep) score += 15;
-  if (followedTimeRule) score += 10;
-  if (stressLevel <= 5) score += 10;
-  if (riskPct <= 1) score += 10;
+function calculateSetupScore(stressLevel: number, riskPct: number): number {
+  let score = 40;
+  if (stressLevel <= 5) score += 30;
+  else if (stressLevel <= 7) score += 15;
+  if (riskPct <= 1) score += 30;
+  else if (riskPct <= 2) score += 15;
   return Math.min(100, Math.max(0, score));
 }
 
@@ -195,11 +137,13 @@ export default function JournalScreen() {
   const [isMonkMode, setIsMonkMode] = useState(false);
   const [form, setForm] = useState<TradeFormData>({ ...DEFAULT_FORM });
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
-  const [entryMode, setEntryMode] = useState<EntryMode>("conservative");
-  const [entryCriteria, setEntryCriteria] = useState<Record<string, boolean>>({});
   const [expandedTradeId, setExpandedTradeId] = useState<number | null>(null);
   const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
   const [coachFeedback, setCoachFeedback] = useState<Record<number, string>>({});
+  type TradeReflection = { criteria: string; setup: string; notes: string };
+  const [reflections, setReflections] = useState<Record<number, TradeReflection>>({});
+  const [reflectionEditing, setReflectionEditing] = useState<number | null>(null);
+  const [reflectionDraft, setReflectionDraft] = useState<TradeReflection>({ criteria: "", setup: "", notes: "" });
   const [showSitOutWarning, setShowSitOutWarning] = useState(false);
   const [showTiltCooldown, setShowTiltCooldown] = useState(false);
   const [tiltCooldownEnd, setTiltCooldownEnd] = useState(0);
@@ -217,6 +161,34 @@ export default function JournalScreen() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem("trade_reflections_v1").then((raw) => {
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          const migrated: Record<number, { criteria: string; setup: string; notes: string }> = {};
+          for (const key of Object.keys(parsed)) {
+            const val = parsed[key];
+            if (typeof val === "string") {
+              migrated[Number(key)] = { criteria: "", setup: "", notes: val };
+            } else {
+              migrated[Number(key)] = val;
+            }
+          }
+          setReflections(migrated);
+        } catch { /* */ }
+      }
+    });
+  }, []);
+
+  function saveReflection(tradeId: number, draft: { criteria: string; setup: string; notes: string }) {
+    const next = { ...reflections, [tradeId]: draft };
+    setReflections(next);
+    AsyncStorage.setItem("trade_reflections_v1", JSON.stringify(next));
+    setReflectionEditing(null);
+    setReflectionDraft({ criteria: "", setup: "", notes: "" });
+  }
 
   useEffect(() => {
     AsyncStorage.getItem("planner_journal_draft").then((raw) => {
@@ -300,24 +272,10 @@ export default function JournalScreen() {
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
-  const activeCriteria = entryMode === "conservative" ? CONSERVATIVE_CRITERIA : AGGRESSIVE_CRITERIA;
-  const criteriaChecked = activeCriteria.filter((c) => entryCriteria[c.key]).length;
-  const allCriteriaMet = criteriaChecked === activeCriteria.length;
-
   const liveSetupScore = useMemo(() => {
     const parsedRisk = parseFloat(form.riskPct) || 0;
-    const hasFvg = entryMode === "conservative" ? !!entryCriteria["gap"] : !!entryCriteria["fvg1m"];
-    const followedTime = entryMode === "aggressive" ? !!entryCriteria["time"] : true;
-    return calculateSetupScore(
-      criteriaChecked,
-      activeCriteria.length,
-      hasFvg,
-      form.liquiditySweep,
-      followedTime,
-      form.stressLevel,
-      parsedRisk
-    );
-  }, [criteriaChecked, activeCriteria.length, entryCriteria, form.liquiditySweep, form.stressLevel, form.riskPct, entryMode]);
+    return calculateSetupScore(form.stressLevel, parsedRisk);
+  }, [form.stressLevel, form.riskPct]);
 
   const shouldSitOut = useMemo(() => {
     const sorted = [...completedTrades].sort(
@@ -330,14 +288,8 @@ export default function JournalScreen() {
     return false;
   }, [completedTrades]);
 
-  function toggleCriterion(key: string) {
-    setEntryCriteria((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
   function proceedToNewForm() {
     setEditingDraftId(null);
-    setEntryMode("conservative");
-    setEntryCriteria({});
     setForm({
       ...DEFAULT_FORM,
       entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
@@ -365,22 +317,15 @@ export default function JournalScreen() {
   function openDraftForm(draft: Trade) {
     setEditingDraftId(draft.id);
     const draftNotes = draft.notes || "";
-    const inferredMode: EntryMode = draftNotes.startsWith("[Silver Bullet]") ? "aggressive" : "conservative";
-    setEntryMode(inferredMode);
-    setEntryCriteria({});
     const cleanNotes = draftNotes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "");
     setForm({
       pair: draft.pair || "NQ1!",
       entryTime: draft.entryTime || new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
       riskPct: draft.riskPct?.toString() || "0.5",
-      liquiditySweep: draft.liquiditySweep || false,
       outcome: (draft.outcome || "") as OutcomeType,
       notes: cleanNotes,
       behaviorTag: (draft.behaviorTag || "") as BehaviorTag | "",
-      followedTimeRule: draft.followedTimeRule ?? null,
-      hasFvgConfirmation: draft.hasFvgConfirmation ?? null,
       stressLevel: draft.stressLevel || 5,
-      setupTypes: [],
     });
     setShowForm(true);
     fireMobileAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
@@ -388,29 +333,23 @@ export default function JournalScreen() {
 
   const handleSubmit = useCallback(async () => {
     if (!form.pair || !form.riskPct) return Alert.alert("Fill in pair and risk %");
-    if (!allCriteriaMet) return Alert.alert("Entry Criteria Required", "Check off all entry criteria before saving.");
     try {
       if (editingDraftId) {
         await deleteTradeMut({ id: editingDraftId });
       }
-      const modeTag = entryMode === "conservative" ? "[Conservative]" : "[Silver Bullet]";
-      const notesWithMode = form.notes ? `${modeTag} ${form.notes}` : modeTag;
+      const notesWithMode = form.notes || "";
       const safeSetupScore = Number.isInteger(liveSetupScore) && !isNaN(liveSetupScore) ? liveSetupScore : 0;
       const result = await createTradeMut({
         data: {
           pair: form.pair,
           entryTime: form.entryTime,
           riskPct: parseFloat(form.riskPct) || 0,
-          liquiditySweep: form.liquiditySweep,
           outcome: form.outcome || undefined,
           notes: notesWithMode,
           behaviorTag: form.behaviorTag || undefined,
-          followedTimeRule: form.followedTimeRule ?? undefined,
-          hasFvgConfirmation: form.hasFvgConfirmation ?? undefined,
           stressLevel: form.stressLevel,
           isDraft: false,
           setupScore: safeSetupScore,
-          setupType: form.setupTypes.length > 0 ? form.setupTypes.join(", ") : undefined,
         },
       });
       if (appMode === "full") {
@@ -460,7 +399,7 @@ export default function JournalScreen() {
       }
       Alert.alert("Error", message);
     }
-  }, [form, editingDraftId, entryMode, allCriteriaMet, createTradeMut, deleteTradeMut, qc, appMode]);
+  }, [form, editingDraftId, createTradeMut, deleteTradeMut, qc, appMode, liveSetupScore]);
 
   const handleDelete = useCallback(async (id: number) => {
     Alert.alert("Delete Trade?", "This cannot be undone.", [
@@ -716,6 +655,97 @@ export default function JournalScreen() {
                           <Text style={{ fontSize: 12, color: C.textSecondary }}>Setup Score & AI Coach available in Full Mode</Text>
                         </View>
                       )}
+
+                      {/* Reflection section */}
+                      <View style={reflStyles.card}>
+                        <View style={reflStyles.header}>
+                          <Ionicons name="journal-outline" size={13} color="#818CF8" />
+                          <Text style={reflStyles.title}>Reflection</Text>
+                        </View>
+                        {reflectionEditing === trade.id ? (
+                          <View style={{ gap: 10 }}>
+                            <View>
+                              <Text style={reflStyles.fieldLabel}>Entry Criteria Review</Text>
+                              <TextInput
+                                style={reflStyles.input}
+                                value={reflectionDraft.criteria}
+                                onChangeText={(v) => setReflectionDraft((d) => ({ ...d, criteria: v }))}
+                                placeholder="Were your entry criteria met? Any misses?"
+                                placeholderTextColor={C.textTertiary}
+                                multiline
+                                numberOfLines={2}
+                              />
+                            </View>
+                            <View>
+                              <Text style={reflStyles.fieldLabel}>Setup Type / Confluence</Text>
+                              <TextInput
+                                style={reflStyles.input}
+                                value={reflectionDraft.setup}
+                                onChangeText={(v) => setReflectionDraft((d) => ({ ...d, setup: v }))}
+                                placeholder="e.g. Silver Bullet, FVG + MSS, Kill Zone sweep..."
+                                placeholderTextColor={C.textTertiary}
+                                multiline
+                                numberOfLines={2}
+                              />
+                            </View>
+                            <View>
+                              <Text style={reflStyles.fieldLabel}>Lessons / Notes</Text>
+                              <TextInput
+                                style={reflStyles.input}
+                                value={reflectionDraft.notes}
+                                onChangeText={(v) => setReflectionDraft((d) => ({ ...d, notes: v }))}
+                                placeholder="What would you do differently next time?"
+                                placeholderTextColor={C.textTertiary}
+                                multiline
+                                numberOfLines={2}
+                                autoFocus
+                              />
+                            </View>
+                            <View style={reflStyles.btnRow}>
+                              <TouchableOpacity style={reflStyles.saveBtn} onPress={() => saveReflection(trade.id, reflectionDraft)}>
+                                <Text style={reflStyles.saveBtnText}>Save</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => { setReflectionEditing(null); setReflectionDraft({ criteria: "", setup: "", notes: "" }); }}>
+                                <Text style={reflStyles.cancelText}>Cancel</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setReflectionEditing(trade.id);
+                              setReflectionDraft(reflections[trade.id] || { criteria: "", setup: "", notes: "" });
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            {reflections[trade.id] && (reflections[trade.id].criteria || reflections[trade.id].setup || reflections[trade.id].notes) ? (
+                              <View style={{ gap: 6 }}>
+                                {reflections[trade.id].criteria ? (
+                                  <View>
+                                    <Text style={reflStyles.fieldLabel}>Entry Criteria</Text>
+                                    <Text style={reflStyles.reflectionText}>{reflections[trade.id].criteria}</Text>
+                                  </View>
+                                ) : null}
+                                {reflections[trade.id].setup ? (
+                                  <View>
+                                    <Text style={reflStyles.fieldLabel}>Setup / Confluence</Text>
+                                    <Text style={reflStyles.reflectionText}>{reflections[trade.id].setup}</Text>
+                                  </View>
+                                ) : null}
+                                {reflections[trade.id].notes ? (
+                                  <View>
+                                    <Text style={reflStyles.fieldLabel}>Lessons</Text>
+                                    <Text style={reflStyles.reflectionText}>{reflections[trade.id].notes}</Text>
+                                  </View>
+                                ) : null}
+                              </View>
+                            ) : (
+                              <Text style={reflStyles.placeholder}>Tap to add reflection...</Text>
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
                       <View style={coachStyles.actionRow}>
                         <Text style={coachStyles.dateText}>
                           {trade.createdAt ? new Date(trade.createdAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}
@@ -772,59 +802,6 @@ export default function JournalScreen() {
               </View>
             </ScrollView>
 
-            {/* Entry Mode Toggle */}
-            <Text style={formStyles.fieldLabel}>Entry Mode</Text>
-            <View style={ecStyles.modeRow}>
-              <TouchableOpacity
-                style={[ecStyles.modeBtn, entryMode === "conservative" && ecStyles.modeBtnActive]}
-                onPress={() => { setEntryMode("conservative"); setEntryCriteria({}); }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="shield-checkmark-outline" size={14} color={entryMode === "conservative" ? "#0A0A0F" : C.textSecondary} />
-                <Text style={[ecStyles.modeBtnText, entryMode === "conservative" && ecStyles.modeBtnTextActive]}>Conservative</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[ecStyles.modeBtn, entryMode === "aggressive" && ecStyles.modeBtnActiveAgg]}
-                onPress={() => { setEntryMode("aggressive"); setEntryCriteria({}); }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="flash-outline" size={14} color={entryMode === "aggressive" ? "#0A0A0F" : C.textSecondary} />
-                <Text style={[ecStyles.modeBtnText, entryMode === "aggressive" && ecStyles.modeBtnTextActive]}>Silver Bullet</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Entry Criteria Checklist */}
-            <View style={ecStyles.criteriaCard}>
-              <View style={ecStyles.criteriaHeader}>
-                <Ionicons name="list-outline" size={14} color={allCriteriaMet ? C.accent : "#F59E0B"} />
-                <Text style={[ecStyles.criteriaTitle, { color: allCriteriaMet ? C.accent : "#F59E0B" }]}>
-                  Entry Criteria
-                </Text>
-                <View style={[ecStyles.progressBadge, allCriteriaMet && { backgroundColor: C.accent + "25", borderColor: C.accent }]}>
-                  <Text style={[ecStyles.progressText, allCriteriaMet && { color: C.accent }]}>
-                    {criteriaChecked}/{activeCriteria.length}
-                  </Text>
-                </View>
-              </View>
-              <View style={ecStyles.progressBar}>
-                <View style={[ecStyles.progressFill, { width: `${(criteriaChecked / activeCriteria.length) * 100}%` as unknown as number, backgroundColor: allCriteriaMet ? C.accent : "#F59E0B" }]} />
-              </View>
-              {activeCriteria.map((c) => (
-                <TouchableOpacity key={c.key} style={ecStyles.criterionRow} onPress={() => toggleCriterion(c.key)} activeOpacity={0.7}>
-                  <View style={[ecStyles.criterionCheck, entryCriteria[c.key] && ecStyles.criterionChecked]}>
-                    {entryCriteria[c.key] && <Ionicons name="checkmark" size={13} color="#0A0A0F" />}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[ecStyles.criterionLabel, entryCriteria[c.key] && { color: C.accent }]}>{c.label}</Text>
-                    <Text style={ecStyles.criterionDesc}>{c.desc}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-              {!allCriteriaMet && (
-                <Text style={ecStyles.gateWarning}>All criteria must be checked to save this trade</Text>
-              )}
-            </View>
-
             {/* Entry Time & Risk */}
             <View style={formStyles.row}>
               <View style={{ flex: 1 }}>
@@ -849,34 +826,8 @@ export default function JournalScreen() {
               ))}
             </View>
 
-            {/* Liquidity Sweep */}
-            <TouchableOpacity style={formStyles.toggleRow} onPress={() => setField("liquiditySweep", !form.liquiditySweep)}>
-              <View style={[formStyles.checkbox, form.liquiditySweep && formStyles.checkboxChecked]}>
-                {form.liquiditySweep && <Ionicons name="checkmark" size={13} color="#0A0A0F" />}
-              </View>
-              <View>
-                <Text style={formStyles.toggleLabel}>Liquidity Sweep Confirmed</Text>
-                <Text style={formStyles.toggleSub}>Price swept a swing high/low before entry</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Guided Questions */}
-            <View style={formStyles.guidedSection}>
-              <Text style={formStyles.guidedTitle}>Guided Questions</Text>
-              <YesNoToggle
-                value={form.followedTimeRule}
-                onChange={(v) => setField("followedTimeRule", v)}
-                label="Did you follow the 10 AM–11 AM Silver Bullet rule?"
-              />
-              <View style={formStyles.ynDivider} />
-              <YesNoToggle
-                value={form.hasFvgConfirmation}
-                onChange={(v) => setField("hasFvgConfirmation", v)}
-                label="Is there a 15-minute FVG confirmation?"
-              />
-              <View style={formStyles.ynDivider} />
-              <StressSlider value={form.stressLevel} onChange={(v) => setField("stressLevel", v)} />
-            </View>
+            {/* Stress Level */}
+            <StressSlider value={form.stressLevel} onChange={(v) => setField("stressLevel", v)} />
 
             {/* Behavioral Tag */}
             <Text style={formStyles.fieldLabel}>Behavioral Tag</Text>
@@ -890,32 +841,6 @@ export default function JournalScreen() {
                 >
                   <Ionicons name={icon as React.ComponentProps<typeof Ionicons>["name"]} size={14} color={form.behaviorTag === tag ? color : C.textSecondary} />
                   <Text style={[formStyles.tagBtnText, form.behaviorTag === tag && { color }]}>{tag} — {label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Setup Types */}
-            <Text style={formStyles.fieldLabel}>Setup Type (Confluence)</Text>
-            <View style={formStyles.tagRow}>
-              {SETUP_TYPES.map((st) => (
-                <TouchableOpacity
-                  key={st}
-                  style={[
-                    formStyles.tagBtn,
-                    form.setupTypes.includes(st) && { backgroundColor: C.accent + "25", borderColor: C.accent },
-                  ]}
-                  onPress={() => {
-                    const current = form.setupTypes;
-                    setField(
-                      "setupTypes",
-                      current.includes(st) ? current.filter((s) => s !== st) : [...current, st]
-                    );
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[formStyles.tagBtnText, form.setupTypes.includes(st) && { color: C.accent }]}>
-                    {st}
-                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -947,9 +872,9 @@ export default function JournalScreen() {
             </View>
             )}
 
-            <TouchableOpacity style={[formStyles.submitBtn, !allCriteriaMet && { backgroundColor: C.cardBorder, opacity: 0.6 }]} onPress={handleSubmit} disabled={!allCriteriaMet}>
-              <Text style={[formStyles.submitBtnText, !allCriteriaMet && { color: C.textSecondary }]}>
-                {!allCriteriaMet ? `${criteriaChecked}/${activeCriteria.length} Criteria Met` : editingDraftId ? "Complete Trade Entry" : "Save Trade"}
+            <TouchableOpacity style={formStyles.submitBtn} onPress={handleSubmit}>
+              <Text style={formStyles.submitBtnText}>
+                {editingDraftId ? "Complete Trade Entry" : "Save Trade"}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -1193,28 +1118,6 @@ const coachStyles = StyleSheet.create({
 });
 
 
-const ecStyles = StyleSheet.create({
-  modeRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  modeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder },
-  modeBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
-  modeBtnActiveAgg: { backgroundColor: "#F59E0B", borderColor: "#F59E0B" },
-  modeBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.textSecondary },
-  modeBtnTextActive: { color: "#0A0A0F", fontFamily: "Inter_700Bold" },
-  criteriaCard: { backgroundColor: C.backgroundSecondary, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.accent + "33", marginBottom: 16 },
-  criteriaHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-  criteriaTitle: { flex: 1, fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
-  progressBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(245,158,11,0.15)", borderWidth: 1, borderColor: "#F59E0B" },
-  progressText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#F59E0B" },
-  progressBar: { height: 3, backgroundColor: C.cardBorder, borderRadius: 2, marginBottom: 12, overflow: "hidden" },
-  progressFill: { height: "100%" as unknown as number, borderRadius: 2 },
-  criterionRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 8 },
-  criterionCheck: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center", marginTop: 1 },
-  criterionChecked: { backgroundColor: C.accent, borderColor: C.accent },
-  criterionLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 1 },
-  criterionDesc: { fontSize: 12, color: C.textSecondary, lineHeight: 18 },
-  gateWarning: { fontSize: 11, color: "#F59E0B", textAlign: "center", marginTop: 8, fontFamily: "Inter_500Medium" },
-});
-
 const scoreStyles = StyleSheet.create({
   badge: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 12, padding: 14, borderWidth: 1, marginBottom: 12 },
   badgeRow: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -1235,4 +1138,18 @@ const sitOutStyles = StyleSheet.create({
   sitOutBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
   continueBtn: { flex: 1, borderRadius: 14, padding: 14, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
   continueBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.textSecondary },
+});
+
+const reflStyles = StyleSheet.create({
+  card: { backgroundColor: "#818CF810", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#818CF830", marginBottom: 8 },
+  header: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  title: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#818CF8", textTransform: "uppercase", letterSpacing: 0.8 },
+  input: { backgroundColor: C.backgroundTertiary, borderRadius: 8, padding: 10, fontSize: 13, color: C.text, fontFamily: "Inter_400Regular", borderWidth: 1, borderColor: C.cardBorder, minHeight: 70, textAlignVertical: "top" },
+  btnRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 },
+  saveBtn: { backgroundColor: "#818CF8", borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  saveBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
+  cancelText: { fontSize: 13, fontFamily: "Inter_500Medium", color: C.textSecondary },
+  reflectionText: { fontSize: 13, color: C.text, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  placeholder: { fontSize: 13, color: C.textTertiary, fontFamily: "Inter_400Regular", fontStyle: "italic" },
+  fieldLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 },
 });

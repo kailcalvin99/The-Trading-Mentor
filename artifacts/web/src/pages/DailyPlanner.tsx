@@ -9,11 +9,8 @@ import {
   CheckCircle2,
   Plus,
   Trash2,
-  Edit3,
-  Save,
   Target,
   StickyNote,
-  ListTodo,
   TrendingUp,
   Clock,
   ChevronDown,
@@ -392,9 +389,6 @@ export default function DailyPlanner() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dayData, setDayData] = useState<DayData>(() => loadDayDataLocal(new Date()));
   const [entryChecklist, setEntryChecklist] = useState<EntryChecklist>(() => loadEntryChecklistLocal(new Date()));
-  const [newTask, setNewTask] = useState("");
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editingText, setEditingText] = useState("");
   const [tradePlanOpen, setTradePlanOpen] = useState(true);
   const [entryChecklistOpen, setEntryChecklistOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
@@ -409,8 +403,6 @@ export default function DailyPlanner() {
   const [showPreTradeChecklist, setShowPreTradeChecklist] = useState(false);
   const [riskChecked, setRiskChecked] = useState<Record<string, boolean>>(() => getRiskChecklistState());
   const [posCalcPoints, setPosCalcPoints] = useState("");
-  const taskInputRef = useRef<HTMLInputElement>(null);
-  const editInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   const { data: apiTrades } = useListTrades();
@@ -537,38 +529,6 @@ export default function DailyPlanner() {
     });
   }, [selectedDate]);
 
-  function addTask() {
-    const text = newTask.trim();
-    if (!text) return;
-    const task: PersonalTask = { id: `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, text, done: false };
-    persist({ ...dayData, tasks: [...dayData.tasks, task] });
-    setNewTask("");
-    taskInputRef.current?.focus();
-  }
-
-  function toggleTask(id: string) {
-    persist({ ...dayData, tasks: dayData.tasks.map((t) => t.id === id ? { ...t, done: !t.done } : t) });
-  }
-
-  function deleteTask(id: string) {
-    persist({ ...dayData, tasks: dayData.tasks.filter((t) => t.id !== id) });
-  }
-
-  function startEdit(task: PersonalTask) {
-    setEditingTaskId(task.id);
-    setEditingText(task.text);
-    setTimeout(() => editInputRef.current?.focus(), 50);
-  }
-
-  function saveEdit() {
-    if (!editingTaskId) return;
-    const text = editingText.trim();
-    if (!text) return;
-    persist({ ...dayData, tasks: dayData.tasks.map((t) => t.id === editingTaskId ? { ...t, text } : t) });
-    setEditingTaskId(null);
-    setEditingText("");
-  }
-
   function updateNotes(notes: string) {
     persist({ ...dayData, notes });
   }
@@ -642,9 +602,6 @@ export default function DailyPlanner() {
   function handleSendToJournal() {
     setSendModalOpen(true);
   }
-
-  const completedTasks = dayData.tasks.filter((t) => t.done).length;
-  const totalTasks = dayData.tasks.length;
 
   const selectedAsset = dayData.tradePlan.selectedAsset || "NQ";
   const tickInfo = TICK_DATA[selectedAsset];
@@ -965,79 +922,6 @@ export default function DailyPlanner() {
             </>
           )}
 
-          <div className="flex items-center gap-2 mb-3">
-            <ListTodo className="h-4 w-4 text-blue-400" />
-            <h2 className="font-semibold text-sm">My Tasks</h2>
-            {totalTasks > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {completedTasks}/{totalTasks}
-              </span>
-            )}
-          </div>
-          <div>
-            <div className="flex gap-2 mb-3">
-              <input
-                ref={taskInputRef}
-                type="text"
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTask()}
-                placeholder="Add a task..."
-                className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-              />
-              <button onClick={addTask} className="bg-primary text-primary-foreground rounded-lg px-3 py-2 hover:brightness-110 transition-all" disabled={!newTask.trim()}>
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-
-            {dayData.tasks.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-4">No tasks yet. Add your first task above.</p>
-            )}
-
-            <div className="space-y-1">
-              {dayData.tasks.map((task) => (
-                <div key={task.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/50 transition-colors group">
-                  <Checkbox checked={task.done} onCheckedChange={() => toggleTask(task.id)} className="shrink-0" />
-                  {editingTaskId === task.id ? (
-                    <div className="flex-1 flex gap-2">
-                      <input
-                        ref={editInputRef}
-                        type="text"
-                        value={editingText}
-                        onChange={(e) => setEditingText(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingTaskId(null); }}
-                        className="flex-1 bg-background border border-primary/50 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-                      />
-                      <button onClick={saveEdit} className="text-primary hover:text-primary/80">
-                        <Save className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <span className={`flex-1 text-sm ${task.done ? "line-through text-muted-foreground" : ""}`}>{task.text}</span>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                        <button onClick={() => startEdit(task)} className="p-1 text-muted-foreground hover:text-foreground rounded">
-                          <Edit3 className="h-3 w-3" />
-                        </button>
-                        <button onClick={() => deleteTask(task.id)} className="p-1 text-muted-foreground hover:text-destructive rounded">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {totalTasks > 0 && (
-              <div className="mt-3 h-1.5 bg-border rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all duration-500"
-                  style={{ width: `${(completedTasks / totalTasks) * 100}%` }}
-                />
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 

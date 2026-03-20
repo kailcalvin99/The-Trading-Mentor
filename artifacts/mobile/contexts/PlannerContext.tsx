@@ -21,6 +21,7 @@ interface PlannerState {
   customItems: CustomRoutineItem[];
   addCustomItem: (label: string) => void;
   removeCustomItem: (id: string) => void;
+  renameCustomItem: (id: string, label: string) => void;
   toggleCustomItem: (id: string) => void;
   snoozeCustomItem: (id: string) => void;
 }
@@ -163,6 +164,18 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     });
   }, [persistCustomItems]);
 
+  const renameCustomItem = useCallback((id: string, label: string) => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    setCustomItems((prev) => {
+      const updated = prev.map((item) =>
+        item.id === id ? { ...item, label: trimmed } : item
+      );
+      persistCustomItems(updated);
+      return updated;
+    });
+  }, [persistCustomItems]);
+
   const toggleCustomItem = useCallback((id: string) => {
     setCustomItems((prev) => {
       const updated = prev.map((item) =>
@@ -197,6 +210,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
         customItems,
         addCustomItem,
         removeCustomItem,
+        renameCustomItem,
         toggleCustomItem,
         snoozeCustomItem,
       }}
