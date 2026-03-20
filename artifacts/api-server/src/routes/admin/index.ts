@@ -251,6 +251,7 @@ router.post("/reset", async (req, res) => {
   }
 });
 
+// FIX #6: return a masked token prefix only — never expose the full reset token
 router.get("/password-resets", async (_req, res) => {
   try {
     const resets = await db
@@ -274,7 +275,12 @@ router.get("/password-resets", async (_req, res) => {
       )
       .orderBy(passwordResetTokensTable.createdAt);
 
-    res.json({ resets });
+    const masked = resets.map(({ token, ...rest }) => ({
+      ...rest,
+      tokenHint: `${token.slice(0, 6)}${"*".repeat(10)}`,
+    }));
+
+    res.json({ resets: masked });
   } catch (err) {
     console.error("Get password resets error:", err);
     res.status(500).json({ error: "Failed to get password resets" });

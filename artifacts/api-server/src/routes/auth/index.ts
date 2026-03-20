@@ -22,6 +22,24 @@ const forgotPasswordLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// FIX #5: rate limit registration to prevent bot account creation
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many registration attempts. Please try again in 1 hour." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// FIX #14: rate limit the reset-password consumption endpoint
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Too many reset attempts. Please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const router = Router();
 
 router.get("/setup-status", async (_req, res) => {
@@ -35,7 +53,7 @@ router.get("/setup-status", async (_req, res) => {
   }
 });
 
-router.post("/register", async (req, res) => {
+router.post("/register", registerLimiter, async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
@@ -44,8 +62,9 @@ router.post("/register", async (req, res) => {
       return;
     }
 
-    if (typeof password !== "string" || password.length < 6) {
-      res.status(400).json({ error: "Password must be at least 6 characters" });
+    // FIX #15: raise minimum password length to 8 characters
+    if (typeof password !== "string" || password.length < 8) {
+      res.status(400).json({ error: "Password must be at least 8 characters" });
       return;
     }
 
@@ -66,7 +85,9 @@ router.post("/register", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
 
     const founderLimitSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_limit"));
-    const founderLimit = founderLimitSetting.length > 0 ? parseInt(founderLimitSetting[0].value) : 20;
+    // FIX #16: bounds-check founder limit — must be a positive integer
+    const rawFounderLimit = founderLimitSetting.length > 0 ? parseInt(founderLimitSetting[0].value) : 20;
+    const founderLimit = Number.isFinite(rawFounderLimit) && rawFounderLimit > 0 ? rawFounderLimit : 20;
 
     const [founderCountResult] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.isFounder, true));
     const currentFounderCount = founderCountResult.count;
@@ -75,8 +96,9 @@ router.post("/register", async (req, res) => {
     const isFounder = currentFounderCount < founderLimit;
     const founderNumber = isFounder ? currentFounderCount + 1 : null;
 
-    const ADMIN_EMAIL = "alexcalvin.ac@gmail.com";
-    const isAdmin = currentUserCount === 0 || normalizedEmail === ADMIN_EMAIL;
+    // FIX #4: read admin email from environment variable — never hardcode personal emails
+    const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
+    const isAdmin = currentUserCount === 0 || (adminEmail !== "" && normalizedEmail === adminEmail);
 
     const [user] = await db.insert(usersTable).values({
       email: normalizedEmail,
@@ -260,7 +282,8 @@ router.post("/forgot-password", forgotPasswordLimiter, async (req, res) => {
   }
 });
 
-router.post("/reset-password", async (req, res) => {
+// FIX #14: reset-password now has a rate limiter
+router.post("/reset-password", resetPasswordLimiter, async (req, res) => {
   try {
     const { token, password } = req.body;
 
@@ -269,8 +292,9 @@ router.post("/reset-password", async (req, res) => {
       return;
     }
 
-    if (typeof password !== "string" || password.length < 6) {
-      res.status(400).json({ error: "Password must be at least 6 characters" });
+    // FIX #15: enforce 8-character minimum consistently
+    if (typeof password !== "string" || password.length < 8) {
+      res.status(400).json({ error: "Password must be at least 8 characters" });
       return;
     }
 

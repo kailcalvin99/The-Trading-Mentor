@@ -326,7 +326,15 @@ router.post("/subscriptions/toggle", async (req, res) => {
 router.get("/new-count", async (req, res) => {
   try {
     const userId = req.user!.userId;
-    const since = req.query.since ? new Date(req.query.since as string) : new Date(Date.now() - 24 * 3600 * 1000);
+    // FIX #12: validate the `since` date before using it
+    const sinceRaw = req.query.since as string | undefined;
+    let since: Date;
+    if (sinceRaw) {
+      const parsed = new Date(sinceRaw);
+      since = isNaN(parsed.getTime()) ? new Date(Date.now() - 24 * 3600 * 1000) : parsed;
+    } else {
+      since = new Date(Date.now() - 24 * 3600 * 1000);
+    }
 
     const subs = await db
       .select({ category: communitySubscriptionsTable.category })

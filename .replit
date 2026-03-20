@@ -33,3 +33,4 @@ packages = ["k6"]
 [userenv]
 
 [userenv.shared]
+ADMIN_EMAIL = "alexcalvin.ac@gmail.com"

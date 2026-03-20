@@ -109,7 +109,16 @@ router.patch("/", authRequired, async (req, res) => {
         socialUpdates.isPublic = Boolean(data.isPublic);
       }
       if (data.avatarUrl !== undefined) {
-        socialUpdates.avatarUrl = typeof data.avatarUrl === "string" ? data.avatarUrl || null : null;
+        // FIX #9: reject dangerous URL schemes to prevent stored XSS via avatar
+        const rawUrl = typeof data.avatarUrl === "string" ? data.avatarUrl.trim() : null;
+        if (rawUrl) {
+          const lower = rawUrl.toLowerCase();
+          if (lower.startsWith("javascript:") || (lower.startsWith("data:") && !lower.startsWith("data:image/"))) {
+            res.status(400).json({ error: "Invalid avatar URL" });
+            return;
+          }
+        }
+        socialUpdates.avatarUrl = rawUrl || null;
       }
 
       if (Object.keys(socialUpdates).length > 0) {
@@ -280,6 +289,14 @@ router.patch("/", authRequired, async (req, res) => {
         res.status(400).json({ error: "avatarUrl must be a string or null" });
         return;
       }
+      // FIX #9: reject dangerous URL schemes
+      if (avatarUrl) {
+        const lower = avatarUrl.toLowerCase();
+        if (lower.startsWith("javascript:") || (lower.startsWith("data:") && !lower.startsWith("data:image/"))) {
+          res.status(400).json({ error: "Invalid avatar URL" });
+          return;
+        }
+      }
       await db.update(usersTable).set({ avatarUrl: avatarUrl || null }).where(eq(usersTable.id, userId));
       res.json({ success: true, message: "Avatar updated successfully" });
       return;
@@ -296,10 +313,14 @@ router.patch("/", authRequired, async (req, res) => {
       const currentStreak = currentUser.loginStreak ?? 0;
 
       if (data.totalXp !== undefined && typeof data.totalXp === "number") {
-        updates.totalXp = Math.max(currentXp, Math.max(0, data.totalXp));
+        // FIX #7: cap XP to prevent self-inflation — max 500 XP gain per sync request
+        const MAX_XP_GAIN_PER_REQUEST = 500;
+        const newXp = Math.max(0, Math.floor(data.totalXp));
+        updates.totalXp = Math.min(newXp, currentXp + MAX_XP_GAIN_PER_REQUEST);
       }
       if (data.loginStreak !== undefined && typeof data.loginStreak === "number") {
-        updates.loginStreak = Math.max(0, data.loginStreak);
+        // Allow streak to be set by client but cap to a sane maximum (365 days)
+        updates.loginStreak = Math.max(0, Math.min(Math.floor(data.loginStreak), 365));
       }
       if (data.lastLoginDate !== undefined) {
         const dateStr = String(data.lastLoginDate || "");
@@ -370,6 +391,14 @@ router.patch("/avatar", authRequired, async (req, res) => {
     if (avatarUrl !== undefined && avatarUrl !== null && typeof avatarUrl !== "string") {
       res.status(400).json({ error: "avatarUrl must be a string or null" });
       return;
+    }
+    // FIX #9: reject dangerous URL schemes
+    if (avatarUrl) {
+      const lower = avatarUrl.toLowerCase();
+      if (lower.startsWith("javascript:") || (lower.startsWith("data:") && !lower.startsWith("data:image/"))) {
+        res.status(400).json({ error: "Invalid avatar URL" });
+        return;
+      }
     }
     await db.update(usersTable).set({ avatarUrl: avatarUrl || null }).where(eq(usersTable.id, userId));
     res.json({ success: true, message: "Avatar updated successfully" });

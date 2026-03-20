@@ -164,6 +164,7 @@ router.post("/", authRequired, tierRequired(2), async (req, res) => {
   }
 });
 
+// FIX #3: ownership check — only the trade owner can get coaching
 router.post("/:id/coach", authRequired, tierRequired(2), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -171,7 +172,11 @@ router.post("/:id/coach", authRequired, tierRequired(2), async (req, res) => {
       res.status(400).json({ error: "Invalid trade ID" });
       return;
     }
-    const [trade] = await db.select().from(tradesTable).where(eq(tradesTable.id, id));
+    const userId = req.user!.userId;
+    const [trade] = await db
+      .select()
+      .from(tradesTable)
+      .where(and(eq(tradesTable.id, id), eq(tradesTable.userId, userId)));
     if (!trade) {
       res.status(404).json({ error: "Trade not found" });
       return;
@@ -219,15 +224,18 @@ Respond with ONLY the coaching feedback — no headers, no bullet points, just f
   }
 });
 
-router.delete("/all", authRequired, async (_req, res) => {
+// FIX #1: scope DELETE /all to only the authenticated user's own trades
+router.delete("/all", authRequired, async (req, res) => {
   try {
-    await db.delete(tradesTable);
-    res.json({ message: "All trades deleted" });
+    const userId = req.user!.userId;
+    await db.delete(tradesTable).where(eq(tradesTable.userId, userId));
+    res.json({ message: "All your trades deleted" });
   } catch {
     res.status(500).json({ error: "Failed to delete trades" });
   }
 });
 
+// FIX #2: ownership check — only the trade owner can delete it
 router.delete("/:id", authRequired, tierRequired(2), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -235,7 +243,15 @@ router.delete("/:id", authRequired, tierRequired(2), async (req, res) => {
       res.status(400).json({ error: "Invalid trade ID" });
       return;
     }
-    await db.delete(tradesTable).where(eq(tradesTable.id, id));
+    const userId = req.user!.userId;
+    const result = await db
+      .delete(tradesTable)
+      .where(and(eq(tradesTable.id, id), eq(tradesTable.userId, userId)))
+      .returning({ id: tradesTable.id });
+    if (result.length === 0) {
+      res.status(404).json({ error: "Trade not found" });
+      return;
+    }
     res.status(204).end();
   } catch {
     res.status(500).json({ error: "Failed to delete trade" });
