@@ -62,7 +62,7 @@ export default function TabLayout() {
         userName={user?.name ?? ""}
         communityBadge={communityBadge}
       />
-      <KillZoneStrip />
+      {appMode !== "lite" && <KillZoneStrip />}
       <Tabs
         tabBar={() => null}
         screenOptions={{

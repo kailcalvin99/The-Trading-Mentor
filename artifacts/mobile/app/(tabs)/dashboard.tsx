@@ -1870,17 +1870,19 @@ export default function DashboardScreen() {
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
 
-      {/* Log Trade FAB — always visible on dashboard */}
-      <TouchableOpacity
-        style={[styles.logTradeFab, { backgroundColor: C.accent }]}
-        onPress={() => router.navigate({ pathname: "/(tabs)/journal", params: { new: "1" } } as never)}
-        activeOpacity={0.85}
-        accessibilityLabel="Log a trade"
-        accessibilityRole="button"
-      >
-        <Ionicons name="add" size={20} color="#0A0A0F" />
-        <Text style={styles.logTradeFabText}>Log Trade</Text>
-      </TouchableOpacity>
+      {/* Log Trade FAB — hidden in learning mode */}
+      {appMode !== "lite" && (
+        <TouchableOpacity
+          style={[styles.logTradeFab, { backgroundColor: C.accent }]}
+          onPress={() => router.navigate({ pathname: "/(tabs)/journal", params: { new: "1" } } as never)}
+          activeOpacity={0.85}
+          accessibilityLabel="Log a trade"
+          accessibilityRole="button"
+        >
+          <Ionicons name="add" size={20} color="#0A0A0F" />
+          <Text style={styles.logTradeFabText}>Log Trade</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }

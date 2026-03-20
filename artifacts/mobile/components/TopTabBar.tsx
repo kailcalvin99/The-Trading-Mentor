@@ -65,7 +65,7 @@ const TAB_HREFS: Record<TabRoute, Href> = {
 };
 
 const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "journal", "tags", "community", "analytics"];
-const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy", "journal"];
+const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy"];
 
 interface TopTabBarProps {
   pathname: string;
