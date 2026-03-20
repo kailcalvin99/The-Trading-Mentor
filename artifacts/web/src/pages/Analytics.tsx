@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { LockedFeatureOverlay } from "@/components/CasinoElements";
@@ -411,11 +411,13 @@ function GradeGauge({ score }: { score: number }) {
 
 type ExpandedChart = "pnl" | "hour" | "day" | "setup" | "behavior" | "confluence" | null;
 
+const LIST_TRADES_OPTIONS = { query: { refetchOnMount: "always" as const } };
+
 export default function Analytics() {
   const navigate = useNavigate();
   const { tierLevel, isAdmin } = useAuth();
   const isPremium = isAdmin || (tierLevel ?? 0) >= 2;
-  const { data: rawTrades, isLoading: tradesLoading } = useListTrades({ query: { refetchOnMount: "always" } });
+  const { data: rawTrades, isLoading: tradesLoading } = useListTrades(LIST_TRADES_OPTIONS);
   const { data: propAccount } = useGetPropAccount();
   const [expandedChart, setExpandedChart] = useState<ExpandedChart>(null);
 
@@ -1403,9 +1405,11 @@ function IctBreakdownSection() {
   const [data, setData] = useState<IctBreakdownData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasFetched = useRef(false);
 
   useEffect(() => {
-    if (!open || data) return;
+    if (!open || hasFetched.current) return;
+    hasFetched.current = true;
     const apiBase = import.meta.env.VITE_API_URL || "/api";
     setLoading(true);
     fetch(`${apiBase}/analytics/ict-breakdown`, { credentials: "include" })
@@ -1415,7 +1419,7 @@ function IctBreakdownSection() {
       })
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => { setError("Unable to load ICT analytics"); setLoading(false); });
-  }, [open, data]);
+  }, [open]);
 
   const sessionChartConfig: ChartConfig = {
     winRate: { label: "Win Rate %", color: "hsl(142, 76%, 36%)" },
