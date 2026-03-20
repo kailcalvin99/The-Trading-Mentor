@@ -262,7 +262,7 @@ export default function RiskShieldScreen() {
   const { data: rawTrades } = useListTrades();
   const completedTrades = useMemo(() => {
     if (!rawTrades) return [];
-    return (rawTrades as Trade[]).filter((t) => !t.isDraft);
+    return (rawTrades as Trade[]).filter(Boolean).filter((t) => !t.isDraft);
   }, [rawTrades]);
   const mobileInsights = useMemo(() => computeMobileInsights(completedTrades), [completedTrades]);
 

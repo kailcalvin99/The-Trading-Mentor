@@ -245,7 +245,7 @@ export default function JournalScreen() {
   );
 
   const { data: tradesData } = useListTrades();
-  const trades = tradesData ?? [];
+  const trades = (tradesData ?? []).filter(Boolean);
   const { mutateAsync: createTradeMut } = useCreateTrade();
   const { mutateAsync: deleteTradeMut } = useDeleteTrade();
 

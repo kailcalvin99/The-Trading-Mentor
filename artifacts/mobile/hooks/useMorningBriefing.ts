@@ -87,6 +87,7 @@ function computeWinStreak(
   trades: Array<{ outcome?: string | null; createdAt?: string | null; isDraft?: boolean | null }>
 ): number {
   const completed = [...trades]
+    .filter(Boolean)
     .filter((t) => !t.isDraft && (t.outcome === "win" || t.outcome === "loss"))
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   let streak = 0;
@@ -117,7 +118,7 @@ function computeBriefingData(
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const today = new Date().toDateString();
-  const todayTrades = trades.filter((t) => {
+  const todayTrades = trades.filter(Boolean).filter((t) => {
     if (t.isDraft) return false;
     if (!t.createdAt) return false;
     return new Date(t.createdAt).toDateString() === today;

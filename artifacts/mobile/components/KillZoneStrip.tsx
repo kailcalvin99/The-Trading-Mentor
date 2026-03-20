@@ -55,7 +55,7 @@ export default function KillZoneStrip() {
   const scrollIndexRef = useRef(0);
   const { data: apiTrades } = useListTrades();
 
-  const trades = (apiTrades || []) as Array<{
+  const trades = (apiTrades || []).filter(Boolean) as Array<{
     outcome?: string | null;
     pnl?: string | number | null;
     createdAt?: string | null;

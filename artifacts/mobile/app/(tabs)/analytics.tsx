@@ -154,7 +154,7 @@ function AnalyticsScreen() {
 
   const trades = useMemo(() => {
     if (!rawTrades) return [];
-    return (rawTrades as Trade[]).filter((t) => !t.isDraft);
+    return (rawTrades as Trade[]).filter(Boolean).filter((t) => !t.isDraft);
   }, [rawTrades]);
 
   const stats = useMemo(() => {

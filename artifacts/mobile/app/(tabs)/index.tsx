@@ -172,7 +172,7 @@ function PlannerScreen() {
   const [positionCalcPoints, setPositionCalcPoints] = useState("");
   const [positionCalcBalance, setPositionCalcBalance] = useState("");
   const [riskChecklistChecked, setRiskChecklistChecked] = useState<Record<string, boolean>>({});
-  const trades = (apiTrades || []) as { isDraft?: boolean | null; outcome?: string | null; entryTime?: string | null; createdAt?: string; pnl?: number }[];
+  const trades = (apiTrades || []).filter(Boolean) as { isDraft?: boolean | null; outcome?: string | null; entryTime?: string | null; createdAt?: string; pnl?: number }[];
   const router = useRouter();
 
   useEffect(() => {
