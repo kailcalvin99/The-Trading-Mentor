@@ -712,7 +712,7 @@ export default function Layout() {
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-sidebar shrink-0 h-12">
           <button
             onClick={() => setDrawerOpen((prev) => !prev)}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+            className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
             aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={drawerOpen}
           >
