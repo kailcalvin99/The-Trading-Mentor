@@ -43,6 +43,7 @@ import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
 import { registerAvatarPickerListener, unregisterAvatarPickerListener } from "@/lib/avatarPickerBus";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
+import NewsModal from "@/components/NewsModal";
 
 const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; why: string }> = [
   { key: "water", label: "Drink water", icon: "water-outline", why: "Dehydration reduces focus and decision-making quality." },
@@ -271,12 +272,29 @@ function StatsStripWidget() {
 function MorningRoutineWidget({ showWhy = false }: { showWhy?: boolean }) {
   const router = useRouter();
   const { routineItems, isRoutineComplete, toggleItem } = usePlanner();
+  const [newsModalVisible, setNewsModalVisible] = useState(false);
 
   const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
   const totalCount = ROUTINE_DISPLAY.length;
 
+  function handleRoutineItemPress(key: "water" | "breathing" | "news" | "bias") {
+    if (key === "news" && !routineItems[key]) {
+      setNewsModalVisible(true);
+    } else {
+      toggleItem(key);
+    }
+  }
+
   return (
     <View style={styles.card}>
+      <NewsModal
+        visible={newsModalVisible}
+        onClose={() => setNewsModalVisible(false)}
+        onDone={() => {
+          setNewsModalVisible(false);
+          toggleItem("news");
+        }}
+      />
       <View style={styles.cardHeaderRow}>
         <Ionicons name="sunny-outline" size={14} color="#E53E3E" />
         <Text style={styles.cardLabel}>Morning Routine</Text>
@@ -301,7 +319,7 @@ function MorningRoutineWidget({ showWhy = false }: { showWhy?: boolean }) {
               <TouchableOpacity
                 key={item.key}
                 style={styles.routineItem}
-                onPress={() => toggleItem(item.key)}
+                onPress={() => handleRoutineItemPress(item.key)}
                 activeOpacity={0.7}
               >
                 <View style={[styles.routineCheckbox, done && styles.routineCheckboxDone]}>
@@ -330,6 +348,7 @@ function MasterRoutineWidget() {
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [newsModalVisible, setNewsModalVisible] = useState(false);
 
   const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
   const totalCount = ROUTINE_DISPLAY.length;
@@ -354,8 +373,24 @@ function MasterRoutineWidget() {
     setEditText("");
   }
 
+  function handleRoutineItemPress(key: "water" | "breathing" | "news" | "bias") {
+    if (key === "news" && !routineItems[key]) {
+      setNewsModalVisible(true);
+    } else {
+      toggleItem(key);
+    }
+  }
+
   return (
     <View style={styles.card}>
+      <NewsModal
+        visible={newsModalVisible}
+        onClose={() => setNewsModalVisible(false)}
+        onDone={() => {
+          setNewsModalVisible(false);
+          toggleItem("news");
+        }}
+      />
       <View style={styles.cardHeaderRow}>
         <Ionicons name="sunny-outline" size={14} color="#E53E3E" />
         <Text style={styles.cardLabel}>Master Routine</Text>
@@ -376,7 +411,7 @@ function MasterRoutineWidget() {
           <TouchableOpacity
             key={item.key}
             style={mrStyles.routineRow}
-            onPress={() => toggleItem(item.key)}
+            onPress={() => handleRoutineItemPress(item.key)}
             activeOpacity={0.7}
           >
             <View style={[mrStyles.checkbox, done && mrStyles.checkboxDone]}>

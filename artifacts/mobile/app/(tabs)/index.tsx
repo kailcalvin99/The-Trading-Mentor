@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import NewsModal from "@/components/NewsModal";
 import {
   View,
   Text,
@@ -142,6 +143,17 @@ function getESTNow(): Date {
   return new Date(utc + -5 * 3600000);
 }
 
+const MORNING_ROUTINE_ITEMS: Array<{
+  key: "water" | "breathing" | "news" | "bias";
+  label: string;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+}> = [
+  { key: "water", label: "Drink water", icon: "water-outline" },
+  { key: "breathing", label: "5-min breathing", icon: "leaf-outline" },
+  { key: "news", label: "Check news", icon: "newspaper-outline" },
+  { key: "bias", label: "Set daily bias", icon: "trending-up-outline" },
+];
+
 export default function PlannerScreenGated() {
   return (
     <FullModeGate demoContent={<PropTrackerDemoSnapshot />}>
@@ -172,6 +184,7 @@ function PlannerScreen() {
   const [showRiskGauges, setShowRiskGauges] = useState(false);
   const [showPositionCalc, setShowPositionCalc] = useState(false);
   const [showPreTradeChecklist, setShowPreTradeChecklist] = useState(false);
+  const [showNewsModal, setShowNewsModal] = useState(false);
   const [positionCalcPoints, setPositionCalcPoints] = useState("");
   const [positionCalcBalance, setPositionCalcBalance] = useState("");
   const [riskChecklistChecked, setRiskChecklistChecked] = useState<Record<string, boolean>>({});
@@ -247,6 +260,14 @@ function PlannerScreen() {
     const interval = setInterval(checkRiskTTL, 60_000);
     return () => clearInterval(interval);
   }, []);
+
+  function handleRoutineItemPress(key: "water" | "breathing" | "news" | "bias") {
+    if (key === "news" && !routineItems[key]) {
+      setShowNewsModal(true);
+    } else {
+      toggleItem(key);
+    }
+  }
 
   function toggleRiskChecklist(id: string) {
     const next = { ...riskChecklistChecked, [id]: !riskChecklistChecked[id] };
@@ -590,6 +611,16 @@ function PlannerScreen() {
           </View>
         </Modal>
 
+        {/* News Modal */}
+        <NewsModal
+          visible={showNewsModal}
+          onClose={() => setShowNewsModal(false)}
+          onDone={() => {
+            setShowNewsModal(false);
+            toggleItem("news");
+          }}
+        />
+
         {/* Daily Halt Banner */}
         {showHaltBanner && (
           <View style={styles.haltBanner}>
@@ -604,6 +635,40 @@ function PlannerScreen() {
         {/* Probability Meter */}
         <View style={styles.meterContainer}>
           <ProbabilityMeter score={probScore} />
+        </View>
+
+        {/* Morning Routine */}
+        <View style={styles.card}>
+          <View style={styles.routineCardHeader}>
+            <Ionicons name="sunny-outline" size={14} color="#E53E3E" />
+            <Text style={styles.routineCardLabel}>Morning Routine</Text>
+            {isRoutineComplete && (
+              <View style={styles.doneBadge}>
+                <Text style={styles.doneBadgeText}>Done ✓</Text>
+              </View>
+            )}
+          </View>
+          {MORNING_ROUTINE_ITEMS.map((item) => {
+            const done = routineItems[item.key];
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={styles.routineRow}
+                onPress={() => handleRoutineItemPress(item.key)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.routineCheckbox, done && styles.routineCheckboxDone]}>
+                  {done && <Ionicons name="checkmark" size={10} color="#0A0A0F" />}
+                </View>
+                <Text style={[styles.routineLabel, done && styles.routineLabelDone]}>
+                  {item.label}
+                </Text>
+                {item.key === "news" && !done && (
+                  <Ionicons name="chevron-forward" size={14} color={C.textTertiary} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Red News Warning Banner */}
@@ -1209,4 +1274,11 @@ const styles = StyleSheet.create({
   routineLockDesc: { fontSize: 13, color: C.textSecondary, textAlign: "center", lineHeight: 20 },
   routineLockBtn: { marginTop: 4, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, backgroundColor: C.accent },
   routineLockBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+  routineCardHeader: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 },
+  routineCardLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.textSecondary, flex: 1 },
+  doneBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: "#00C89620", borderWidth: 1, borderColor: "#00C89640" },
+  doneBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#00C896" },
+  routineRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, gap: 10, borderTopWidth: 1, borderTopColor: C.cardBorder },
+  routineCheckbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
+  routineCheckboxDone: { backgroundColor: C.accent, borderColor: C.accent },
 });
