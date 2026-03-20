@@ -16,6 +16,10 @@ import { DASHBOARD_WIDGETS, useDashboardWidgets } from "@/hooks/useDashboardWidg
 import { useTodaySchedule } from "@/hooks/useTodaySchedule";
 import type { LucideIcon } from "lucide-react";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
+import {
+  PRETRADE_CHECKLIST_ITEMS,
+  getPretradeChecklistState,
+} from "@/lib/pretradeChecklist";
 
 const SESSIONS = [
   { name: "London", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", time: "2:00–5:00 AM EST" },
@@ -24,14 +28,6 @@ const SESSIONS = [
   { name: "London Close", emoji: "🔔", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8", time: "11:00 AM–12:00 PM EST" },
 ];
 
-const CHECKLIST_STORAGE_KEY = "ict-pretrade-checklist";
-const CHECKLIST_TTL_HOURS = 4;
-const CHECKLIST_ITEMS = [
-  { id: "htf_bias", label: "HTF Bias confirmed on Daily chart", desc: "The Daily chart is clearly bullish or bearish — no choppy indecision." },
-  { id: "kill_zone", label: "In a Kill Zone right now", desc: "You are trading during London Open (2-5 AM EST) or Silver Bullet (10-11 AM EST)." },
-  { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", desc: "A liquidity sweep (stop hunt) or IDM (Inducement) has occurred on your entry timeframe." },
-  { id: "displacement_fvg", label: "Displacement with FVG or MSS present", desc: "Big displacement candles created an FVG or MSS — Smart Money is behind this move." },
-];
 
 const QUICK_JOURNAL_KEY = "ict-quick-journal-notes";
 
@@ -55,23 +51,6 @@ function saveQuickNote(note: QuickNote) {
   localStorage.setItem(QUICK_JOURNAL_KEY, JSON.stringify(trimmed));
 }
 
-function getChecklistState(): { checked: Record<string, boolean>; timestamp: number } {
-  try {
-    const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY);
-    if (!raw) return { checked: {}, timestamp: 0 };
-    const data = JSON.parse(raw);
-    const ageMs = Date.now() - (data.timestamp || 0);
-    if (ageMs > CHECKLIST_TTL_HOURS * 60 * 60 * 1000) {
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-      return { checked: {}, timestamp: 0 };
-    }
-    return data;
-  } catch { return { checked: {}, timestamp: 0 }; }
-}
-
-function saveChecklistState(checked: Record<string, boolean>) {
-  localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify({ checked, timestamp: Date.now() }));
-}
 
 function getESTNow(): Date {
   const fmt = new Intl.DateTimeFormat("en-US", {
@@ -207,87 +186,6 @@ function WidgetHeader({
   );
 }
 
-function ChecklistPopup({ onClose }: { onClose: () => void }) {
-  const [checked, setChecked] = useState<Record<string, boolean>>(() => getChecklistState().checked);
-  const [ttlAnchor, setTtlAnchor] = useState(() => getChecklistState().timestamp);
-  const allChecked = CHECKLIST_ITEMS.every((item) => checked[item.id]);
-  const doneCount = Object.values(checked).filter(Boolean).length;
-
-  useEffect(() => {
-    if (ttlAnchor <= 0) return;
-    const expiresAt = ttlAnchor + CHECKLIST_TTL_HOURS * 60 * 60 * 1000;
-    const msLeft = expiresAt - Date.now();
-    if (msLeft <= 0) {
-      setChecked({});
-      setTtlAnchor(0);
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setChecked({});
-      setTtlAnchor(0);
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-    }, msLeft);
-    return () => clearTimeout(timer);
-  }, [ttlAnchor]);
-
-  function toggle(id: string) {
-    const next = { ...checked, [id]: !checked[id] };
-    setChecked(next);
-    saveChecklistState(next);
-    if (ttlAnchor <= 0) setTtlAnchor(Date.now());
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={onClose}>
-      <div
-        className="bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:w-[420px] p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Pre-Trade Checklist</h3>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${allChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
-              {doneCount}/{CHECKLIST_ITEMS.length}
-            </span>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="space-y-1.5 mb-3">
-          {CHECKLIST_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => toggle(item.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all text-left ${
-                checked[item.id]
-                  ? "bg-emerald-500/10 border-emerald-500/30"
-                  : "bg-secondary/30 border-border hover:border-emerald-500/30"
-              }`}
-            >
-              {checked[item.id]
-                ? <CheckSquare className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                : <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-              <div className="flex-1 min-w-0">
-                <p className={`text-xs font-medium ${checked[item.id] ? "text-emerald-400" : "text-foreground"}`}>{item.label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{item.desc}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-        <div className={`rounded-lg border px-3 py-2 text-center text-xs font-bold transition-all ${
-          allChecked
-            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-            : "bg-secondary/30 border-border text-muted-foreground"
-        }`}>
-          {allChecked ? "✓ Ready to Trade" : "Not Ready"}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function CompactGreetingRow() {
   const { user } = useAuth();
@@ -307,76 +205,82 @@ function CompactGreetingRow() {
   );
 }
 
-function PreTradeChecklistWidget() {
+function PreTradePlanSummaryWidget() {
   const navigate = useNavigate();
-  const [checked, setChecked] = useState<Record<string, boolean>>(() => getChecklistState().checked);
-  const [ttlAnchor, setTtlAnchor] = useState(() => getChecklistState().timestamp);
-  const allChecked = CHECKLIST_ITEMS.every((item) => checked[item.id]);
-  const doneCount = Object.values(checked).filter(Boolean).length;
+  const [checked, setChecked] = useState<Record<string, boolean>>(() => getPretradeChecklistState());
+  const doneCount = PRETRADE_CHECKLIST_ITEMS.filter((item) => checked[item.id]).length;
+  const allChecked = doneCount === PRETRADE_CHECKLIST_ITEMS.length;
 
   useEffect(() => {
-    if (ttlAnchor <= 0) return;
-    const expiresAt = ttlAnchor + CHECKLIST_TTL_HOURS * 60 * 60 * 1000;
-    const msLeft = expiresAt - Date.now();
-    if (msLeft <= 0) {
-      setChecked({});
-      setTtlAnchor(0);
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setChecked({});
-      setTtlAnchor(0);
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-    }, msLeft);
-    return () => clearTimeout(timer);
-  }, [ttlAnchor]);
+    const id = setInterval(() => {
+      setChecked(getPretradeChecklistState());
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
 
-  function toggle(id: string) {
-    const next = { ...checked, [id]: !checked[id] };
-    setChecked(next);
-    saveChecklistState(next);
-    if (ttlAnchor <= 0) setTtlAnchor(Date.now());
-  }
+  const todayBias = (() => {
+    try {
+      const todayKey = `planner_day_${new Date().toISOString().split("T")[0]}`;
+      const raw = localStorage.getItem(todayKey);
+      if (raw) {
+        const data = JSON.parse(raw);
+        return data?.tradePlan?.bias || "";
+      }
+    } catch {}
+    return "";
+  })();
 
   return (
     <div className="bg-card border border-border rounded-2xl p-4">
       <WidgetHeader
-        icon={Shield}
-        title="Rules Before I Trade"
+        icon={ClipboardCheck}
+        title="Pre-Trade Plan"
+        editLink="/planner"
+        editLabel="Mission Control ↗"
         badge={
           <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${allChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
-            {doneCount}/{CHECKLIST_ITEMS.length}
+            {doneCount}/{PRETRADE_CHECKLIST_ITEMS.length}
           </span>
         }
       />
-      <div className="space-y-1.5">
-        {CHECKLIST_ITEMS.map((item) => (
-          <button
+      {todayBias && (
+        <div className={`mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+          todayBias === "bullish" ? "bg-emerald-500/20 text-emerald-400" :
+          todayBias === "bearish" ? "bg-red-500/20 text-red-400" :
+          "bg-amber-500/20 text-amber-400"
+        }`}>
+          {todayBias === "bullish" ? "↑" : todayBias === "bearish" ? "↓" : "–"} {todayBias.charAt(0).toUpperCase() + todayBias.slice(1)} bias
+        </div>
+      )}
+      <div className="space-y-1.5 mb-3">
+        {PRETRADE_CHECKLIST_ITEMS.map((item) => (
+          <div
             key={item.id}
-            onClick={() => toggle(item.id)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all text-left ${
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${
               checked[item.id]
                 ? "bg-emerald-500/10 border-emerald-500/30"
-                : "bg-secondary/30 border-border hover:border-emerald-500/30"
+                : "bg-secondary/30 border-border"
             }`}
           >
             {checked[item.id]
               ? <CheckSquare className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
               : <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-            <span className={`text-xs font-medium ${checked[item.id] ? "text-emerald-400" : "text-foreground"}`}>
+            <span className={`text-xs font-medium ${checked[item.id] ? "text-emerald-400" : "text-muted-foreground"}`}>
               {item.label}
             </span>
-          </button>
+          </div>
         ))}
       </div>
-      <div className={`mt-2.5 rounded-lg border px-3 py-2 text-center text-xs font-bold transition-all ${
-        allChecked
-          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-          : "bg-secondary/30 border-border text-muted-foreground"
-      }`}>
-        {allChecked ? "✓ Ready to Trade" : "Not Ready"}
-      </div>
+      <button
+        onClick={() => navigate("/planner")}
+        className={`w-full rounded-lg border px-3 py-2 text-center text-xs font-bold transition-all ${
+          allChecked
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+            : "bg-secondary/30 border-border text-muted-foreground hover:border-primary/40 hover:text-primary"
+        }`}
+      >
+        {allChecked ? "✓ Ready to Trade" : "Set up in Mission Control →"}
+      </button>
     </div>
   );
 }
@@ -1524,7 +1428,7 @@ export default function Dashboard() {
           <LearningProgressWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <MasterMorningWidget />
-            <PreTradeChecklistWidget />
+            <PreTradePlanSummaryWidget />
           </div>
           <LessonCarouselWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1601,7 +1505,7 @@ export default function Dashboard() {
           <MorningBriefingWidget />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <MasterMorningWidget />
-            <PreTradeChecklistWidget />
+            <PreTradePlanSummaryWidget />
           </div>
 
           {isEnabled("tradingcalendar") && <TradingCalendarWidget />}

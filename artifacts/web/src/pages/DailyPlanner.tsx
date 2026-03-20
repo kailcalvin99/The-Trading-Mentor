@@ -42,38 +42,19 @@ import CoolDownOverlay, { FailureAnalysis } from "@/components/CoolDownOverlay";
 import { recordDisciplinedDay } from "@/components/HallOfFame";
 import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
 
+import {
+  PRETRADE_CHECKLIST_ITEMS as RISK_CHECKLIST_ITEMS,
+  getPretradeChecklistState as getRiskChecklistState,
+  savePretradeChecklistState as saveRiskChecklistState,
+  resetPretradeChecklistState as resetRiskChecklistState,
+} from "@/lib/pretradeChecklist";
+
 const ICON_MAP: Record<string, LucideIcon> = {
   Droplets, Wind, Newspaper, BarChart3, CheckCircle2, Target, Clock, Activity, AlertTriangle,
 };
 
-const RISK_CHECKLIST_STORAGE_KEY = "ict-pretrade-checklist";
-const RISK_CHECKLIST_TTL_HOURS = 4;
-const RISK_CHECKLIST_ITEMS = [
-  { id: "htf_bias", label: "HTF Bias confirmed on Daily chart", desc: "The Daily chart is clearly bullish or bearish — no choppy indecision." },
-  { id: "kill_zone", label: "In a Kill Zone right now", desc: "You are trading during London Open (2-5 AM EST) or Silver Bullet (10-11 AM EST)." },
-  { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", desc: "A liquidity sweep (stop hunt) or IDM (Inducement) has occurred on your entry timeframe." },
-  { id: "displacement_fvg", label: "Displacement with FVG or MSS present", desc: "Big displacement candles created an FVG or MSS — Smart Money is behind this move." },
-];
 const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
-
-function getRiskChecklistState(): Record<string, boolean> {
-  try {
-    const raw = localStorage.getItem(RISK_CHECKLIST_STORAGE_KEY);
-    if (!raw) return {};
-    const data = JSON.parse(raw);
-    const ageMs = Date.now() - (data.timestamp || 0);
-    if (ageMs > RISK_CHECKLIST_TTL_HOURS * 60 * 60 * 1000) {
-      localStorage.removeItem(RISK_CHECKLIST_STORAGE_KEY);
-      return {};
-    }
-    return data.checked || {};
-  } catch { return {}; }
-}
-
-function saveRiskChecklistState(checked: Record<string, boolean>) {
-  localStorage.setItem(RISK_CHECKLIST_STORAGE_KEY, JSON.stringify({ checked, timestamp: Date.now() }));
-}
 
 interface PersonalTask {
   id: string;
@@ -100,22 +81,10 @@ interface TradePlan {
   voiceNote: string;
 }
 
-interface EntryChecklist {
-  htfBias: boolean;
-  liquiditySwept: boolean;
-  fvgPresent: boolean;
-  orderBlockIdentified: boolean;
-  premiumDiscountZone: boolean;
-  inKillzone: boolean;
-  noRedNews: boolean;
-  manipulationPhase: boolean;
-}
-
 interface DayData {
   tasks: PersonalTask[];
   notes: string;
   tradePlan: TradePlan;
-  entryChecklist?: EntryChecklist;
 }
 
 const TICK_DATA: Record<string, { tick: number; miniValue: number; microValue: number; label: string }> = {
@@ -140,10 +109,6 @@ const PRESET_LEVELS = [
 
 function getDayKey(date: Date) {
   return `planner_day_${date.toISOString().split("T")[0]}`;
-}
-
-function getEntryChecklistKey(date: Date) {
-  return `planner_entry_checklist_${date.toISOString().split("T")[0]}`;
 }
 
 function formatDate(date: Date) {
@@ -173,17 +138,6 @@ const DEFAULT_TRADE_PLAN: TradePlan = {
   voiceNote: "",
 };
 
-const DEFAULT_ENTRY_CHECKLIST: EntryChecklist = {
-  htfBias: false,
-  liquiditySwept: false,
-  fvgPresent: false,
-  orderBlockIdentified: false,
-  premiumDiscountZone: false,
-  inKillzone: false,
-  noRedNews: false,
-  manipulationPhase: false,
-};
-
 function migrateKeyLevels(keyLevels: KeyLevel[] | string): KeyLevel[] {
   if (Array.isArray(keyLevels)) return keyLevels;
   if (typeof keyLevels === "string" && keyLevels.trim()) {
@@ -209,22 +163,10 @@ function saveDayDataLocal(date: Date, data: DayData) {
   localStorage.setItem(getDayKey(date), JSON.stringify(data));
 }
 
-function loadEntryChecklistLocal(date: Date): EntryChecklist {
-  try {
-    const raw = localStorage.getItem(getEntryChecklistKey(date));
-    if (raw) return { ...DEFAULT_ENTRY_CHECKLIST, ...JSON.parse(raw) };
-  } catch {}
-  return { ...DEFAULT_ENTRY_CHECKLIST };
-}
-
-function saveEntryChecklistLocal(date: Date, checklist: EntryChecklist) {
-  localStorage.setItem(getEntryChecklistKey(date), JSON.stringify(checklist));
-}
-
 const API_BASE_URL = "/api";
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-function persistToApi(dateStr: string, dayData: DayData, entryChecklist: EntryChecklist) {
+function persistToApi(dateStr: string, dayData: DayData) {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(async () => {
     try {
@@ -232,13 +174,13 @@ function persistToApi(dateStr: string, dayData: DayData, entryChecklist: EntryCh
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ data: { ...dayData, entryChecklist } }),
+        body: JSON.stringify({ data: dayData }),
       });
     } catch {}
   }, 500);
 }
 
-async function loadDayDataFromApi(date: Date): Promise<DayData & { entryChecklist?: EntryChecklist } | null> {
+async function loadDayDataFromApi(date: Date): Promise<DayData | null> {
   const dateStr = date.toISOString().split("T")[0];
   try {
     const res = await fetch(`${API_BASE_URL}/planner/${dateStr}`, {
@@ -343,17 +285,6 @@ function exportToIcs(sessionFocus: string, date: Date) {
   URL.revokeObjectURL(url);
 }
 
-const ICT_ENTRY_CRITERIA = [
-  { key: "htfBias" as keyof EntryChecklist, label: "HTF Bias Confirmed" },
-  { key: "liquiditySwept" as keyof EntryChecklist, label: "Liquidity Swept" },
-  { key: "fvgPresent" as keyof EntryChecklist, label: "FVG Present" },
-  { key: "orderBlockIdentified" as keyof EntryChecklist, label: "Order Block Identified" },
-  { key: "premiumDiscountZone" as keyof EntryChecklist, label: "Premium/Discount Zone" },
-  { key: "inKillzone" as keyof EntryChecklist, label: "In Killzone" },
-  { key: "noRedNews" as keyof EntryChecklist, label: "No Red News" },
-  { key: "manipulationPhase" as keyof EntryChecklist, label: "Manipulation Phase Confirmed" },
-];
-
 const SESSION_CARDS = [
   { value: "london", label: "London Open", time: "2:00-5:00 AM EST", color: "bg-blue-500/10 border-blue-500/30 text-blue-400" },
   { value: "silver-bullet", label: "Silver Bullet", time: "10:00-11:00 AM EST", color: "bg-amber-500/10 border-amber-500/30 text-amber-400" },
@@ -388,9 +319,7 @@ export default function DailyPlanner() {
   const { isFeatureEnabled } = useAppConfig();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dayData, setDayData] = useState<DayData>(() => loadDayDataLocal(new Date()));
-  const [entryChecklist, setEntryChecklist] = useState<EntryChecklist>(() => loadEntryChecklistLocal(new Date()));
   const [tradePlanOpen, setTradePlanOpen] = useState(true);
-  const [entryChecklistOpen, setEntryChecklistOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
   const [newLevelPrice, setNewLevelPrice] = useState("");
   const [newLevelType, setNewLevelType] = useState<"support" | "resistance">("support");
@@ -400,7 +329,6 @@ export default function DailyPlanner() {
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [showRiskTools, setShowRiskTools] = useState(false);
   const [showPositionCalc, setShowPositionCalc] = useState(false);
-  const [showPreTradeChecklist, setShowPreTradeChecklist] = useState(false);
   const [riskChecked, setRiskChecked] = useState<Record<string, boolean>>(() => getRiskChecklistState());
   const [posCalcPoints, setPosCalcPoints] = useState("");
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -447,7 +375,7 @@ export default function DailyPlanner() {
 
   function resetRiskChecklist() {
     setRiskChecked({});
-    localStorage.removeItem(RISK_CHECKLIST_STORAGE_KEY);
+    resetRiskChecklistState();
   }
 
   const bias = dayData.tradePlan.bias;
@@ -458,10 +386,10 @@ export default function DailyPlanner() {
     if (biasSelected) score++;
     if (dayData.tradePlan.sessionFocus) score++;
     if (keyLevels.length >= 1) score++;
-    if (entryChecklist.htfBias) score++;
-    if (entryChecklist.fvgPresent || entryChecklist.orderBlockIdentified) score++;
-    if (entryChecklist.manipulationPhase) score++;
-    if (entryChecklist.noRedNews) score++;
+    if (riskChecked["htf_bias"]) score++;
+    if (riskChecked["sweep_idm"] || riskChecked["displacement_fvg"]) score++;
+    if (riskChecked["kill_zone"]) score++;
+    if (riskAllChecked) score++;
     if (dayData.tradePlan.strategy === "conservative" || dayData.tradePlan.strategy === "aggressive") score++;
     const sl = parseFloat(dayData.tradePlan.stopLossTicks);
     if (!isNaN(sl) && sl > 0) score++;
@@ -482,29 +410,21 @@ export default function DailyPlanner() {
 
   useEffect(() => {
     const localData = loadDayDataLocal(selectedDate);
-    const localChecklist = loadEntryChecklistLocal(selectedDate);
     setDayData(localData);
-    setEntryChecklist(localChecklist);
     setHaltDismissed(false);
 
     loadDayDataFromApi(selectedDate).then((apiData) => {
       if (apiData) {
-        const { entryChecklist: apiChecklist, ...rest } = apiData;
         const apiDayData: DayData = {
-          tasks: rest.tasks ?? [],
-          notes: rest.notes ?? "",
-          tradePlan: { ...DEFAULT_TRADE_PLAN, ...rest.tradePlan },
+          tasks: apiData.tasks ?? [],
+          notes: apiData.notes ?? "",
+          tradePlan: { ...DEFAULT_TRADE_PLAN, ...apiData.tradePlan },
         };
         setDayData(apiDayData);
         saveDayDataLocal(selectedDate, apiDayData);
-        if (apiChecklist) {
-          const mergedChecklist = { ...DEFAULT_ENTRY_CHECKLIST, ...apiChecklist };
-          setEntryChecklist(mergedChecklist);
-          saveEntryChecklistLocal(selectedDate, mergedChecklist);
-        }
       } else if (localData.tasks.length > 0 || localData.notes || localData.tradePlan.bias) {
         const dateStr = selectedDate.toISOString().split("T")[0];
-        persistToApi(dateStr, localData, localChecklist);
+        persistToApi(dateStr, localData);
       }
     });
   }, [selectedDate]);
@@ -513,20 +433,7 @@ export default function DailyPlanner() {
     setDayData(data);
     saveDayDataLocal(selectedDate, data);
     const dateStr = selectedDate.toISOString().split("T")[0];
-    setEntryChecklist((current) => {
-      persistToApi(dateStr, data, current);
-      return current;
-    });
-  }, [selectedDate]);
-
-  const persistChecklist = useCallback((checklist: EntryChecklist) => {
-    setEntryChecklist(checklist);
-    saveEntryChecklistLocal(selectedDate, checklist);
-    const dateStr = selectedDate.toISOString().split("T")[0];
-    setDayData((current) => {
-      persistToApi(dateStr, current, checklist);
-      return current;
-    });
+    persistToApi(dateStr, data);
   }, [selectedDate]);
 
   function updateNotes(notes: string) {
@@ -669,13 +576,6 @@ export default function DailyPlanner() {
           <Calculator className="h-3.5 w-3.5 text-blue-400" />
           Position Calc
         </button>
-        <button
-          onClick={() => setShowPreTradeChecklist(true)}
-          className={`flex items-center gap-1.5 text-xs font-semibold border rounded-xl px-3 py-2 transition-colors ${riskAllChecked ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-secondary border-border hover:bg-secondary/80 text-foreground"}`}
-        >
-          <ClipboardCheck className="h-3.5 w-3.5" />
-          Pre-Trade Checklist {RISK_CHECKLIST_ITEMS.filter((i) => riskChecked[i.id]).length}/{RISK_CHECKLIST_ITEMS.length}
-        </button>
       </div>
 
       <div className="flex justify-center mb-6">
@@ -777,50 +677,6 @@ export default function DailyPlanner() {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pre-Trade Checklist Modal */}
-      {showPreTradeChecklist && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPreTradeChecklist(false)} />
-          <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl z-10 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <ClipboardCheck className="h-5 w-5 text-emerald-400" />
-                <h2 className="font-bold text-lg">Pre-Trade Checklist</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={resetRiskChecklist} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Reset</button>
-                <button onClick={() => setShowPreTradeChecklist(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-amber-500 font-medium mb-4">
-              Buy in Discount (below 50% of range) · Sell in Premium (above 50% of range)
-            </div>
-            <div className="space-y-2">
-              {RISK_CHECKLIST_ITEMS.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => toggleRiskChecklist(item.id)}
-                  className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${riskChecked[item.id] ? "bg-emerald-500/10 border-emerald-500/30" : "bg-secondary/30 border-border hover:border-emerald-500/30"}`}
-                >
-                  {riskChecked[item.id]
-                    ? <CheckSquare className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                    : <Square className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />}
-                  <div>
-                    <div className={`text-sm font-semibold ${riskChecked[item.id] ? "text-emerald-400" : "text-foreground"}`}>{item.label}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className={`mt-4 rounded-xl border p-3 text-center text-sm font-bold transition-all ${riskAllChecked ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-secondary/30 border-border text-muted-foreground"}`}>
-              {riskAllChecked ? "✓ Checklist Complete — Ready to Trade" : `${RISK_CHECKLIST_ITEMS.filter((i) => riskChecked[i.id]).length} / ${RISK_CHECKLIST_ITEMS.length} criteria met`}
             </div>
           </div>
         </div>
@@ -951,7 +807,7 @@ export default function DailyPlanner() {
           <button onClick={() => setTradePlanOpen(!tradePlanOpen)} className="flex items-center justify-between w-full">
             <h2 className="font-semibold text-sm flex items-center gap-2">
               <Target className="h-4 w-4 text-amber-400" />
-              Trade Plan
+              Pre-Trade Plan
             </h2>
             {tradePlanOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
@@ -1264,6 +1120,46 @@ export default function DailyPlanner() {
                   )}
 
                   <FailureAnalysis />
+
+                  <div className="border-t border-border pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                        <ClipboardCheck className="h-3.5 w-3.5 text-emerald-400" />
+                        Entry Criteria
+                      </label>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${riskAllChecked ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
+                        {RISK_CHECKLIST_ITEMS.filter((i) => riskChecked[i.id]).length}/{RISK_CHECKLIST_ITEMS.length}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {RISK_CHECKLIST_ITEMS.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => toggleRiskChecklist(item.id)}
+                          className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${riskChecked[item.id] ? "bg-emerald-500/10 border-emerald-500/30" : "bg-secondary/30 border-border hover:border-emerald-500/30"}`}
+                        >
+                          {riskChecked[item.id]
+                            ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                            : <Square className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
+                          <div>
+                            <div className={`text-sm font-semibold ${riskChecked[item.id] ? "text-emerald-400" : "text-foreground"}`}>{item.label}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className={`mt-3 rounded-xl border p-3 text-center text-sm font-bold transition-all ${riskAllChecked ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-secondary/30 border-border text-muted-foreground"}`}>
+                      {riskAllChecked ? "✓ Ready to Trade" : `${RISK_CHECKLIST_ITEMS.filter((i) => riskChecked[i.id]).length} / ${RISK_CHECKLIST_ITEMS.length} criteria met`}
+                    </div>
+                    {riskAllChecked && (
+                      <button
+                        onClick={resetRiskChecklist}
+                        className="mt-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
+                      >
+                        Reset criteria
+                      </button>
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -1280,47 +1176,6 @@ export default function DailyPlanner() {
             </div>
           </div>
         )}
-
-        <Card className="mb-4">
-          <CardContent className="p-4">
-            <button onClick={() => setEntryChecklistOpen(!entryChecklistOpen)} className="flex items-center justify-between w-full">
-              <h2 className="font-semibold text-sm flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-purple-400" />
-                ICT Entry Criteria
-                <span className="text-xs text-muted-foreground">
-                  {Object.values(entryChecklist).filter(Boolean).length}/{ICT_ENTRY_CRITERIA.length}
-                </span>
-              </h2>
-              {entryChecklistOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {entryChecklistOpen && (
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {ICT_ENTRY_CRITERIA.map((item) => {
-                  const isAmberRequired =
-                    dayData.tradePlan.strategy === "conservative" &&
-                    (item.key === "htfBias" || item.key === "premiumDiscountZone" || item.key === "noRedNews");
-                  return (
-                    <label
-                      key={item.key}
-                      className={`flex items-center gap-3 cursor-pointer p-2.5 rounded-lg hover:bg-secondary/50 transition-colors border ${
-                        isAmberRequired ? "border-amber-500/40 bg-amber-500/5" : "border-border"
-                      }`}
-                    >
-                      <Checkbox
-                        checked={entryChecklist[item.key]}
-                        onCheckedChange={() => persistChecklist({ ...entryChecklist, [item.key]: !entryChecklist[item.key] })}
-                      />
-                      <span className={`text-sm font-medium ${entryChecklist[item.key] ? "text-primary line-through opacity-70" : isAmberRequired ? "text-amber-400" : ""}`}>
-                        {item.label}
-                      </span>
-                      {isAmberRequired && <span className="ml-auto text-[10px] text-amber-400 font-bold">REQ</span>}
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         <Card className="mb-4">
           <CardContent className="p-4">
@@ -1451,9 +1306,9 @@ export default function DailyPlanner() {
                   setupScore: probScore,
                   stopLossTicks: dayData.tradePlan.stopLossTicks,
                   voiceNote: dayData.tradePlan.voiceNote,
-                  entryChecklist: Object.entries(entryChecklist)
-                    .filter(([, v]) => v)
-                    .map(([k]) => k)
+                  entryChecklist: RISK_CHECKLIST_ITEMS
+                    .filter((item) => riskChecked[item.id])
+                    .map((item) => item.label)
                     .join(", "),
                 };
                 const notes = [
