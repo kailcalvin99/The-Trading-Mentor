@@ -3,7 +3,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import GraduationCelebration, { useGraduationCheck } from "@/components/GraduationCelebration";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  GraduationCap,
   ChevronDown,
   ChevronUp,
   Send,
@@ -1416,16 +1415,9 @@ export default function IctAcademy() {
   const [tab, setTab] = useState<Tab>("learn");
   const { user } = useAuth();
   const { showCelebration, closeCelebration } = useGraduationCheck();
-  const [titleVisible, setTitleVisible] = useState(true);
-
   useEffect(() => {
     const interval = setInterval(checkAndUnlock, 2000);
     return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setTitleVisible(false), 2400);
-    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -1436,30 +1428,7 @@ export default function IctAcademy() {
           onClose={closeCelebration}
         />
       )}
-      <style>{`
-        @keyframes ict-title-fade {
-          0% { opacity: 0; transform: translateY(-4px); }
-          15% { opacity: 1; transform: translateY(0); }
-          75% { opacity: 1; transform: translateY(0); }
-          100% { opacity: 0; transform: translateY(-4px); }
-        }
-        .ict-title-animate {
-          animation: ict-title-fade 2.4s ease forwards;
-        }
-      `}</style>
-      <header className="sticky top-0 z-30 bg-background px-6 pt-5 pb-3 border-b">
-        <div className="flex items-center gap-3 mb-4">
-          <GraduationCap className="h-6 w-6 text-primary" />
-          <span className="inline-flex items-center gap-1 bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary">
-            <Sparkles className="h-2.5 w-2.5" />
-            AI
-          </span>
-          {titleVisible && (
-            <span className="ict-title-animate text-xl font-bold text-foreground pointer-events-none select-none">
-              ICT Academy
-            </span>
-          )}
-        </div>
+      <header className="sticky top-0 z-30 bg-background px-6 pt-3 pb-3 border-b">
         <div className="flex bg-secondary rounded-xl p-1 max-w-lg">
           {TAB_CONFIG.map((t) => (
             <button
