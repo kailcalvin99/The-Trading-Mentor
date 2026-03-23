@@ -2,6 +2,14 @@ import React, { createContext, useContext, useEffect } from "react";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: false,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
+
 export interface NotificationSettings {
   permissionGranted: boolean;
   killZoneLondon: boolean;
@@ -39,6 +47,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (Platform.OS === "web") return;
     Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+    Notifications.dismissAllNotificationsAsync().catch(() => {});
   }, []);
 
   const value: NotificationContextType = {
