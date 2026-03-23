@@ -394,13 +394,8 @@ export default function TopTabBar({
         {isDashboard ? renderDashboardBar() : renderDefaultBar()}
       </View>
 
-      <NavDropdown
-        visible={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        topBarHeight={42}
-        topInset={insets.top}
-        C={C}
-      >
+      <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} C={C}>
+        <Text style={[styles.sheetTitle, { color: C.textSecondary, paddingHorizontal: 16, paddingTop: 4 }]}>MENU</Text>
         {/* Full Mode toggle — prominent, at the top */}
         <View style={[styles.fullModeRow, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}>
           <View style={[styles.fullModeIconBox, { backgroundColor: appMode === "full" ? C.accent + "20" : C.backgroundSecondary }]}>
@@ -484,7 +479,7 @@ export default function TopTabBar({
             </TouchableOpacity>
           );
         })}
-      </NavDropdown>
+      </BottomSheet>
 
       <BottomSheet visible={profileOpen} onClose={() => setProfileOpen(false)} C={C}>
         <View style={styles.profileHeader}>
