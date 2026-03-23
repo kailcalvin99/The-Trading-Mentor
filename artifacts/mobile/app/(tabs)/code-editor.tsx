@@ -46,8 +46,12 @@ export default function CodeEditorScreen() {
   const [chatLoading, setChatLoading] = useState(false);
   const [view, setView] = useState<"browser" | "file">("browser");
 
+  const [fileSearchTerm, setFileSearchTerm] = useState("");
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+
   const chatScrollRef = useRef<ScrollView>(null);
   const fileScrollRef = useRef<ScrollView>(null);
+  const chatInputRef = useRef<TextInput>(null);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -107,6 +111,8 @@ export default function CodeEditorScreen() {
     setFileContent(null);
     setLoadingFile(true);
     setView("file");
+    setFileSearchTerm("");
+    setActiveMatchIndex(0);
 
     if (!conversationId) {
       setLoadingFile(false);
@@ -227,6 +233,63 @@ export default function CodeEditorScreen() {
         }
       }
     );
+  }
+
+  function getMobileMatches(content: string, term: string): number[] {
+    if (!term.trim()) return [];
+    const positions: number[] = [];
+    const lower = content.toLowerCase();
+    const lowerTerm = term.toLowerCase();
+    let idx = 0;
+    while (idx < lower.length) {
+      const found = lower.indexOf(lowerTerm, idx);
+      if (found === -1) break;
+      positions.push(found);
+      idx = found + lowerTerm.length;
+    }
+    return positions;
+  }
+
+  function renderHighlightedCode(content: string, term: string, activeIdx: number): React.ReactNode {
+    const matches = getMobileMatches(content, term);
+    if (matches.length === 0) return <Text style={s.codeText}>{content}</Text>;
+    const nodes: React.ReactNode[] = [];
+    let cursor = 0;
+    matches.forEach((pos, i) => {
+      if (pos > cursor) {
+        nodes.push(
+          <Text key={`t-${i}`} style={s.codeText}>{content.slice(cursor, pos)}</Text>
+        );
+      }
+      const isActive = i === activeIdx;
+      nodes.push(
+        <Text
+          key={`m-${i}`}
+          style={[s.codeText, isActive ? s.codeMatchActive : s.codeMatch]}
+        >
+          {content.slice(pos, pos + term.length)}
+        </Text>
+      );
+      cursor = pos + term.length;
+    });
+    if (cursor < content.length) {
+      nodes.push(<Text key="tail" style={s.codeText}>{content.slice(cursor)}</Text>);
+    }
+    return <Text>{nodes}</Text>;
+  }
+
+  const mobileFileMatches = fileContent && fileSearchTerm.trim()
+    ? getMobileMatches(fileContent, fileSearchTerm)
+    : [];
+
+  function scrollToMatch(content: string, matches: number[], idx: number) {
+    if (!fileScrollRef.current || matches.length === 0) return;
+    const pos = matches[idx];
+    const linesBefore = content.slice(0, pos).split("\n").length - 1;
+    const LINE_HEIGHT = 17;
+    const CODE_PADDING = 14;
+    const yOffset = Math.max(0, linesBefore * LINE_HEIGHT + CODE_PADDING - 40);
+    fileScrollRef.current.scrollTo({ y: yOffset, animated: true });
   }
 
   function renderFileItem({ item }: { item: string }) {
@@ -366,6 +429,80 @@ export default function CodeEditorScreen() {
             </View>
           )}
 
+          {fileContent && (
+            <>
+              <View style={s.fileSearchBar}>
+                <Ionicons name="search-outline" size={13} color={C.textSecondary} />
+                <TextInput
+                  style={s.fileSearchInput}
+                  placeholder="Search in file..."
+                  placeholderTextColor={C.textSecondary}
+                  value={fileSearchTerm}
+                  onChangeText={(val) => { setFileSearchTerm(val); setActiveMatchIndex(0); }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {fileSearchTerm ? (
+                  <>
+                    <Text style={s.fileSearchCount}>
+                      {mobileFileMatches.length === 0
+                        ? "0 matches"
+                        : `${activeMatchIndex + 1} of ${mobileFileMatches.length}`}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const next = activeMatchIndex <= 0 ? mobileFileMatches.length - 1 : activeMatchIndex - 1;
+                        setActiveMatchIndex(next);
+                        scrollToMatch(fileContent, mobileFileMatches, next);
+                      }}
+                      disabled={mobileFileMatches.length === 0}
+                      style={s.fileSearchNavBtn}
+                    >
+                      <Ionicons name="chevron-up-outline" size={14} color={mobileFileMatches.length === 0 ? C.textTertiary : C.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const next = activeMatchIndex >= mobileFileMatches.length - 1 ? 0 : activeMatchIndex + 1;
+                        setActiveMatchIndex(next);
+                        scrollToMatch(fileContent, mobileFileMatches, next);
+                      }}
+                      disabled={mobileFileMatches.length === 0}
+                      style={s.fileSearchNavBtn}
+                    >
+                      <Ionicons name="chevron-down-outline" size={14} color={mobileFileMatches.length === 0 ? C.textTertiary : C.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setFileSearchTerm(""); setActiveMatchIndex(0); }} style={s.fileSearchNavBtn}>
+                      <Ionicons name="close-outline" size={15} color={C.textSecondary} />
+                    </TouchableOpacity>
+                  </>
+                ) : null}
+              </View>
+              {fileSearchTerm.trim() && mobileFileMatches.length > 0 && (
+                <View style={s.activeMatchRow}>
+                  <Text style={s.activeMatchLabel} numberOfLines={1}>
+                    Match {activeMatchIndex + 1}: …{fileContent.slice(
+                      Math.max(0, mobileFileMatches[activeMatchIndex] - 12),
+                      mobileFileMatches[activeMatchIndex] + fileSearchTerm.length + 12
+                    ).replace(/\n/g, " ")}…
+                  </Text>
+                  <TouchableOpacity
+                    style={s.promoteBtn}
+                    onPress={() => {
+                      const prefill = `In "${selectedFile}", find "${fileSearchTerm}" (match ${activeMatchIndex + 1}) — `;
+                      setChatInput(prefill);
+                      setTimeout(() => {
+                        chatScrollRef.current?.scrollToEnd({ animated: true });
+                        chatInputRef.current?.focus();
+                      }, 100);
+                    }}
+                  >
+                    <Text style={s.promoteBtnText}>Promote</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          )}
+
           {fileContent ? (
             <ScrollView
               ref={fileScrollRef}
@@ -375,9 +512,9 @@ export default function CodeEditorScreen() {
               horizontal={false}
             >
               <ScrollView horizontal showsHorizontalScrollIndicator>
-                <Text style={s.codeText} selectable>
-                  {fileContent}
-                </Text>
+                {fileSearchTerm.trim()
+                  ? renderHighlightedCode(fileContent, fileSearchTerm, activeMatchIndex)
+                  : <Text style={s.codeText} selectable>{fileContent}</Text>}
               </ScrollView>
             </ScrollView>
           ) : (
@@ -439,6 +576,7 @@ export default function CodeEditorScreen() {
 
           <View style={s.inputRow}>
             <TextInput
+              ref={chatInputRef}
               style={s.chatInput}
               placeholder={
                 selectedFile
@@ -596,6 +734,51 @@ const s = StyleSheet.create({
   fileHeaderName: { flex: 1, fontSize: 12, color: C.textSecondary, fontFamily: "monospace" },
   refreshBtn: { padding: 4 },
 
+  fileSearchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: C.cardBorder,
+    backgroundColor: C.backgroundSecondary,
+  },
+  fileSearchInput: {
+    flex: 1,
+    fontSize: 12,
+    color: C.text,
+    padding: 0,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
+  fileSearchCount: { fontSize: 10, color: C.textSecondary },
+  fileSearchNavBtn: { padding: 2 },
+  promoteBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    backgroundColor: "#7c3aed",
+    borderRadius: 6,
+    flexShrink: 0,
+  },
+  promoteBtnText: { fontSize: 10, fontWeight: "700", color: "#fff" },
+
+  activeMatchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#f59e0b18",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f59e0b40",
+  },
+  activeMatchLabel: {
+    flex: 1,
+    fontSize: 10,
+    color: C.textSecondary,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
+
   codeScroll: { flex: 1, maxHeight: 220 },
   codeContent: { padding: 14 },
   codeText: {
@@ -603,6 +786,14 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: C.text,
     lineHeight: 17,
+  },
+  codeMatch: {
+    backgroundColor: "#fde68a",
+    color: "#111",
+  },
+  codeMatchActive: {
+    backgroundColor: "#f59e0b",
+    color: "#111",
   },
   codeEmptyState: {
     height: 100,

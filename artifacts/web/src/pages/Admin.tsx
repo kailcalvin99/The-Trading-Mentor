@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import {
   Crown, Users, Settings, DollarSign, Save, Edit2, X, Check, Trash2,
-  AlertTriangle, RotateCcw, ChevronDown, ChevronRight,
+  AlertTriangle, RotateCcw, ChevronDown, ChevronUp, ChevronRight,
   Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target,
   Sparkles, Send, Loader2, BarChart3, FileText, Filter, TrendingUp, RefreshCw, Video,
   KeyRound, Copy, Code2, Search, FolderOpen, File, RefreshCcw,
@@ -1702,6 +1702,10 @@ function AdminCodeEditorPanel() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
+  const [fileSearchTerm, setFileSearchTerm] = useState("");
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const activeMatchRef = useRef<HTMLElement | null>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
 
@@ -1773,6 +1777,8 @@ function AdminCodeEditorPanel() {
     setSelectedFile(filePath);
     setFileContent(null);
     setLoadingFile(true);
+    setFileSearchTerm("");
+    setActiveMatchIndex(0);
 
     const currentConvId = await ensureConversation();
     if (!currentConvId) {
@@ -1911,6 +1917,109 @@ function AdminCodeEditorPanel() {
     setChatLoading(false);
   }
 
+  function getMatches(content: string, term: string): number[] {
+    if (!term.trim()) return [];
+    const positions: number[] = [];
+    const lower = content.toLowerCase();
+    const lowerTerm = term.toLowerCase();
+    let idx = 0;
+    while (idx < lower.length) {
+      const found = lower.indexOf(lowerTerm, idx);
+      if (found === -1) break;
+      positions.push(found);
+      idx = found + lowerTerm.length;
+    }
+    return positions;
+  }
+
+  function renderHighlightedCode(content: string, term: string, activeIdx: number) {
+    const matches = getMatches(content, term);
+    if (matches.length === 0) {
+      return <>{content}</>;
+    }
+    const nodes: React.ReactNode[] = [];
+    let cursor = 0;
+    matches.forEach((pos, i) => {
+      if (pos > cursor) {
+        nodes.push(<span key={`t-${i}`}>{content.slice(cursor, pos)}</span>);
+      }
+      const isActive = i === activeIdx;
+      nodes.push(
+        <mark
+          key={`m-${i}`}
+          ref={isActive ? (el) => { activeMatchRef.current = el; } : undefined}
+          style={{
+            backgroundColor: isActive ? "#f59e0b" : "#fde68a",
+            color: "#111",
+            borderRadius: "2px",
+            position: "relative",
+          }}
+        >
+          {content.slice(pos, pos + term.length)}
+          {isActive && (
+            <button
+              onClick={() => {
+                const prefill = `In "${selectedFile}", find "${term}" (match ${activeIdx + 1}) — `;
+                setChatInput(prefill);
+                setTimeout(() => chatInputRef.current?.focus(), 50);
+              }}
+              style={{
+                position: "absolute",
+                top: "-22px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                backgroundColor: "#7c3aed",
+                color: "#fff",
+                fontSize: "9px",
+                fontWeight: 600,
+                padding: "2px 6px",
+                borderRadius: "4px",
+                whiteSpace: "nowrap",
+                cursor: "pointer",
+                border: "none",
+                zIndex: 10,
+              }}
+            >
+              Promote
+            </button>
+          )}
+        </mark>
+      );
+      cursor = pos + term.length;
+    });
+    if (cursor < content.length) {
+      nodes.push(<span key="tail">{content.slice(cursor)}</span>);
+    }
+    return <>{nodes}</>;
+  }
+
+  const fileSearchMatches = fileContent && fileSearchTerm.trim()
+    ? getMatches(fileContent, fileSearchTerm)
+    : [];
+
+  function handleFileSearchChange(val: string) {
+    setFileSearchTerm(val);
+    setActiveMatchIndex(0);
+  }
+
+  function goToPrevMatch() {
+    setActiveMatchIndex((prev) =>
+      prev <= 0 ? fileSearchMatches.length - 1 : prev - 1
+    );
+  }
+
+  function goToNextMatch() {
+    setActiveMatchIndex((prev) =>
+      prev >= fileSearchMatches.length - 1 ? 0 : prev + 1
+    );
+  }
+
+  useEffect(() => {
+    if (activeMatchRef.current) {
+      activeMatchRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [activeMatchIndex, fileSearchTerm]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
@@ -2030,10 +2139,56 @@ function AdminCodeEditorPanel() {
               </div>
 
               <div className="flex flex-col flex-1 overflow-hidden">
+                {fileContent && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/10 shrink-0">
+                    <Search className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <input
+                      type="text"
+                      value={fileSearchTerm}
+                      onChange={(e) => handleFileSearchChange(e.target.value)}
+                      placeholder="Search in file..."
+                      className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground font-mono"
+                    />
+                    {fileSearchTerm && (
+                      <>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {fileSearchMatches.length === 0
+                            ? "0 matches"
+                            : `${activeMatchIndex + 1} of ${fileSearchMatches.length}`}
+                        </span>
+                        <button
+                          onClick={goToPrevMatch}
+                          disabled={fileSearchMatches.length === 0}
+                          className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          title="Previous match"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={goToNextMatch}
+                          disabled={fileSearchMatches.length === 0}
+                          className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          title="Next match"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => { setFileSearchTerm(""); setActiveMatchIndex(0); }}
+                          className="p-0.5 text-muted-foreground hover:text-foreground"
+                          title="Clear search"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div className="flex-1 overflow-auto bg-background/50 min-h-0" style={{ maxHeight: "320px" }}>
                   {fileContent ? (
-                    <pre className="p-4 text-xs font-mono text-foreground/90 whitespace-pre overflow-x-auto min-w-0">
-                      {fileContent}
+                    <pre className="p-4 text-xs font-mono text-foreground/90 whitespace-pre overflow-x-auto min-w-0" style={{ lineHeight: "1.6", paddingTop: fileSearchTerm ? "24px" : undefined }}>
+                      {fileSearchTerm.trim()
+                        ? renderHighlightedCode(fileContent, fileSearchTerm, activeMatchIndex)
+                        : fileContent}
                     </pre>
                   ) : loadingFile ? (
                     <div className="flex flex-col items-center justify-center h-32 gap-2">
@@ -2087,6 +2242,7 @@ function AdminCodeEditorPanel() {
 
                 <div className="p-2 border-t border-border flex gap-2 shrink-0">
                   <input
+                    ref={chatInputRef}
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
