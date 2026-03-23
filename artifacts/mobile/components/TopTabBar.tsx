@@ -287,12 +287,6 @@ export default function TopTabBar({
           <Ionicons name="menu" size={24} color={C.text} />
         </TouchableOpacity>
 
-        <Image
-          source={require("../assets/images/icon.png")}
-          style={styles.appIcon}
-          resizeMode="contain"
-        />
-
         <TouchableOpacity
           style={[styles.dashAvatar, { backgroundColor: C.accent + "20", borderColor: C.accent + "40" }]}
           onPress={emitOpenAvatarPicker}
@@ -362,12 +356,6 @@ export default function TopTabBar({
         >
           <Ionicons name="menu" size={24} color={C.text} />
         </TouchableOpacity>
-
-        <Image
-          source={require("../assets/images/icon.png")}
-          style={styles.appIcon}
-          resizeMode="contain"
-        />
 
         {activeLabel ? (
           <Text style={[styles.screenLabel, { color: C.text }]} numberOfLines={1}>

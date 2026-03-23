@@ -594,7 +594,7 @@ export default function AIAssistant() {
   return (
     <>
       {isCollapsed && <IdlePill onPress={restore} />}
-      <Animated.View style={{ transform: [{ translateY: footerTranslateY }] }}>
+      <Animated.View style={[s.fabFloating, { transform: [{ translateY: footerTranslateY }] }]}>
         <View style={s.fabContainer}>
           {nudgeExpanded && nudge && (
             <Animated.View
@@ -890,12 +890,14 @@ const tcStyles = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
-  fabContainer: {
+  fabFloating: {
     position: "absolute",
     bottom: 90,
     right: 14,
-    alignItems: "flex-end",
     zIndex: 100,
+  },
+  fabContainer: {
+    alignItems: "flex-end",
   },
   fabMini: {
     width: 32,
