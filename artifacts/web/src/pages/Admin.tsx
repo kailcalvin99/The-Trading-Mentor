@@ -7,7 +7,7 @@ import {
   AlertTriangle, RotateCcw, ChevronDown, ChevronRight,
   Palette, Shield, Brain, ListChecks, ToggleLeft, Rocket, Clock, Target,
   Sparkles, Send, Loader2, BarChart3, FileText, Filter, TrendingUp, RefreshCw, Video,
-  KeyRound, Copy,
+  KeyRound, Copy, Code2, Search, FolderOpen, File, RefreshCcw,
 } from "lucide-react";
 import { TOUR_STEPS } from "@/components/tourConfig";
 
@@ -238,7 +238,7 @@ function SettingToggle({ label, desc, checked, onChange }: {
 export default function Admin() {
   const { user, logout } = useAuth();
   const { reload: reloadConfig } = useAppConfig();
-  const [tab, setTab] = useState<"users" | "tiers" | "settings" | "ai">("users");
+  const [tab, setTab] = useState<"users" | "tiers" | "settings" | "ai" | "code-editor">("users");
   const [mcProfile, setMcProfile] = useState<MCProfile>("Median");
   const [mcRerunKey, setMcRerunKey] = useState(0);
   const mcPaths = useMemo(() => runMonteCarlo(mcProfile), [mcProfile, mcRerunKey]);
@@ -556,6 +556,7 @@ export default function Admin() {
           { key: "tiers" as const, label: "Subscription Tiers", icon: DollarSign },
           { key: "settings" as const, label: "Settings", icon: Settings },
           { key: "ai" as const, label: "AI Assistant", icon: Sparkles },
+          { key: "code-editor" as const, label: "AI Code Editor", icon: Code2 },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -1133,6 +1134,7 @@ export default function Admin() {
       )}
 
       {tab === "ai" && <AdminAIPanel settings={settings} updateSetting={updateSetting} saveSettings={saveSettings} saving={saving} />}
+      {tab === "code-editor" && <AdminCodeEditorPanel />}
     </div>
   );
 }
@@ -1673,6 +1675,457 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
         </div>
       )}
     </div>
+    </div>
+  );
+}
+
+interface CodeEditorChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  streaming?: boolean;
+}
+
+function AdminCodeEditorPanel() {
+  const [files, setFiles] = useState<string[]>([]);
+  const [filteredFiles, setFilteredFiles] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loadingFiles, setLoadingFiles] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [loadingFile, setLoadingFile] = useState(false);
+
+  const [convId, setConvId] = useState<number | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
+  const [fileLoadError, setFileLoadError] = useState(false);
+  const [chatMessages, setChatMessages] = useState<CodeEditorChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const initialized = useRef(false);
+
+  const fetchOpts: RequestInit = { credentials: "include" };
+  const headers = { "Content-Type": "application/json" };
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+    loadFiles();
+    initConversation();
+  }, []);
+
+  useEffect(() => {
+    const q = searchQuery.trim().toLowerCase();
+    setFilteredFiles(q ? files.filter((f) => f.toLowerCase().includes(q)) : files);
+  }, [searchQuery, files]);
+
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
+  async function loadFiles() {
+    setLoadingFiles(true);
+    setFileLoadError(false);
+    try {
+      const res = await fetch(`${API_BASE}/admin/files`, fetchOpts);
+      if (res.ok) {
+        const data = await res.json();
+        setFiles(data.files);
+        setFilteredFiles(data.files);
+      } else {
+        setFileLoadError(true);
+      }
+    } catch {
+      setFileLoadError(true);
+    }
+    setLoadingFiles(false);
+  }
+
+  async function initConversation(): Promise<number | null> {
+    setSessionError(false);
+    try {
+      const res = await fetch(`${API_BASE}/gemini/conversations`, {
+        method: "POST", ...fetchOpts, headers,
+        body: JSON.stringify({ title: "Code Editor Session" }),
+      });
+      const data = await res.json();
+      if (typeof data?.id === "number") {
+        setConvId(data.id);
+        setSessionReady(true);
+        return data.id;
+      }
+      setSessionError(true);
+    } catch {
+      setSessionError(true);
+    }
+    return null;
+  }
+
+  async function ensureConversation(): Promise<number | null> {
+    if (convId) return convId;
+    return initConversation();
+  }
+
+  async function selectFile(filePath: string) {
+    setSelectedFile(filePath);
+    setFileContent(null);
+    setLoadingFile(true);
+
+    const currentConvId = await ensureConversation();
+    if (!currentConvId) {
+      setLoadingFile(false);
+      return;
+    }
+
+    const userMsg = `Please read the file at path: ${filePath}`;
+    setChatMessages((prev) => [
+      ...prev,
+      { role: "user", content: userMsg },
+      { role: "assistant", content: "", streaming: true },
+    ]);
+
+    await streamCodeEditorMessage(userMsg, currentConvId, (toolCall) => {
+      if (toolCall.name === "read_source_file" && toolCall.result) {
+        const result = toolCall.result as { content?: string };
+        if (result.content) setFileContent(result.content);
+      }
+    });
+
+    setLoadingFile(false);
+  }
+
+  async function streamCodeEditorMessage(
+    msg: string,
+    currentConvId: number,
+    onToolCall?: (tc: { name: string; result: unknown }) => void,
+  ) {
+    const response = await fetch(`${API_BASE}/gemini/conversations/${currentConvId}/messages`, {
+      method: "POST", ...fetchOpts, headers,
+      body: JSON.stringify({
+        content: msg,
+        pageContext: { currentPage: "Admin Code Editor", route: "/admin", isAdmin: true },
+      }),
+    });
+
+    const reader = response.body?.getReader();
+    if (!reader) return;
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data: ")) continue;
+        try {
+          const parsed = JSON.parse(trimmed.slice(6));
+          if (parsed.content) {
+            fullText += parsed.content;
+            setChatMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: "assistant", content: fullText, streaming: true };
+              return updated;
+            });
+          }
+          if (parsed.toolCall && onToolCall) {
+            onToolCall(parsed.toolCall);
+          }
+          if (parsed.done) {
+            setChatMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: "assistant", content: fullText, streaming: false };
+              return updated;
+            });
+          }
+        } catch {}
+      }
+    }
+
+    setChatMessages((prev) => {
+      const updated = [...prev];
+      if (updated[updated.length - 1]?.streaming) {
+        updated[updated.length - 1] = { role: "assistant", content: fullText, streaming: false };
+      }
+      return updated;
+    });
+  }
+
+  async function sendChatMessage() {
+    if (!chatInput.trim() || chatLoading) return;
+    const userText = chatInput.trim();
+    setChatInput("");
+    setChatLoading(true);
+
+    const context = selectedFile
+      ? `[Context: currently viewing file "${selectedFile}"] ${userText}`
+      : userText;
+
+    setChatMessages((prev) => [
+      ...prev,
+      { role: "user", content: userText },
+      { role: "assistant", content: "", streaming: true },
+    ]);
+
+    try {
+      const currentConvId = await ensureConversation();
+      if (!currentConvId) {
+        setChatMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content: "Error: Could not start AI session.", streaming: false };
+          return updated;
+        });
+        setChatLoading(false);
+        return;
+      }
+
+      await streamCodeEditorMessage(context, currentConvId, (toolCall) => {
+        if (toolCall.name === "write_source_file") {
+          const written = toolCall.result as { success?: boolean; path?: string };
+          if (written.success && selectedFile && written.path?.includes(selectedFile)) {
+            setTimeout(() => selectFile(selectedFile), 500);
+          }
+        }
+        if (toolCall.name === "read_source_file") {
+          const result = toolCall.result as { content?: string };
+          if (result.content) setFileContent(result.content);
+        }
+      });
+    } catch {
+      setChatMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: "assistant", content: "Error getting response.", streaming: false };
+        return updated;
+      });
+    }
+
+    setChatLoading(false);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Code2 className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-bold text-foreground">AI Code Editor</h2>
+        {!sessionReady && !sessionError && (
+          <span className="flex items-center gap-1.5 text-xs text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Starting AI session...
+          </span>
+        )}
+        {sessionError && (
+          <span className="flex items-center gap-1.5 text-xs text-destructive bg-destructive/10 px-2 py-1 rounded-full">
+            <AlertTriangle className="h-3 w-3" />
+            AI session failed —
+            <button onClick={() => initConversation()} className="underline ml-0.5">retry</button>
+          </span>
+        )}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Browse source files, select one to view its contents, then describe changes in plain English. The AI will read, edit, and write the file back.
+      </p>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 h-[700px]">
+        <div className="bg-card border border-border rounded-xl flex flex-col overflow-hidden">
+          <div className="p-3 border-b border-border">
+            <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-1.5">
+              <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search files..."
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {loadingFiles ? (
+              <div className="flex flex-col items-center justify-center h-32 gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <p className="text-xs text-muted-foreground">Loading files...</p>
+              </div>
+            ) : fileLoadError ? (
+              <div className="flex flex-col items-center justify-center h-32 gap-2 px-4 text-center">
+                <AlertTriangle className="h-6 w-6 text-destructive/50" />
+                <p className="text-xs text-destructive">Failed to load files.</p>
+                <button onClick={loadFiles} className="text-xs text-primary hover:underline">Retry</button>
+              </div>
+            ) : filteredFiles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 gap-2 px-4 text-center">
+                <FolderOpen className="h-6 w-6 text-muted-foreground/40" />
+                <p className="text-xs text-muted-foreground">
+                  {searchQuery ? "No files match your search" : "No files found in artifacts/"}
+                </p>
+              </div>
+            ) : (
+              filteredFiles.map((filePath) => {
+                const parts = filePath.split("/");
+                const fileName = parts[parts.length - 1];
+                const dirPath = parts.slice(0, -1).join("/");
+                const isSelected = filePath === selectedFile;
+                return (
+                  <button
+                    key={filePath}
+                    onClick={() => !isSelected && sessionReady && selectFile(filePath)}
+                    disabled={!sessionReady}
+                    className={`w-full text-left px-3 py-2 flex items-start gap-2 transition-colors border-b border-border/30 last:border-0 ${
+                      isSelected
+                        ? "bg-primary/10 border-l-2 border-l-primary"
+                        : "hover:bg-muted/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    }`}
+                  >
+                    <File className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-xs font-medium truncate ${isSelected ? "text-primary" : "text-foreground"}`}>
+                        {fileName}
+                      </p>
+                      {dirPath && (
+                        <p className="text-[10px] text-muted-foreground truncate">{dirPath}</p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          <div className="p-2 border-t border-border">
+            <p className="text-[10px] text-muted-foreground text-center">
+              {filteredFiles.length} file{filteredFiles.length !== 1 ? "s" : ""}
+              {searchQuery ? ` matching "${searchQuery}"` : " in artifacts/"}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl flex flex-col overflow-hidden">
+          {selectedFile ? (
+            <>
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/20 shrink-0">
+                <File className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="text-xs font-mono text-foreground flex-1 truncate">{selectedFile}</span>
+                <button
+                  onClick={() => selectedFile && selectFile(selectedFile)}
+                  disabled={loadingFile}
+                  className="p-1 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                  title="Refresh file"
+                >
+                  {loadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+
+              <div className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-auto bg-background/50 min-h-0" style={{ maxHeight: "320px" }}>
+                  {fileContent ? (
+                    <pre className="p-4 text-xs font-mono text-foreground/90 whitespace-pre overflow-x-auto min-w-0">
+                      {fileContent}
+                    </pre>
+                  ) : loadingFile ? (
+                    <div className="flex flex-col items-center justify-center h-32 gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      <p className="text-xs text-muted-foreground">Reading file via AI...</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-32 gap-2 text-center px-4">
+                      <File className="h-6 w-6 text-muted-foreground/40" />
+                      <p className="text-xs text-muted-foreground">File content will appear here after the AI reads it</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border shrink-0" />
+
+                <div
+                  ref={chatScrollRef}
+                  className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0"
+                  style={{ maxHeight: "220px" }}
+                >
+                  {chatMessages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-center py-4">
+                      <div>
+                        <Code2 className="h-6 w-6 text-primary/30 mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">
+                          Describe a change in plain English and the AI will read and rewrite the file.
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-1 opacity-70">
+                          Context: {selectedFile}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[90%] rounded-xl px-3 py-2 text-xs ${
+                          msg.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground"
+                        }`}>
+                          <p className="whitespace-pre-wrap">
+                            {msg.content}
+                            {msg.streaming && <span className="opacity-70">▌</span>}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="p-2 border-t border-border flex gap-2 shrink-0">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendChatMessage()}
+                    placeholder={`Describe a change to ${selectedFile.split("/").pop()}...`}
+                    disabled={chatLoading || !sessionReady}
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                  />
+                  <button
+                    onClick={sendChatMessage}
+                    disabled={!chatInput.trim() || chatLoading || !sessionReady}
+                    className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center shrink-0 disabled:opacity-40 hover:opacity-90 transition-opacity"
+                  >
+                    {chatLoading ? <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" /> : <Send className="h-4 w-4 text-primary-foreground" />}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center flex-1 gap-3 text-center px-6">
+              <FolderOpen className="h-10 w-10 text-muted-foreground/30" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Select a file to get started</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Choose a file from the browser on the left to view its contents and start editing with AI assistance.
+                </p>
+              </div>
+              {!sessionReady && (
+                <button
+                  onClick={() => initConversation()}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Retry AI session
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
