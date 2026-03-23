@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AIAssistant from "@/components/AIAssistant";
 import TopTabBar from "@/components/TopTabBar";
-import KillZoneStrip from "@/components/KillZoneStrip";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { ChromeCollapseProvider, useChromeCollapse } from "@/contexts/ChromeCollapseContext";
@@ -15,7 +14,6 @@ import { ScrollDirectionProvider } from "@/contexts/ScrollDirectionContext";
 const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 
 const TOP_TAB_BAR_HEIGHT = 42;
-const KILL_ZONE_STRIP_HEIGHT = 40;
 
 const TAP_MOVE_THRESHOLD = 10;
 
@@ -32,7 +30,7 @@ function TabLayoutInner() {
   const isAdmin = user?.role === "admin";
   const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
 
-  const headerHeight = insets.top + TOP_TAB_BAR_HEIGHT + (appMode !== "lite" ? KILL_ZONE_STRIP_HEIGHT : 0);
+  const headerHeight = insets.top + TOP_TAB_BAR_HEIGHT;
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -201,7 +199,6 @@ function TabLayoutInner() {
           communityBadge={communityBadge}
           journalDraftBadge={journalDraftBadge}
         />
-        {appMode !== "lite" && <KillZoneStrip />}
       </Animated.View>
 
       <AIAssistant />
