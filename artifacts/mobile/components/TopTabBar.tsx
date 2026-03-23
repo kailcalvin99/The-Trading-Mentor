@@ -528,6 +528,17 @@ export default function TopTabBar({
           )}
         </View>
 
+        {isAdmin && (
+          <TouchableOpacity
+            onPress={() => navigate("/code-editor" as Href)}
+            style={[styles.compactRow, styles.codeEditorRow, { backgroundColor: C.accent + "12", borderColor: C.accent + "40" }]}
+          >
+            <Ionicons name="code-slash-outline" size={18} color={C.accent} />
+            <Text style={[styles.compactItemLabel, { color: C.accent, flex: 1 }]}>Code Editor</Text>
+            <Ionicons name="chevron-forward" size={14} color={C.accent + "80"} />
+          </TouchableOpacity>
+        )}
+
         <View style={[styles.profileDivider, { backgroundColor: C.cardBorder, marginTop: 8 }]} />
 
         {/* Help & Tour + Invite Friends as icon-only row */}
@@ -851,6 +862,13 @@ const styles = StyleSheet.create({
   compactItemLabel: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+  codeEditorRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 4,
   },
 
   iconActionRow: {

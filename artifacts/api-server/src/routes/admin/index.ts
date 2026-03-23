@@ -1,9 +1,35 @@
 import { Router } from "express";
+import fs from "fs";
+import path from "path";
 import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, tradesTable, conversations, messages, propAccountTable, communityPostsTable, communityRepliesTable, postLikesTable, passwordResetTokensTable } from "@workspace/db";
 import { eq, sql, inArray, and, gt } from "drizzle-orm";
 import { authRequired, adminRequired, clearAuthCookie } from "../../middleware/auth";
 import { seedDefaults } from "../../seed";
 import { getStripeClient } from "../../stripe/stripeClient";
+
+const WORKSPACE_ROOT = path.resolve(process.cwd(), "../..");
+const ARTIFACTS_ROOT = path.resolve(WORKSPACE_ROOT, "artifacts");
+
+const EXCLUDED_DIRS = new Set(["node_modules", ".expo", "dist", ".git", ".cache", "build", ".turbo"]);
+
+function collectFiles(dir: string, baseDir: string, results: string[] = []): string[] {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return results;
+  }
+  for (const entry of entries) {
+    if (entry.name.startsWith(".") || EXCLUDED_DIRS.has(entry.name)) continue;
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      collectFiles(fullPath, baseDir, results);
+    } else if (entry.isFile()) {
+      results.push(path.relative(baseDir, fullPath));
+    }
+  }
+  return results;
+}
 
 const router = Router();
 
@@ -284,6 +310,19 @@ router.get("/password-resets", async (_req, res) => {
   } catch (err) {
     console.error("Get password resets error:", err);
     res.status(500).json({ error: "Failed to get password resets" });
+  }
+});
+
+router.get("/files", (req, res) => {
+  try {
+    const search = (req.query.search as string | undefined)?.toLowerCase() ?? "";
+    const allFiles = collectFiles(ARTIFACTS_ROOT, WORKSPACE_ROOT);
+    const files = search ? allFiles.filter((f) => f.toLowerCase().includes(search)) : allFiles;
+    files.sort();
+    res.json({ files });
+  } catch (err) {
+    console.error("List files error:", err);
+    res.status(500).json({ error: "Failed to list files" });
   }
 });
 

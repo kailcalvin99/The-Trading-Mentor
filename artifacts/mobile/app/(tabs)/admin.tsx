@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Href, useRouter } from "expo-router";
 import { apiGet, apiPut } from "@/lib/api";
 import Colors from "@/constants/colors";
 
@@ -479,6 +479,24 @@ export default function AdminScreen() {
           })}
         </SectionCard>
 
+        {/* AI Code Editor */}
+        <SectionCard icon="code-slash-outline" title="AI Code Editor">
+          <TouchableOpacity
+            style={ce.row}
+            onPress={() => router.navigate("/code-editor" as Href)}
+            activeOpacity={0.8}
+          >
+            <View style={ce.iconBox}>
+              <Ionicons name="code-slash-outline" size={20} color={C.accent} />
+            </View>
+            <View style={ce.info}>
+              <Text style={ce.label}>Open Code Editor</Text>
+              <Text style={ce.desc}>Browse source files and ask the AI to make changes</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={C.textTertiary} />
+          </TouchableOpacity>
+        </SectionCard>
+
         {/* Monte Carlo Simulator */}
         <SectionCard icon="stats-chart-outline" title="Monte Carlo Simulator">
           <MonteCarloSimulator />
@@ -491,6 +509,21 @@ export default function AdminScreen() {
     </SafeAreaView>
   );
 }
+
+const ce = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: C.accent + "15",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  info: { flex: 1 },
+  label: { fontSize: 14, fontWeight: "600", color: C.text },
+  desc: { fontSize: 11, color: C.textSecondary, marginTop: 2 },
+});
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },

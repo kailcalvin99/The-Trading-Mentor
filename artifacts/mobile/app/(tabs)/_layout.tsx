@@ -174,6 +174,10 @@ function TabLayoutInner() {
             options={{ title: "Admin" }}
           />
           <Tabs.Screen
+            name="code-editor"
+            options={{ title: "Code Editor" }}
+          />
+          <Tabs.Screen
             name="webhooks"
             options={{ title: "TradingView Webhooks" }}
           />
