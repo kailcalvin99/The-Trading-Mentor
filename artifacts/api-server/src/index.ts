@@ -2,6 +2,7 @@ import app from "./app";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripe/stripeClient";
 import { execSync } from "child_process";
+import net from "net";
 
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled promise rejection:", reason);
@@ -36,7 +37,20 @@ async function initStripe() {
   }
 }
 
-function killPortOccupant(port: number): boolean {
+function isPortInUse(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.once("error", (err: NodeJS.ErrnoException) => {
+      resolve(err.code === "EADDRINUSE");
+    });
+    probe.once("listening", () => {
+      probe.close(() => resolve(false));
+    });
+    probe.listen(port, "0.0.0.0");
+  });
+}
+
+function killPortOccupant(port: number): void {
   const commands = [
     `fuser -k -n tcp ${port}`,
     `ss -tlnp "sport = :${port}" | awk 'NR>1{print $6}' | grep -oP 'pid=\\K[0-9]+' | xargs -r kill -9`,
@@ -45,33 +59,41 @@ function killPortOccupant(port: number): boolean {
     try {
       execSync(cmd, { stdio: "pipe" });
       console.log(`Freed port ${port} via: ${cmd.split(" ")[0]}`);
-      return true;
+      return;
     } catch {
     }
   }
-  return false;
 }
 
-function startServer(port: number, attempt: number = 1): void {
+async function preparePort(port: number, maxAttempts: number = 5): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const inUse = await isPortInUse(port);
+    if (!inUse) return;
+
+    console.warn(`Port ${port} is occupied (check ${attempt}/${maxAttempts}). Attempting to free it...`);
+    killPortOccupant(port);
+
+    const delayMs = Math.min(1000 * attempt, 5000);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  const stillInUse = await isPortInUse(port);
+  if (stillInUse) {
+    console.error(`Unable to free port ${port} after ${maxAttempts} attempts. Exiting so the workflow manager can restart.`);
+    process.exit(1);
+  }
+}
+
+async function startServer(port: number): Promise<void> {
+  await preparePort(port);
+
   const server = app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
   });
 
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
-      console.error(`Port ${port} is already in use (attempt ${attempt}).`);
-      server.close();
-
-      if (attempt === 1) {
-        const killed = killPortOccupant(port);
-        if (killed) {
-          console.log(`Retrying server start on port ${port} in 800ms...`);
-          setTimeout(() => startServer(port, 2), 800);
-          return;
-        }
-      }
-
-      console.error(`Unable to free port ${port}. Exiting so the workflow manager can restart.`);
+      console.error(`Port ${port} still in use after pre-bind cleanup (TOCTOU race). Exiting so the workflow manager can restart.`);
       process.exit(1);
     } else {
       console.error("Server error:", err);
@@ -99,4 +121,4 @@ try {
   console.error("Stripe initialization failed, continuing without Stripe:", err?.message || err);
 }
 
-startServer(port);
+await startServer(port);
