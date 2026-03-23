@@ -139,8 +139,14 @@ const RISK_CHECKLIST_TTL_HOURS = 4;
 
 function getESTNow(): Date {
   const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  return new Date(utc + -5 * 3600000);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? "0");
+  return new Date(get("year"), get("month") - 1, get("day"), get("hour") === 24 ? 0 : get("hour"), get("minute"), get("second"));
 }
 
 const MORNING_ROUTINE_ITEMS: Array<{
@@ -309,7 +315,6 @@ function PlannerScreen() {
   }, []);
 
   const est = getESTNow();
-  const timeStr = est.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
   const dateStr = est.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
   const completedCount = Object.values(routineItems).filter(Boolean).length;
   const todayDate = new Date().toISOString().split("T")[0];
@@ -449,10 +454,6 @@ function PlannerScreen() {
           <View>
             <Text style={styles.title}>Mission Control</Text>
             <Text style={styles.dateText}>{dateStr}</Text>
-          </View>
-          <View style={styles.clockBadge}>
-            <Text style={styles.clockText}>{timeStr}</Text>
-            <Text style={styles.clockSub}>EST</Text>
           </View>
         </View>
 

@@ -31,14 +31,15 @@ const REQUIRED_TIER: Partial<Record<string, number>> = {
 };
 
 const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selected: keyof typeof Ionicons.glyphMap }> = {
-  dashboard:    { default: "home-outline",        selected: "home" },
-  index:        { default: "calendar-outline",    selected: "calendar" },
-  academy:      { default: "school-outline",      selected: "school" },
-  videos:       { default: "play-circle-outline", selected: "play-circle" },
-  journal:      { default: "book-outline",        selected: "book" },
-  tags:         { default: "pricetag-outline",    selected: "pricetag" },
-  community:    { default: "people-outline",      selected: "people" },
-  analytics:    { default: "bar-chart-outline",   selected: "bar-chart" },
+  dashboard:    { default: "home-outline",          selected: "home" },
+  index:        { default: "calendar-outline",      selected: "calendar" },
+  academy:      { default: "school-outline",        selected: "school" },
+  videos:       { default: "play-circle-outline",   selected: "play-circle" },
+  journal:      { default: "book-outline",          selected: "book" },
+  tags:         { default: "pricetag-outline",      selected: "pricetag" },
+  community:    { default: "people-outline",        selected: "people" },
+  analytics:    { default: "bar-chart-outline",     selected: "bar-chart" },
+  tracker:      { default: "speedometer-outline",   selected: "speedometer" },
 };
 
 const TAB_LABELS: Record<string, string> = {
@@ -50,9 +51,10 @@ const TAB_LABELS: Record<string, string> = {
   tags:         "Tags",
   community:    "Social",
   analytics:    "Analytics",
+  tracker:      "Prop Tracker",
 };
 
-type TabRoute = "dashboard" | "index" | "academy" | "videos" | "journal" | "tags" | "community" | "analytics";
+type TabRoute = "dashboard" | "index" | "academy" | "videos" | "journal" | "tags" | "community" | "analytics" | "tracker";
 
 const TAB_HREFS: Record<TabRoute, Href> = {
   dashboard:    "/dashboard",
@@ -63,9 +65,10 @@ const TAB_HREFS: Record<TabRoute, Href> = {
   tags:         "/tags",
   community:    "/community",
   analytics:    "/analytics",
+  tracker:      "/tracker",
 };
 
-const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "journal", "tags", "community", "analytics"];
+const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "journal", "tags", "community", "analytics", "tracker"];
 const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy"];
 
 interface TopTabBarProps {
@@ -225,7 +228,7 @@ export default function TopTabBar({
 }: TopTabBarProps) {
   const insets = useSafeAreaInsets();
   const { colors: C } = useTheme();
-  const { setAppMode, user } = useAuth();
+  const { setAppMode, user, logout } = useAuth();
   const { xp, streak } = useDailyGamification();
   const level = Math.floor(xp / 100) + 1;
   const router = useRouter();
@@ -348,6 +351,7 @@ export default function TopTabBar({
   }
 
   function renderDefaultBar() {
+    const activeLabel = activeRoute ? TAB_LABELS[activeRoute] : "";
     return (
       <View style={styles.bar}>
         <TouchableOpacity
@@ -364,6 +368,12 @@ export default function TopTabBar({
           style={styles.appIcon}
           resizeMode="contain"
         />
+
+        {activeLabel ? (
+          <Text style={[styles.screenLabel, { color: C.text }]} numberOfLines={1}>
+            {activeLabel}
+          </Text>
+        ) : null}
 
         <View style={styles.rightRow}>
           <TouchableOpacity
@@ -554,6 +564,21 @@ export default function TopTabBar({
             <Text style={[styles.iconActionLabel, { color: C.textSecondary }]}>Invite Friends</Text>
           </TouchableOpacity>
         </View>
+
+        <View style={[styles.profileDivider, { backgroundColor: C.cardBorder, marginTop: 8 }]} />
+
+        <TouchableOpacity
+          onPress={async () => {
+            setProfileOpen(false);
+            await logout();
+          }}
+          style={[styles.signOutBtn, { borderColor: "#EF444440", backgroundColor: "#EF444408" }]}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+        >
+          <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
       </BottomSheet>
     </>
   );
@@ -900,5 +925,29 @@ const styles = StyleSheet.create({
   menuDivider: {
     height: 1,
     marginVertical: 8,
+  },
+
+  screenLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.1,
+    flexShrink: 1,
+  },
+
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  signOutText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#EF4444",
   },
 });

@@ -158,6 +158,10 @@ function TabLayoutInner() {
             options={{ title: "Analytics" }}
           />
           <Tabs.Screen
+            name="tracker"
+            options={{ title: "Prop Tracker" }}
+          />
+          <Tabs.Screen
             name="subscription"
             options={{ title: "Subscription" }}
           />

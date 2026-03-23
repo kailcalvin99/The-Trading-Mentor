@@ -27,8 +27,14 @@ const SESSIONS: Session[] = [
 
 function getESTNow(): Date {
   const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  return new Date(utc + -5 * 3600000);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? "0");
+  return new Date(get("year"), get("month") - 1, get("day"), get("hour") === 24 ? 0 : get("hour"), get("minute"), get("second"));
 }
 
 function formatCountdown(ms: number): string {
@@ -122,8 +128,9 @@ export default function KillZoneStrip() {
         style={styles.strip}
         contentContainerStyle={styles.stripContent}
         scrollEventThrottle={16}
-        onScrollBeginDrag={() => {
-          scrollIndexRef.current = 0;
+        onScroll={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          scrollIndexRef.current = Math.round(x / CARD_WIDTH);
         }}
       >
         {/* Session Cards */}
