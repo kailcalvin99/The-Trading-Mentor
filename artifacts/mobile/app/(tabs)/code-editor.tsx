@@ -15,8 +15,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
 import { apiGet, apiPost, streamMessage, isSessionExpiredError } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
@@ -27,13 +25,9 @@ type AIStatus =
   | "idle"
   | "thinking"
   | "reading"
-  | "writing"
-  | "done"
-  | "error"
-  | "transcribing"
-  | "recording";
-
-interface ChatMessage {
+  |   | "writing"
+  |   | "done"
+  |   | "error";
   role: "user" | "assistant" | "status";
   content: string;
   streaming?: boolean;
@@ -67,8 +61,6 @@ export default function CodeEditorScreen() {
   const [fileSearchTerm, setFileSearchTerm] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
 
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [recordingPermission, setRecordingPermission] = useState(false);
 
   const chatScrollRef = useRef<ScrollView>(null);
   const fileScrollRef = useRef<ScrollView>(null);
@@ -87,62 +79,16 @@ export default function CodeEditorScreen() {
     initialized.current = true;
     loadFiles();
     initConversation();
-    requestMicPermission();
-  }, [authLoading, user]);
+    initConversation();
 
   useEffect(() => {
     if (searchQuery.trim()) {
-      setFilteredFiles(files.filter((f) => f.toLowerCase().includes(searchQuery.toLowerCase())));
+   89 |     initConversation();
     } else {
       setFilteredFiles(files);
     }
   }, [searchQuery, files]);
 
-  async function requestMicPermission() {
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      setRecordingPermission(status === "granted");
-    } catch {
-      setRecordingPermission(false);
-    }
-  }
-
-  async function loadFiles() {
-    setLoadingFiles(true);
-    try {
-      const data = await apiGet<{ files: string[] }>("admin/files");
-      setFiles(data.files);
-      setFilteredFiles(data.files);
-    } catch (err: unknown) {
-      if (isSessionExpiredError(err)) return;
-      Alert.alert("Error", "Failed to load file list. Check admin access.");
-    } finally {
-      setLoadingFiles(false);
-    }
-  }
-
-  async function initConversation(isAutoRetry = false) {
-    setSessionReady(false);
-    setSessionInitFailed(false);
-    try {
-      const data = await apiPost<{ id: number; title: string }>(
-        "gemini/conversations",
-        { title: "Code Editor Session" }
-      );
-      if (typeof data?.id !== "number") {
-        throw new Error(`Unexpected conversation response: ${JSON.stringify(data)}`);
-      }
-      setConversationId(data.id);
-      setSessionReady(true);
-    } catch {
-      setSessionInitFailed(true);
-      if (!isAutoRetry) {
-        setTimeout(() => {
-          initConversation(true);
-        }, 3000);
-      }
-    }
-  }
 
   function isFilePath(input: string): boolean {
     if (input.includes("/")) return true;
@@ -428,85 +374,6 @@ export default function CodeEditorScreen() {
   }
 
   async function startRecording() {
-    if (!recordingPermission) {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Required", "Microphone permission is needed for voice input.");
-        return;
-      }
-      setRecordingPermission(true);
-    }
-
-    try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording: rec } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(rec);
-      setAIStatus("recording");
-    } catch (err) {
-      Alert.alert("Error", "Failed to start recording. Please try again.");
-    }
-  }
-
-  async function stopRecordingAndTranscribe() {
-    if (!recording) return;
-    setAIStatus("transcribing");
-
-    try {
-      await recording.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-
-      const uri = recording.getURI();
-      setRecording(null);
-
-      if (!uri) {
-        setAIStatus("idle");
-        Alert.alert("Error", "No audio recorded. Please try again.");
-        return;
-      }
-
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: "base64" as const,
-      });
-
-      const result = await apiPost<{ text: string; error?: string }>(
-        "gemini/transcribe",
-        { audioBase64: base64, mimeType: "audio/m4a" }
-      );
-
-      if (result.text && result.text.trim()) {
-        setCommandInput(result.text.trim());
-        commandInputRef.current?.focus();
-      } else {
-        Alert.alert("No speech detected", "Could not detect speech. Please try again.");
-      }
-    } catch (err) {
-      Alert.alert("Transcription failed", "Could not transcribe audio. Please type your command instead.");
-    } finally {
-      setAIStatus("idle");
-    }
-  }
-
-  function getMobileMatches(content: string, term: string): number[] {
-    if (!term.trim()) return [];
-    const positions: number[] = [];
-    const lower = content.toLowerCase();
-    const lowerTerm = term.toLowerCase();
-    let idx = 0;
-    while (idx < lower.length) {
-      const found = lower.indexOf(lowerTerm, idx);
-      if (found === -1) break;
-      positions.push(found);
-      idx = found + lowerTerm.length;
-    }
-    return positions;
-  }
-
   function renderHighlightedCode(content: string, term: string, activeIdx: number): React.ReactNode {
     const matches = getMobileMatches(content, term);
     if (matches.length === 0) return <Text style={s.codeText}>{content}</Text>;
@@ -529,7 +396,6 @@ export default function CodeEditorScreen() {
       );
       cursor = pos + term.length;
     });
-    if (cursor < content.length) {
       nodes.push(<Text key="tail" style={s.codeText}>{content.slice(cursor)}</Text>);
     }
     return <Text>{nodes}</Text>;
@@ -577,13 +443,6 @@ export default function CodeEditorScreen() {
     const ext = fileName.split(".").pop() ?? "";
     const isSelected = item === selectedFile;
 
-    return (
-      <TouchableOpacity
-        style={[s.fileItem, isSelected && s.fileItemActive, !sessionReady && s.fileItemDisabled]}
-        onPress={() => {
-          if (sessionReady) {
-            selectFile(item);
-            setFileBrowserOpen(false);
           }
         }}
         activeOpacity={sessionReady ? 0.7 : 1}
@@ -614,8 +473,6 @@ export default function CodeEditorScreen() {
   const statusInfo = getStatusLabel();
   const showStatusBar = aiStatus !== "idle";
   const isVoiceActive = aiStatus === "recording" || aiStatus === "transcribing";
-  const isRecording = aiStatus === "recording";
-
   return (
     <SafeAreaView style={s.safe} edges={["bottom"]}>
       <View style={s.header}>
@@ -626,8 +483,7 @@ export default function CodeEditorScreen() {
         <Text style={s.title}>AI Code Editor</Text>
         <TouchableOpacity
           style={[s.filesToggleBtn, fileBrowserOpen && s.filesToggleBtnActive]}
-          onPress={() => setFileBrowserOpen((v) => !v)}
-        >
+   616 |   const showStatusBar = aiStatus !== "idle";
           <Ionicons name="folder-outline" size={16} color={fileBrowserOpen ? C.accent : C.textSecondary} />
           <Text style={[s.filesToggleText, fileBrowserOpen && s.filesToggleTextActive]}>Files</Text>
         </TouchableOpacity>
@@ -636,7 +492,7 @@ export default function CodeEditorScreen() {
       <KeyboardAvoidingView
         style={s.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+  const showStatusBar = aiStatus !== "idle";
       >
         {/* Command Bar */}
         <View style={s.commandBar}>
@@ -654,7 +510,7 @@ export default function CodeEditorScreen() {
               onSubmitEditing={() => handleCommandSubmit()}
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!chatLoading && sessionReady && !isVoiceActive}
+              editable={!chatLoading && sessionReady}
             />
             {commandInput.length > 0 && !chatLoading && (
               <TouchableOpacity onPress={() => setCommandInput("")} style={s.commandClear}>
@@ -662,24 +518,6 @@ export default function CodeEditorScreen() {
               </TouchableOpacity>
             )}
             {/* Mic button */}
-            {Platform.OS !== "web" && (
-              <TouchableOpacity
-                style={[s.micBtn, isRecording && s.micBtnActive]}
-                onPress={isRecording ? stopRecordingAndTranscribe : startRecording}
-                disabled={chatLoading && !isRecording}
-                activeOpacity={0.8}
-              >
-                {aiStatus === "transcribing" ? (
-                  <ActivityIndicator size="small" color={C.accent} />
-                ) : (
-                  <Ionicons
-                    name={isRecording ? "stop-circle" : "mic-outline"}
-                    size={18}
-                    color={isRecording ? "#ef4444" : C.textSecondary}
-                  />
-                )}
-              </TouchableOpacity>
-            )}
             {/* Send button */}
             <TouchableOpacity
               style={[s.sendBtn, (!commandInput.trim() || chatLoading || !sessionReady || isVoiceActive) && s.sendBtnDisabled]}
@@ -699,15 +537,20 @@ export default function CodeEditorScreen() {
           {selectedFile && (
             <View style={s.activeFileRow}>
               <Ionicons name="document-outline" size={12} color={C.accent} />
-              <Text style={s.activeFileName} numberOfLines={1}>{selectedFile}</Text>
-              <TouchableOpacity
-                onPress={() => selectFile(selectedFile)}
-                disabled={loadingFile || chatLoading}
-                style={s.refreshBtn}
-              >
-                {loadingFile ? (
-                  <ActivityIndicator size="small" color={C.textSecondary} />
-                ) : (
+            {/* Mic button */}
+            {/* Send button */}
+            <TouchableOpacity
+              style={[s.sendBtn, (!commandInput.trim() || chatLoading || !sessionReady) && s.sendBtnDisabled]}
+              onPress={() => handleCommandSubmit()}
+              disabled={!commandInput.trim() || chatLoading || !sessionReady}
+              activeOpacity={0.8}
+            >
+              {chatLoading ? (
+                <ActivityIndicator size="small" color="#0A0A0F" />
+              ) : (
+                <Ionicons name="arrow-up" size={18} color="#0A0A0F" />
+              )}
+            </TouchableOpacity>
                   <Ionicons name="refresh-outline" size={14} color={C.textSecondary} />
                 )}
               </TouchableOpacity>
@@ -938,9 +781,6 @@ export default function CodeEditorScreen() {
                   </View>
                 ) : (
                 <View
-                  style={[
-                    s.chatBubble,
-                    msg.role === "user" ? s.chatBubbleUser : s.chatBubbleAssistant,
                     msg.isError && s.chatBubbleError,
                   ]}
                 >
