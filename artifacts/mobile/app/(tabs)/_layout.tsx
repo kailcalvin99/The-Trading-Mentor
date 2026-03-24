@@ -122,6 +122,7 @@ function TabLayoutInner() {
           screenOptions={{
             headerShown: false,
           }}
+          initialRouteName="dashboard"
         >
           <Tabs.Screen
             name="dashboard"
