@@ -83,33 +83,37 @@ const aiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-app.post(
-  "/api/stripe/webhook",
-  express.raw({ type: "application/json" }),
-  async (req, res) => {
-    const signature = req.headers["stripe-signature"];
-    if (!signature) {
-      res.status(400).json({ error: "Missing stripe-signature" });
+const stripeWebhookMiddleware = express.raw({ type: "application/json" });
+
+async function handleStripeWebhook(
+  req: express.Request,
+  res: express.Response,
+): Promise<void> {
+  const signature = req.headers["stripe-signature"];
+  if (!signature) {
+    res.status(400).json({ error: "Missing stripe-signature" });
+    return;
+  }
+
+  try {
+    const sig = Array.isArray(signature) ? signature[0] : signature;
+
+    if (!Buffer.isBuffer(req.body)) {
+      console.error("STRIPE WEBHOOK ERROR: req.body is not a Buffer");
+      res.status(500).json({ error: "Webhook processing error" });
       return;
     }
 
-    try {
-      const sig = Array.isArray(signature) ? signature[0] : signature;
-
-      if (!Buffer.isBuffer(req.body)) {
-        console.error("STRIPE WEBHOOK ERROR: req.body is not a Buffer");
-        res.status(500).json({ error: "Webhook processing error" });
-        return;
-      }
-
-      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
-      res.status(200).json({ received: true });
-    } catch (error: any) {
-      console.error("Webhook error:", error.message);
-      res.status(400).json({ error: "Webhook processing error" });
-    }
+    await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+    res.status(200).json({ received: true });
+  } catch (error: any) {
+    console.error("Webhook error:", error.message);
+    res.status(400).json({ error: "Webhook processing error" });
   }
-);
+}
+
+app.post("/api/stripe/webhook", stripeWebhookMiddleware, handleStripeWebhook);
+app.post("/stripe/webhook", stripeWebhookMiddleware, handleStripeWebhook);
 
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
@@ -119,6 +123,11 @@ app.use("/api", generalApiLimiter);
 app.use("/api/gemini", aiLimiter);
 app.use("/api/webhook", webhookLimiter);
 app.use("/api", router);
+
+app.use("/", generalApiLimiter);
+app.use("/gemini", aiLimiter);
+app.use("/webhook", webhookLimiter);
+app.use("/", router);
 
 seedDefaults().catch((err) => console.error("Seed error:", err));
 
