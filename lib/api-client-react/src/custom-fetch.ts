@@ -9,13 +9,16 @@ export type BodyType<T> = T;
 let _authTokenProvider: (() => string | null | Promise<string | null>) | null = null;
 let _defaultCredentials: RequestCredentials | undefined = undefined;
 let _on401Callback: (() => void) | null = null;
+let _baseUrl: string | undefined = undefined;
 
 export function configureAuth(opts: {
   tokenProvider?: (() => string | null | Promise<string | null>) | null;
   credentials?: RequestCredentials;
+  baseUrl?: string;
 }): void {
   if (opts.tokenProvider !== undefined) _authTokenProvider = opts.tokenProvider;
   if (opts.credentials !== undefined) _defaultCredentials = opts.credentials;
+  if (opts.baseUrl !== undefined) _baseUrl = opts.baseUrl;
 }
 
 export function configureOn401(callback: (() => void) | null): void {
@@ -322,9 +325,18 @@ export async function customFetch<T = unknown>(
     init.credentials = _defaultCredentials;
   }
 
-  const requestInfo = { method, url: resolveUrl(input) };
+  let resolvedInput = input;
+  if (_baseUrl) {
+    const raw = resolveUrl(input);
+    if (raw.startsWith("/")) {
+      const base = _baseUrl.endsWith("/") ? _baseUrl.slice(0, -1) : _baseUrl;
+      resolvedInput = `${base}${raw}`;
+    }
+  }
 
-  const response = await fetch(input, { ...init, method, headers });
+  const requestInfo = { method, url: resolveUrl(resolvedInput) };
+
+  const response = await fetch(resolvedInput, { ...init, method, headers });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

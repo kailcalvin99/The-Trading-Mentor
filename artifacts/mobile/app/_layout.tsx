@@ -14,7 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { configureAuth, configureOn401 } from "@workspace/api-client-react";
-import { getToken, fireOn401 } from "@/lib/api";
+import { getToken, fireOn401, getBaseUrl } from "@/lib/api";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -23,7 +23,7 @@ import { PlannerProvider } from "@/contexts/PlannerContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
-configureAuth({ tokenProvider: getToken, credentials: "include" });
+configureAuth({ tokenProvider: getToken, credentials: "include", baseUrl: getBaseUrl() });
 configureOn401(fireOn401);
 
 SplashScreen.preventAutoHideAsync();
