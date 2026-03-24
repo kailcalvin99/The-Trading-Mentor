@@ -38,20 +38,20 @@ export default function CodeEditorScreen() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [loadingFile, setLoadingFile] = useState(false);
+  const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
 
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
+  const [commandInput, setCommandInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
-  const [view, setView] = useState<"browser" | "file">("browser");
 
   const [fileSearchTerm, setFileSearchTerm] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
 
   const chatScrollRef = useRef<ScrollView>(null);
   const fileScrollRef = useRef<ScrollView>(null);
-  const chatInputRef = useRef<TextInput>(null);
+  const commandInputRef = useRef<TextInput>(null);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -106,11 +106,123 @@ export default function CodeEditorScreen() {
     }
   }
 
+  function isFilePath(input: string): boolean {
+    if (input.includes("/")) return true;
+    const lowerInput = input.toLowerCase().trim();
+    return files.some((f) => {
+      const fileName = f.split("/").pop()?.toLowerCase() ?? "";
+      return fileName === lowerInput || f.toLowerCase() === lowerInput;
+    });
+  }
+
+  async function handleCommandSubmit() {
+    if (!commandInput.trim() || chatLoading) return;
+    const userText = commandInput.trim();
+
+    if (isFilePath(userText)) {
+      const matched = files.find(
+        (f) =>
+          f.toLowerCase() === userText.toLowerCase() ||
+          (f.split("/").pop()?.toLowerCase() ?? "") === userText.toLowerCase()
+      );
+      if (matched) {
+        setCommandInput("");
+        setFileBrowserOpen(false);
+        selectFile(matched);
+        return;
+      }
+      setSearchQuery(userText);
+      setFileBrowserOpen(true);
+      setCommandInput("");
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "user", content: `Navigate to: ${userText}`, streaming: false },
+        { role: "assistant", content: `Showing filtered files matching "${userText}". Tap a file to open it.`, streaming: false },
+      ]);
+      return;
+    }
+
+    setCommandInput("");
+    setChatLoading(true);
+
+    const context = selectedFile
+      ? `[Context: currently viewing file "${selectedFile}"] ${userText}`
+      : userText;
+
+    setChatMessages((prev) => [
+      ...prev,
+      { role: "user", content: userText },
+      { role: "assistant", content: "", streaming: true },
+    ]);
+
+    if (!conversationId) {
+      setChatMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: "assistant", content: "Error: AI session not ready. Please retry.", streaming: false };
+        return updated;
+      });
+      setChatLoading(false);
+      return;
+    }
+
+    let fullText = "";
+    await streamMessage(
+      conversationId,
+      context,
+      (chunk) => {
+        fullText += chunk;
+        setChatMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content: fullText, streaming: true };
+          return updated;
+        });
+        chatScrollRef.current?.scrollToEnd({ animated: false });
+      },
+      () => {
+        setChatMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content: fullText, streaming: false };
+          return updated;
+        });
+        setChatLoading(false);
+        chatScrollRef.current?.scrollToEnd({ animated: false });
+      },
+      (err) => {
+        setChatMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content: `Error: ${err}`, streaming: false };
+          return updated;
+        });
+        setChatLoading(false);
+      },
+      undefined,
+      (toolCall) => {
+        if (toolCall.name === "write_source_file") {
+          const written = toolCall.result as { success?: boolean; path?: string };
+          if (written.success) {
+            const writtenPath = written.path as string | undefined;
+            if (writtenPath) {
+              setTimeout(() => selectFile(writtenPath), 500);
+            } else if (selectedFile) {
+              setTimeout(() => selectFile(selectedFile), 500);
+            }
+          }
+        }
+        if (toolCall.name === "read_source_file") {
+          const result = toolCall.result as { content?: string; path?: string };
+          if (result.content) {
+            setFileContent(result.content);
+            if (result.path) setSelectedFile(result.path as string);
+          }
+        }
+      }
+    );
+  }
+
   async function selectFile(filePath: string) {
     setSelectedFile(filePath);
     setFileContent(null);
     setLoadingFile(true);
-    setView("file");
     setFileSearchTerm("");
     setActiveMatchIndex(0);
 
@@ -161,71 +273,6 @@ export default function CodeEditorScreen() {
       undefined,
       (toolCall) => {
         if (toolCall.name === "read_source_file" && toolCall.result) {
-          const result = toolCall.result as { content?: string };
-          if (result.content) {
-            setFileContent(result.content as string);
-          }
-        }
-      }
-    );
-  }
-
-  async function sendChatMessage() {
-    if (!chatInput.trim() || !conversationId || chatLoading) return;
-
-    const userText = chatInput.trim();
-    setChatInput("");
-    setChatLoading(true);
-
-    const context = selectedFile
-      ? `[Context: currently viewing file "${selectedFile}"] ${userText}`
-      : userText;
-
-    setChatMessages((prev) => [
-      ...prev,
-      { role: "user", content: userText },
-      { role: "assistant", content: "", streaming: true },
-    ]);
-
-    let fullText = "";
-    await streamMessage(
-      conversationId,
-      context,
-      (chunk) => {
-        fullText += chunk;
-        setChatMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: fullText, streaming: true };
-          return updated;
-        });
-        chatScrollRef.current?.scrollToEnd({ animated: false });
-      },
-      () => {
-        setChatMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: fullText, streaming: false };
-          return updated;
-        });
-        setChatLoading(false);
-        chatScrollRef.current?.scrollToEnd({ animated: false });
-      },
-      (err) => {
-        setChatMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: `Error: ${err}`, streaming: false };
-          return updated;
-        });
-        setChatLoading(false);
-      },
-      undefined,
-      (toolCall) => {
-        if (toolCall.name === "write_source_file") {
-          const written = toolCall.result as { success?: boolean; path?: string };
-          if (written.success && selectedFile && written.path?.includes(selectedFile)) {
-            selectFile(selectedFile);
-          }
-        }
-        if (toolCall.name === "read_source_file") {
           const result = toolCall.result as { content?: string };
           if (result.content) {
             setFileContent(result.content as string);
@@ -302,7 +349,12 @@ export default function CodeEditorScreen() {
     return (
       <TouchableOpacity
         style={[s.fileItem, isSelected && s.fileItemActive, !sessionReady && s.fileItemDisabled]}
-        onPress={() => sessionReady && selectFile(item)}
+        onPress={() => {
+          if (sessionReady) {
+            selectFile(item);
+            setFileBrowserOpen(false);
+          }
+        }}
         activeOpacity={sessionReady ? 0.7 : 1}
       >
         <Ionicons
@@ -335,37 +387,74 @@ export default function CodeEditorScreen() {
           <Ionicons name="arrow-back" size={22} color={C.text} />
         </TouchableOpacity>
         <Ionicons name="code-slash-outline" size={18} color={C.accent} />
-        <Text style={s.title}>Code Editor</Text>
-        {view === "file" && (
-          <TouchableOpacity
-            style={s.browserBtn}
-            onPress={() => setView("browser")}
-          >
-            <Ionicons name="folder-outline" size={18} color={C.textSecondary} />
-          </TouchableOpacity>
-        )}
+        <Text style={s.title}>AI Code Editor</Text>
+        <TouchableOpacity
+          style={[s.filesToggleBtn, fileBrowserOpen && s.filesToggleBtnActive]}
+          onPress={() => setFileBrowserOpen((v) => !v)}
+        >
+          <Ionicons name="folder-outline" size={16} color={fileBrowserOpen ? C.accent : C.textSecondary} />
+          <Text style={[s.filesToggleText, fileBrowserOpen && s.filesToggleTextActive]}>Files</Text>
+        </TouchableOpacity>
       </View>
 
-      {view === "browser" ? (
-        <View style={s.flex}>
-          <View style={s.searchBar}>
-            <Ionicons name="search-outline" size={16} color={C.textSecondary} />
+      <KeyboardAvoidingView
+        style={s.flex}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+        {/* Unified Command Bar */}
+        <View style={s.commandBar}>
+          <View style={s.commandInputRow}>
+            <Ionicons name="sparkles-outline" size={16} color={C.accent} style={s.commandIcon} />
             <TextInput
-              style={s.searchInput}
-              placeholder="Search files..."
+              ref={commandInputRef}
+              style={s.commandInput}
+              placeholder="What do you want to change? Or type a file path..."
               placeholderTextColor={C.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={commandInput}
+              onChangeText={setCommandInput}
+              multiline={false}
+              returnKeyType="send"
+              onSubmitEditing={handleCommandSubmit}
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!chatLoading && sessionReady}
             />
-            {searchQuery ? (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
+            {commandInput.length > 0 && (
+              <TouchableOpacity onPress={() => setCommandInput("")} style={s.commandClear}>
                 <Ionicons name="close-circle" size={16} color={C.textSecondary} />
               </TouchableOpacity>
-            ) : null}
+            )}
+            <TouchableOpacity
+              style={[s.sendBtn, (!commandInput.trim() || chatLoading || !sessionReady) && s.sendBtnDisabled]}
+              onPress={handleCommandSubmit}
+              disabled={!commandInput.trim() || chatLoading || !sessionReady}
+              activeOpacity={0.8}
+            >
+              {chatLoading ? (
+                <ActivityIndicator size="small" color="#0A0A0F" />
+              ) : (
+                <Ionicons name="arrow-up" size={18} color="#0A0A0F" />
+              )}
+            </TouchableOpacity>
           </View>
-
+          {selectedFile && (
+            <View style={s.activeFileRow}>
+              <Ionicons name="document-outline" size={12} color={C.accent} />
+              <Text style={s.activeFileName} numberOfLines={1}>{selectedFile}</Text>
+              <TouchableOpacity
+                onPress={() => selectFile(selectedFile)}
+                disabled={loadingFile}
+                style={s.refreshBtn}
+              >
+                {loadingFile ? (
+                  <ActivityIndicator size="small" color={C.textSecondary} />
+                ) : (
+                  <Ionicons name="refresh-outline" size={14} color={C.textSecondary} />
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
           {!sessionReady && (
             <View style={s.sessionBanner}>
               <ActivityIndicator size="small" color={C.accent} />
@@ -375,62 +464,60 @@ export default function CodeEditorScreen() {
               </TouchableOpacity>
             </View>
           )}
-
-          {loadingFiles ? (
-            <View style={s.center}>
-              <ActivityIndicator size="large" color={C.accent} />
-              <Text style={s.loadingText}>Loading files...</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={filteredFiles}
-              keyExtractor={(item) => item}
-              renderItem={renderFileItem}
-              contentContainerStyle={s.fileList}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <View style={s.emptyState}>
-                  <Ionicons name="folder-open-outline" size={32} color={C.textTertiary} />
-                  <Text style={s.emptyText}>
-                    {searchQuery ? "No files match your search" : "No files found in artifacts/"}
-                  </Text>
-                </View>
-              }
-            />
-          )}
         </View>
-      ) : (
-        <KeyboardAvoidingView
-          style={s.flex}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={0}
-        >
-          {selectedFile && (
-            <View style={s.fileHeader}>
-              <Ionicons
-                name={getFileIcon(selectedFile.split(".").pop() ?? "")}
-                size={14}
-                color={C.accent}
-              />
-              <Text style={s.fileHeaderName} numberOfLines={1}>
-                {selectedFile}
-              </Text>
-              <TouchableOpacity
-                onPress={() => selectFile(selectedFile)}
-                style={s.refreshBtn}
-                disabled={loadingFile}
-              >
-                {loadingFile ? (
-                  <ActivityIndicator size="small" color={C.textSecondary} />
-                ) : (
-                  <Ionicons name="refresh-outline" size={16} color={C.textSecondary} />
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
 
-          {fileContent && (
-            <>
+        {/* File Browser — collapsible panel (fixed height, conversation log still visible below) */}
+        {fileBrowserOpen && (
+          <View style={s.fileBrowser}>
+            <View style={s.searchBar}>
+              <Ionicons name="search-outline" size={16} color={C.textSecondary} />
+              <TextInput
+                style={s.searchInput}
+                placeholder="Search files..."
+                placeholderTextColor={C.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searchQuery ? (
+                <TouchableOpacity onPress={() => setSearchQuery("")}>
+                  <Ionicons name="close-circle" size={16} color={C.textSecondary} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {loadingFiles ? (
+              <View style={s.center}>
+                <ActivityIndicator size="large" color={C.accent} />
+                <Text style={s.loadingText}>Loading files...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filteredFiles}
+                keyExtractor={(item) => item}
+                renderItem={renderFileItem}
+                contentContainerStyle={s.fileList}
+                showsVerticalScrollIndicator={false}
+                style={s.fileListContainer}
+                ListEmptyComponent={
+                  <View style={s.emptyState}>
+                    <Ionicons name="folder-open-outline" size={32} color={C.textTertiary} />
+                    <Text style={s.emptyText}>
+                      {searchQuery ? "No files match your search" : "No files found in artifacts/"}
+                    </Text>
+                  </View>
+                }
+              />
+            )}
+            <View style={s.chatDivider} />
+          </View>
+        )}
+
+        {/* Code viewer — only shown when a file is selected and not browsing */}
+        {selectedFile && !fileBrowserOpen && (
+          <>
+            {fileContent && (
               <View style={s.fileSearchBar}>
                 <Ionicons name="search-outline" size={13} color={C.textSecondary} />
                 <TextInput
@@ -477,134 +564,104 @@ export default function CodeEditorScreen() {
                   </>
                 ) : null}
               </View>
-              {fileSearchTerm.trim() && mobileFileMatches.length > 0 && (
-                <View style={s.activeMatchRow}>
-                  <Text style={s.activeMatchLabel} numberOfLines={1}>
-                    Match {activeMatchIndex + 1}: …{fileContent.slice(
-                      Math.max(0, mobileFileMatches[activeMatchIndex] - 12),
-                      mobileFileMatches[activeMatchIndex] + fileSearchTerm.length + 12
-                    ).replace(/\n/g, " ")}…
-                  </Text>
-                  <TouchableOpacity
-                    style={s.promoteBtn}
-                    onPress={() => {
-                      const prefill = `In "${selectedFile}", find "${fileSearchTerm}" (match ${activeMatchIndex + 1}) — `;
-                      setChatInput(prefill);
-                      setTimeout(() => {
-                        chatScrollRef.current?.scrollToEnd({ animated: true });
-                        chatInputRef.current?.focus();
-                      }, 100);
-                    }}
-                  >
-                    <Text style={s.promoteBtnText}>Promote</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </>
-          )}
-
-          {fileContent ? (
-            <ScrollView
-              ref={fileScrollRef}
-              style={s.codeScroll}
-              contentContainerStyle={s.codeContent}
-              showsVerticalScrollIndicator
-              horizontal={false}
-            >
-              <ScrollView horizontal showsHorizontalScrollIndicator>
-                {fileSearchTerm.trim()
-                  ? renderHighlightedCode(fileContent, fileSearchTerm, activeMatchIndex)
-                  : <Text style={s.codeText} selectable>{fileContent}</Text>}
-              </ScrollView>
-            </ScrollView>
-          ) : (
-            <View style={s.codeEmptyState}>
-              {loadingFile ? (
-                <>
-                  <ActivityIndicator size="small" color={C.accent} />
-                  <Text style={s.loadingText}>Reading file...</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="document-text-outline" size={28} color={C.textTertiary} />
-                  <Text style={s.emptyText}>File content will appear here after the AI reads it</Text>
-                </>
-              )}
-            </View>
-          )}
-
-          <View style={s.chatDivider} />
-
-          <ScrollView
-            ref={chatScrollRef}
-            style={s.chatHistory}
-            contentContainerStyle={s.chatHistoryContent}
-            showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: false })}
-          >
-            {chatMessages.length === 0 ? (
-              <View style={s.chatEmpty}>
-                <Text style={s.chatEmptyText}>
-                  Describe a change in plain language and the AI will read and rewrite the file.
+            )}
+            {fileSearchTerm.trim() && mobileFileMatches.length > 0 && (
+              <View style={s.activeMatchRow}>
+                <Text style={s.activeMatchLabel} numberOfLines={1}>
+                  Match {activeMatchIndex + 1}: …{fileContent!.slice(
+                    Math.max(0, mobileFileMatches[activeMatchIndex] - 12),
+                    mobileFileMatches[activeMatchIndex] + fileSearchTerm.length + 12
+                  ).replace(/\n/g, " ")}…
                 </Text>
-                {selectedFile && (
-                  <Text style={s.chatEmptyFile}>Context: {selectedFile}</Text>
+                <TouchableOpacity
+                  style={s.promoteBtn}
+                  onPress={() => {
+                    const prefill = `In "${selectedFile}", find "${fileSearchTerm}" (match ${activeMatchIndex + 1}) — `;
+                    setCommandInput(prefill);
+                    setTimeout(() => {
+                      chatScrollRef.current?.scrollToEnd({ animated: true });
+                      commandInputRef.current?.focus();
+                    }, 100);
+                  }}
+                >
+                  <Text style={s.promoteBtnText}>Promote</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {fileContent ? (
+              <ScrollView
+                ref={fileScrollRef}
+                style={s.codeScroll}
+                contentContainerStyle={s.codeContent}
+                showsVerticalScrollIndicator
+                horizontal={false}
+              >
+                <ScrollView horizontal showsHorizontalScrollIndicator>
+                  {fileSearchTerm.trim()
+                    ? renderHighlightedCode(fileContent, fileSearchTerm, activeMatchIndex)
+                    : <Text style={s.codeText} selectable>{fileContent}</Text>}
+                </ScrollView>
+              </ScrollView>
+            ) : (
+              <View style={s.codeEmptyState}>
+                {loadingFile ? (
+                  <>
+                    <ActivityIndicator size="small" color={C.accent} />
+                    <Text style={s.loadingText}>Reading file...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="document-text-outline" size={28} color={C.textTertiary} />
+                    <Text style={s.emptyText}>File content will appear here after the AI reads it</Text>
+                  </>
                 )}
               </View>
-            ) : (
-              chatMessages.map((msg, i) => (
-                <View
-                  key={i}
+            )}
+
+            <View style={s.chatDivider} />
+          </>
+        )}
+
+        {/* Conversation log — always visible */}
+        <ScrollView
+          ref={chatScrollRef}
+          style={s.chatHistory}
+          contentContainerStyle={s.chatHistoryContent}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: false })}
+        >
+          {chatMessages.length === 0 ? (
+            <View style={s.chatEmpty}>
+              <Ionicons name="sparkles-outline" size={28} color={C.textTertiary} />
+              <Text style={s.chatEmptyText}>
+                Type a command above to get started. Describe what you want to change in plain English — the AI will figure out which files to touch.
+              </Text>
+              <Text style={s.chatEmptyHint}>Or type a file name to open it for reference.</Text>
+            </View>
+          ) : (
+            chatMessages.map((msg, i) => (
+              <View
+                key={i}
+                style={[
+                  s.chatBubble,
+                  msg.role === "user" ? s.chatBubbleUser : s.chatBubbleAssistant,
+                ]}
+              >
+                <Text
                   style={[
-                    s.chatBubble,
-                    msg.role === "user" ? s.chatBubbleUser : s.chatBubbleAssistant,
+                    s.chatBubbleText,
+                    msg.role === "user" ? s.chatBubbleTextUser : s.chatBubbleTextAssistant,
                   ]}
                 >
-                  <Text
-                    style={[
-                      s.chatBubbleText,
-                      msg.role === "user" ? s.chatBubbleTextUser : s.chatBubbleTextAssistant,
-                    ]}
-                  >
-                    {msg.content}
-                    {msg.streaming && <Text style={s.cursor}>▌</Text>}
-                  </Text>
-                </View>
-              ))
-            )}
-          </ScrollView>
-
-          <View style={s.inputRow}>
-            <TextInput
-              ref={chatInputRef}
-              style={s.chatInput}
-              placeholder={
-                selectedFile
-                  ? `Describe a change to ${selectedFile.split("/").pop()}...`
-                  : "Select a file, then describe a change..."
-              }
-              placeholderTextColor={C.textSecondary}
-              value={chatInput}
-              onChangeText={setChatInput}
-              multiline
-              maxLength={2000}
-              returnKeyType="default"
-            />
-            <TouchableOpacity
-              style={[s.sendBtn, (!chatInput.trim() || chatLoading) && s.sendBtnDisabled]}
-              onPress={sendChatMessage}
-              disabled={!chatInput.trim() || chatLoading}
-              activeOpacity={0.8}
-            >
-              {chatLoading ? (
-                <ActivityIndicator size="small" color="#0A0A0F" />
-              ) : (
-                <Ionicons name="arrow-up" size={18} color="#0A0A0F" />
-              )}
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      )}
+                  {msg.content}
+                  {msg.streaming && <Text style={s.cursor}>▌</Text>}
+                </Text>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -653,8 +710,85 @@ const s = StyleSheet.create({
   },
   backBtn: { padding: 4 },
   title: { flex: 1, fontSize: 17, fontWeight: "800", color: C.text },
-  browserBtn: { padding: 6 },
+  filesToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    backgroundColor: C.backgroundSecondary,
+  },
+  filesToggleBtnActive: {
+    borderColor: C.accent + "60",
+    backgroundColor: C.accent + "15",
+  },
+  filesToggleText: { fontSize: 12, fontWeight: "600", color: C.textSecondary },
+  filesToggleTextActive: { color: C.accent },
 
+  commandBar: {
+    margin: 12,
+    marginBottom: 8,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    overflow: "hidden",
+  },
+  commandInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  commandIcon: { flexShrink: 0 },
+  commandInput: {
+    flex: 1,
+    fontSize: 14,
+    color: C.text,
+    padding: 0,
+  },
+  commandClear: { padding: 2 },
+  activeFileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+    backgroundColor: C.accent + "08",
+  },
+  activeFileName: {
+    flex: 1,
+    fontSize: 11,
+    color: C.accent,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
+  refreshBtn: { padding: 4 },
+
+  sessionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+    backgroundColor: C.accent + "08",
+  },
+  sessionBannerText: { flex: 1, fontSize: 12, color: C.textSecondary },
+  retryBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: C.accent + "25", borderRadius: 8 },
+  retryBtnText: { fontSize: 12, fontWeight: "600", color: C.accent },
+
+  fileBrowser: {
+    maxHeight: 280,
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+  },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -673,7 +807,7 @@ const s = StyleSheet.create({
     color: C.text,
     padding: 0,
   },
-
+  fileListContainer: { flex: 1 },
   fileList: { paddingHorizontal: 12, paddingBottom: 24 },
   fileItem: {
     flexDirection: "row",
@@ -699,40 +833,10 @@ const s = StyleSheet.create({
   fileNameActive: { color: C.accent },
   filePath: { fontSize: 10, color: C.textSecondary, marginTop: 1 },
 
-  sessionBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginHorizontal: 12,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: C.accent + "10",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: C.accent + "30",
-  },
-  sessionBannerText: { flex: 1, fontSize: 12, color: C.textSecondary },
-  retryBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: C.accent + "25", borderRadius: 8 },
-  retryBtnText: { fontSize: 12, fontWeight: "600", color: C.accent },
-
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
   loadingText: { fontSize: 13, color: C.textSecondary },
   emptyState: { alignItems: "center", justifyContent: "center", paddingVertical: 40, gap: 8 },
   emptyText: { fontSize: 13, color: C.textSecondary, textAlign: "center", maxWidth: 280 },
-
-  fileHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: C.cardBorder,
-    backgroundColor: C.backgroundSecondary,
-  },
-  fileHeaderName: { flex: 1, fontSize: 12, color: C.textSecondary, fontFamily: "monospace" },
-  refreshBtn: { padding: 4 },
 
   fileSearchBar: {
     flexDirection: "row",
@@ -779,7 +883,7 @@ const s = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
 
-  codeScroll: { flex: 1, maxHeight: 220 },
+  codeScroll: { maxHeight: 200 },
   codeContent: { padding: 14 },
   codeText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
@@ -796,7 +900,7 @@ const s = StyleSheet.create({
     color: "#111",
   },
   codeEmptyState: {
-    height: 100,
+    height: 80,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -805,11 +909,11 @@ const s = StyleSheet.create({
 
   chatDivider: { height: 1, backgroundColor: C.cardBorder },
 
-  chatHistory: { flex: 1, maxHeight: 280 },
-  chatHistoryContent: { padding: 12, gap: 8, paddingBottom: 4 },
-  chatEmpty: { padding: 16, alignItems: "center", gap: 6 },
-  chatEmptyText: { fontSize: 12, color: C.textSecondary, textAlign: "center", lineHeight: 18 },
-  chatEmptyFile: { fontSize: 11, color: C.accent, fontFamily: "monospace" },
+  chatHistory: { flex: 1 },
+  chatHistoryContent: { padding: 12, gap: 8, paddingBottom: 16 },
+  chatEmpty: { padding: 24, alignItems: "center", gap: 10 },
+  chatEmptyText: { fontSize: 13, color: C.textSecondary, textAlign: "center", lineHeight: 20 },
+  chatEmptyHint: { fontSize: 11, color: C.textTertiary, textAlign: "center" },
 
   chatBubble: { maxWidth: "90%", borderRadius: 14, paddingHorizontal: 13, paddingVertical: 9 },
   chatBubbleUser: { alignSelf: "flex-end", backgroundColor: C.accent + "25", borderBottomRightRadius: 4 },
@@ -819,35 +923,14 @@ const s = StyleSheet.create({
   chatBubbleTextAssistant: { color: C.text },
   cursor: { color: C.accent },
 
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 8,
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: C.cardBorder,
-    backgroundColor: C.background,
-  },
-  chatInput: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    backgroundColor: C.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: C.text,
-  },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: C.accent,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   sendBtnDisabled: { opacity: 0.4 },
 });
