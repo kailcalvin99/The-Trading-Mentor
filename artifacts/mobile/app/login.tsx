@@ -35,10 +35,11 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      const data = await apiPost<{ token?: string; user: unknown }>("auth/login", { email: email.trim(), password });
+      const data = await apiPost<{ token?: string; user: { role?: string } }>("auth/login", { email: email.trim(), password });
       await handleAuthResponse(data as Parameters<typeof handleAuthResponse>[0]);
       await refresh();
-      router.replace("/(tabs)/dashboard");
+      const isAdmin = (data.user as { role?: string })?.role === "admin";
+      router.replace(isAdmin ? "/(tabs)" : "/(tabs)/dashboard");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Login failed";
       Alert.alert("Login Failed", msg);

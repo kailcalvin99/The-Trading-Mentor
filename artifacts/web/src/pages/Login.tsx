@@ -45,7 +45,7 @@ export default function Login() {
     setLoading(false);
 
     if (result.success) {
-      navigate("/");
+      navigate(result.role === "admin" ? "/mission-control" : "/");
     } else {
       setError(result.error || "Login failed");
     }

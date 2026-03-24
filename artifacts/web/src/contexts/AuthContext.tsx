@@ -33,7 +33,7 @@ interface AuthContextType {
   user: UserData | null;
   subscription: SubscriptionData | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: string }>;
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string; isFounder?: boolean; founderNumber?: number }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsPersistentAdmin(true);
           localStorage.setItem("ICT_TRADING_MENTOR_ADMIN", "true");
         }
-        return { success: true };
+        return { success: true, role: data.user?.role as string | undefined };
       }
       return { success: false, error: data.error };
     } catch (error) {
@@ -165,8 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return features.some((f) => f.toLowerCase().includes(feature.toLowerCase()));
   };
 
-  const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0); // Admins always get tier level 2 (Premium), granting full feature access
-  const appMode: "full" | "lite" = isAdmin ? "full" : (user?.appMode ?? "full"); // Admins always get "full" app mode, bypassing any learning/lite restrictions
+  const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
+  const appMode: "full" | "lite" = isAdmin ? "full" : (user?.appMode ?? "full");
 
   const setAppMode = useCallback(async (mode: "full" | "lite") => {
     try {
