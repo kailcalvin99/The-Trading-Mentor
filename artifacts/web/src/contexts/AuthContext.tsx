@@ -136,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = user?.role === "admin";
   const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
-  const appMode: "full" | "lite" = user?.appMode ?? "full";
+  const appMode: "full" | "lite" = isAdmin ? "full" : (user?.appMode ?? "full");
 
   const setAppMode = useCallback(async (mode: "full" | "lite") => {
     try {

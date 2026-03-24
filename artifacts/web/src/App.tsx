@@ -53,8 +53,8 @@ function IndexRoute() {
     );
   }
 
-  // If user is authenticated, redirect to /dashboard
-  if (user) return <Navigate to="/dashboard" replace />;
+  // If user is authenticated, redirect to / (which will now render Dashboard via Layout's index route)
+  if (user) return <Navigate to="/" replace />;
   return <Welcome />;
 }
 
@@ -94,7 +94,7 @@ function App() {
 
                 <Route element={<AuthGuard />}>
                   <Route path="/" element={<Layout />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route index element={<Dashboard />} /> {/* Dashboard as the default route for authenticated users */}
                     <Route path="/academy" element={<IctAcademy />} />
                     <Route path="/videos" element={<VideoLibrary />} />
                     <Route path="/planner" element={<DailyPlanner />} />
