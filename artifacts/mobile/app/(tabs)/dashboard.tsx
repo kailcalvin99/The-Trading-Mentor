@@ -49,8 +49,6 @@ const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; lab
   { key: "bias", label: "Set daily bias", icon: "trending-up-outline", why: "A clear bias prevents emotional flip-flopping mid-session." },
 ];
 
-const ACADEMY_PENDING_LESSON_KEY = "ict-academy-pending-lesson";
-
 const C = Colors.dark;
 
 const TRADE_PLAN_KEY = "daily_trade_plan_v1";
@@ -1359,8 +1357,7 @@ function LessonCarousel() {
               lesson={lesson}
               stackIndex={stackIndex}
               onDismiss={() => dismissCard(lesson.id)}
-              onWatch={async () => {
-                await AsyncStorage.setItem(ACADEMY_PENDING_LESSON_KEY, JSON.stringify({ lessonId: lesson.id }));
+              onWatch={() => {
                 router.navigate({ pathname: "/(tabs)/academy" });
               }}
             />
@@ -1459,10 +1456,7 @@ function TodayLearnPill() {
       )}
       <TouchableOpacity
         style={styles.todayLearnBtn}
-        onPress={async () => {
-          if (nextLesson) {
-            await AsyncStorage.setItem(ACADEMY_PENDING_LESSON_KEY, JSON.stringify({ lessonId: nextLesson.id }));
-          }
+        onPress={() => {
           router.navigate({ pathname: "/(tabs)/academy" });
         }}
         activeOpacity={0.85}
@@ -1577,10 +1571,7 @@ function NextWatchCard() {
         <Text style={styles.nextWatchTitle} numberOfLines={2}>{nextLesson.title}</Text>
         <TouchableOpacity
           style={styles.nextWatchBtn}
-          onPress={async () => {
-            if (nextLesson) {
-              await AsyncStorage.setItem(ACADEMY_PENDING_LESSON_KEY, JSON.stringify({ lessonId: nextLesson.id, chapterId: nextLesson.chapterTitle }));
-            }
+          onPress={() => {
             router.navigate({ pathname: "/(tabs)/academy" });
           }}
           activeOpacity={0.85}
