@@ -27,9 +27,11 @@ type AIStatus =
   | "reading"
   | "writing"
   | "done"
-  | "error";
+  | "error"
+  | "transcribing"
+  | "recording";
 
-type Message = {
+type ChatMessage = {
   role: "user" | "assistant" | "status";
   content: string;
   streaming?: boolean;
@@ -81,11 +83,11 @@ export default function CodeEditorScreen() {
     initialized.current = true;
     loadFiles();
     initConversation();
-    initConversation();
+  }, [authLoading, user]);
 
   useEffect(() => {
     if (searchQuery.trim()) {
-   89 |     initConversation();
+      setFilteredFiles(files.filter((f) => f.toLowerCase().includes(searchQuery.toLowerCase())));
     } else {
       setFilteredFiles(files);
     }
@@ -297,6 +299,50 @@ export default function CodeEditorScreen() {
     }
   }
 
+  async function loadFiles() {
+    setLoadingFiles(true);
+    try {
+      const data = await apiGet<{ files: string[] }>("admin/files");
+      setFiles(data.files);
+      setFilteredFiles(data.files);
+    } catch {
+      setFiles([]);
+      setFilteredFiles([]);
+    }
+    setLoadingFiles(false);
+  }
+
+  async function initConversation() {
+    setSessionReady(false);
+    setSessionInitFailed(false);
+    try {
+      const data = await apiPost<{ id: number }>("gemini/conversations", { title: "Code Editor Session" });
+      if (typeof data?.id === "number") {
+        setConversationId(data.id);
+        setSessionReady(true);
+      } else {
+        setSessionInitFailed(true);
+      }
+    } catch {
+      setSessionInitFailed(true);
+    }
+  }
+
+  function getMobileMatches(content: string, term: string): number[] {
+    if (!term) return [];
+    const lower = content.toLowerCase();
+    const lowerTerm = term.toLowerCase();
+    const positions: number[] = [];
+    let idx = 0;
+    while (true) {
+      const found = lower.indexOf(lowerTerm, idx);
+      if (found === -1) break;
+      positions.push(found);
+      idx = found + lowerTerm.length;
+    }
+    return positions;
+  }
+
   async function selectFile(filePath: string) {
     setSelectedFile(filePath);
     setFileContent(null);
@@ -375,7 +421,6 @@ export default function CodeEditorScreen() {
     );
   }
 
-  async function startRecording() {
   function renderHighlightedCode(content: string, term: string, activeIdx: number): React.ReactNode {
     const matches = getMobileMatches(content, term);
     if (matches.length === 0) return <Text style={s.codeText}>{content}</Text>;
@@ -398,8 +443,7 @@ export default function CodeEditorScreen() {
       );
       cursor = pos + term.length;
     });
-      nodes.push(<Text key="tail" style={s.codeText}>{content.slice(cursor)}</Text>);
-    }
+    nodes.push(<Text key="tail" style={s.codeText}>{content.slice(cursor)}</Text>);
     return <Text>{nodes}</Text>;
   }
 
@@ -445,7 +489,13 @@ export default function CodeEditorScreen() {
     const ext = fileName.split(".").pop() ?? "";
     const isSelected = item === selectedFile;
 
-          }
+    return (
+      <TouchableOpacity
+        style={[s.fileItem, isSelected && s.fileItemActive, !sessionReady && s.fileItemDisabled]}
+        onPress={() => {
+          if (!sessionReady) return;
+          setFileBrowserOpen(false);
+          selectFile(item);
         }}
         activeOpacity={sessionReady ? 0.7 : 1}
       >
@@ -485,7 +535,8 @@ export default function CodeEditorScreen() {
         <Text style={s.title}>AI Code Editor</Text>
         <TouchableOpacity
           style={[s.filesToggleBtn, fileBrowserOpen && s.filesToggleBtnActive]}
-   616 |   const showStatusBar = aiStatus !== "idle";
+          onPress={() => setFileBrowserOpen(!fileBrowserOpen)}
+        >
           <Ionicons name="folder-outline" size={16} color={fileBrowserOpen ? C.accent : C.textSecondary} />
           <Text style={[s.filesToggleText, fileBrowserOpen && s.filesToggleTextActive]}>Files</Text>
         </TouchableOpacity>
@@ -494,7 +545,6 @@ export default function CodeEditorScreen() {
       <KeyboardAvoidingView
         style={s.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-  const showStatusBar = aiStatus !== "idle";
       >
         {/* Command Bar */}
         <View style={s.commandBar}>
@@ -539,22 +589,9 @@ export default function CodeEditorScreen() {
           {selectedFile && (
             <View style={s.activeFileRow}>
               <Ionicons name="document-outline" size={12} color={C.accent} />
-            {/* Mic button */}
-            {/* Send button */}
-            <TouchableOpacity
-              style={[s.sendBtn, (!commandInput.trim() || chatLoading || !sessionReady) && s.sendBtnDisabled]}
-              onPress={() => handleCommandSubmit()}
-              disabled={!commandInput.trim() || chatLoading || !sessionReady}
-              activeOpacity={0.8}
-            >
-              {chatLoading ? (
-                <ActivityIndicator size="small" color="#0A0A0F" />
-              ) : (
-                <Ionicons name="arrow-up" size={18} color="#0A0A0F" />
-              )}
-            </TouchableOpacity>
-                  <Ionicons name="refresh-outline" size={14} color={C.textSecondary} />
-                )}
+              <Text style={s.activeFileName} numberOfLines={1}>{selectedFile}</Text>
+              <TouchableOpacity style={s.refreshBtn} onPress={() => selectFile(selectedFile)}>
+                <Ionicons name="refresh-outline" size={14} color={C.textSecondary} />
               </TouchableOpacity>
             </View>
           )}
@@ -783,6 +820,9 @@ export default function CodeEditorScreen() {
                   </View>
                 ) : (
                 <View
+                  style={[
+                    s.chatBubble,
+                    msg.role === "user" ? s.chatBubbleUser : s.chatBubbleAssistant,
                     msg.isError && s.chatBubbleError,
                   ]}
                 >
