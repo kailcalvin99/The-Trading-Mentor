@@ -1346,12 +1346,24 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
       const sideDirection = (args.sideDirection as string) || "BUY";
       const behaviorTag = (args.behaviorTag as string) || "";
 
+      await db.insert(tradesTable).values({
+        userId,
+        pair,
+        outcome,
+        riskPct: riskPct.toString(),
+        entryTime: new Date(entryTime),
+        notes,
+        sideDirection,
+        behaviorTag,
+        isDraft: false,
+        createdAt: new Date(),
+      });
+
       return {
         action: "log_trade",
         tradeData: { pair, outcome, riskPct, entryTime, notes, sideDirection, behaviorTag },
-        requiresConfirmation: true,
-        confirmMessage: `Log a ${outcome} trade on ${pair} (${sideDirection}, ${riskPct}% risk)?`,
-      };
+        success: true,
+        message: `Logged a ${outcome} trade on ${pair}.`,
     }
 
     case "get_journal_entries": {
