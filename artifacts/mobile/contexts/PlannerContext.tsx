@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const ROUTINE_KEYS = ["water", "breathing", "news", "bias"] as const;
+const ROUTINE_KEYS = ["water", "breathing", "news", "bias", "rules"] as const;
 type RoutineKey = (typeof ROUTINE_KEYS)[number];
 
 interface CustomRoutineItem {
@@ -46,6 +46,7 @@ const DEFAULT_ITEMS: Record<RoutineKey, boolean> = {
   breathing: false,
   news: false,
   bias: false,
+  rules: false,
 };
 
 export function PlannerProvider({ children }: { children: React.ReactNode }) {

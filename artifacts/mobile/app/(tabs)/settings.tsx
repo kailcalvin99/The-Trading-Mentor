@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -30,6 +30,7 @@ import {
   type WidgetPrefs,
 } from "@/constants/dashboardWidgets";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
+import RulesBeforeTradeModal from "@/components/RulesBeforeTradeModal";
 
 const C = Colors.dark;
 
@@ -219,6 +220,7 @@ export default function SettingsScreen() {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [showCurPw, setShowCurPw] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
   const [widgetPrefs, setWidgetPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
@@ -594,6 +596,43 @@ export default function SettingsScreen() {
             ))}
           </View>
         </View>
+
+        {/* My Trading Rules */}
+        <View style={s.card}>
+          <CardHeader icon="shield-checkmark-outline" title="My Trading Rules" />
+          <View style={s.section}>
+            <Text style={{ color: C.textSecondary, fontSize: 12, marginBottom: 12 }}>
+              Manage your personal "Rules Before I Trade" checklist. Add, remove, or reorder rules to reinforce discipline in your morning routine.
+            </Text>
+            <TouchableOpacity
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                backgroundColor: C.accent + "18",
+                borderWidth: 1,
+                borderColor: C.accent + "40",
+                borderRadius: 10,
+                paddingVertical: 12,
+              }}
+              onPress={() => setShowRulesModal(true)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="create-outline" size={16} color={C.accent} />
+              <Text style={{ fontSize: 14, fontWeight: "700", color: C.accent }}>
+                Edit Trading Rules
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <RulesBeforeTradeModal
+          visible={showRulesModal}
+          onClose={() => setShowRulesModal(false)}
+          onConfirm={() => setShowRulesModal(false)}
+          initialEditMode
+        />
 
         {/* Profile */}
         <View style={s.card}>

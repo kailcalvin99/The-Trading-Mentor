@@ -29,6 +29,7 @@ export const usersTable = pgTable("users", {
   twitterHandle: varchar("twitter_handle", { length: 64 }),
   discordHandle: varchar("discord_handle", { length: 64 }),
   isPublic: boolean("is_public").notNull().default(false),
+  tradingRules: text("trading_rules"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

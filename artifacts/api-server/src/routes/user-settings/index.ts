@@ -40,6 +40,11 @@ router.get("/", authRequired, async (req, res) => {
       try { widgetPrefs = JSON.parse(user.widgetPrefs); } catch {}
     }
 
+    let tradingRules: string[] | null = null;
+    if (user.tradingRules) {
+      try { tradingRules = JSON.parse(user.tradingRules); } catch {}
+    }
+
     res.json({
       profile: {
         name: user.name,
@@ -68,6 +73,7 @@ router.get("/", authRequired, async (req, res) => {
       academyProgress,
       routineTimes,
       widgetPrefs,
+      tradingRules,
     });
   } catch (err) {
     console.error("Get user settings error:", err);
@@ -383,7 +389,21 @@ router.patch("/", authRequired, async (req, res) => {
       return;
     }
 
-    res.status(400).json({ error: "Invalid section. Use 'profile', 'socialProfile', 'tradingDefaults', 'riskRules', 'appMode', 'avatar', 'gamification', 'progress', 'routineTimes', or 'widgetPrefs'" });
+    if (section === "tradingRules") {
+      const { rules } = data;
+      if (!Array.isArray(rules)) {
+        res.status(400).json({ error: "rules must be an array" });
+        return;
+      }
+      const validated = rules.filter(
+        (r: unknown): r is string => typeof r === "string" && (r as string).trim().length > 0
+      ).map((r: string) => r.trim().slice(0, 200));
+      await db.update(usersTable).set({ tradingRules: JSON.stringify(validated) }).where(eq(usersTable.id, userId));
+      res.json({ success: true, message: "Trading rules updated successfully" });
+      return;
+    }
+
+    res.status(400).json({ error: "Invalid section. Use 'profile', 'socialProfile', 'tradingDefaults', 'riskRules', 'appMode', 'avatar', 'gamification', 'progress', 'routineTimes', 'widgetPrefs', or 'tradingRules'" });
   } catch (err) {
     console.error("Update user settings error:", err);
     res.status(500).json({ error: "Failed to update settings" });

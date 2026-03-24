@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import NewsModal from "@/components/NewsModal";
+import RulesBeforeTradeModal from "@/components/RulesBeforeTradeModal";
 import {
   View,
   Text,
@@ -150,7 +151,7 @@ function getESTNow(): Date {
 }
 
 const MORNING_ROUTINE_ITEMS: Array<{
-  key: "water" | "breathing" | "news" | "bias";
+  key: "water" | "breathing" | "news" | "bias" | "rules";
   label: string;
   icon: React.ComponentProps<typeof Ionicons>["name"];
 }> = [
@@ -158,6 +159,7 @@ const MORNING_ROUTINE_ITEMS: Array<{
   { key: "breathing", label: "5-min breathing", icon: "leaf-outline" },
   { key: "news", label: "Check news", icon: "newspaper-outline" },
   { key: "bias", label: "Set daily bias", icon: "trending-up-outline" },
+  { key: "rules", label: "Rules Before I Trade", icon: "shield-checkmark-outline" },
 ];
 
 interface MobileFvgSignal {
@@ -359,6 +361,7 @@ function PlannerScreen() {
   const [showPositionCalc, setShowPositionCalc] = useState(false);
   const [showPreTradeChecklist, setShowPreTradeChecklist] = useState(false);
   const [showNewsModal, setShowNewsModal] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const [positionCalcPoints, setPositionCalcPoints] = useState("");
   const [positionCalcBalance, setPositionCalcBalance] = useState("");
   const [riskChecklistChecked, setRiskChecklistChecked] = useState<Record<string, boolean>>({});
@@ -435,9 +438,11 @@ function PlannerScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  function handleRoutineItemPress(key: "water" | "breathing" | "news" | "bias") {
+  function handleRoutineItemPress(key: "water" | "breathing" | "news" | "bias" | "rules") {
     if (key === "news" && !routineItems[key]) {
       setShowNewsModal(true);
+    } else if (key === "rules" && !routineItems[key]) {
+      setShowRulesModal(true);
     } else {
       toggleItem(key);
     }
@@ -790,6 +795,17 @@ function PlannerScreen() {
           }}
         />
 
+        {/* Rules Before I Trade Modal */}
+        <RulesBeforeTradeModal
+          visible={showRulesModal}
+          onClose={() => setShowRulesModal(false)}
+          onConfirm={() => {
+            setShowRulesModal(false);
+            toggleItem("rules");
+          }}
+          requireConfirmToClose
+        />
+
         {/* Daily Halt Banner */}
         {showHaltBanner && (
           <View style={styles.haltBanner}>
@@ -832,7 +848,7 @@ function PlannerScreen() {
                 <Text style={[styles.routineLabel, done && styles.routineLabelDone]}>
                   {item.label}
                 </Text>
-                {item.key === "news" && !done && (
+                {(item.key === "news" || item.key === "rules") && !done && (
                   <Ionicons name="chevron-forward" size={14} color={C.textTertiary} />
                 )}
               </TouchableOpacity>
@@ -864,12 +880,12 @@ function PlannerScreen() {
                 ? "SPECTATOR MODE — Red News Event"
                 : isRoutineComplete
                 ? "✓ TRADING UNLOCKED"
-                : `Complete Routine (${completedCount}/4) to unlock trading`}
+                : `Complete Routine (${completedCount}/${MORNING_ROUTINE_ITEMS.length}) to unlock trading`}
             </Text>
           </View>
           {!isRoutineComplete && (
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${(completedCount / 4) * 100}%` }]} />
+              <View style={[styles.progressFill, { width: `${(completedCount / MORNING_ROUTINE_ITEMS.length) * 100}%` }]} />
             </View>
           )}
         </View>
