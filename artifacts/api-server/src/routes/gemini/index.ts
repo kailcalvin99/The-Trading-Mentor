@@ -1407,6 +1407,7 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
         tradeData: { pair, outcome, riskPct, entryTime, notes, sideDirection, behaviorTag },
         success: true,
         message: `Logged a ${outcome} trade on ${pair}.`,
+      };
     }
 
     case "get_journal_entries": {
