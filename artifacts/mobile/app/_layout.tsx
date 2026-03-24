@@ -23,7 +23,7 @@ import { PlannerProvider } from "@/contexts/PlannerContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
-configureAuth({ tokenProvider: getToken, credentials: "include", baseUrl: getBaseUrl() });
+configureAuth({ tokenProvider: getToken, credentials: "include", baseUrl: getBaseUrl });
 configureOn401(fireOn401);
 
 SplashScreen.preventAutoHideAsync();
