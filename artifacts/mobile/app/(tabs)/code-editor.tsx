@@ -25,9 +25,11 @@ type AIStatus =
   | "idle"
   | "thinking"
   | "reading"
-  |   | "writing"
-  |   | "done"
-  |   | "error";
+  | "writing"
+  | "done"
+  | "error";
+
+type Message = {
   role: "user" | "assistant" | "status";
   content: string;
   streaming?: boolean;
