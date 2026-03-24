@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -142,6 +143,16 @@ export default function JournalScreen() {
   const [showSitOutWarning, setShowSitOutWarning] = useState(false);
   const [showTiltCooldown, setShowTiltCooldown] = useState(false);
   const [tiltCooldownEnd, setTiltCooldownEnd] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await qc.invalidateQueries({ queryKey: [`/api/trades`] });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [qc]);
 
   useEffect(() => {
     AsyncStorage.getItem(TILT_COOLDOWN_KEY).then((stored) => {
@@ -539,7 +550,14 @@ export default function JournalScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} {...scrollCollapseProps}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.accent} />
+        }
+        {...scrollCollapseProps}
+      >
 
         {/* Header */}
         <View style={styles.headerRow}>

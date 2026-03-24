@@ -13,6 +13,7 @@ import {
   PanResponder,
   Animated,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +23,7 @@ import Colors from "@/constants/colors";
 import { SlotMachineCard, useDailyGamification } from "@/components/DashboardGamification";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGetPropAccount, useListTrades } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { usePlanner } from "@/contexts/PlannerContext";
 import {
@@ -526,7 +528,7 @@ const PLANNER_BIAS_CHIPS: Array<{ key: "bull" | "neutral" | "bear"; label: strin
   { key: "bear", label: "Bearish", icon: "📉", color: "#EF4444" },
 ];
 
-function TradePlanWidget() {
+function TradePlanWidget({ refreshTrigger }: { refreshTrigger?: number }) {
   const router = useRouter();
   const [selectedBias, setSelectedBias] = useState<"bull" | "neutral" | "bear" | null>(null);
   const [targetSession, setTargetSession] = useState<string | null>(null);
@@ -560,6 +562,10 @@ function TradePlanWidget() {
   }, []);
 
   useFocusEffect(loadPlan);
+
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) loadPlan();
+  }, [refreshTrigger, loadPlan]);
 
   async function tapBias(key: "bull" | "neutral" | "bear") {
     const newBias = selectedBias === key ? null : key;
@@ -675,28 +681,27 @@ function useMobileLiveSignals(instrument = "NQ") {
   const [fvg, setFvg] = useState<MobileFvgSignal | null>(null);
   const [confidence, setConfidence] = useState<MobileConfidenceData | null>(null);
 
-  useEffect(() => {
-    async function fetchSignals() {
-      try {
-        const [fvgData, confData] = await Promise.all([
-          apiGet<MobileFvgSignal>(`signals/fvg?instrument=${instrument}`),
-          apiGet<MobileConfidenceData>(`signals/confidence?instrument=${instrument}`),
-        ]);
-        setFvg(fvgData);
-        setConfidence(confData);
-      } catch {}
-    }
+  const fetchSignals = useCallback(async () => {
+    try {
+      const [fvgData, confData] = await Promise.all([
+        apiGet<MobileFvgSignal>(`signals/fvg?instrument=${instrument}`),
+        apiGet<MobileConfidenceData>(`signals/confidence?instrument=${instrument}`),
+      ]);
+      setFvg(fvgData);
+      setConfidence(confData);
+    } catch {}
+  }, [instrument]);
 
+  useEffect(() => {
     fetchSignals();
     const id = setInterval(fetchSignals, 15000);
     return () => clearInterval(id);
-  }, [instrument]);
+  }, [fetchSignals]);
 
-  return { fvg, confidence };
+  return { fvg, confidence, fetchSignals };
 }
 
-function FvgSignalMobileCard() {
-  const { fvg } = useMobileLiveSignals();
+function FvgSignalMobileCard({ fvg }: { fvg: MobileFvgSignal | null }) {
 
   const isBullish = fvg?.direction === "bullish";
   const isBearish = fvg?.direction === "bearish";
@@ -761,8 +766,7 @@ function FvgSignalMobileCard() {
   );
 }
 
-function ConfidenceScoreMobileCard() {
-  const { confidence } = useMobileLiveSignals();
+function ConfidenceScoreMobileCard({ confidence }: { confidence: MobileConfidenceData | null }) {
 
   const score = confidence?.score ?? null;
 
@@ -1879,9 +1883,25 @@ export default function DashboardScreen() {
   const currentBalance = propAccount?.currentBalance ?? startingBalance;
   const briefingDrawdownPct = startingBalance > 0 ? ((startingBalance - currentBalance) / startingBalance) * 100 : 0;
 
+  const qc = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
   const [prefs, setPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
+  const { fetchSignals } = useMobileLiveSignals();
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: [`/api/trades`] }),
+        fetchSignals(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [qc, fetchSignals]);
+
   useFocusEffect(
     useCallback(() => {
       (async () => {
@@ -1930,7 +1950,14 @@ export default function DashboardScreen() {
       />
 
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} {...scrollCollapseProps}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.accent} />
+        }
+        {...scrollCollapseProps}
+      >
         {/* Stats strip — always visible, sits above all other content */}
         <StatsStripWidget />
 

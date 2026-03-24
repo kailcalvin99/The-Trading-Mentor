@@ -12,6 +12,7 @@ import {
   Platform,
   Modal,
   KeyboardAvoidingView,
+  RefreshControl,
 } from "react-native";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,6 +28,7 @@ import FullModeGate from "@/components/FullModeGate";
 import { PropTrackerDemoSnapshot } from "@/components/DemoSnapshots";
 import ProbabilityMeter from "@/components/ProbabilityMeter";
 import { useGetPropAccount, useListTrades } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const C = Colors.dark;
 
@@ -183,29 +185,28 @@ function useMobileLiveSignals(instrument = "NQ") {
   const [fvg, setFvg] = useState<MobileFvgSignal | null>(null);
   const [confidence, setConfidence] = useState<MobileConfidenceData | null>(null);
 
-  useEffect(() => {
-    async function fetchSignals() {
-      try {
-        const { apiGet } = await import("@/lib/api");
-        const [fvgData, confData] = await Promise.all([
-          apiGet<MobileFvgSignal>(`signals/fvg?instrument=${instrument}`),
-          apiGet<MobileConfidenceData>(`signals/confidence?instrument=${instrument}`),
-        ]);
-        setFvg(fvgData);
-        setConfidence(confData);
-      } catch {}
-    }
+  const fetchSignals = useCallback(async () => {
+    try {
+      const { apiGet } = await import("@/lib/api");
+      const [fvgData, confData] = await Promise.all([
+        apiGet<MobileFvgSignal>(`signals/fvg?instrument=${instrument}`),
+        apiGet<MobileConfidenceData>(`signals/confidence?instrument=${instrument}`),
+      ]);
+      setFvg(fvgData);
+      setConfidence(confData);
+    } catch {}
+  }, [instrument]);
 
+  useEffect(() => {
     fetchSignals();
     const id = setInterval(fetchSignals, 15000);
     return () => clearInterval(id);
-  }, [instrument]);
+  }, [fetchSignals]);
 
-  return { fvg, confidence };
+  return { fvg, confidence, fetchSignals };
 }
 
-function FvgSignalMobileCard() {
-  const { fvg } = useMobileLiveSignals();
+function FvgSignalMobileCard({ fvg }: { fvg: MobileFvgSignal | null }) {
 
   const isBullish = fvg?.direction === "bullish";
   const isBearish = fvg?.direction === "bearish";
@@ -270,8 +271,7 @@ function FvgSignalMobileCard() {
   );
 }
 
-function ConfidenceScoreMobileCard() {
-  const { confidence } = useMobileLiveSignals();
+function ConfidenceScoreMobileCard({ confidence }: { confidence: MobileConfidenceData | null }) {
 
   const score = confidence?.score ?? null;
 
@@ -357,6 +357,9 @@ function PlannerScreen() {
   const { data: propAccount } = useGetPropAccount();
   const { data: apiTrades } = useListTrades();
 
+  const qc = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  const { fvg, confidence, fetchSignals } = useMobileLiveSignals();
   const [showRiskGauges, setShowRiskGauges] = useState(false);
   const [showPositionCalc, setShowPositionCalc] = useState(false);
   const [showPreTradeChecklist, setShowPreTradeChecklist] = useState(false);
@@ -486,6 +489,45 @@ function PlannerScreen() {
       apiPut(`planner/${dateStr}`, { data: serverData }).catch(() => {});
     });
   }, []);
+
+  const loadPlanFromServer = useCallback(async () => {
+    try {
+      const { apiGet } = await import("@/lib/api");
+      const dateStr = new Date().toISOString().split("T")[0];
+      const res = await apiGet<{ data: any }>(`planner/${dateStr}`);
+      if (res.data && Object.keys(res.data).length > 0) {
+        const tp = res.data.tradePlan || res.data;
+        const apiPlan: TradePlan = {
+          ...DEFAULT_PLAN,
+          bias: (fromApiBias(tp.bias) ?? plan.bias) as Bias,
+          keyLevels: tp.keyLevels ?? plan.keyLevels,
+          targetSession: fromApiSession(tp.targetSession ?? tp.sessionFocus) ?? plan.targetSession,
+          entryCriteria: tp.entryCriteria ?? plan.entryCriteria,
+          notes: tp.notes ?? res.data.notes ?? plan.notes,
+          strategy: tp.strategy ?? plan.strategy,
+          stopLossTicks: tp.stopLossTicks ?? plan.stopLossTicks,
+          selectedAsset: tp.selectedAsset ?? plan.selectedAsset,
+          voiceNoteUri: plan.voiceNoteUri,
+          pairsToWatch: tp.pairsToWatch ?? plan.pairsToWatch,
+        };
+        setPlan(apiPlan);
+        AsyncStorage.setItem(PLAN_KEY, JSON.stringify(apiPlan));
+      }
+    } catch {}
+  }, [plan]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: [`/api/trades`] }),
+        fetchSignals(),
+        loadPlanFromServer(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [qc, fetchSignals, loadPlanFromServer]);
 
   const est = getESTNow();
   const dateStr = est.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
@@ -620,7 +662,15 @@ function PlannerScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <OnboardingTour visible={showTour} onComplete={completeTour} />
-      <KeyboardAwareScrollViewCompat ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.content} {...scrollCollapseProps}>
+      <KeyboardAwareScrollViewCompat
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.accent} />
+        }
+        {...scrollCollapseProps}
+      >
 
         {/* Header */}
         <View style={styles.header}>
@@ -1131,8 +1181,8 @@ function PlannerScreen() {
         {/* FVG Signal + ICT Confidence Score — shown when bias is selected */}
         {biasSelected && (
           <>
-            <FvgSignalMobileCard />
-            <ConfidenceScoreMobileCard />
+            <FvgSignalMobileCard fvg={fvg} />
+            <ConfidenceScoreMobileCard confidence={confidence} />
           </>
         )}
 

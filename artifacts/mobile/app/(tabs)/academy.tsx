@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   type DimensionValue,
+  RefreshControl,
 } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
@@ -140,7 +141,7 @@ async function syncProgressFromServer(current: Set<string>, onUpdate: (merged: S
 }
 
 
-function LearnView({ onAskMentor, pendingLessonId }: { onAskMentor: (topic: string) => void; pendingLessonId?: string | null }) {
+function LearnView({ onAskMentor, pendingLessonId, refreshing, onRefresh }: { onAskMentor: (topic: string) => void; pendingLessonId?: string | null; refreshing?: boolean; onRefresh?: () => void }) {
   const scrollCollapseProps = useScrollCollapseProps();
   const [expandedChapter, setExpandedChapter] = useState<string | null>("ch1");
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
@@ -189,7 +190,14 @@ function LearnView({ onAskMentor, pendingLessonId }: { onAskMentor: (topic: stri
   );
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} {...scrollCollapseProps}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+      refreshControl={
+        <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={C.accent} />
+      }
+      {...scrollCollapseProps}
+    >
       <View style={learnStyles.headerRow}>
         <View style={{ flex: 1 }}>
           <Text style={learnStyles.heading}>ICT Trading Course</Text>
@@ -316,11 +324,11 @@ function LearnView({ onAskMentor, pendingLessonId }: { onAskMentor: (topic: stri
   );
 }
 
-function GlossaryView() {
+function GlossaryView({ refreshing, onRefresh }: { refreshing?: boolean; onRefresh?: () => void }) {
   const scrollCollapseProps = useScrollCollapseProps();
   const [expanded, setExpanded] = useState<string | null>(null);
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} {...scrollCollapseProps}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={C.accent} />} {...scrollCollapseProps}>
       <Text style={glossStyles.heading}>ICT Concepts</Text>
       <Text style={glossStyles.subheading}>Tap any term for the full definition + trader tip</Text>
       {GLOSSARY_DATA.map((item) => {
@@ -367,7 +375,7 @@ function GlossaryView() {
   );
 }
 
-function QuizView() {
+function QuizView({ refreshing, onRefresh }: { refreshing?: boolean; onRefresh?: () => void }) {
   const scrollCollapseProps = useScrollCollapseProps();
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [answered, setAnswered] = useState(0);
@@ -459,7 +467,7 @@ function QuizView() {
 
   if (done) {
     return (
-      <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }} {...scrollCollapseProps}>
+      <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={C.accent} />} {...scrollCollapseProps}>
         <View style={quizStyles.resultCard}>
           <Text style={quizStyles.resultEmoji}>{pct >= 70 ? "🏆" : pct >= 40 ? "📈" : "📚"}</Text>
           <Text style={quizStyles.resultScore}>{score}/{maxScore}</Text>
@@ -480,7 +488,7 @@ function QuizView() {
 
   if (!q) {
     return (
-      <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }} {...scrollCollapseProps}>
+      <ScrollView contentContainerStyle={{ padding: 16, alignItems: "center", paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={C.accent} />} {...scrollCollapseProps}>
         <Text style={{ color: C.text, fontSize: 16 }}>No more questions available!</Text>
         <TouchableOpacity style={quizStyles.retryBtn} onPress={handleReset}>
           <Text style={quizStyles.retryText}>Start Over</Text>
@@ -492,7 +500,7 @@ function QuizView() {
   const diffColor = DIFFICULTY_COLORS[q.difficulty];
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} {...scrollCollapseProps}>
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={C.accent} />} {...scrollCollapseProps}>
       <View style={quizStyles.progressRow}>
         <Text style={quizStyles.progressText}>Question {answered + 1} of {TOTAL_QUIZ_QUESTIONS}</Text>
         <Text style={quizStyles.scoreText}>Score: {score}</Text>
@@ -575,10 +583,10 @@ const PLAN_ICONS: Record<string, IoniconsName> = {
 
 const DEFAULT_PLAN_ICON: IoniconsName = "document-outline";
 
-function PlanView() {
+function PlanView({ refreshing, onRefresh }: { refreshing?: boolean; onRefresh?: () => void }) {
   const scrollCollapseProps = useScrollCollapseProps();
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} {...scrollCollapseProps}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={C.accent} />} {...scrollCollapseProps}>
       <Text style={planStyles.heading}>NQ Futures: ICT Trading Plan</Text>
       <Text style={planStyles.subheading}>Your mechanical, top-down trading framework</Text>
       {PLAN_DATA.map((section) => (
@@ -619,8 +627,22 @@ const TAB_LABELS: Record<Tab, string> = {
 export default function AcademyScreen() {
   const [tab, setTab] = useState<Tab>("learn");
   const [pendingLessonId, setPendingLessonId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const { showCelebration, closeCelebration } = useGraduationCheck();
   const { openWithTopic } = useAIAssistant();
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const local = await loadLocalProgress();
+      await new Promise<void>((resolve) => {
+        syncProgressFromServer(local, () => resolve());
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       AsyncStorage.getItem(ACADEMY_PENDING_LESSON_KEY).then((raw) => {
@@ -651,10 +673,10 @@ export default function AcademyScreen() {
         </View>
       </View>
       <View style={{ flex: 1 }}>
-        {tab === "learn" && <LearnView onAskMentor={openWithTopic} pendingLessonId={pendingLessonId} />}
-        {tab === "glossary" && <GlossaryView />}
-        {tab === "quiz" && <QuizView />}
-        {tab === "plan" && <PlanView />}
+        {tab === "learn" && <LearnView onAskMentor={openWithTopic} pendingLessonId={pendingLessonId} refreshing={refreshing} onRefresh={handleRefresh} />}
+        {tab === "glossary" && <GlossaryView refreshing={refreshing} onRefresh={handleRefresh} />}
+        {tab === "quiz" && <QuizView refreshing={refreshing} onRefresh={handleRefresh} />}
+        {tab === "plan" && <PlanView refreshing={refreshing} onRefresh={handleRefresh} />}
       </View>
     </SafeAreaView>
   );
