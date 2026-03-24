@@ -282,8 +282,25 @@ export default function JournalScreen() {
         if (data.feedback) {
           setCoachFeedback((prev) => ({ ...prev, [tradeId]: data.feedback }));
         }
+      } else if (res.status === 403) {
+        Alert.alert(
+          "Premium Feature",
+          "AI coaching is a Premium feature. Upgrade your plan to unlock personalized trade analysis."
+        );
+      } else {
+        Alert.alert("Error", "Failed to fetch AI coaching feedback. Please try again.");
       }
-    } catch {}
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.toLowerCase().includes("upgrade")) {
+        Alert.alert(
+          "Premium Feature",
+          "AI coaching is a Premium feature. Upgrade your plan to unlock personalized trade analysis."
+        );
+      } else {
+        Alert.alert("Error", "Failed to fetch AI coaching feedback. Please try again.");
+      }
+    }
     setCoachLoading((prev) => ({ ...prev, [tradeId]: false }));
   }
 

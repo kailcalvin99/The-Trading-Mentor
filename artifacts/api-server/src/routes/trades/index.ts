@@ -7,7 +7,7 @@ import { ai } from "@workspace/integrations-gemini-ai";
 
 const router: IRouter = Router();
 
-router.get("/", authRequired, tierRequired(2), async (req, res) => {
+router.get("/", authRequired, tierRequired(1), async (req, res) => {
   try {
     const userId = req.user!.userId;
     const trades = await db
@@ -109,7 +109,7 @@ router.get("/export/csv", authRequired, tierRequired(2), async (req, res) => {
   }
 });
 
-router.post("/", authRequired, tierRequired(2), async (req, res) => {
+router.post("/", authRequired, tierRequired(1), async (req, res) => {
   try {
     const userId = req.user!.userId;
     const {
@@ -275,7 +275,7 @@ router.delete("/all", authRequired, async (req, res) => {
 });
 
 // FIX #2: ownership check — only the trade owner can delete it
-router.delete("/:id", authRequired, tierRequired(2), async (req, res) => {
+router.delete("/:id", authRequired, tierRequired(1), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id) || id <= 0) {

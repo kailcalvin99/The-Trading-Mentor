@@ -109,15 +109,15 @@ router.post("/register", registerLimiter, async (req, res) => {
       founderNumber,
     }).returning();
 
-    const freeTier = await db.select().from(subscriptionTiersTable).where(eq(subscriptionTiersTable.level, 0));
-    if (freeTier.length > 0) {
+    const defaultTier = await db.select().from(subscriptionTiersTable).where(eq(subscriptionTiersTable.level, 1));
+    if (defaultTier.length > 0) {
       const founderDiscountMonthsSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_discount_months"));
       const founderDiscountMonths = founderDiscountMonthsSetting.length > 0 ? parseInt(founderDiscountMonthsSetting[0].value) : 6;
       const founderDiscountEndsAt = isFounder ? new Date(Date.now() + founderDiscountMonths * 30 * 24 * 60 * 60 * 1000) : null;
 
       await db.insert(userSubscriptionsTable).values({
         userId: user.id,
-        tierId: freeTier[0].id,
+        tierId: defaultTier[0].id,
         status: "active",
         billingCycle: "monthly",
         founderDiscount: isFounder,
