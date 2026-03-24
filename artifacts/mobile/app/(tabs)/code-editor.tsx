@@ -56,6 +56,7 @@ export default function CodeEditorScreen() {
 
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [sessionInitFailed, setSessionInitFailed] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [commandInput, setCommandInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -120,8 +121,9 @@ export default function CodeEditorScreen() {
     }
   }
 
-  async function initConversation() {
+  async function initConversation(isAutoRetry = false) {
     setSessionReady(false);
+    setSessionInitFailed(false);
     try {
       const data = await apiPost<{ id: number; title: string }>(
         "gemini/conversations",
@@ -132,11 +134,13 @@ export default function CodeEditorScreen() {
       }
       setConversationId(data.id);
       setSessionReady(true);
-    } catch (err) {
-      Alert.alert(
-        "Session Error",
-        `Failed to start AI session: ${err instanceof Error ? err.message : String(err)}. Tap Retry to try again.`
-      );
+    } catch {
+      setSessionInitFailed(true);
+      if (!isAutoRetry) {
+        setTimeout(() => {
+          initConversation(true);
+        }, 3000);
+      }
     }
   }
 
@@ -196,7 +200,7 @@ export default function CodeEditorScreen() {
     abortRef.current = false;
 
     const context = selectedFile
-      ? `[Code Editor Instruction — currently viewing file "${selectedFile}"] ${userText}`
+      ? `[Code Editor Instruction] File to edit: ${selectedFile}. Full path for write_source_file: ${selectedFile}. Instruction: ${userText}`
       : `[Code Editor Instruction — no file selected. Search the file list, read candidate files to locate the relevant code, then make the change.] ${userText}`;
 
     setChatMessages((prev) => [
@@ -268,12 +272,20 @@ export default function CodeEditorScreen() {
         }
         if (toolCall.name === "write_source_file") {
           setAIStatus("writing");
-          const written = toolCall.result as { success?: boolean; path?: string; diffSummary?: string };
-          if (written.diffSummary) {
-            hasDiff = written.diffSummary;
-          }
-          if (written.success) {
+          const written = toolCall.result as { success?: boolean; path?: string; diffSummary?: string; error?: string };
+          if (written.error) {
+            setChatMessages((prev) => [
+              ...prev,
+              { role: "status", content: `❌ Write failed: ${written.error}`, isError: true },
+            ]);
+          } else if (written.success) {
             const writtenPath = written.path as string | undefined;
+            const successMsg = `✅ Written: ${writtenPath ?? selectedFile ?? "file"}${written.diffSummary ? ` — ${written.diffSummary}` : ""}`;
+            hasDiff = written.diffSummary ?? successMsg;
+            setChatMessages((prev) => [
+              ...prev,
+              { role: "status", content: successMsg },
+            ]);
             if (writtenPath) {
               setTimeout(() => selectFile(writtenPath), 600);
             } else if (selectedFile) {
@@ -699,14 +711,22 @@ export default function CodeEditorScreen() {
           )}
 
           {/* Session not ready banner */}
-          {!sessionReady && (
-            <View style={s.sessionBanner}>
-              <ActivityIndicator size="small" color={C.accent} />
-              <Text style={s.sessionBannerText}>Starting AI session...</Text>
-              <TouchableOpacity onPress={initConversation} style={s.retryBtn}>
-                <Text style={s.retryBtnText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
+          {!sessionReady && !authLoading && (
+            sessionInitFailed ? (
+              <View style={[s.sessionBanner, s.sessionBannerError]}>
+                <Ionicons name="alert-circle-outline" size={14} color="#ef4444" />
+                <Text style={[s.sessionBannerText, s.sessionBannerTextError]}>Session disconnected — retrying...</Text>
+                <TouchableOpacity onPress={initConversation} style={s.retryBtn}>
+                  <Ionicons name="refresh-outline" size={13} color={C.accent} />
+                  <Text style={s.retryBtnText}>Reconnect</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={s.sessionBanner}>
+                <ActivityIndicator size="small" color={C.accent} />
+                <Text style={s.sessionBannerText}>Connecting to AI session...</Text>
+              </View>
+            )
           )}
         </View>
 
@@ -888,6 +908,13 @@ export default function CodeEditorScreen() {
           ) : (
             chatMessages.map((msg, i) => (
               <View key={i}>
+                {msg.role === "status" ? (
+                  <View style={[s.statusInlineRow, msg.isError && s.statusInlineRowError]}>
+                    <Text style={[s.statusInlineText, msg.isError && s.statusInlineTextError]} numberOfLines={2}>
+                      {msg.content}
+                    </Text>
+                  </View>
+                ) : (
                 <View
                   style={[
                     s.chatBubble,
@@ -912,6 +939,7 @@ export default function CodeEditorScreen() {
                     {msg.streaming && <Text style={s.cursor}>▌</Text>}
                   </Text>
                 </View>
+                )}
                 {msg.diffSummary && (
                   <View style={s.diffBadge}>
                     <Ionicons name="checkmark-circle" size={13} color="#22c55e" />
@@ -1085,7 +1113,34 @@ const s = StyleSheet.create({
     borderTopColor: C.cardBorder,
     backgroundColor: C.accent + "08",
   },
+  sessionBannerError: {
+    backgroundColor: "#ef444410",
+    borderTopColor: "#ef444430",
+  },
   sessionBannerText: { flex: 1, fontSize: 12, color: C.textSecondary },
+  sessionBannerTextError: { color: "#fca5a5" },
+
+  statusInlineRow: {
+    alignSelf: "center",
+    marginVertical: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    backgroundColor: "#22c55e15",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#22c55e30",
+  },
+  statusInlineRowError: {
+    backgroundColor: "#ef444410",
+    borderColor: "#ef444430",
+  },
+  statusInlineText: {
+    fontSize: 11,
+    color: "#22c55e",
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    textAlign: "center",
+  },
+  statusInlineTextError: { color: "#fca5a5" },
 
   fileBrowser: {
     maxHeight: 280,
