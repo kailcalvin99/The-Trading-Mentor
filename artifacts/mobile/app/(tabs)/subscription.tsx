@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, isSessionExpiredError } from "@/lib/api";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -80,7 +80,8 @@ export default function SubscriptionScreen() {
       setFounderDiscountPct(data.founderDiscountPct ?? 50);
       setFounderSpotsLeft(data.founderSpotsLeft ?? 0);
       setFounderLimit(data.founderLimit ?? 20);
-    } catch {
+    } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
       Alert.alert("Error", "Failed to load subscription plans");
     } finally {
       setLoading(false);
@@ -101,7 +102,8 @@ export default function SubscriptionScreen() {
         });
         await refresh();
         Alert.alert("Done", "Switched to Free plan");
-      } catch {
+      } catch (err: unknown) {
+        if (isSessionExpiredError(err)) return;
         Alert.alert("Error", "Failed to switch plan");
       }
       setSubscribing(null);
@@ -119,7 +121,8 @@ export default function SubscriptionScreen() {
       } else {
         Alert.alert("Error", "No checkout URL returned");
       }
-    } catch {
+    } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
       Alert.alert("Error", "Failed to start checkout");
     }
     setSubscribing(null);

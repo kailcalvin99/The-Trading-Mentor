@@ -18,6 +18,7 @@ import { useListTrades, useCreateTrade, useDeleteTrade } from "@workspace/api-cl
 import type { Trade } from "@workspace/api-client-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import { fireMobileAITrigger } from "@/lib/aiTrigger";
+import { isSessionExpiredError } from "@/lib/api";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
@@ -419,6 +420,7 @@ export default function JournalScreen() {
         fetchCoachFeedback(result.id);
       }
     } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
       console.error("[handleSubmit] Could not save trade:", err);
       let message = "Could not save trade";
       if (err && typeof err === "object") {

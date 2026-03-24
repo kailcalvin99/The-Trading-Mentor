@@ -20,7 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { apiGet, apiPatch, getBaseUrl } from "@/lib/api";
+import { apiGet, apiPatch, getBaseUrl, isSessionExpiredError } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 import {
@@ -259,7 +259,8 @@ export default function SettingsScreen() {
         maxDailyLossPct: String(settingsData.riskRules?.maxDailyLossPct ?? 2),
         maxTotalDrawdownPct: String(settingsData.riskRules?.maxTotalDrawdownPct ?? 10),
       });
-    } catch {
+    } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
       Alert.alert("Error", "Failed to load settings");
     } finally {
       setLoading(false);
@@ -295,6 +296,7 @@ export default function SettingsScreen() {
       setConfirmPw("");
       Alert.alert("Saved", "Profile updated successfully");
     } catch (e: unknown) {
+      if (isSessionExpiredError(e)) return;
       const msg = e instanceof Error ? e.message : "Failed to save profile";
       Alert.alert("Error", msg);
     }
@@ -306,7 +308,8 @@ export default function SettingsScreen() {
     try {
       await apiPatch("user/settings", { section: "tradingDefaults", data: trading });
       Alert.alert("Saved", "Trading defaults updated");
-    } catch {
+    } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
       Alert.alert("Error", "Failed to save trading defaults");
     }
     setSaving(null);
@@ -324,7 +327,8 @@ export default function SettingsScreen() {
         },
       });
       Alert.alert("Saved", "Risk rules updated");
-    } catch {
+    } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
       Alert.alert("Error", "Failed to save risk rules");
     }
     setSaving(null);

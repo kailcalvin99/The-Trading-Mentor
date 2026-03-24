@@ -24,6 +24,7 @@ import {
 import Colors from "@/constants/colors";
 import type { Trade } from "@workspace/api-client-react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isSessionExpiredError } from "@/lib/api";
 
 const C = Colors.dark;
 
@@ -304,6 +305,7 @@ export default function RiskShieldScreen() {
       setLossInput("");
       refetch();
     } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
       const apiMessage =
         err &&
         typeof err === "object" &&
@@ -358,7 +360,8 @@ export default function RiskShieldScreen() {
       });
       refetch();
       setShowAccountSetup(false);
-    } catch {
+    } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
       Alert.alert("Error", "Could not save account");
     }
   }, [setupBalance, setupDailyPct, setupTotalPct, createAccount, refetch]);

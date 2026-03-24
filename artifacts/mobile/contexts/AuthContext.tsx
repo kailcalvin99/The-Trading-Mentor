@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { apiGet, apiPost, apiPatch, apiPut, saveToken, deleteToken } from "@/lib/api";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { Alert } from "react-native";
+import { apiGet, apiPost, apiPatch, apiPut, saveToken, deleteToken, setOn401Handler } from "@/lib/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [subscription, setSubscription] = useState<AuthSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [appMode, setAppModeState] = useState<"full" | "lite">("full");
+  const sessionExpiredShown = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -137,6 +139,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setSubscription(null);
   }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (!user) return;
+      if (sessionExpiredShown.current) return;
+      sessionExpiredShown.current = true;
+      logout().finally(() => {
+        sessionExpiredShown.current = false;
+      });
+      Alert.alert(
+        "Session Expired",
+        "Your session has expired. Please log in again.",
+        [{ text: "OK" }]
+      );
+    };
+    setOn401Handler(handler);
+    return () => {
+      setOn401Handler(null);
+    };
+  }, [logout, user]);
 
   useEffect(() => {
     clearSessionOnce().then(() => refresh());

@@ -13,8 +13,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { configureAuth } from "@workspace/api-client-react";
-import { getToken } from "@/lib/api";
+import { configureAuth, configureOn401 } from "@workspace/api-client-react";
+import { getToken, fireOn401 } from "@/lib/api";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -24,6 +24,7 @@ import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
 configureAuth({ tokenProvider: getToken, credentials: "include" });
+configureOn401(fireOn401);
 
 SplashScreen.preventAutoHideAsync();
 

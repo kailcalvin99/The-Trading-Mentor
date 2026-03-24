@@ -3,6 +3,29 @@ import * as SecureStore from "expo-secure-store";
 
 const TOKEN_KEY = "auth_token";
 
+let _on401Handler: (() => void) | null = null;
+
+export class SessionExpiredError extends Error {
+  readonly name = "SessionExpiredError";
+  constructor() {
+    super("Session expired");
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+export function setOn401Handler(handler: (() => void) | null): void {
+  _on401Handler = handler;
+}
+
+export function fireOn401(): void {
+  if (_on401Handler) _on401Handler();
+}
+
+function handle401(): never {
+  fireOn401();
+  throw new SessionExpiredError();
+}
+
 export const getBaseUrl = () => {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (domain) return `https://${domain}/`;
@@ -35,7 +58,10 @@ export async function apiGet<T>(path: string): Promise<T> {
     credentials: "include",
     headers,
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401) handle401();
+    throw new Error(`API error: ${res.status}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -48,6 +74,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     credentials: "include",
   });
   if (!res.ok) {
+    if (res.status === 401) handle401();
     let message = `Request failed (${res.status})`;
     try {
       const json = await res.json() as { error?: string; message?: string };
@@ -67,7 +94,10 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
     credentials: "include",
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401) handle401();
+    throw new Error(`API error: ${res.status}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -79,7 +109,10 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
     credentials: "include",
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401) handle401();
+    throw new Error(`API error: ${res.status}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -90,7 +123,16 @@ export async function apiDelete(path: string): Promise<void> {
     credentials: "include",
     headers,
   });
-  if (!res.ok && res.status !== 204) throw new Error(`API error: ${res.status}`);
+  if (!res.ok && res.status !== 204) {
+    if (res.status === 401) handle401();
+    throw new Error(`API error: ${res.status}`);
+  }
+}
+
+export function isSessionExpiredError(err: unknown): boolean {
+  if (err instanceof SessionExpiredError) return true;
+  if (err && typeof err === "object" && "status" in err && (err as { status: number }).status === 401) return true;
+  return false;
 }
 
 export interface ToolCallEvent {
@@ -124,6 +166,7 @@ export async function streamMessage(
   );
 
   if (!res.ok) {
+    if (res.status === 401) handle401();
     onError("Failed to get response");
     return;
   }

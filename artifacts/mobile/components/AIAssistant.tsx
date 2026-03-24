@@ -24,7 +24,7 @@ import {
   deleteGeminiConversation,
   useGetPropAccount,
 } from "@workspace/api-client-react";
-import { streamMessage, apiPost, type ToolCallEvent } from "@/lib/api";
+import { streamMessage, apiPost, type ToolCallEvent, isSessionExpiredError } from "@/lib/api";
 import { usePlanner } from "@/contexts/PlannerContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { subscribeToAITrigger } from "@/lib/aiTrigger";
@@ -390,7 +390,8 @@ export default function AIAssistant() {
                 const tradeData = result.tradeData as Record<string, unknown>;
                 await apiPost("trades/", tradeData);
                 Alert.alert("Success", "Trade logged successfully.");
-              } catch {
+              } catch (err: unknown) {
+                if (isSessionExpiredError(err)) return;
                 Alert.alert("Error", "Failed to log trade.");
               }
             },

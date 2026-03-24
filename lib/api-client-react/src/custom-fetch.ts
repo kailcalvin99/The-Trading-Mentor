@@ -8,6 +8,7 @@ export type BodyType<T> = T;
 
 let _authTokenProvider: (() => string | null | Promise<string | null>) | null = null;
 let _defaultCredentials: RequestCredentials | undefined = undefined;
+let _on401Callback: (() => void) | null = null;
 
 export function configureAuth(opts: {
   tokenProvider?: (() => string | null | Promise<string | null>) | null;
@@ -15,6 +16,10 @@ export function configureAuth(opts: {
 }): void {
   if (opts.tokenProvider !== undefined) _authTokenProvider = opts.tokenProvider;
   if (opts.credentials !== undefined) _defaultCredentials = opts.credentials;
+}
+
+export function configureOn401(callback: (() => void) | null): void {
+  _on401Callback = callback;
 }
 
 const NO_BODY_STATUS = new Set([204, 205, 304]);
@@ -323,6 +328,9 @@ export async function customFetch<T = unknown>(
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
+    if (response.status === 401 && _on401Callback) {
+      _on401Callback();
+    }
     throw new ApiError(response, errorData, requestInfo);
   }
 

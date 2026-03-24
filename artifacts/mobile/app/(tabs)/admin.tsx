@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Href, useRouter } from "expo-router";
-import { apiGet, apiPut } from "@/lib/api";
+import { apiGet, apiPut, isSessionExpiredError } from "@/lib/api";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
@@ -338,7 +338,8 @@ export default function AdminScreen() {
     try {
       await apiPut("admin/settings", { settings });
       Alert.alert("Saved", "Admin settings saved successfully");
-    } catch {
+    } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
       Alert.alert("Error", "Failed to save settings");
     }
     setSaving(false);
