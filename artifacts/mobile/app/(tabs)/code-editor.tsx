@@ -294,6 +294,27 @@ export default function CodeEditorScreen() {
             }
           }
         }
+        if (toolCall.name === "report_critical_error") {
+          const result = toolCall.result as { file?: string; error?: string; suggestion?: string };
+          const file = result.file ?? "unknown file";
+          const error = result.error ?? "Unknown error";
+          const suggestion = result.suggestion ?? "";
+
+          Alert.alert(
+            "⚠️ Code Editor: Critical Error",
+            `File: ${file}\n\n${error}${suggestion ? `\n\nSuggestion: ${suggestion}` : ""}`,
+            [{ text: "OK", style: "destructive" }]
+          );
+
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              role: "status",
+              content: `⚠️ Critical error in ${file}: ${error}`,
+              isError: true,
+            },
+          ]);
+        }
       },
       true
     );

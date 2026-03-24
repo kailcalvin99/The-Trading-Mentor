@@ -422,7 +422,8 @@ After ALL edits from Phase 2 are complete:
    - Variable name typos
    - Structural or syntax problems
 3. If an issue is found: call \`edit_source_file\` again to fix it (self-correction).
-4. If no issues are found: proceed to the Final Summary.
+4. If you find an error you CANNOT fix after 2 attempts: call \`report_critical_error\` with a clear plain-English description of what broke, which file, and what the user should do next. Never silently fail.
+5. If no issues are found: proceed to the Final Summary.
 
 ═══════════════════════════════════════
 FINAL SUMMARY
@@ -1197,6 +1198,19 @@ const CODE_EDITOR_TOOL_DECLARATIONS = [
         reason: { type: "STRING" as Type, description: "Brief description of what changed and why" },
       },
       required: ["path", "content", "reason"],
+    },
+  },
+  {
+    name: "report_critical_error",
+    description: "Call this ONLY when the Checker phase finds a major error that cannot be self-corrected — e.g., a broken import, a missing component, or a syntax error that breaks the file structure. Provide a plain-English description of exactly what is wrong, which file is affected, and what the user should do next.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {
+        file: { type: "STRING" as Type, description: "The file path where the critical error was found" },
+        error: { type: "STRING" as Type, description: "Plain-English description of the error" },
+        suggestion: { type: "STRING" as Type, description: "What the user should do to fix it (e.g., 'Revert the change to line 42' or 'Re-run with more specific instructions')" },
+      },
+      required: ["file", "error", "suggestion"],
     },
   },
 ];
@@ -1983,6 +1997,19 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
         const message = err instanceof Error ? err.message : String(err);
         return { error: `Failed to update system prompt: ${message}` };
       }
+    }
+
+    case "report_critical_error": {
+      const file = (args.file as string) || "unknown file";
+      const error = (args.error as string) || "Unknown error";
+      const suggestion = (args.suggestion as string) || "";
+      return {
+        action: "report_critical_error",
+        file,
+        error,
+        suggestion,
+        success: true,
+      };
     }
 
     default:
