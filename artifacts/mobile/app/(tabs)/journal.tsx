@@ -41,27 +41,6 @@ const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: str
 const NQ_PAIRS = ["NQ1!", "MNQ1!", "ES1!", "MES1!", "RTY1!", "YM1!"];
 
 
-const EXAMPLE_JOURNAL_ENTRIES = [
-  {
-    id: "ex-1",
-    pair: "NQ1!",
-    outcome: "win" as const,
-    entryTime: "10:12 AM",
-    riskPct: "0.5",
-    tag: "Disciplined",
-    note: "Waited for the Silver Bullet window. FVG formed cleanly after liquidity sweep. Entered at OTE, hit TP at +2R. Felt calm, no FOMO.",
-  },
-  {
-    id: "ex-2",
-    pair: "MNQ1!",
-    outcome: "loss" as const,
-    entryTime: "9:47 AM",
-    riskPct: "1.0",
-    tag: "FOMO",
-    note: "Jumped in before the displacement confirmed. No liquidity sweep, no MSS. Stopped out at -1R. Lesson: wait for the full setup checklist.",
-  },
-];
-
 interface TradeFormData {
   pair: string;
   entryTime: string;
@@ -629,40 +608,6 @@ export default function JournalScreen() {
           </View>
         )}
 
-        {/* Learning Mode Example Entries */}
-        {appMode === "lite" && (
-          <View style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
-              <Ionicons name="school-outline" size={13} color={C.accent} />
-              <Text style={[styles.sectionTitle, { marginBottom: 0, fontSize: 12, color: C.accent }]}>Example Journal Entries</Text>
-            </View>
-            {EXAMPLE_JOURNAL_ENTRIES.map((entry) => (
-              <View key={entry.id} style={[styles.tradeCard, { borderColor: C.accent + "25", borderStyle: "dashed" }]}>
-                <View style={styles.tradeHeader}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={styles.tradePair}>{entry.pair}</Text>
-                    <View style={{ backgroundColor: C.accent + "20", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1, borderWidth: 1, borderColor: C.accent + "40" }}>
-                      <Text style={{ fontSize: 11, color: C.accent, fontFamily: "Inter_700Bold" }}>EXAMPLE</Text>
-                    </View>
-                  </View>
-                  <View style={[styles.outcomeBadge, { backgroundColor: entry.outcome === "win" ? "#00C89620" : "#EF444420", borderColor: entry.outcome === "win" ? "#00C896" : "#EF4444" }]}>
-                    <Text style={[styles.outcomeText, { color: entry.outcome === "win" ? "#00C896" : "#EF4444" }]}>
-                      {entry.outcome.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.tradeDetails}>
-                  <Text style={styles.tradeDetail}>⏰ {entry.entryTime}</Text>
-                  <Text style={styles.tradeDetail}>📊 {entry.riskPct}% risk</Text>
-                  <Text style={styles.tradeDetail}>🏷 {entry.tag}</Text>
-                </View>
-                <Text style={{ fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 17, marginTop: 6 }}>
-                  {entry.note}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
 
         {/* Add Trade Button */}
         <TouchableOpacity
@@ -703,7 +648,7 @@ export default function JournalScreen() {
                   <View style={styles.tradeHeader}>
                     <Text style={styles.tradePair}>{trade.pair}</Text>
                     <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-                      {appMode === "full" && trade.setupScore != null && (
+                      {trade.setupScore != null && (
                         <View style={[styles.tagBadge, { backgroundColor: getScoreColor(trade.setupScore) + "20", borderColor: getScoreColor(trade.setupScore) }]}>
                           <Text style={[styles.tagText, { color: getScoreColor(trade.setupScore) }]}>{trade.setupScore}</Text>
                         </View>
@@ -753,7 +698,7 @@ export default function JournalScreen() {
 
                   {expanded && (
                     <View style={coachStyles.expandedSection}>
-                      {appMode === "full" && (feedback || loading) && (
+                      {(feedback || loading) && (
                         <View style={coachStyles.feedbackCard}>
                           <View style={coachStyles.feedbackHeader}>
                             <Ionicons name="sparkles" size={14} color={C.accent} />
@@ -764,12 +709,6 @@ export default function JournalScreen() {
                           ) : (
                             <Text style={coachStyles.feedbackText}>{feedback}</Text>
                           )}
-                        </View>
-                      )}
-                      {appMode === "lite" && (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.cardBorder }}>
-                          <Ionicons name="lock-closed" size={14} color={C.textSecondary} />
-                          <Text style={{ fontSize: 12, color: C.textSecondary }}>Setup Score & AI Coach available in Full Mode</Text>
                         </View>
                       )}
 
@@ -1013,7 +952,6 @@ export default function JournalScreen() {
               numberOfLines={4}
             />
 
-            {appMode === "full" ? (
             <View style={[scoreStyles.badge, { borderColor: getScoreColor(liveSetupScore) + "50", backgroundColor: getScoreColor(liveSetupScore) + "15" }]}>
               <View style={scoreStyles.badgeRow}>
                 <Ionicons name="speedometer-outline" size={16} color={getScoreColor(liveSetupScore)} />
@@ -1021,12 +959,6 @@ export default function JournalScreen() {
               </View>
               <Text style={[scoreStyles.badgeValue, { color: getScoreColor(liveSetupScore) }]}>{liveSetupScore}/100</Text>
             </View>
-            ) : (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.cardBorder }}>
-              <Ionicons name="lock-closed" size={14} color={C.textSecondary} />
-              <Text style={{ fontSize: 12, color: C.textSecondary }}>Setup Score available in Full Mode</Text>
-            </View>
-            )}
 
             <TouchableOpacity style={formStyles.submitBtn} onPress={handleSubmit}>
               <Text style={formStyles.submitBtnText}>

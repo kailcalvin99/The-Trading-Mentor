@@ -10,15 +10,6 @@ import { AppConfigProvider } from "@/contexts/AppConfigContext";
 import { TourGuideProvider } from "@/contexts/TourGuideContext";
 import Layout from "@/components/Layout";
 import OnboardingQuiz, { hasCompletedQuiz, hasExistingAcademyProgress } from "@/components/OnboardingQuiz";
-import FrostedGateOverlay from "@/components/FrostedGateOverlay";
-import {
-  DailyPlannerDemoSnapshot,
-  PropTrackerDemoSnapshot,
-  AnalyticsDemoSnapshot,
-  VideoLibraryDemoSnapshot,
-  LeaderboardDemoSnapshot,
-  WebhooksDemoSnapshot,
-} from "@/components/DemoSnapshots";
 import Welcome from "@/pages/Welcome";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -124,34 +115,7 @@ function OpenRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-const ROUTE_DEMO_SNAPSHOTS: Record<string, React.ReactNode> = {
-  planner: <DailyPlannerDemoSnapshot />,
-  "prop-tracker": <PropTrackerDemoSnapshot />,
-  analytics: <AnalyticsDemoSnapshot />,
-  videos: <VideoLibraryDemoSnapshot />,
-  leaderboard: <LeaderboardDemoSnapshot />,
-  webhooks: <WebhooksDemoSnapshot />,
-};
-
-function FullModeGate({ children, routeKey }: { children: React.ReactNode; routeKey?: string }) {
-  const { appMode, setAppMode } = useAuth();
-  const navigate = useNavigate();
-
-  if (appMode === "lite") {
-    const demoContent = routeKey ? ROUTE_DEMO_SNAPSHOTS[routeKey] : null;
-    return (
-      <FrostedGateOverlay
-        mode="academy"
-        onAction={() => {
-          setAppMode("full");
-          navigate("/academy");
-        }}
-      >
-        {demoContent ?? <DailyPlannerDemoSnapshot />}
-      </FrostedGateOverlay>
-    );
-  }
-
+function FullModeGate({ children }: { children: React.ReactNode; routeKey?: string }) {
   return <>{children}</>;
 }
 

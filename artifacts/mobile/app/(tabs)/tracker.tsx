@@ -23,7 +23,6 @@ import {
 } from "@workspace/api-client-react";
 import Colors from "@/constants/colors";
 import type { Trade } from "@workspace/api-client-react";
-import { useAuth } from "@/contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const C = Colors.dark;
@@ -214,8 +213,6 @@ function computeMobileInsights(trades: Trade[]): MobileInsight[] {
 export default function RiskShieldScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
-  const { appMode } = useAuth();
-
   const [pointsAtRisk, setPointsAtRisk] = useState("");
   const [customBalance, setCustomBalance] = useState("");
   const [lossInput, setLossInput] = useState("");
@@ -431,7 +428,7 @@ export default function RiskShieldScreen() {
     </View>
   );
 
-  const checklistSection = appMode === "full" ? (
+  const checklistSection = (
     <View style={checklistStyles.container}>
       <View style={checklistStyles.headerRow}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -464,23 +461,13 @@ export default function RiskShieldScreen() {
         </View>
       )}
     </View>
-  ) : (
-    <View style={checklistStyles.container}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Ionicons name="lock-closed" size={16} color={C.textSecondary} />
-        <View>
-          <Text style={checklistStyles.title}>Pre-Trade Checklist</Text>
-          <Text style={{ fontSize: 12, color: C.textSecondary }}>Switch to Full Mode to unlock the 4-point checklist</Text>
-        </View>
-      </View>
-    </View>
   );
 
   const rightColumn = (
     <View style={isWide ? { flex: 1 } : undefined}>
       {checklistSection}
       <Text style={styles.sectionTitle2}>Position Size Calculator</Text>
-      {appMode === "full" && !allChecklistDone ? (
+      {!allChecklistDone ? (
         <View style={[styles.card, { opacity: 0.4 }]}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 24 }}>
             <Ionicons name="lock-closed" size={20} color={C.textSecondary} />

@@ -1870,7 +1870,7 @@ function CustomizeModal({
 
 export default function DashboardScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
-  const { user, appMode } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
   const { xp, streak } = useDailyGamification();
@@ -1951,16 +1951,6 @@ export default function DashboardScreen() {
           userId={user?.id}
         />
 
-        {appMode === "lite" ? (
-          <>
-            {/* Learning Mode Dashboard — NextWatch lives inside TodayRoutineWidget > Learn pill */}
-            <LearningProgressCard />
-            <TodayRoutineWidget />
-            <LessonCarousel />
-            <LearningCommunityWidget />
-          </>
-        ) : (
-          <>
             {/* Full Mode Dashboard */}
             <AIGreetingCard />
 
@@ -2000,25 +1990,21 @@ export default function DashboardScreen() {
 
             {/* Notes */}
             {prefs.notes && <NotesWidget />}
-          </>
-        )}
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
 
-      {/* Log Trade FAB — hidden in learning mode */}
-      {appMode !== "lite" && (
-        <TouchableOpacity
-          style={[styles.logTradeFab, { backgroundColor: C.accent }]}
-          onPress={() => router.navigate({ pathname: "/(tabs)/journal", params: { new: "1" } } as never)}
-          activeOpacity={0.85}
-          accessibilityLabel="Log a trade"
-          accessibilityRole="button"
-        >
-          <Ionicons name="add" size={20} color="#0A0A0F" />
-          <Text style={styles.logTradeFabText}>Log Trade</Text>
-        </TouchableOpacity>
-      )}
+      {/* Log Trade FAB */}
+      <TouchableOpacity
+        style={[styles.logTradeFab, { backgroundColor: C.accent }]}
+        onPress={() => router.navigate({ pathname: "/(tabs)/journal", params: { new: "1" } } as never)}
+        activeOpacity={0.85}
+        accessibilityLabel="Log a trade"
+        accessibilityRole="button"
+      >
+        <Ionicons name="add" size={20} color="#0A0A0F" />
+        <Text style={styles.logTradeFabText}>Log Trade</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

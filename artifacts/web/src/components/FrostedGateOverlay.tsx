@@ -1,8 +1,7 @@
-import { Lock, Plus } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 
-export type FrostedGateMode = "academy" | "standard" | "premium";
+export type FrostedGateMode = "standard" | "premium";
 
 interface FrostedGateOverlayProps {
   children: React.ReactNode;
@@ -11,17 +10,11 @@ interface FrostedGateOverlayProps {
 }
 
 const GATE_CONTENT: Record<FrostedGateMode, {
-  iconType: "lock" | "plus";
+  iconType: "lock";
   title: string;
   description: string;
   buttonText: string;
 }> = {
-  academy: {
-    iconType: "plus",
-    title: "Finish the Academy to Unlock",
-    description: "Complete the ICT Academy to gain access to Full Mode and unlock all features.",
-    buttonText: "Go to Academy",
-  },
   standard: {
     iconType: "lock",
     title: "Upgrade to Standard",
@@ -38,7 +31,6 @@ const GATE_CONTENT: Record<FrostedGateMode, {
 
 export default function FrostedGateOverlay({ children, mode, onAction }: FrostedGateOverlayProps) {
   const navigate = useNavigate();
-  const { setAppMode } = useAuth();
   const config = GATE_CONTENT[mode];
 
   function handleAction() {
@@ -46,12 +38,7 @@ export default function FrostedGateOverlay({ children, mode, onAction }: Frosted
       onAction();
       return;
     }
-    if (mode === "academy") {
-      setAppMode("full");
-      navigate("/academy");
-    } else {
-      navigate("/pricing");
-    }
+    navigate("/pricing");
   }
 
   return (
@@ -69,16 +56,8 @@ export default function FrostedGateOverlay({ children, mode, onAction }: Frosted
         }}
       >
         <div className="flex flex-col items-center text-center px-6 max-w-sm space-y-5">
-          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-            config.iconType === "plus"
-              ? "bg-primary/20 border border-primary/30"
-              : "bg-amber-500/20 border border-amber-500/30"
-          }`}>
-            {config.iconType === "plus" ? (
-              <Plus className="h-8 w-8 text-primary" />
-            ) : (
-              <Lock className={`h-8 w-8 ${mode === "premium" ? "text-amber-500" : "text-amber-400"}`} />
-            )}
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-amber-500/20 border border-amber-500/30">
+            <Lock className={`h-8 w-8 ${mode === "premium" ? "text-amber-500" : "text-amber-400"}`} />
           </div>
 
           <div className="space-y-2">
@@ -88,11 +67,7 @@ export default function FrostedGateOverlay({ children, mode, onAction }: Frosted
 
           <button
             onClick={handleAction}
-            className={`w-full py-3 px-6 rounded-xl font-semibold text-sm transition-all ${
-              config.iconType === "plus"
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-gradient-to-r from-amber-500 to-primary text-white hover:opacity-90"
-            }`}
+            className="w-full py-3 px-6 rounded-xl font-semibold text-sm transition-all bg-gradient-to-r from-amber-500 to-primary text-white hover:opacity-90"
           >
             {config.buttonText}
           </button>

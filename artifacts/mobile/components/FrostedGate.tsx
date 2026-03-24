@@ -2,12 +2,11 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
 
-export type FrostedGateMode = "academy" | "standard" | "premium";
+export type FrostedGateMode = "standard" | "premium";
 
 interface FrostedGateProps {
   children: React.ReactNode;
@@ -23,14 +22,6 @@ const GATE_CONFIG: Record<FrostedGateMode, {
   buttonText: string;
   buttonColor: string;
 }> = {
-  academy: {
-    iconName: "add-circle-outline",
-    iconColor: C.accent,
-    title: "Finish the Academy to Unlock",
-    description: "Complete the ICT Academy to gain access to Full Mode and all features.",
-    buttonText: "Go to Academy",
-    buttonColor: C.accent,
-  },
   standard: {
     iconName: "lock-closed-outline",
     iconColor: "#F59E0B",
@@ -51,7 +42,6 @@ const GATE_CONFIG: Record<FrostedGateMode, {
 
 export default function FrostedGate({ children, mode, onAction }: FrostedGateProps) {
   const router = useRouter();
-  const { setAppMode } = useAuth();
   const config = GATE_CONFIG[mode];
 
   function handleAction() {
@@ -59,12 +49,7 @@ export default function FrostedGate({ children, mode, onAction }: FrostedGatePro
       onAction();
       return;
     }
-    if (mode === "academy") {
-      setAppMode("full");
-      router.navigate("/(tabs)/academy" as never);
-    } else {
-      router.navigate("/subscription" as never);
-    }
+    router.navigate("/subscription" as never);
   }
 
   return (

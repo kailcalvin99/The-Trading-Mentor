@@ -1540,7 +1540,6 @@ function DashAvatarPickerModal({
 export default function Dashboard() {
   const { user, tierLevel, appMode, setAvatarUrl } = useAuth();
   const isFreeUser = tierLevel === 0;
-  const isLearningMode = appMode === "lite";
   const navigate = useNavigate();
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showQuickNote, setShowQuickNote] = useState(false);
@@ -1559,52 +1558,6 @@ export default function Dashboard() {
       localStorage.setItem("dashboard-visited", "true");
     }
   }, []);
-
-  if (isLearningMode) {
-    return (
-      <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowAvatarPicker(true)}
-              className="w-10 h-10 rounded-full bg-primary/20 border border-border flex items-center justify-center shrink-0 overflow-hidden hover:ring-2 hover:ring-primary/60 transition-all"
-              title="Change avatar"
-            >
-              {user?.avatarUrl ? (
-                user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
-                  <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-lg leading-none">{user.avatarUrl}</span>
-                )
-              ) : (
-                <span className="text-sm font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "T"}</span>
-              )}
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Hi, {firstName}! 👋</h1>
-              <p className="text-xs text-amber-500 font-medium mt-0.5">
-                Learning Mode · {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {showAvatarPicker && (
-          <DashAvatarPickerModal
-            user={user}
-            onClose={() => setShowAvatarPicker(false)}
-            onSelect={async (val) => { await setAvatarUrl(val); setShowAvatarPicker(false); }}
-          />
-        )}
-        <div className="space-y-4">
-          <LearningProgressWidget />
-          <TodayScheduleWidget />
-          <LessonCarouselWidget />
-          <CommunityWidget />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>

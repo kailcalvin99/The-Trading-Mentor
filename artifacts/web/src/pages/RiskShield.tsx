@@ -41,7 +41,6 @@ import {
   useAddDailyLoss,
   useResetDailyLoss,
 } from "@workspace/api-client-react";
-import { useAuth } from "@/contexts/AuthContext";
 
 const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
@@ -318,7 +317,6 @@ function GaugeBar({
 }
 
 export default function RiskShield() {
-  const { appMode } = useAuth();
   const [showAccountSetup, setShowAccountSetup] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -326,19 +324,16 @@ export default function RiskShield() {
   const [pointsAtRisk, setPointsAtRisk] = useState("");
   const [customBalance, setCustomBalance] = useState("");
   const [checklistAllDone, setChecklistAllDone] = useState(() =>
-    appMode === "full"
-      ? CHECKLIST_ITEMS.every((item) => getChecklistState().checked[item.id])
-      : true
+    CHECKLIST_ITEMS.every((item) => getChecklistState().checked[item.id])
   );
 
   useEffect(() => {
-    if (appMode !== "full") return;
     const interval = setInterval(() => {
       const state = getChecklistState();
       setChecklistAllDone(CHECKLIST_ITEMS.every((item) => state.checked[item.id]));
     }, 1000);
     return () => clearInterval(interval);
-  }, [appMode]);
+  }, []);
 
   const [setupForm, setSetupForm] = useState({
     startingBalance: "",
@@ -466,19 +461,7 @@ export default function RiskShield() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {appMode === "full" ? (
-          <MechanicalChecklist />
-        ) : (
-          <Card className="mb-6 border-border">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Lock className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Mechanical Pre-Trade Checklist</p>
-                <p className="text-xs text-muted-foreground">Switch to Full Mode to unlock the 4-point checklist that gates your calculator.</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <MechanicalChecklist />
 
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -673,34 +656,34 @@ export default function RiskShield() {
           </div>
 
           <div className="space-y-6">
-            <Card className={cn(appMode === "full" && !checklistAllDone && "opacity-60")}>
+            <Card className={cn(!checklistAllDone && "opacity-60")}>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <Calculator className={cn("h-5 w-5", appMode === "full" && !checklistAllDone ? "text-muted-foreground" : "text-emerald-500")} />
+                  <Calculator className={cn("h-5 w-5", !checklistAllDone ? "text-muted-foreground" : "text-emerald-500")} />
                   <div>
                     <CardTitle className="text-base font-bold">
                       Position Size Calculator
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      {appMode === "full" && !checklistAllDone
+                      {!checklistAllDone
                         ? "Complete the Pre-Trade Checklist above first"
                         : "Figure out how many contracts to trade so you only risk 0.5%"}
                     </CardDescription>
                   </div>
-                  {appMode === "full" && !checklistAllDone && (
+                  {!checklistAllDone && (
                     <Lock className="h-4 w-4 text-muted-foreground ml-auto" />
                   )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {appMode === "full" && !checklistAllDone && (
+                {!checklistAllDone && (
                   <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
                     <Lock className="h-8 w-8 text-muted-foreground/40" />
                     <p className="text-sm font-semibold text-muted-foreground">Complete checklist first</p>
                     <p className="text-xs text-muted-foreground/70 max-w-xs">Check off all 4 pre-trade criteria above to unlock the position size calculator.</p>
                   </div>
                 )}
-                {(appMode === "lite" || checklistAllDone) && (
+                {checklistAllDone && (
                 <>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-4">
