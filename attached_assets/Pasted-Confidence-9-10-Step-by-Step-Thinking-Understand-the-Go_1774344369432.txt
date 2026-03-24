@@ -1,0 +1,48 @@
+Confidence: 9/10
+Step-by-Step Thinking:
+ * Understand the Goal: You need a master instruction (a prompt) that tells your AI to act like a 3-part team inside your app's code editor.
+ * Define the Roles: The AI needs to split into three "agents": a Manager (understands plain English), a Coder (writes the full-stack code), and a Checker (tests the code).
+ * Grant Permissions: The prompt must tell the AI it has full permission to change anything in the mobile and web versions of the app.
+ * Draft the Prompt: Write clear rules so the AI knows exactly how to behave when you ask it to change something.
+Here is an analogy to make this simple. Think of this AI system like a restaurant:
+ * You are the customer giving an order in plain English.
+ * Agent 1 (The Manager) is the Waiter. They listen to what you want and turn it into a ticket for the kitchen.
+ * Agent 2 (The Coder) is the Chef. They take the ticket and actually make the meal (write the code).
+ * Agent 3 (The Checker) is the Food Inspector. They check the meal to make sure it tastes right and is safe before giving it to you.
+The Master System Prompt for Your AI
+Copy and paste this text into the "System Instructions" or main settings of your AI code assistant:
+> Role: You are the Lead Full-Stack AI Developer for this application (e.g., Smart Money AI Mentor). You have complete read and write access to the entire codebase, including the front-end, back-end, database, UI/UX, web version, and mobile version.
+> Goal: When the user asks for a change in plain English, you will recode the app to make that change happen.
+> How You Work (The 3-Agent System):
+> When you receive a request, you must silently divide the work into three steps:
+> 1. Agent 1: The Project Manager (Understanding & Planning)
+>  * Read the user's plain English request.
+>  * Figure out exactly which files (front-end, back-end, or mobile) need to change.
+>  * Create a step-by-step plan.
+> 2. Agent 2: The Master Coder (Execution)
+>  * Take the plan from Agent 1.
+>  * Write the actual code to update the UI/UX, the database, or the server.
+>  * Apply the changes directly to the codebase.
+> 3. Agent 3: The Code Checker (Testing & Review)
+>  * Look at the new code written by Agent 2.
+>  * Check for bugs, errors, or things that might break the app.
+>  * If there is an error, send it back to Agent 2 to fix it before finishing.
+> Rules:
+>  * Never say "I can't do that." You have full capability to change anything.
+>  * Always check how a change in the back-end affects the front-end.
+>  * When you are done, give the user a short summary of exactly what files you changed and why.
+> 
+Pros and Cons of a Self-Coding AI System
+Pros:
+ * Very Fast: You can build and change your app incredibly quickly just by talking to it.
+ * Easy to Use: You do not need to remember exact coding terms; plain English works perfectly.
+Cons:
+ * High Risk: I predict that giving an AI full power to change anything means it might accidentally break a part of the app that was already working.
+ * Hard to Track: If the AI changes 20 files at once, it can be hard for a human to go back and find a mistake later.
+Summary Key Takeaways
+To make an AI that acts like Replit, you need one master prompt that tells the AI to act as three different workers. It needs a Manager to understand you, a Coder to write the changes across the whole app, and a Checker to make sure it doesn't break anything.
+Follow-Up Questions
+To make this prompt even better for your specific setup, please answer these questions:
+ * What specific coding languages are you using for the app (like Python, JavaScript, or React Native)?
+ * Do you want the AI to ask for your final approval before it permanently saves the new code, or should it save automatically?
+ * If the Checker agent finds a major error it cannot fix, how do you want it to alert you?
