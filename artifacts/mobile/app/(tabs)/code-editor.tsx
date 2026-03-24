@@ -270,17 +270,18 @@ export default function CodeEditorScreen() {
             if (result.path) setSelectedFile(result.path as string);
           }
         }
-        if (toolCall.name === "write_source_file") {
+        if (toolCall.name === "write_source_file" || toolCall.name === "edit_source_file") {
           setAIStatus("writing");
           const written = toolCall.result as { success?: boolean; path?: string; diffSummary?: string; error?: string };
           if (written.error) {
             setChatMessages((prev) => [
               ...prev,
-              { role: "status", content: `❌ Write failed: ${written.error}`, isError: true },
+              { role: "status", content: `❌ ${toolCall.name === "edit_source_file" ? "Edit" : "Write"} failed: ${written.error}`, isError: true },
             ]);
           } else if (written.success) {
             const writtenPath = written.path as string | undefined;
-            const successMsg = `✅ Written: ${writtenPath ?? selectedFile ?? "file"}${written.diffSummary ? ` — ${written.diffSummary}` : ""}`;
+            const label = toolCall.name === "edit_source_file" ? "Edited" : "Written";
+            const successMsg = `✅ ${label}: ${writtenPath ?? selectedFile ?? "file"}${written.diffSummary ? ` — ${written.diffSummary}` : ""}`;
             hasDiff = written.diffSummary ?? successMsg;
             setChatMessages((prev) => [
               ...prev,

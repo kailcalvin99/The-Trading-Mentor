@@ -372,22 +372,23 @@ export const CODE_EDITOR_SYSTEM_PROMPT = `You are a code editing agent for the I
 
 RULES — follow these without exception:
 
-1. ALWAYS interpret the user's message as a code change request. Never ask "what setting is that?" or respond conversationally about data.
-2. IMMEDIATELY use \`read_source_file\` to locate the relevant code. If no file is specified, search by feature name, component name, or keyword. Read multiple candidate files until you find the relevant code.
-3. MAKE the change using \`write_source_file\`. Do NOT ask for confirmation before writing — just make the change.
-4. AFTER writing, confirm exactly what you changed and what effect it will have.
-5. NEVER describe or outline a change without actually making it. If the user says "execute", "do it", "apply", "make the change", or any similar instruction — call \`write_source_file\` immediately. No explanations before the write.
-6. FILE PATHS: ALL paths MUST start with \`artifacts/\`. Never use a relative path without the \`artifacts/\` prefix.
-7. ERROR HANDLING: If \`write_source_file\` returns an error, immediately tell the user what went wrong and what path you tried. NEVER say "I've made the changes" or "Done" if the tool returned an error.
+1. ALWAYS interpret the user's message as a code change request. Never respond conversationally — always act.
+2. IMMEDIATELY use \`read_source_file\` to read the relevant file. If no file is specified, read candidate files until you find the right one.
+3. MAKE the change using \`edit_source_file\` (for modifications) or \`write_source_file\` (for new files only).
+4. AFTER writing, confirm exactly what you changed and where.
+5. NEVER describe or outline a change without actually making it. If the user says "execute", "do it", "apply", or "make the change" — call the edit tool immediately, no text before it.
+6. FILE PATHS: ALL paths MUST start with \`artifacts/\`. Never use a path without the \`artifacts/\` prefix.
+7. ERROR HANDLING: If a tool returns an error, tell the user exactly what failed. NEVER say "Done" or "I've made the changes" if the tool returned an error.
 
-WORKFLOW (always follow this order):
-- Step 1 — Read: Use \`read_source_file\` to find and read the relevant source file(s).
-- Step 2 — Edit: Apply the requested change and use \`write_source_file\` to save it.
-- Step 3 — Confirm: Report what was changed and where (or report the error if it failed).
+PREFERRED EDIT WORKFLOW (always follow this order):
+- Step 1 — Read: Use \`read_source_file\` to read the target file.
+- Step 2 — Edit: Use \`edit_source_file\` to make the surgical change. Copy old_string EXACTLY from the file you just read (same indentation, same whitespace). Set new_string to the replacement.
+- Step 3 — Confirm: Report what changed (or report the error).
 
-You have two tools available:
-- \`read_source_file(path)\` — Read a file from the artifacts directory.
-- \`write_source_file(path, content)\` — Overwrite a file with new content.
+TOOL USAGE:
+- \`read_source_file(path)\` — Read a file. Always do this first.
+- \`edit_source_file(path, old_string, new_string)\` — PREFERRED for ALL modifications. Finds old_string verbatim and replaces with new_string. You only output the changed lines, not the entire file.
+- \`write_source_file(path, content, reason)\` — Only use when creating a BRAND NEW file that doesn't exist yet. Never use this to modify existing files.
 
 CORRECT PATH EXAMPLES (always include the \`artifacts/\` prefix):
 - \`artifacts/web/src/App.tsx\`
@@ -402,7 +403,7 @@ WRONG — never use these path forms:
 - \`src/App.tsx\` (missing artifacts/web/ prefix)
 - \`mobile/app/(tabs)/dashboard.tsx\` (missing artifacts/ prefix)
 
-Safety: You may only read or write files inside the \`artifacts/\` directory. Never go outside that boundary.`;
+Safety: You may only read or write files inside the \`artifacts/\` directory.`;
 
 export const ADMIN_CODEBASE_KNOWLEDGE = `
 ═══════════════════════════════════════
@@ -1123,8 +1124,21 @@ const CODE_EDITOR_TOOL_DECLARATIONS = [
     },
   },
   {
+    name: "edit_source_file",
+    description: "Make a surgical string-replacement edit to a file. Finds old_string verbatim in the file and replaces it with new_string. ALWAYS use this instead of write_source_file for modifications — only use write_source_file when creating a brand new file.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {
+        path: { type: "STRING" as Type, description: "Relative path to the file, e.g. 'artifacts/web/src/pages/Dashboard.tsx'" },
+        old_string: { type: "STRING" as Type, description: "The exact text to find and replace — copy it verbatim from the read_source_file output, preserving indentation and whitespace." },
+        new_string: { type: "STRING" as Type, description: "The replacement text. Must be syntactically valid code." },
+      },
+      required: ["path", "old_string", "new_string"],
+    },
+  },
+  {
     name: "write_source_file",
-    description: "Overwrite a source file inside the artifacts/ directory with new content. Make the change immediately after reading — no confirmation required.",
+    description: "Overwrite a source file with entirely new content. Only use this when creating a brand new file from scratch — for all edits use edit_source_file instead.",
     parameters: {
       type: "OBJECT" as Type,
       properties: {
@@ -1581,6 +1595,37 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
       }
     }
 
+    case "edit_source_file": {
+      if (!isAdmin) return { error: "Admin access required" };
+      const filePath = (args.path as string) || "";
+      const oldString = (args.old_string as string) ?? "";
+      const newString = (args.new_string as string) ?? "";
+      if (!oldString) return { error: "old_string is required and cannot be empty." };
+      const absPath = path.resolve(WORKSPACE_ROOT, filePath.replace(/\\/g, "/").replace(/^\/+/, ""));
+      if (!isInsideArtifacts(absPath)) {
+        return { error: "Access denied: edit_source_file may only modify files inside the artifacts/ directory." };
+      }
+      try {
+        const current = fs.readFileSync(absPath, "utf8");
+        if (!current.includes(oldString)) {
+          return { error: "old_string not found in file. Make sure to copy it exactly from read_source_file output, preserving all indentation and whitespace." };
+        }
+        const updated = current.replace(oldString, newString);
+        fs.writeFileSync(absPath, updated, "utf8");
+        const oldLines = current.split("\n").length;
+        const newLines = updated.split("\n").length;
+        return {
+          action: "edit_source_file",
+          path: path.relative(WORKSPACE_ROOT, absPath),
+          diffSummary: `Previous: ${oldLines} lines → New: ${newLines} lines (Δ ${newLines - oldLines >= 0 ? "+" : ""}${newLines - oldLines})`,
+          success: true,
+        };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: `Failed to edit file: ${message}` };
+      }
+    }
+
     case "write_source_file": {
       if (!isAdmin) return { error: "Admin access required" };
       const filePath = (args.path as string) || "";
@@ -1804,6 +1849,37 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         return { error: `Failed to read file: ${message}` };
+      }
+    }
+
+    case "edit_source_file": {
+      if (!isAdmin) return { error: "Admin access required" };
+      const filePath = (args.path as string) || "";
+      const oldString = (args.old_string as string) ?? "";
+      const newString = (args.new_string as string) ?? "";
+      if (!oldString) return { error: "old_string is required and cannot be empty." };
+      const absPath = path.resolve(WORKSPACE_ROOT, filePath.replace(/\\/g, "/").replace(/^\/+/, ""));
+      if (!isInsideArtifacts(absPath)) {
+        return { error: "Access denied: edit_source_file may only modify files inside the artifacts/ directory." };
+      }
+      try {
+        const current = fs.readFileSync(absPath, "utf8");
+        if (!current.includes(oldString)) {
+          return { error: "old_string not found in file. Make sure to copy it exactly from read_source_file output, preserving all indentation and whitespace." };
+        }
+        const updated = current.replace(oldString, newString);
+        fs.writeFileSync(absPath, updated, "utf8");
+        const oldLines = current.split("\n").length;
+        const newLines = updated.split("\n").length;
+        return {
+          action: "edit_source_file",
+          path: path.relative(WORKSPACE_ROOT, absPath),
+          diffSummary: `Previous: ${oldLines} lines → New: ${newLines} lines (Δ ${newLines - oldLines >= 0 ? "+" : ""}${newLines - oldLines})`,
+          success: true,
+        };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { error: `Failed to edit file: ${message}` };
       }
     }
 

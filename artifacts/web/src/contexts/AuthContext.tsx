@@ -51,6 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
+  // State for persistent admin status, initialized from localStorage
+  const [isPersistentAdmin, setIsPersistentAdmin] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("ICT_TRADING_MENTOR_ADMIN");
+      return stored === "true";
+    } catch (e) {
+      console.error("Error reading from localStorage:", e);
+      return false;
+    }
+  });
 
   const refreshUser = useCallback(async () => {
     try {
@@ -61,11 +71,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await res.json();
         setUser(data.user);
         setSubscription(data.subscription);
+        // If the refreshed user is an admin, persist this status
+        if (data.user?.role === "admin") {
+          setIsPersistentAdmin(true);
+          localStorage.setItem("ICT_TRADING_MENTOR_ADMIN", "true");
+        }
       } else {
         setUser(null);
         setSubscription(null);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error refreshing user:", error);
       setUser(null);
       setSubscription(null);
     } finally {
@@ -89,10 +105,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         setUser(data.user);
         await refreshUser();
+        // If logged-in user is admin, make it persistent
+        if (data.user?.role === "admin") {
+          setIsPersistentAdmin(true);
+          localStorage.setItem("ICT_TRADING_MENTOR_ADMIN", "true");
+        }
         return { success: true };
       }
       return { success: false, error: data.error };
-    } catch {
+    } catch (error) {
+      console.error("Error during login:", error);
       return { success: false, error: "Network error" };
     }
   };
@@ -112,7 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: true, isFounder: data.isFounder, founderNumber: data.founderNumber };
       }
       return { success: false, error: data.error };
-    } catch {
+    } catch (error) {
+      console.error("Error during registration:", error);
       return { success: false, error: "Network error" };
     }
   };
@@ -123,18 +146,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         credentials: "include",
       });
-    } catch {}
+    } catch (error) {
+      console.error("Error during logout API call:", error);
+    }
     setUser(null);
     setSubscription(null);
+    // As per user instruction, the persistent admin status is NOT cleared here.
+    // It will "stay" until manually removed from localStorage.
   };
 
+  // Modified isAdmin to include persistent admin status
+  const isAdmin = (user?.role === "admin" || isPersistentAdmin);
+
   const hasFeature = (feature: string) => {
+    if (isAdmin) return true; // Admins always have all features, now including persistent admins
     if (!subscription) return false;
     const features = subscription.tierFeatures as string[];
     return features.some((f) => f.toLowerCase().includes(feature.toLowerCase()));
   };
 
-  const isAdmin = user?.role === "admin";
   const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
   const appMode: "full" | "lite" = isAdmin ? "full" : (user?.appMode ?? "full");
 
@@ -149,7 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         setUser((prev) => prev ? { ...prev, appMode: mode } : null);
       }
-    } catch {}
+    } catch (error) {
+      console.error("Error setting app mode:", error);
+    }
   }, []);
 
   const setAvatarUrl = useCallback(async (url: string | null) => {
@@ -163,7 +195,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         setUser((prev) => prev ? { ...prev, avatarUrl: url } : null);
       }
-    } catch {}
+    } catch (error) {
+      console.error("Error setting avatar URL:", error);
+    }
   }, []);
 
   return (

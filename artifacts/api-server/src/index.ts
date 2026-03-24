@@ -181,6 +181,12 @@ async function startServer(requestedPort: number): Promise<void> {
     console.error("Unexpected server error after bind:", err);
   });
 
+  const openSockets = new Set<import("net").Socket>();
+  server!.on("connection", (socket: import("net").Socket) => {
+    openSockets.add(socket);
+    socket.once("close", () => openSockets.delete(socket));
+  });
+
   let shuttingDown = false;
 
   function shutdown(signal: string): void {
@@ -188,6 +194,7 @@ async function startServer(requestedPort: number): Promise<void> {
     shuttingDown = true;
 
     console.log(`Received ${signal}. Closing server gracefully...`);
+    openSockets.forEach((s) => s.destroy());
     server!.close(() => {
       console.log("Server closed. Exiting.");
       process.exit(0);
