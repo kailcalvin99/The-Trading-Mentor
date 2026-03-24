@@ -1,7 +1,7 @@
 import app from "./app";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripe/stripeClient";
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 import net from "net";
 
 process.on("unhandledRejection", (reason) => {
@@ -50,12 +50,48 @@ function isPortInUse(port: number): Promise<boolean> {
   });
 }
 
-function killPortOccupant(port: number): void {
-  const commands = [
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function killPortOccupant(port: number): Promise<void> {
+  let pids: string[] = [];
+
+  try {
+    const output = execFileSync("lsof", ["-ti", `tcp:${port}`], { stdio: "pipe" })
+      .toString()
+      .trim();
+    pids = output.split("\n").filter(Boolean);
+  } catch {
+  }
+
+  if (pids.length > 0) {
+    for (const pid of pids) {
+      try {
+        process.kill(parseInt(pid, 10), "SIGTERM");
+        console.log(`Sent SIGTERM to PID ${pid} holding port ${port}`);
+      } catch {
+      }
+    }
+
+    await sleep(500);
+
+    for (const pid of pids) {
+      try {
+        process.kill(parseInt(pid, 10), 0);
+        process.kill(parseInt(pid, 10), "SIGKILL");
+        console.log(`Sent SIGKILL to PID ${pid} holding port ${port}`);
+      } catch {
+      }
+    }
+    return;
+  }
+
+  const fallbackCommands = [
     `fuser -k -n tcp ${port}`,
     `ss -tlnp "sport = :${port}" | awk 'NR>1{print $6}' | grep -oP 'pid=\\K[0-9]+' | xargs -r kill -9`,
   ];
-  for (const cmd of commands) {
+  for (const cmd of fallbackCommands) {
     try {
       execSync(cmd, { stdio: "pipe" });
       console.log(`Freed port ${port} via: ${cmd.split(" ")[0]}`);
@@ -65,40 +101,106 @@ function killPortOccupant(port: number): void {
   }
 }
 
-async function preparePort(port: number, maxAttempts: number = 5): Promise<void> {
+async function preparePort(port: number, maxAttempts: number = 8): Promise<number> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const inUse = await isPortInUse(port);
-    if (!inUse) return;
+    if (!inUse) return port;
 
-    console.warn(`Port ${port} is occupied (check ${attempt}/${maxAttempts}). Attempting to free it...`);
-    killPortOccupant(port);
+    console.warn(`Port ${port} is occupied (attempt ${attempt}/${maxAttempts}). Attempting to free it...`);
+    await killPortOccupant(port);
 
-    const delayMs = Math.min(1000 * attempt, 5000);
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    const delayMs = Math.min(300 * Math.pow(2, attempt - 1), 3000);
+    await sleep(delayMs);
   }
 
   const stillInUse = await isPortInUse(port);
   if (stillInUse) {
-    console.error(`Unable to free port ${port} after ${maxAttempts} attempts. Exiting so the workflow manager can restart.`);
-    process.exit(1);
+    console.warn(`Unable to free port ${port} after ${maxAttempts} attempts. Searching for fallback port...`);
+
+    for (let candidate = port + 1; candidate <= port + 20; candidate++) {
+      const candidateInUse = await isPortInUse(candidate);
+      if (!candidateInUse) {
+        console.warn(`WARNING: Falling back to port ${candidate} instead of ${port}`);
+        return candidate;
+      }
+    }
+
+    console.warn(`WARNING: All nearby ports occupied. Will let the OS assign a free port.`);
+    return 0;
   }
+
+  return port;
 }
 
-async function startServer(port: number): Promise<void> {
-  await preparePort(port);
+function bindServer(port: number): Promise<{ server: ReturnType<typeof app.listen>; boundPort: number }> {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, () => {
+      const address = server.address();
+      const boundPort = typeof address === "object" && address !== null ? address.port : port;
+      console.log(`Server listening on port ${boundPort}`);
+      resolve({ server, boundPort });
+    });
 
-  const server = app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
+    server.once("error", reject);
   });
+}
 
-  server.on("error", (err: NodeJS.ErrnoException) => {
-    if (err.code === "EADDRINUSE") {
-      console.error(`Port ${port} still in use after pre-bind cleanup (TOCTOU race). Exiting so the workflow manager can restart.`);
-      process.exit(1);
+async function startServer(requestedPort: number): Promise<void> {
+  const preferredPort = await preparePort(requestedPort);
+
+  let server: ReturnType<typeof app.listen>;
+  let boundPort: number;
+
+  try {
+    ({ server, boundPort } = await bindServer(preferredPort));
+  } catch (firstErr: unknown) {
+    const code = firstErr instanceof Error && "code" in firstErr
+      ? (firstErr as NodeJS.ErrnoException).code
+      : undefined;
+
+    if (code === "EADDRINUSE") {
+      console.warn(
+        `Port ${preferredPort} taken at bind time (TOCTOU race). Binding on OS-assigned port...`
+      );
+      try {
+        ({ server, boundPort } = await bindServer(0));
+        console.warn(`WARNING: Listening on OS-assigned port ${boundPort} instead of ${requestedPort}`);
+      } catch (innerErr: unknown) {
+        const msg = innerErr instanceof Error ? innerErr.message : String(innerErr);
+        console.error("Failed to bind on any port:", msg);
+        process.exit(1);
+      }
     } else {
-      console.error("Server error:", err);
+      const msg = firstErr instanceof Error ? firstErr.message : String(firstErr);
+      console.error("Server error:", msg);
+      process.exit(1);
     }
+  }
+
+  server!.on("error", (err: NodeJS.ErrnoException) => {
+    console.error("Unexpected server error after bind:", err);
   });
+
+  let shuttingDown = false;
+
+  function shutdown(signal: string): void {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    console.log(`Received ${signal}. Closing server gracefully...`);
+    server!.close(() => {
+      console.log("Server closed. Exiting.");
+      process.exit(0);
+    });
+
+    setTimeout(() => {
+      console.warn("Forced shutdown after timeout.");
+      process.exit(1);
+    }, 10000).unref();
+  }
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 const rawPort = process.env["PORT"];
