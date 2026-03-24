@@ -14,8 +14,6 @@ import {
   Animated,
   Alert,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -41,7 +39,6 @@ import {
 } from "@/components/LiveMarketWidgets";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
-import { registerAvatarPickerListener, unregisterAvatarPickerListener } from "@/lib/avatarPickerBus";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 import NewsModal from "@/components/NewsModal";
 
@@ -110,17 +107,6 @@ const SESSIONS: Session[] = [
   { name: "NY Open", subtitle: "9:30–10:00 AM EST", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896", icon: "trending-up" },
   { name: "Silver Bullet", subtitle: "10:00–11:00 AM EST", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444", icon: "flash" },
   { name: "London Close", subtitle: "11 AM–12 PM EST", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8", icon: "time" },
-];
-
-const STOCK_AVATARS_MOBILE = [
-  { id: "bull", emoji: "🐂", label: "Bull" },
-  { id: "bear", emoji: "🐻", label: "Bear" },
-  { id: "chart", emoji: "📈", label: "Chart" },
-  { id: "candle", emoji: "🕯️", label: "Candle" },
-  { id: "rocket", emoji: "🚀", label: "Rocket" },
-  { id: "shield", emoji: "🛡️", label: "Shield" },
-  { id: "flame", emoji: "🔥", label: "Flame" },
-  { id: "crown", emoji: "👑", label: "Crown" },
 ];
 
 function AIGreetingCard() {
@@ -1884,7 +1870,7 @@ function CustomizeModal({
 
 export default function DashboardScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
-  const { user, setAvatarUrl, appMode } = useAuth();
+  const { user, appMode } = useAuth();
   const router = useRouter();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
   const { xp, streak } = useDailyGamification();
@@ -1904,7 +1890,6 @@ export default function DashboardScreen() {
 
   const [prefs, setPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
   const [showAchievements, setShowAchievements] = useState(false);
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   useFocusEffect(
     useCallback(() => {
@@ -1928,11 +1913,6 @@ export default function DashboardScreen() {
     }, [])
   );
 
-  useEffect(() => {
-    registerAvatarPickerListener(() => setShowAvatarPicker(true));
-    return () => unregisterAvatarPickerListener();
-  }, []);
-
   async function toggleWidget(key: keyof WidgetPrefs) {
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
@@ -1942,9 +1922,6 @@ export default function DashboardScreen() {
       apiPatch("user-settings", { section: "widgetPrefs", data: { prefs: next } }).catch(() => {});
     } catch {}
   }
-
-  const avatarUrl = user?.avatarUrl;
-  const initials = user?.name?.charAt(0)?.toUpperCase() || "?";
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
@@ -1961,90 +1938,6 @@ export default function DashboardScreen() {
         onToggle={toggleWidget}
       />
 
-
-      {/* Avatar Picker Modal */}
-      <Modal visible={showAvatarPicker} transparent animationType="slide" onRequestClose={() => setShowAvatarPicker(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAvatarPicker(false)} />
-        <View style={styles.modalSheet}>
-          <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>Choose Avatar</Text>
-          <Text style={styles.modalSubtitle}>Pick a trading avatar or upload your photo</Text>
-          <View style={styles.avatarGrid}>
-            {STOCK_AVATARS_MOBILE.map((av) => (
-              <TouchableOpacity
-                key={av.id}
-                style={[styles.avatarOption, avatarUrl === av.emoji && styles.avatarOptionSelected]}
-                onPress={async () => {
-                  await setAvatarUrl(av.emoji);
-                  setShowAvatarPicker(false);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.avatarEmoji}>{av.emoji}</Text>
-                <Text style={styles.avatarLabel}>{av.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.uploadRow}>
-            <TouchableOpacity
-              style={styles.uploadPhotoBtn}
-              activeOpacity={0.7}
-              onPress={async () => {
-                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                if (status !== "granted") return;
-                const result = await ImagePicker.launchImageLibraryAsync({
-                  mediaTypes: "images",
-                  allowsEditing: true,
-                  aspect: [1, 1],
-                  quality: 0.8,
-                });
-                if (!result.canceled && result.assets[0]) {
-                  const manipulated = await ImageManipulator.manipulateAsync(
-                    result.assets[0].uri,
-                    [{ resize: { width: 200, height: 200 } }],
-                    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-                  );
-                  const dataUrl = `data:image/jpeg;base64,${manipulated.base64}`;
-                  await setAvatarUrl(dataUrl);
-                  setShowAvatarPicker(false);
-                }
-              }}
-            >
-              <Ionicons name="image-outline" size={16} color={C.accent} />
-              <Text style={styles.uploadPhotoBtnText}>Gallery</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.uploadPhotoBtn}
-              activeOpacity={0.7}
-              onPress={async () => {
-                const { status } = await ImagePicker.requestCameraPermissionsAsync();
-                if (status !== "granted") return;
-                const result = await ImagePicker.launchCameraAsync({
-                  allowsEditing: true,
-                  aspect: [1, 1],
-                  quality: 0.8,
-                });
-                if (!result.canceled && result.assets[0]) {
-                  const manipulated = await ImageManipulator.manipulateAsync(
-                    result.assets[0].uri,
-                    [{ resize: { width: 200, height: 200 } }],
-                    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-                  );
-                  const dataUrl = `data:image/jpeg;base64,${manipulated.base64}`;
-                  await setAvatarUrl(dataUrl);
-                  setShowAvatarPicker(false);
-                }
-              }}
-            >
-              <Ionicons name="camera-outline" size={16} color={C.accent} />
-              <Text style={styles.uploadPhotoBtnText}>Camera</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity style={styles.doneBtn} onPress={() => setShowAvatarPicker(false)}>
-            <Text style={styles.doneBtnText}>Done</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} {...scrollCollapseProps}>
         {/* Stats strip — always visible, sits above all other content */}

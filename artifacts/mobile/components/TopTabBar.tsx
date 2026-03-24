@@ -3,7 +3,6 @@ import { Href, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Image,
   Modal,
   Platform,
   Pressable,
@@ -21,7 +20,6 @@ import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailyGamification } from "@/components/DashboardGamification";
-import { emitOpenAvatarPicker } from "@/lib/avatarPickerBus";
 
 const TOUR_DONE_KEY = "mobile-onboarding-tour-done";
 
@@ -248,7 +246,6 @@ export default function TopTabBar({
   const isDashboard = normalizedPath === "/dashboard";
 
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
-  const avatarUrl = user?.avatarUrl;
   const initials = userName
     ? userName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
     : "U";
@@ -285,24 +282,6 @@ export default function TopTabBar({
           accessibilityRole="button"
         >
           <Ionicons name="menu" size={24} color={C.text} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.dashAvatar, { backgroundColor: C.accent + "20", borderColor: C.accent + "40" }]}
-          onPress={emitOpenAvatarPicker}
-          accessibilityLabel="Change avatar"
-          accessibilityRole="button"
-          activeOpacity={0.7}
-        >
-          {avatarUrl ? (
-            avatarUrl.startsWith("data:") || avatarUrl.startsWith("http") ? (
-              <Image source={{ uri: avatarUrl }} style={styles.dashAvatarImage} />
-            ) : (
-              <Text style={styles.dashAvatarEmoji}>{avatarUrl}</Text>
-            )
-          ) : (
-            <Text style={[styles.dashAvatarInitial, { color: C.accent }]}>{initials}</Text>
-          )}
         </TouchableOpacity>
 
         <Text style={[styles.dashGreeting, { color: C.text }]} numberOfLines={1}>

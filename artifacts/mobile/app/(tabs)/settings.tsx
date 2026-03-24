@@ -10,8 +10,12 @@ import {
   Alert,
   ActivityIndicator,
   Share,
+  Modal,
+  Image,
 } from "react-native";
 import * as ExpoSharing from "expo-sharing";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,6 +34,17 @@ import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 const C = Colors.dark;
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
+const STOCK_AVATARS = [
+  { id: "bull", emoji: "🐂", label: "Bull" },
+  { id: "bear", emoji: "🐻", label: "Bear" },
+  { id: "chart", emoji: "📈", label: "Chart" },
+  { id: "candle", emoji: "🕯️", label: "Candle" },
+  { id: "rocket", emoji: "🚀", label: "Rocket" },
+  { id: "shield", emoji: "🛡️", label: "Shield" },
+  { id: "flame", emoji: "🔥", label: "Flame" },
+  { id: "crown", emoji: "👑", label: "Crown" },
+];
 
 const SESSION_OPTIONS = [
   { value: "", label: "Select session…" },
@@ -176,10 +191,11 @@ const sb = StyleSheet.create({
 export default function SettingsScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
   const router = useRouter();
-  const { logout, appMode, setAppMode } = useAuth();
+  const { logout, appMode, setAppMode, user, setAvatarUrl } = useAuth();
   const [currentAppMode, setCurrentAppMode] = useState<"full" | "lite">(appMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   const [profile, setProfile] = useState({
     name: "",
@@ -360,8 +376,93 @@ export default function SettingsScreen() {
     );
   }
 
+  const avatarUrl = user?.avatarUrl;
+  const initials = (profile.name || profile.email || "U")[0].toUpperCase();
+
   return (
     <SafeAreaView style={s.safe} edges={["bottom"]}>
+      {/* Avatar Picker Modal */}
+      <Modal visible={showAvatarPicker} transparent animationType="slide" onRequestClose={() => setShowAvatarPicker(false)}>
+        <TouchableOpacity style={ap.overlay} activeOpacity={1} onPress={() => setShowAvatarPicker(false)} />
+        <View style={ap.sheet}>
+          <View style={ap.handle} />
+          <Text style={ap.title}>Choose Avatar</Text>
+          <Text style={ap.subtitle}>Pick a trading avatar or upload your photo</Text>
+          <View style={ap.grid}>
+            {STOCK_AVATARS.map((av) => (
+              <TouchableOpacity
+                key={av.id}
+                style={[ap.option, avatarUrl === av.emoji && ap.optionSelected]}
+                onPress={async () => {
+                  await setAvatarUrl(av.emoji);
+                  setShowAvatarPicker(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={ap.emoji}>{av.emoji}</Text>
+                <Text style={ap.label}>{av.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={ap.uploadRow}>
+            <TouchableOpacity
+              style={ap.uploadBtn}
+              activeOpacity={0.7}
+              onPress={async () => {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== "granted") return;
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: "images",
+                  allowsEditing: true,
+                  aspect: [1, 1],
+                  quality: 0.8,
+                });
+                if (!result.canceled && result.assets[0]) {
+                  const manipulated = await ImageManipulator.manipulateAsync(
+                    result.assets[0].uri,
+                    [{ resize: { width: 200, height: 200 } }],
+                    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+                  );
+                  await setAvatarUrl(`data:image/jpeg;base64,${manipulated.base64}`);
+                  setShowAvatarPicker(false);
+                }
+              }}
+            >
+              <Ionicons name="image-outline" size={16} color={C.accent} />
+              <Text style={ap.uploadBtnText}>Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={ap.uploadBtn}
+              activeOpacity={0.7}
+              onPress={async () => {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== "granted") return;
+                const result = await ImagePicker.launchCameraAsync({
+                  allowsEditing: true,
+                  aspect: [1, 1],
+                  quality: 0.8,
+                });
+                if (!result.canceled && result.assets[0]) {
+                  const manipulated = await ImageManipulator.manipulateAsync(
+                    result.assets[0].uri,
+                    [{ resize: { width: 200, height: 200 } }],
+                    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+                  );
+                  await setAvatarUrl(`data:image/jpeg;base64,${manipulated.base64}`);
+                  setShowAvatarPicker(false);
+                }
+              }}
+            >
+              <Ionicons name="camera-outline" size={16} color={C.accent} />
+              <Text style={ap.uploadBtnText}>Camera</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={ap.doneBtn} onPress={() => setShowAvatarPicker(false)}>
+            <Text style={ap.doneBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
       <View style={s.pageHeader}>
         <Text style={s.pageTitle}>Settings</Text>
       </View>
@@ -376,11 +477,25 @@ export default function SettingsScreen() {
         {/* Account card */}
         <View style={s.card}>
           <View style={s.accountRow}>
-            <View style={s.avatar}>
-              <Text style={s.avatarText}>
-                {(profile.name || profile.email || "U")[0].toUpperCase()}
-              </Text>
-            </View>
+            <TouchableOpacity
+              style={[s.avatar, { position: "relative" }]}
+              onPress={() => setShowAvatarPicker(true)}
+              activeOpacity={0.8}
+              accessibilityLabel="Change avatar"
+            >
+              {avatarUrl ? (
+                avatarUrl.startsWith("data:") || avatarUrl.startsWith("http") ? (
+                  <Image source={{ uri: avatarUrl }} style={{ width: 48, height: 48, borderRadius: 24 }} />
+                ) : (
+                  <Text style={{ fontSize: 24 }}>{avatarUrl}</Text>
+                )
+              ) : (
+                <Text style={s.avatarText}>{initials}</Text>
+              )}
+              <View style={s.avatarEditBadge}>
+                <Ionicons name="pencil" size={8} color="#0A0A0F" />
+              </View>
+            </TouchableOpacity>
             <View style={s.accountInfo}>
               <Text style={s.accountName}>{profile.name || "User"}</Text>
               <Text style={s.accountEmail}>{profile.email}</Text>
@@ -739,6 +854,17 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: { fontSize: 20, fontWeight: "800", color: C.accent },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: C.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   accountInfo: { flex: 1, gap: 2 },
   accountName: { fontSize: 16, fontWeight: "700", color: C.text },
   accountEmail: { fontSize: 12, color: C.textSecondary },
@@ -849,4 +975,88 @@ const shareS = StyleSheet.create({
     fontWeight: "700",
     color: "#0A0A0F",
   },
+});
+
+const ap = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  sheet: {
+    backgroundColor: C.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 36,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: C.cardBorder,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: C.text,
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: C.textSecondary,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  option: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  optionSelected: {
+    borderColor: C.accent,
+    backgroundColor: C.accent + "20",
+  },
+  emoji: { fontSize: 28 },
+  label: { fontSize: 10, color: C.textSecondary },
+  uploadRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  uploadBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 10,
+    paddingVertical: 11,
+  },
+  uploadBtnText: { fontSize: 13, fontWeight: "600", color: C.accent },
+  doneBtn: {
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  doneBtnText: { fontSize: 14, fontWeight: "700", color: "#0A0A0F" },
 });
