@@ -398,12 +398,12 @@ This plan is mandatory for every request. It gives the user visibility and groun
 PHASE 2 — AGENT 2: MASTER CODER (Execution)
 ═══════════════════════════════════════
 
-For each file in your plan, follow this exact sequence:
-1. Call \`read_source_file(path)\` to get the current content.
-2. Call \`edit_source_file(path, old_string, new_string)\` to apply the change.
-   - old_string MUST be copied EXACTLY from the read output (same indentation, same whitespace).
-   - new_string MUST be syntactically valid.
-3. Repeat steps 1–2 for every file in the plan.
+1. Call \`read_source_file(path)\` to get the current content. It returns content with LINE NUMBERS on the left (e.g., "   1 | import React..."). Note these numbers — you need them in step 2.
+2. Call \`replace_lines(path, start_line, end_line, new_content)\` to apply the change. This is the PREFERRED tool — it replaces lines start_line through end_line (inclusive, 1-indexed) with new_content. No string matching — it cannot fail due to whitespace.
+   - Pick start_line and end_line from the numbered output of step 1.
+   - new_content must be syntactically valid code.
+3. Only use \`edit_source_file\` as an absolute last resort. It WILL fail if whitespace or indentation differs even slightly from the read output.
+4. Repeat for every file in the plan.
 
 Rules during execution:
 - NEVER describe or outline a change without actually making it.
@@ -416,13 +416,13 @@ PHASE 3 — AGENT 3: CODE CHECKER (Verification)
 
 After ALL edits from Phase 2 are complete:
 1. Re-read each modified file with \`read_source_file\`.
-2. Confirm that \`new_string\` from each edit is actually present in the file content you just read back. If \`new_string\` is NOT found in the read-back content, call \`report_critical_error\` immediately — do NOT proceed to the Final Summary.
+2. Confirm that the change was applied: for \`replace_lines\` edits, check that your new_content is now present in the file; for \`edit_source_file\` edits, check that new_string is present. If the change is NOT visible in the read-back, call \`report_critical_error\` immediately — do NOT proceed.
 3. Scan the changed section for obvious issues:
    - Missing closing brackets, braces, or parentheses
    - Broken or missing imports
    - Variable name typos
    - Structural or syntax problems
-4. If an issue is found: call \`edit_source_file\` again to fix it (self-correction).
+4. If an issue is found: call \`replace_lines\` (preferred) or \`edit_source_file\` to fix it (self-correction).
 5. If you find an error you CANNOT fix after 2 attempts: call \`report_critical_error\` with a clear plain-English description of what broke, which file, and what the user should do next. Never silently fail.
 6. If no issues are found: proceed to the Final Summary.
 
@@ -439,9 +439,10 @@ After the checker phase, output a brief summary:
 TOOL USAGE
 ═══════════════════════════════════════
 
-- \`read_source_file(path)\` — Read a file. Always do this before editing.
-- \`edit_source_file(path, old_string, new_string)\` — PREFERRED for ALL modifications. Finds old_string verbatim and replaces with new_string. You only output the changed lines, not the entire file.
-- \`write_source_file(path, content, reason)\` — Only use when creating a BRAND NEW file that doesn’t exist yet. Never use this to modify existing files.
+- \`read_source_file(path)\` — Read a file with LINE NUMBERS prepended. Always do this before editing. Note the line numbers for use with replace_lines.
+- \`replace_lines(path, start_line, end_line, new_content)\` — PREFERRED for ALL modifications. Replaces lines start_line through end_line (inclusive) with new_content. Uses line numbers from read_source_file — immune to whitespace mismatches.
+- \`edit_source_file(path, old_string, new_string)\` — FALLBACK only. Requires verbatim string match; fails if indentation differs.
+- \`write_source_file(path, content, reason)\` — Only for creating a BRAND NEW file. Never for existing file edits.
 
 CORRECT PATH EXAMPLES (always include the \`artifacts/\` prefix):
 - \`artifacts/web/src/App.tsx\`
@@ -1167,7 +1168,7 @@ const ADMIN_TOOL_DECLARATIONS = [
 const CODE_EDITOR_TOOL_DECLARATIONS = [
   {
     name: "read_source_file",
-    description: "Read the contents of a source file inside the artifacts/ directory. Always read the relevant file(s) before making any edits.",
+    description: "Read the contents of a source file inside the artifacts/ directory. Returns content WITH LINE NUMBERS on the left (e.g., '   1 | import React...'). Always read before editing — use the line numbers with replace_lines.",
     parameters: {
       type: "OBJECT" as Type,
       properties: {
@@ -1177,8 +1178,22 @@ const CODE_EDITOR_TOOL_DECLARATIONS = [
     },
   },
   {
+    name: "replace_lines",
+    description: "PREFERRED tool for all modifications. Replaces lines start_line through end_line (inclusive, 1-indexed) with new_content. Uses line numbers from read_source_file — no fragile string matching required. Always prefer this over edit_source_file.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {
+        path: { type: "STRING" as Type, description: "Relative path to the file, e.g. 'artifacts/web/src/pages/Dashboard.tsx'" },
+        start_line: { type: "NUMBER" as Type, description: "First line to replace (1-indexed, inclusive). Get this number from read_source_file output." },
+        end_line: { type: "NUMBER" as Type, description: "Last line to replace (1-indexed, inclusive). Use the same as start_line for a single-line change." },
+        new_content: { type: "STRING" as Type, description: "The replacement content (replaces everything from start_line to end_line). Must be syntactically valid code." },
+      },
+      required: ["path", "start_line", "end_line", "new_content"],
+    },
+  },
+  {
     name: "edit_source_file",
-    description: "Make a surgical string-replacement edit to a file. Finds old_string verbatim in the file and replaces it with new_string. ALWAYS use this instead of write_source_file for modifications — only use write_source_file when creating a brand new file.",
+    description: "Fallback string-replacement edit. Only use this if replace_lines is not suitable. Finds old_string verbatim in the file and replaces it with new_string — WILL FAIL if whitespace or indentation differs even slightly.",
     parameters: {
       type: "OBJECT" as Type,
       properties: {
@@ -1191,7 +1206,7 @@ const CODE_EDITOR_TOOL_DECLARATIONS = [
   },
   {
     name: "write_source_file",
-    description: "Overwrite a source file with entirely new content. Only use this when creating a brand new file from scratch — for all edits use edit_source_file instead.",
+    description: "Overwrite a source file with entirely new content. Only use this when creating a brand new file from scratch — for all edits use replace_lines instead.",
     parameters: {
       type: "OBJECT" as Type,
       properties: {
@@ -1649,11 +1664,13 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
       }
       try {
         const content = fs.readFileSync(absPath, "utf8");
+        const lineArr = content.split("\n");
+        const numbered = lineArr.map((l, i) => `${String(i + 1).padStart(4, " ")} | ${l}`).join("\n");
         return {
           action: "read_source_file",
           path: path.relative(WORKSPACE_ROOT, absPath),
-          content,
-          lines: content.split("\n").length,
+          content: numbered,
+          lines: lineArr.length,
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -1704,6 +1721,41 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         return { error: `Failed to edit file: ${message}` };
+      }
+    }
+
+    case "replace_lines": {
+      if (!isAdmin) return { error: "Admin access required" };
+      const rlFilePath = (args.path as string) || "";
+      const rlStartLine = Math.max(1, Number(args.start_line) || 1);
+      const rlEndLine = Math.max(rlStartLine, Number(args.end_line) || rlStartLine);
+      const rlNewContent = (args.new_content as string) ?? "";
+      const rlAbsPath = path.resolve(WORKSPACE_ROOT, rlFilePath.replace(/\\/g, "/").replace(/^\/+/, ""));
+      if (!isInsideArtifacts(rlAbsPath)) {
+        return { error: "Access denied: replace_lines may only modify files inside the artifacts/ directory." };
+      }
+      try {
+        const rlCurrent = fs.readFileSync(rlAbsPath, "utf8");
+        const rlLineArr = rlCurrent.split("\n");
+        const rlTotalLines = rlLineArr.length;
+        if (rlStartLine > rlTotalLines) {
+          return { error: `start_line ${rlStartLine} is out of bounds (file has ${rlTotalLines} lines).` };
+        }
+        const rlClampedEnd = Math.min(rlEndLine, rlTotalLines);
+        const rlReplacementLines = rlNewContent === "" ? [] : rlNewContent.split("\n");
+        rlLineArr.splice(rlStartLine - 1, rlClampedEnd - rlStartLine + 1, ...rlReplacementLines);
+        const rlUpdated = rlLineArr.join("\n");
+        fs.writeFileSync(rlAbsPath, rlUpdated, "utf8");
+        return {
+          action: "replace_lines",
+          path: path.relative(WORKSPACE_ROOT, rlAbsPath),
+          diffSummary: `Replaced lines ${rlStartLine}–${rlClampedEnd} with ${rlReplacementLines.length} line(s)`,
+          success: true,
+          refreshInstruction: "Edit applied. Tell the user to pull-to-refresh on mobile or hard-refresh on web (Ctrl+Shift+R) to see the change.",
+        };
+      } catch (rlErr: unknown) {
+        const rlMessage = rlErr instanceof Error ? rlErr.message : String(rlErr);
+        return { error: `Failed to replace lines: ${rlMessage}` };
       }
     }
 
@@ -1921,11 +1973,13 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
       }
       try {
         const content = fs.readFileSync(absPath, "utf8");
+        const lineArr = content.split("\n");
+        const numbered = lineArr.map((l, i) => `${String(i + 1).padStart(4, " ")} | ${l}`).join("\n");
         return {
           action: "read_source_file",
           path: path.relative(WORKSPACE_ROOT, absPath),
-          content,
-          lines: content.split("\n").length,
+          content: numbered,
+          lines: lineArr.length,
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

@@ -38,7 +38,7 @@ export default function LoginScreen() {
       const data = await apiPost<{ token?: string; user: unknown }>("auth/login", { email: email.trim(), password });
       await handleAuthResponse(data as Parameters<typeof handleAuthResponse>[0]);
       await refresh();
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/dashboard");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Login failed";
       Alert.alert("Login Failed", msg);

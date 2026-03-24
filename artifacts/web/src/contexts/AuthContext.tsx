@@ -165,8 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return features.some((f) => f.toLowerCase().includes(feature.toLowerCase()));
   };
 
-  const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
-  const appMode: "full" | "lite" = isAdmin ? "full" : (user?.appMode ?? "full");
+  const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0); // Admins always get tier level 2 (Premium), granting full feature access
+  const appMode: "full" | "lite" = isAdmin ? "full" : (user?.appMode ?? "full"); // Admins always get "full" app mode, bypassing any learning/lite restrictions
 
   const setAppMode = useCallback(async (mode: "full" | "lite") => {
     try {
