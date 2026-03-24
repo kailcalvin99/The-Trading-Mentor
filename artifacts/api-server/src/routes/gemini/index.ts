@@ -2107,7 +2107,7 @@ router.post("/conversations/:id/messages", async (req, res) => {
         : USER_TOOL_DECLARATIONS;
 
     let systemPrompt = isCodeEditor
-      ? (CODE_EDITOR_SYSTEM_PROMPT + (isAdmin ? "\n\n" + ADMIN_CODEBASE_KNOWLEDGE : ""))
+      ? CODE_EDITOR_SYSTEM_PROMPT
       : await getSystemPrompt(isAdmin);
     if (!isCodeEditor && pageContext) {
       systemPrompt += `\n\nCurrent app context:\n- Current page: ${pageContext.currentPage || "unknown"}\n- Route: ${pageContext.route || "/"}\n`;
@@ -2122,7 +2122,7 @@ router.post("/conversations/:id/messages", async (req, res) => {
       }
     }
 
-    if (isAdmin) {
+    if (isAdmin && !isCodeEditor) {
       systemPrompt += "\n\nThis user is an ADMIN. You have access to admin-only tools for platform management, user analytics, and system prompt suggestions. Use them when asked about platform stats, user activity, or system configuration.";
     }
 
@@ -2135,7 +2135,7 @@ router.post("/conversations/:id/messages", async (req, res) => {
         model: "gemini-2.5-flash",
         contents: currentContents,
         config: {
-          maxOutputTokens: 8192,
+          maxOutputTokens: isCodeEditor ? 65536 : 8192,
           systemInstruction: systemPrompt,
           tools: [{ functionDeclarations: tools }],
         },
