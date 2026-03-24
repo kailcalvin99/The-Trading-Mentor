@@ -151,10 +151,9 @@ export default function AnalyticsScreenGated() {
 
 function AnalyticsScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
-  const { user, subscription } = useAuth();
+  const { tierLevel } = useAuth();
   const router = useRouter();
   const [expandedChart, setExpandedChart] = useState<"pnl" | "wlb" | null>(null);
-  const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
   const { data: rawTrades, isLoading } = useListTrades();
 
   const trades = useMemo(() => {

@@ -53,6 +53,8 @@ interface AuthSubscription {
 interface AuthContextValue {
   user: AuthUser | null;
   subscription: AuthSubscription | null;
+  isAdmin: boolean;
+  tierLevel: number;
   loading: boolean;
   appMode: "full" | "lite";
   setAppMode: (mode: "full" | "lite") => void;
@@ -75,6 +77,8 @@ interface AuthLoginResponse {
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   subscription: null,
+  isAdmin: false,
+  tierLevel: 0,
   loading: true,
   appMode: "full",
   setAppMode: () => {},
@@ -164,8 +168,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSessionOnce().then(() => refresh());
   }, [refresh]);
 
+  const isAdmin = user?.role === "admin";
+  const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
+
   return (
-    <AuthContext.Provider value={{ user, subscription, loading, appMode, setAppMode, setAvatarUrl, refresh, logout }}>
+    <AuthContext.Provider value={{ user, subscription, isAdmin, tierLevel, loading, appMode, setAppMode, setAvatarUrl, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -116,10 +116,8 @@ export default function WebhooksScreenGated() {
 }
 
 function WebhooksScreen() {
-  const { user, subscription } = useAuth();
+  const { tierLevel } = useAuth();
   const router = useRouter();
-  const isAdmin = user?.role === "admin";
-  const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
 
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

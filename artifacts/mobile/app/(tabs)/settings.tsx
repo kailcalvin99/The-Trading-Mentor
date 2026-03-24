@@ -192,7 +192,7 @@ const sb = StyleSheet.create({
 export default function SettingsScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
   const router = useRouter();
-  const { logout, appMode, setAppMode, user, setAvatarUrl } = useAuth();
+  const { logout, appMode, setAppMode, user, setAvatarUrl, tierLevel } = useAuth();
   const [currentAppMode, setCurrentAppMode] = useState<"full" | "lite">(appMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -364,11 +364,11 @@ export default function SettingsScreen() {
   }
 
   const tierLabel =
-    profile.tierLevel === 0
+    tierLevel === 0
       ? "Free"
-      : profile.tierLevel === 1
+      : tierLevel === 1
       ? "Standard"
-      : profile.tierLevel === 2
+      : tierLevel === 2
       ? "Premium"
       : "Elite";
 
@@ -507,7 +507,7 @@ export default function SettingsScreen() {
               <Text style={s.accountEmail}>{profile.email}</Text>
               <View style={s.tierRow}>
                 <Ionicons
-                  name={profile.tierLevel > 0 ? "star" : "person-outline"}
+                  name={tierLevel > 0 ? "star" : "person-outline"}
                   size={10}
                   color={C.accent}
                 />

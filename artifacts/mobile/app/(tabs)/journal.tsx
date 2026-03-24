@@ -116,10 +116,9 @@ const NEGATIVE_TAGS = ["FOMO", "Chased", "Revenge", "Greedy", "Angry", "Overtrad
 
 export default function JournalScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
-  const { user, subscription, appMode } = useAuth();
+  const { user, appMode, tierLevel } = useAuth();
   const router = useRouter();
-  const { new: newParam } = useLocalSearchParams<{ new?: string }>();
-  const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
+  const { new: newParam } = useLocalSearchParams<{ new?: string }>(); 
   const { isRoutineComplete, routineCompletedToday, routineItems, plannerLoaded } = usePlanner();
   const qc = useQueryClient();
   const API_BASE = process.env.EXPO_PUBLIC_DOMAIN

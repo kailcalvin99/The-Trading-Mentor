@@ -20,15 +20,12 @@ const TAP_MOVE_THRESHOLD = 10;
 function TabLayoutInner() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, subscription, appMode } = useAuth();
+  const { user, appMode, isAdmin, tierLevel } = useAuth();
   const [communityBadge, setCommunityBadge] = useState(0);
   const [journalDraftBadge, setJournalDraftBadge] = useState(0);
   const insets = useSafeAreaInsets();
 
   const { resetIdleTimer, headerAnim, headerLayoutAnim, isCollapsed } = useChromeCollapse();
-
-  const isAdmin = user?.role === "admin";
-  const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
 
   const headerHeight = insets.top + TOP_TAB_BAR_HEIGHT;
 
