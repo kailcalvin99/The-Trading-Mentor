@@ -399,7 +399,7 @@ function PlannerScreen() {
           const apiPlan: TradePlan = {
             ...DEFAULT_PLAN,
             bias: (fromApiBias(tp.bias) ?? localPlan.bias) as Bias,
-            keyLevels: tp.keyLevels ?? localPlan.keyLevels,
+            keyLevels: (tp.keyLevels ?? localPlan.keyLevels).map((l: any, i: number) => ({ ...l, id: l.id || `api-${Date.now()}-${i}` })),
             targetSession: fromApiSession(tp.targetSession ?? tp.sessionFocus) ?? localPlan.targetSession,
             entryCriteria: tp.entryCriteria ?? localPlan.entryCriteria,
             notes: tp.notes ?? res.data.notes ?? localPlan.notes,
