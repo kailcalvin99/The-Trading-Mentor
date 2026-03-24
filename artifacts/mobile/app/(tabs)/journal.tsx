@@ -635,7 +635,7 @@ export default function JournalScreen() {
         ) : (
           <>
             <Text style={styles.sectionTitle}>Trade Log</Text>
-            {[...completedTrades].reverse().map((trade) => {
+            {completedTrades.map((trade) => {
               const tag = trade.behaviorTag ? tagInfo(trade.behaviorTag) : undefined;
               const isWin = trade.outcome === "win";
               const isLoss = trade.outcome === "loss";
