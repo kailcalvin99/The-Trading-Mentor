@@ -416,14 +416,15 @@ PHASE 3 — AGENT 3: CODE CHECKER (Verification)
 
 After ALL edits from Phase 2 are complete:
 1. Re-read each modified file with \`read_source_file\`.
-2. Scan the changed section for obvious issues:
+2. Confirm that \`new_string\` from each edit is actually present in the file content you just read back. If \`new_string\` is NOT found in the read-back content, call \`report_critical_error\` immediately — do NOT proceed to the Final Summary.
+3. Scan the changed section for obvious issues:
    - Missing closing brackets, braces, or parentheses
    - Broken or missing imports
    - Variable name typos
    - Structural or syntax problems
-3. If an issue is found: call \`edit_source_file\` again to fix it (self-correction).
-4. If you find an error you CANNOT fix after 2 attempts: call \`report_critical_error\` with a clear plain-English description of what broke, which file, and what the user should do next. Never silently fail.
-5. If no issues are found: proceed to the Final Summary.
+4. If an issue is found: call \`edit_source_file\` again to fix it (self-correction).
+5. If you find an error you CANNOT fix after 2 attempts: call \`report_critical_error\` with a clear plain-English description of what broke, which file, and what the user should do next. Never silently fail.
+6. If no issues are found: proceed to the Final Summary.
 
 ═══════════════════════════════════════
 FINAL SUMMARY
@@ -432,6 +433,7 @@ FINAL SUMMARY
 After the checker phase, output a brief summary:
 - "Changed: [file] — [what changed]" (one line per file)
 - "Verified: no issues found" OR "Fixed: [what the checker corrected]"
+- Always end with: "To see the changes, pull-to-refresh on mobile or hard-refresh on web (Ctrl+Shift+R)."
 
 ═══════════════════════════════════════
 TOOL USAGE
@@ -1678,10 +1680,25 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
         fs.writeFileSync(absPath, updated, "utf8");
         const oldLines = current.split("\n").length;
         const newLines = updated.split("\n").length;
+        // Read the file back immediately to verify the write succeeded
+        const readBack = fs.readFileSync(absPath, "utf8");
+        // If new_string is not present in the file, the edit failed
+        if (!readBack.includes(newString)) {
+          return {
+            success: false,
+            error: "Verification failed: file was written but new_string was not found when reading back. The edit did not take effect.",
+          };
+        }
+        // Build a short preview of the written content
+        const previewSnippet = newString.length > 100
+          ? newString.substring(0, 100) + "..."
+          : newString;
         return {
           action: "edit_source_file",
           path: path.relative(WORKSPACE_ROOT, absPath),
           diffSummary: `Previous: ${oldLines} lines → New: ${newLines} lines (Δ ${newLines - oldLines >= 0 ? "+" : ""}${newLines - oldLines})`,
+          preview: `Verified content snippet:\n${previewSnippet}`,
+          refreshInstruction: "Edit verified on disk. Tell the user: pull-to-refresh on mobile or hard-refresh on web (Ctrl+Shift+R) to see the change.",
           success: true,
         };
       } catch (err: unknown) {
@@ -1935,10 +1952,25 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
         fs.writeFileSync(absPath, updated, "utf8");
         const oldLines = current.split("\n").length;
         const newLines = updated.split("\n").length;
+        // Read the file back immediately to verify the write succeeded
+        const readBack = fs.readFileSync(absPath, "utf8");
+        // If new_string is not present in the file, the edit failed
+        if (!readBack.includes(newString)) {
+          return {
+            success: false,
+            error: "Verification failed: file was written but new_string was not found when reading back. The edit did not take effect.",
+          };
+        }
+        // Build a short preview of the written content
+        const previewSnippet = newString.length > 100
+          ? newString.substring(0, 100) + "..."
+          : newString;
         return {
           action: "edit_source_file",
           path: path.relative(WORKSPACE_ROOT, absPath),
           diffSummary: `Previous: ${oldLines} lines → New: ${newLines} lines (Δ ${newLines - oldLines >= 0 ? "+" : ""}${newLines - oldLines})`,
+          preview: `Verified content snippet:\n${previewSnippet}`,
+          refreshInstruction: "Edit verified on disk. Tell the user: pull-to-refresh on mobile or hard-refresh on web (Ctrl+Shift+R) to see the change.",
           success: true,
         };
       } catch (err: unknown) {
