@@ -15,16 +15,30 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system";
 import { apiGet, apiPost, streamMessage, isSessionExpiredError } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 
 const C = Colors.dark;
 
+type AIStatus =
+  | "idle"
+  | "thinking"
+  | "reading"
+  | "writing"
+  | "done"
+  | "error"
+  | "transcribing"
+  | "recording";
+
 interface ChatMessage {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "status";
   content: string;
   streaming?: boolean;
+  diffSummary?: string;
+  isError?: boolean;
 }
 
 export default function CodeEditorScreen() {
@@ -45,14 +59,22 @@ export default function CodeEditorScreen() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [commandInput, setCommandInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [aiStatus, setAIStatus] = useState<AIStatus>("idle");
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastCommand, setLastCommand] = useState<string>("");
 
   const [fileSearchTerm, setFileSearchTerm] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recordingPermission, setRecordingPermission] = useState(false);
 
   const chatScrollRef = useRef<ScrollView>(null);
   const fileScrollRef = useRef<ScrollView>(null);
   const commandInputRef = useRef<TextInput>(null);
   const initialized = useRef(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -64,6 +86,7 @@ export default function CodeEditorScreen() {
     initialized.current = true;
     loadFiles();
     initConversation();
+    requestMicPermission();
   }, [authLoading, user]);
 
   useEffect(() => {
@@ -73,6 +96,15 @@ export default function CodeEditorScreen() {
       setFilteredFiles(files);
     }
   }, [searchQuery, files]);
+
+  async function requestMicPermission() {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      setRecordingPermission(status === "granted");
+    } catch {
+      setRecordingPermission(false);
+    }
+  }
 
   async function loadFiles() {
     setLoadingFiles(true);
@@ -89,6 +121,7 @@ export default function CodeEditorScreen() {
   }
 
   async function initConversation() {
+    setSessionReady(false);
     try {
       const data = await apiPost<{ id: number; title: string }>(
         "gemini/conversations",
@@ -102,7 +135,7 @@ export default function CodeEditorScreen() {
     } catch (err) {
       Alert.alert(
         "Session Error",
-        `Failed to start AI session: ${err instanceof Error ? err.message : String(err)}. Please go back and try again.`
+        `Failed to start AI session: ${err instanceof Error ? err.message : String(err)}. Tap Retry to try again.`
       );
     }
   }
@@ -116,9 +149,21 @@ export default function CodeEditorScreen() {
     });
   }
 
-  async function handleCommandSubmit() {
-    if (!commandInput.trim() || chatLoading) return;
-    const userText = commandInput.trim();
+  function startTimeout(onTimeout: () => void, ms = 60000) {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(onTimeout, ms);
+  }
+
+  function clearStreamTimeout() {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }
+
+  async function handleCommandSubmit(overrideInput?: string) {
+    const userText = (overrideInput ?? commandInput).trim();
+    if (!userText || chatLoading) return;
 
     if (isFilePath(userText)) {
       const matched = files.find(
@@ -137,14 +182,18 @@ export default function CodeEditorScreen() {
       setCommandInput("");
       setChatMessages((prev) => [
         ...prev,
-        { role: "user", content: `Navigate to: ${userText}`, streaming: false },
-        { role: "assistant", content: `Showing filtered files matching "${userText}". Tap a file to open it.`, streaming: false },
+        { role: "user", content: `Navigate to: ${userText}` },
+        { role: "assistant", content: `Showing filtered files matching "${userText}". Tap a file to open it.` },
       ]);
       return;
     }
 
+    setLastCommand(userText);
     setCommandInput("");
     setChatLoading(true);
+    setAIStatus("thinking");
+    setLastError(null);
+    abortRef.current = false;
 
     const context = selectedFile
       ? `[Context: currently viewing file "${selectedFile}"] ${userText}`
@@ -157,20 +206,25 @@ export default function CodeEditorScreen() {
     ]);
 
     if (!conversationId) {
-      setChatMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = { role: "assistant", content: "Error: AI session not ready. Please retry.", streaming: false };
-        return updated;
-      });
-      setChatLoading(false);
+      finishWithError("AI session not ready. Please tap Retry below to restart the session.");
       return;
     }
 
+    startTimeout(() => {
+      if (chatLoading) {
+        abortRef.current = true;
+        finishWithError("Request timed out after 60 seconds. The AI may be busy — please try again.");
+      }
+    });
+
     let fullText = "";
+    let hasDiff: string | undefined;
+
     await streamMessage(
       conversationId,
       context,
       (chunk) => {
+        if (abortRef.current) return;
         fullText += chunk;
         setChatMessages((prev) => {
           const updated = [...prev];
@@ -180,44 +234,84 @@ export default function CodeEditorScreen() {
         chatScrollRef.current?.scrollToEnd({ animated: false });
       },
       () => {
+        clearStreamTimeout();
+        if (abortRef.current) return;
         setChatMessages((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: fullText, streaming: false };
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: fullText,
+            streaming: false,
+            diffSummary: hasDiff,
+          };
           return updated;
         });
+        setAIStatus("done");
         setChatLoading(false);
         chatScrollRef.current?.scrollToEnd({ animated: false });
       },
       (err) => {
-        setChatMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: `Error: ${err}`, streaming: false };
-          return updated;
-        });
-        setChatLoading(false);
+        clearStreamTimeout();
+        if (abortRef.current) return;
+        finishWithError(err);
       },
       undefined,
       (toolCall) => {
-        if (toolCall.name === "write_source_file") {
-          const written = toolCall.result as { success?: boolean; path?: string };
-          if (written.success) {
-            const writtenPath = written.path as string | undefined;
-            if (writtenPath) {
-              setTimeout(() => selectFile(writtenPath), 500);
-            } else if (selectedFile) {
-              setTimeout(() => selectFile(selectedFile), 500);
-            }
-          }
-        }
+        if (abortRef.current) return;
         if (toolCall.name === "read_source_file") {
+          setAIStatus("reading");
           const result = toolCall.result as { content?: string; path?: string };
           if (result.content) {
             setFileContent(result.content);
             if (result.path) setSelectedFile(result.path as string);
           }
         }
+        if (toolCall.name === "write_source_file") {
+          setAIStatus("writing");
+          const written = toolCall.result as { success?: boolean; path?: string; diffSummary?: string };
+          if (written.diffSummary) {
+            hasDiff = written.diffSummary;
+          }
+          if (written.success) {
+            const writtenPath = written.path as string | undefined;
+            if (writtenPath) {
+              setTimeout(() => selectFile(writtenPath), 600);
+            } else if (selectedFile) {
+              setTimeout(() => selectFile(selectedFile), 600);
+            }
+          }
+        }
       }
     );
+  }
+
+  function finishWithError(msg: string) {
+    clearStreamTimeout();
+    setLastError(msg);
+    setAIStatus("error");
+    setChatMessages((prev) => {
+      const updated = [...prev];
+      if (updated.length > 0 && updated[updated.length - 1].role === "assistant") {
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: msg,
+          streaming: false,
+          isError: true,
+        };
+      } else {
+        updated.push({ role: "assistant", content: msg, isError: true });
+      }
+      return updated;
+    });
+    setChatLoading(false);
+  }
+
+  async function handleRetry() {
+    if (lastCommand) {
+      await handleCommandSubmit(lastCommand);
+    } else {
+      await initConversation();
+    }
   }
 
   async function selectFile(filePath: string) {
@@ -234,18 +328,30 @@ export default function CodeEditorScreen() {
     }
 
     const userMsg = `Please read the file at path: ${filePath}`;
-    const assistantPlaceholder: ChatMessage = { role: "assistant", content: "", streaming: true };
+    setChatLoading(true);
+    setAIStatus("reading");
+    abortRef.current = false;
+
     setChatMessages((prev) => [
       ...prev,
       { role: "user", content: userMsg },
-      assistantPlaceholder,
+      { role: "assistant", content: "", streaming: true },
     ]);
+
+    startTimeout(() => {
+      if (chatLoading) {
+        abortRef.current = true;
+        finishWithError("File read timed out. Please try again.");
+        setLoadingFile(false);
+      }
+    });
 
     let fullText = "";
     await streamMessage(
       conversationId,
       userMsg,
       (chunk) => {
+        if (abortRef.current) return;
         fullText += chunk;
         setChatMessages((prev) => {
           const updated = [...prev];
@@ -255,24 +361,27 @@ export default function CodeEditorScreen() {
         chatScrollRef.current?.scrollToEnd({ animated: false });
       },
       () => {
+        clearStreamTimeout();
+        if (abortRef.current) return;
         setChatMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = { role: "assistant", content: fullText, streaming: false };
           return updated;
         });
+        setAIStatus("done");
+        setChatLoading(false);
         setLoadingFile(false);
         chatScrollRef.current?.scrollToEnd({ animated: false });
       },
       (err) => {
-        setChatMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: `Error reading file: ${err}`, streaming: false };
-          return updated;
-        });
+        clearStreamTimeout();
+        if (abortRef.current) return;
+        finishWithError(`Error reading file: ${err}`);
         setLoadingFile(false);
       },
       undefined,
       (toolCall) => {
+        if (abortRef.current) return;
         if (toolCall.name === "read_source_file" && toolCall.result) {
           const result = toolCall.result as { content?: string };
           if (result.content) {
@@ -281,6 +390,71 @@ export default function CodeEditorScreen() {
         }
       }
     );
+  }
+
+  async function startRecording() {
+    if (!recordingPermission) {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Microphone permission is needed for voice input.");
+        return;
+      }
+      setRecordingPermission(true);
+    }
+
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: rec } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(rec);
+      setAIStatus("recording");
+    } catch (err) {
+      Alert.alert("Error", "Failed to start recording. Please try again.");
+    }
+  }
+
+  async function stopRecordingAndTranscribe() {
+    if (!recording) return;
+    setAIStatus("transcribing");
+
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+      const uri = recording.getURI();
+      setRecording(null);
+
+      if (!uri) {
+        setAIStatus("idle");
+        Alert.alert("Error", "No audio recorded. Please try again.");
+        return;
+      }
+
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: "base64" as const,
+      });
+
+      const result = await apiPost<{ text: string; error?: string }>(
+        "gemini/transcribe",
+        { audioBase64: base64, mimeType: "audio/m4a" }
+      );
+
+      if (result.text && result.text.trim()) {
+        setCommandInput(result.text.trim());
+        commandInputRef.current?.focus();
+      } else {
+        Alert.alert("No speech detected", "Could not detect speech. Please try again.");
+      }
+    } catch (err) {
+      Alert.alert("Transcription failed", "Could not transcribe audio. Please type your command instead.");
+    } finally {
+      setAIStatus("idle");
+    }
   }
 
   function getMobileMatches(content: string, term: string): number[] {
@@ -340,6 +514,27 @@ export default function CodeEditorScreen() {
     fileScrollRef.current.scrollTo({ y: yOffset, animated: true });
   }
 
+  function getStatusLabel(): { label: string; color: string; icon: React.ComponentProps<typeof Ionicons>["name"] } {
+    switch (aiStatus) {
+      case "thinking":
+        return { label: "Thinking...", color: C.accent, icon: "sparkles-outline" };
+      case "reading":
+        return { label: "Reading file...", color: "#60a5fa", icon: "document-text-outline" };
+      case "writing":
+        return { label: "Writing file...", color: "#f59e0b", icon: "pencil-outline" };
+      case "done":
+        return { label: "Done ✓", color: "#22c55e", icon: "checkmark-circle-outline" };
+      case "error":
+        return { label: "Failed", color: "#ef4444", icon: "alert-circle-outline" };
+      case "transcribing":
+        return { label: "Transcribing...", color: "#a78bfa", icon: "mic-outline" };
+      case "recording":
+        return { label: "Recording — tap mic to stop", color: "#ef4444", icon: "radio-button-on-outline" };
+      default:
+        return { label: "", color: C.textSecondary, icon: "ellipse-outline" };
+    }
+  }
+
   function renderFileItem({ item }: { item: string }) {
     const parts = item.split("/");
     const fileName = parts[parts.length - 1];
@@ -381,6 +576,11 @@ export default function CodeEditorScreen() {
     );
   }
 
+  const statusInfo = getStatusLabel();
+  const showStatusBar = aiStatus !== "idle";
+  const isVoiceActive = aiStatus === "recording" || aiStatus === "transcribing";
+  const isRecording = aiStatus === "recording";
+
   return (
     <SafeAreaView style={s.safe} edges={["bottom"]}>
       <View style={s.header}>
@@ -403,49 +603,71 @@ export default function CodeEditorScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
       >
-        {/* Unified Command Bar */}
+        {/* Command Bar */}
         <View style={s.commandBar}>
           <View style={s.commandInputRow}>
             <Ionicons name="sparkles-outline" size={16} color={C.accent} style={s.commandIcon} />
             <TextInput
               ref={commandInputRef}
               style={s.commandInput}
-              placeholder="What do you want to change? Or type a file path..."
+              placeholder="Describe what to change in plain English..."
               placeholderTextColor={C.textSecondary}
               value={commandInput}
               onChangeText={setCommandInput}
               multiline={false}
               returnKeyType="send"
-              onSubmitEditing={handleCommandSubmit}
+              onSubmitEditing={() => handleCommandSubmit()}
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!chatLoading && sessionReady}
+              editable={!chatLoading && sessionReady && !isVoiceActive}
             />
-            {commandInput.length > 0 && (
+            {commandInput.length > 0 && !chatLoading && (
               <TouchableOpacity onPress={() => setCommandInput("")} style={s.commandClear}>
                 <Ionicons name="close-circle" size={16} color={C.textSecondary} />
               </TouchableOpacity>
             )}
+            {/* Mic button */}
+            {Platform.OS !== "web" && (
+              <TouchableOpacity
+                style={[s.micBtn, isRecording && s.micBtnActive]}
+                onPress={isRecording ? stopRecordingAndTranscribe : startRecording}
+                disabled={chatLoading && !isRecording}
+                activeOpacity={0.8}
+              >
+                {aiStatus === "transcribing" ? (
+                  <ActivityIndicator size="small" color={C.accent} />
+                ) : (
+                  <Ionicons
+                    name={isRecording ? "stop-circle" : "mic-outline"}
+                    size={18}
+                    color={isRecording ? "#ef4444" : C.textSecondary}
+                  />
+                )}
+              </TouchableOpacity>
+            )}
+            {/* Send button */}
             <TouchableOpacity
-              style={[s.sendBtn, (!commandInput.trim() || chatLoading || !sessionReady) && s.sendBtnDisabled]}
-              onPress={handleCommandSubmit}
-              disabled={!commandInput.trim() || chatLoading || !sessionReady}
+              style={[s.sendBtn, (!commandInput.trim() || chatLoading || !sessionReady || isVoiceActive) && s.sendBtnDisabled]}
+              onPress={() => handleCommandSubmit()}
+              disabled={!commandInput.trim() || chatLoading || !sessionReady || isVoiceActive}
               activeOpacity={0.8}
             >
-              {chatLoading ? (
+              {chatLoading && aiStatus !== "recording" && aiStatus !== "transcribing" ? (
                 <ActivityIndicator size="small" color="#0A0A0F" />
               ) : (
                 <Ionicons name="arrow-up" size={18} color="#0A0A0F" />
               )}
             </TouchableOpacity>
           </View>
+
+          {/* Active file indicator */}
           {selectedFile && (
             <View style={s.activeFileRow}>
               <Ionicons name="document-outline" size={12} color={C.accent} />
               <Text style={s.activeFileName} numberOfLines={1}>{selectedFile}</Text>
               <TouchableOpacity
                 onPress={() => selectFile(selectedFile)}
-                disabled={loadingFile}
+                disabled={loadingFile || chatLoading}
                 style={s.refreshBtn}
               >
                 {loadingFile ? (
@@ -456,6 +678,26 @@ export default function CodeEditorScreen() {
               </TouchableOpacity>
             </View>
           )}
+
+          {/* AI status feedback bar */}
+          {showStatusBar && (
+            <View style={[s.statusBar, aiStatus === "error" && s.statusBarError]}>
+              {(aiStatus === "thinking" || aiStatus === "reading" || aiStatus === "writing" || aiStatus === "transcribing") ? (
+                <ActivityIndicator size="small" color={statusInfo.color} />
+              ) : (
+                <Ionicons name={statusInfo.icon} size={14} color={statusInfo.color} />
+              )}
+              <Text style={[s.statusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+              {aiStatus === "error" && (
+                <TouchableOpacity onPress={handleRetry} style={s.retryBtn}>
+                  <Ionicons name="refresh-outline" size={13} color={C.accent} />
+                  <Text style={s.retryBtnText}>Retry</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* Session not ready banner */}
           {!sessionReady && (
             <View style={s.sessionBanner}>
               <ActivityIndicator size="small" color={C.accent} />
@@ -467,7 +709,7 @@ export default function CodeEditorScreen() {
           )}
         </View>
 
-        {/* File Browser — collapsible panel (fixed height, conversation log still visible below) */}
+        {/* File Browser */}
         {fileBrowserOpen && (
           <View style={s.fileBrowser}>
             <View style={s.searchBar}>
@@ -515,7 +757,7 @@ export default function CodeEditorScreen() {
           </View>
         )}
 
-        {/* Code viewer — only shown when a file is selected and not browsing */}
+        {/* Code viewer */}
         {selectedFile && !fileBrowserOpen && (
           <>
             {fileContent && (
@@ -624,7 +866,7 @@ export default function CodeEditorScreen() {
           </>
         )}
 
-        {/* Conversation log — always visible */}
+        {/* Conversation log */}
         <ScrollView
           ref={chatScrollRef}
           style={s.chatHistory}
@@ -638,26 +880,43 @@ export default function CodeEditorScreen() {
               <Text style={s.chatEmptyText}>
                 Type a command above to get started. Describe what you want to change in plain English — the AI will figure out which files to touch.
               </Text>
-              <Text style={s.chatEmptyHint}>Or type a file name to open it for reference.</Text>
+              {Platform.OS !== "web" && (
+                <Text style={s.chatEmptyHint}>Or tap the mic button to speak your instruction.</Text>
+              )}
             </View>
           ) : (
             chatMessages.map((msg, i) => (
-              <View
-                key={i}
-                style={[
-                  s.chatBubble,
-                  msg.role === "user" ? s.chatBubbleUser : s.chatBubbleAssistant,
-                ]}
-              >
-                <Text
+              <View key={i}>
+                <View
                   style={[
-                    s.chatBubbleText,
-                    msg.role === "user" ? s.chatBubbleTextUser : s.chatBubbleTextAssistant,
+                    s.chatBubble,
+                    msg.role === "user" ? s.chatBubbleUser : s.chatBubbleAssistant,
+                    msg.isError && s.chatBubbleError,
                   ]}
                 >
-                  {msg.content}
-                  {msg.streaming && <Text style={s.cursor}>▌</Text>}
-                </Text>
+                  {msg.isError && (
+                    <View style={s.errorBubbleHeader}>
+                      <Ionicons name="alert-circle-outline" size={13} color="#ef4444" />
+                      <Text style={s.errorBubbleLabel}>Error</Text>
+                    </View>
+                  )}
+                  <Text
+                    style={[
+                      s.chatBubbleText,
+                      msg.role === "user" ? s.chatBubbleTextUser : s.chatBubbleTextAssistant,
+                      msg.isError && s.chatBubbleTextError,
+                    ]}
+                  >
+                    {msg.content}
+                    {msg.streaming && <Text style={s.cursor}>▌</Text>}
+                  </Text>
+                </View>
+                {msg.diffSummary && (
+                  <View style={s.diffBadge}>
+                    <Ionicons name="checkmark-circle" size={13} color="#22c55e" />
+                    <Text style={s.diffText}>{msg.diffSummary}</Text>
+                  </View>
+                )}
               </View>
             ))
           )}
@@ -753,6 +1012,23 @@ const s = StyleSheet.create({
     padding: 0,
   },
   commandClear: { padding: 2 },
+
+  micBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    flexShrink: 0,
+  },
+  micBtnActive: {
+    borderColor: "#ef4444",
+    backgroundColor: "#ef444415",
+  },
+
   activeFileRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -771,6 +1047,33 @@ const s = StyleSheet.create({
   },
   refreshBtn: { padding: 4 },
 
+  statusBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: C.cardBorder,
+    backgroundColor: C.backgroundSecondary,
+  },
+  statusBarError: {
+    backgroundColor: "#ef444410",
+    borderTopColor: "#ef444430",
+  },
+  statusText: { flex: 1, fontSize: 12, fontWeight: "600" },
+
+  retryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: C.accent + "25",
+    borderRadius: 8,
+  },
+  retryBtnText: { fontSize: 12, fontWeight: "600", color: C.accent },
+
   sessionBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -782,8 +1085,6 @@ const s = StyleSheet.create({
     backgroundColor: C.accent + "08",
   },
   sessionBannerText: { flex: 1, fontSize: 12, color: C.textSecondary },
-  retryBtn: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: C.accent + "25", borderRadius: 8 },
-  retryBtnText: { fontSize: 12, fontWeight: "600", color: C.accent },
 
   fileBrowser: {
     maxHeight: 280,
@@ -919,10 +1220,31 @@ const s = StyleSheet.create({
   chatBubble: { maxWidth: "90%", borderRadius: 14, paddingHorizontal: 13, paddingVertical: 9 },
   chatBubbleUser: { alignSelf: "flex-end", backgroundColor: C.accent + "25", borderBottomRightRadius: 4 },
   chatBubbleAssistant: { alignSelf: "flex-start", backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder, borderBottomLeftRadius: 4 },
+  chatBubbleError: { borderColor: "#ef444450", backgroundColor: "#ef444410" },
   chatBubbleText: { fontSize: 13, lineHeight: 19 },
   chatBubbleTextUser: { color: C.text },
   chatBubbleTextAssistant: { color: C.text },
+  chatBubbleTextError: { color: "#fca5a5" },
   cursor: { color: C.accent },
+
+  errorBubbleHeader: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
+  errorBubbleLabel: { fontSize: 11, fontWeight: "700", color: "#ef4444" },
+
+  diffBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    marginTop: 4,
+    marginLeft: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#22c55e15",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#22c55e30",
+  },
+  diffText: { fontSize: 11, color: "#22c55e", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
 
   sendBtn: {
     width: 36,

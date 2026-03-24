@@ -1300,6 +1300,38 @@ async function executeToolCall(toolName: string, args: Record<string, unknown>, 
 
 router.use(authRequired);
 
+router.post("/transcribe", async (req, res) => {
+  try {
+    const { audioBase64, mimeType } = req.body as { audioBase64: string; mimeType: string };
+    if (!audioBase64 || !mimeType) {
+      res.status(400).json({ error: "audioBase64 and mimeType are required" });
+      return;
+    }
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType,
+                data: audioBase64,
+              },
+            },
+            { text: "Transcribe this audio exactly as spoken. Output only the transcription text, nothing else." },
+          ],
+        },
+      ],
+    });
+    const text = result.text?.trim() ?? "";
+    res.json({ text });
+  } catch (err) {
+    console.error("Transcribe error:", err);
+    res.status(500).json({ error: "Failed to transcribe audio" });
+  }
+});
+
 router.get("/conversations", async (req, res) => {
   try {
     const userId = req.user?.userId;
