@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -383,6 +384,8 @@ export default function DailyPlanner() {
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [showRiskTools, setShowRiskTools] = useState(false);
   const [showPositionCalc, setShowPositionCalc] = useState(false);
+  const [showDailyBiasWindow, setShowDailyBiasWindow] = useState(false);
+  const [dailyBiasInput, setDailyBiasInput] = useState<string>("");
   const [riskChecked, setRiskChecked] = useState<Record<string, boolean>>(() => getRiskChecklistState());
   const [posCalcPoints, setPosCalcPoints] = useState("");
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -561,6 +564,17 @@ export default function DailyPlanner() {
 
   function handleSendToJournal() {
     setSendModalOpen(true);
+  }
+
+  function handleSetDailyBias() {
+    updateTradePlan("bias", dailyBiasInput);
+    setShowDailyBiasWindow(false);
+    setDailyBiasInput("");
+  }
+
+  function handleOpenDailyBiasWindow() {
+    setDailyBiasInput(dayData.tradePlan.bias); // Pre-fill with current bias if exists
+    setShowDailyBiasWindow(true);
   }
 
   const selectedAsset = dayData.tradePlan.selectedAsset || "NQ";
@@ -751,25 +765,12 @@ export default function DailyPlanner() {
                   Market Bias
                 </label>
                 <div className="flex gap-2">
-                  {[
-                    { value: "bullish", label: "Bullish", activeClass: "bg-emerald-500 text-white border-emerald-500" },
-                    { value: "neutral", label: "Neutral", activeClass: "bg-amber-500 text-white border-amber-500" },
-                    { value: "bearish", label: "Bearish", activeClass: "bg-red-500 text-white border-red-500" },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => updateTradePlan("bias", dayData.tradePlan.bias === opt.value ? "" : opt.value)}
-                      className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all ${
-                        dayData.tradePlan.bias === opt.value
-                          ? opt.activeClass
-                          : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                  <button
+                    onClick={handleOpenDailyBiasWindow}
+                    className="flex-1 py-2 rounded-lg border text-sm font-semibold transition-all bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                  >
+                    Set Daily Bias
+                  </button>
 
               {!biasSelected && (
                 <div className="relative rounded-xl border border-border overflow-hidden">
@@ -1254,6 +1255,50 @@ export default function DailyPlanner() {
             >
               Log to Journal
             </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Daily Bias Window */}
+    {showDailyBiasWindow && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowDailyBiasWindow(false)} />
+        <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl z-10">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-amber-400" />
+              <h2 className="font-bold text-lg">Set Daily Bias</h2>
+            </div>
+            <button onClick={() => setShowDailyBiasWindow(false)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Market Bias</label>
+              <input
+                type="text"
+                value={dailyBiasInput}
+                onChange={(e) => setDailyBiasInput(e.target.value)}
+                placeholder="e.g. Bullish, Bearish, Neutral"
+                className="w-full bg-secondary/40 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowDailyBiasWindow(false)}
+                className="py-2 px-4 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSetDailyBias}
+                className="py-2 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:brightness-110 transition-all"
+              >
+                Set Bias
+              </button>
+            </div>
           </div>
         </div>
       </div>

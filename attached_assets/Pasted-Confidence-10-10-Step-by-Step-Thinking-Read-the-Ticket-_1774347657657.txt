@@ -1,0 +1,69 @@
+Confidence: 10/10
+Step-by-Step Thinking:
+ * Read the Ticket: You need to change how the server claims a network port. It needs to check actively (poll) instead of just waiting and hoping (backoff).
+ * Follow the Rules: The ticket says to use the exact reference code provided and only change the preparePort logic and add the helpers.
+ * Prepare the Code: I will format the exact code you provided so it is ready to copy and paste directly into artifacts/api-server/src/index.ts.
+Here is a simple analogy: Imagine waiting for a parking spot. The old way was to honk, close your eyes for 10 seconds, and hope the spot was empty. The new way (polling) is to ask the car to leave, and then keep your eyes open, checking every second until they pull out.
+Here is the exact code to use:
+// Helper to pause the code
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// New helper: waits for the port to actually become free
+async function waitForPortFree(port: number, timeoutMs: number, intervalMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  
+  while (Date.now() < deadline) {
+    const inUse = await isPortInUse(port);
+    if (!inUse) {
+      return true; // The port is free!
+    }
+    await sleep(intervalMs); // Wait a bit before checking again
+  }
+  
+  return false; // Time ran out
+}
+
+// New preparePort logic
+async function preparePort(port: number, maxKillAttempts: number = 3): Promise<number> {
+  for (let attempt = 1; attempt <= maxKillAttempts; attempt++) {
+    const inUse = await isPortInUse(port);
+    if (!inUse) {
+      return port;   // Success, the port is free
+    }
+    
+    console.log(`Port ${port} occupied, attempting kill... (Attempt ${attempt}/${maxKillAttempts})`);
+    await killPortOccupant(port);
+    
+    // POLL for the port to be free (up to 5 seconds, checking every 200ms)
+    const freed = await waitForPortFree(port, 5000, 200);
+    if (freed) {
+      return port;   // Kill worked, port is free
+    }
+    
+    console.log(`Port ${port} still occupied after kill attempt ${attempt}/${maxKillAttempts}`);
+  }
+  
+  // All kill attempts exhausted — fall back to a nearby port
+  console.log(`Could not free port ${port}. Looking for a backup port...`);
+  for (let candidate = port + 1; candidate <= port + 20; candidate++) {
+    const candidateInUse = await isPortInUse(candidate);
+    if (!candidateInUse) {
+      return candidate;
+    }
+  }
+  
+  return 0;  // Let the OS assign a random port
+}
+
+Pros and Cons of This Approach
+Pros:
+ * Highly Reliable: The server will not crash just because the old process takes a few extra seconds to close.
+ * Faster Starts: It stops waiting the exact millisecond the port is free, rather than waiting out a long, fixed timer.
+Cons:
+ * Slightly More Complex: It adds a while loop and checking logic instead of a simple sleep command.
+Summary Key Takeaways
+We are replacing the "guess and hope" method with an active "watch and wait" method. The new code tries to kill the old server up to 3 times and checks every 200 milliseconds to see if the port is finally free.
+Follow-Up Questions
+ * Does your index.ts file already import the isPortInUse and killPortOccupant functions correctly at the top?
+ * Do you have a specific testing plan to make sure this properly handles the TIME_WAIT state on your machine?
+Would you like me to write out a quick Git commit message that summarizes these changes for you?
