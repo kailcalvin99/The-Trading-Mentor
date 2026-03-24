@@ -1,3 +1,4 @@
+// This is a test comment
 import { useEffect } from "react";
 import {
   Navigate,
@@ -55,7 +56,8 @@ function IndexRoute() {
 
   // If user is authenticated, redirect to / (which will now render Dashboard via Layout's index route)
   if (user) return <Navigate to="/" replace />;
-  return <Welcome />;
+  // If user is not authenticated, redirect to /welcome for consistency
+  return <Navigate to="/welcome" replace />;
 }
 
 function ScrollToTop() {
@@ -94,7 +96,7 @@ function App() {
 
                 <Route element={<AuthGuard />}>
                   <Route path="/" element={<Layout />}>
-                    <Route index element={<Dashboard />} /> {/* Dashboard as the default route for authenticated users */}
+                    <Route index element={<div>Hello from Gemini!<Dashboard /></div>} /> {/* Dashboard as the default route for authenticated users */}
                     <Route path="/academy" element={<IctAcademy />} />
                     <Route path="/videos" element={<VideoLibrary />} />
                     <Route path="/planner" element={<DailyPlanner />} />

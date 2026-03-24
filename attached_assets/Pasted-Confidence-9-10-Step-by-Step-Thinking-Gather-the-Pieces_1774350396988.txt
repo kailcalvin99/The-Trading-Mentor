@@ -1,0 +1,120 @@
+Confidence: 9/10
+Step-by-Step Thinking:
+ * Gather the Pieces: I need to collect the three solutions we discussed: the port collision fix, the edit verification (read-back), and the auto-restart signal.
+ * Organize by File: Since Replit uses different files for the back-end server and the front-end app, I cannot put everything into one single file without breaking your app. I must split the code into clear blocks based on where they belong in your Replit folders.
+ * Format for Pasting: I will provide clean, ready-to-copy code blocks for exactly what you need to paste.
+Here is the exact code to copy and paste into your Replit project.
+1. Paste this into artifacts/api-server/src/index.ts
+(This fixes the port crashing issue)
+// Helper to pause the code
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper: waits for the port to actually become free
+async function waitForPortFree(port: number, timeoutMs: number, intervalMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const inUse = await isPortInUse(port);
+    if (!inUse) return true; 
+    await sleep(intervalMs); 
+  }
+  return false; 
+}
+
+// New preparePort logic (Replaces the old one)
+async function preparePort(port: number, maxKillAttempts: number = 3): Promise<number> {
+  for (let attempt = 1; attempt <= maxKillAttempts; attempt++) {
+    const inUse = await isPortInUse(port);
+    if (!inUse) return port;   
+    
+    console.log(`Port ${port} occupied, attempting kill... (Attempt ${attempt}/${maxKillAttempts})`);
+    await killPortOccupant(port);
+    
+    const freed = await waitForPortFree(port, 5000, 200);
+    if (freed) return port;   
+    
+    console.log(`Port ${port} still occupied after kill attempt ${attempt}/${maxKillAttempts}`);
+  }
+  
+  console.log(`Could not free port ${port}. Looking for a backup port...`);
+  for (let candidate = port + 1; candidate <= port + 20; candidate++) {
+    const candidateInUse = await isPortInUse(candidate);
+    if (!candidateInUse) return candidate;
+  }
+  return 0;  
+}
+
+2. Paste this into artifacts/api-server/src/routes/gemini/index.ts
+(This replaces the saving logic in the edit_source_file tool so it verifies the edit and rings the restart bell)
+// 1. Write the new content to the file
+fs.writeFileSync(filePath, updatedFileContent, 'utf-8');
+
+// 2. Read the file back immediately to verify
+const readBackContent = fs.readFileSync(filePath, 'utf-8');
+
+// 3. Check if the exact new_string is actually in the file now
+if (!readBackContent.includes(args.new_string)) {
+  return {
+    success: false,
+    error: `Verification failed: The file was written, but the new code was not found when checking.`
+  };
+}
+
+// 4. Ring the Restart Bell! (Send signal to front-end)
+// NOTE: Change 'io' to whatever your WebSocket server variable is named
+if (global.io) {
+  global.io.emit('FORCE_RELOAD', { message: 'AI finished editing. Restarting!' });
+}
+
+// 5. Return success to the AI
+const previewSnippet = args.new_string.length > 100 
+  ? args.new_string.substring(0, 100) + '...' 
+  : args.new_string;
+
+return {
+  success: true,
+  message: `Success! File updated, verified, and app is restarting.`,
+  preview: `Verified content: \n${previewSnippet}`
+};
+
+3. Paste this into your Front-End App (e.g., App.js or App.tsx)
+(This listens for the bell and restarts your phone or web app)
+import { useEffect } from 'react';
+// If using Expo for mobile, uncomment the next line:
+// import * as Updates from 'expo-updates';
+
+export default function App() {
+  
+  useEffect(() => {
+    // NOTE: Make sure your 'socket' variable is set up to connect to your API
+    socket.on('FORCE_RELOAD', async (data) => {
+      console.log(data.message);
+      
+      // For Web Version:
+      window.location.reload();
+      
+      // For Mobile Version (Expo), uncomment this instead:
+      // await Updates.reloadAsync();
+    });
+
+    return () => {
+      socket.off('FORCE_RELOAD');
+    };
+  }, []);
+
+  // ... rest of your app code
+}
+
+Analogy: This is like buying a "combo meal" at a fast-food place. Instead of making you order the burger (port fix), fries (edit check), and drink (restart bell) from three different menus, I put them all in one bag for you to take straight to Replit.
+Pros and Cons of Pasting Code Like This
+Pros:
+ * Very fast to implement. You do not have to write any code yourself.
+ * It guarantees all three features are set up at the exact same time.
+Cons:
+ * If you have custom variables (like naming your websocket ws instead of io), you will need to tweak the words slightly so it matches your specific setup.
+ * I am predicting that replacing large chunks of code might accidentally overwrite a small custom change you made earlier today.
+Summary Key Takeaways
+You now have the exact JavaScript/TypeScript blocks needed for your Replit project. The first block fixes the startup crashing, the second block stops the AI from lying about edits, and the third block forces your screen to update the second the AI finishes working.
+Follow-Up Questions
+ * Does your backend server currently use a global variable (like global.io or app.locals) to send WebSocket messages, or do you need help setting that part up?
+ * In your front-end App.tsx file, do you already have socket.io-client installed to listen to the backend?
+ * Should I write out the exact terminal command you need to run in Replit to install the Expo updates package if you haven't yet?

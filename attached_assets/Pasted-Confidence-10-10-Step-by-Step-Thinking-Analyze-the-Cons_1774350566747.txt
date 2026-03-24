@@ -1,0 +1,44 @@
+Confidence: 10/10
+Step-by-Step Thinking:
+ * Analyze the Constraints: The new instructions strictly forbid adding Socket.IO or changing the port logic. The fix must be purely server-side file verification and a prompt update.
+ * Locate the Target: The code needs to go into the two edit_source_file handlers right after the fs.writeFileSync command.
+ * Apply the Fix: I will take the exact read-back logic provided and format it cleanly so it can be pasted directly into those two spots.
+Think of this like leaving a note on a fridge. The old way was writing the note, walking away, and assuming it stuck. The new way is writing the note, physically checking that it is stuck to the fridge, and then yelling to the living room, "Hey, go look at the fridge!"
+Here is the exact code to paste into your Replit files. Find the fs.writeFileSync(absPath, updated, "utf8") line in both edit_source_file handlers and replace the return block right below it with this:
+// Read the file back immediately to verify the write succeeded
+const readBack = fs.readFileSync(absPath, "utf8");
+
+// If new_string is not present in the file, the edit failed
+if (!readBack.includes(newString)) {
+  return {
+    success: false,
+    error: "Verification failed: file was written but new_string was not found when reading back. The edit did not take effect.",
+  };
+}
+
+// Build a short preview of the written content
+const previewSnippet = newString.length > 100
+  ? newString.substring(0, 100) + "..."
+  : newString;
+
+return {
+  action: "edit_source_file",
+  path: path.relative(WORKSPACE_ROOT, absPath),
+  diffSummary: `Previous: ${oldLines} lines → New: ${newLines} lines (Δ ${newLines - oldLines >= 0 ? "+" : ""}${newLines - oldLines})`,
+  preview: `Verified content snippet:\n${previewSnippet}`,
+  refreshInstruction: "Edit verified on disk. Tell the user: pull-to-refresh on mobile or hard-refresh on web (Ctrl+Shift+R) to see the change.",
+};
+
+Pros and Cons of This Approach
+Pros:
+ * Simple and Safe: It uses built-in tools (fs) without needing complex third-party software like WebSockets.
+ * Clear Instructions: It directly tells the AI to remind you how to see the changes (pull-to-refresh on your iPhone or a hard refresh on your PC).
+Cons:
+ * Manual Effort: You still have to manually refresh the screen every time an edit is finished instead of it happening automatically.
+Summary Key Takeaways
+This update fixes the fake success problem by forcing the server to double-check its own work. If the text is missing, it throws an error. If it works, it passes a specific instruction to the AI to tell you to manually refresh the app to see your new features.
+Follow-Up Questions
+ * Are both edit_source_file handlers located in artifacts/api-server/src/routes/gemini/index.ts as expected?
+ * Does your current Phase 3 system prompt need to be updated with the exact wording for the refresh instructions, or does the tool response handle it entirely?
+ * Have you tested a dummy edit yet to confirm the AI correctly passes the refresh message to you?
+Would you like me to draft the exact prompt update for the Phase 3 instructions to ensure the AI always repeats the refresh command?
