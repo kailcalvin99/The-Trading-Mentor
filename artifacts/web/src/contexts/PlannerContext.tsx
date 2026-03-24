@@ -13,6 +13,7 @@ interface PlannerState {
   routineConfig: RoutineItem[];
   isRoutineComplete: boolean;
   routineCompletedToday: boolean;
+  plannerLoaded: boolean;
   toggleItem: (key: string) => void;
   resetRoutine: () => void;
 }
@@ -34,6 +35,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   const { config } = useAppConfig();
   const [routineItems, setRoutineItems] = useState<Record<string, boolean>>({});
   const [todayKey, setTodayKey] = useState(getTodayKey);
+  const [plannerLoaded, setPlannerLoaded] = useState(false);
 
   let routineConfig: RoutineItem[] = FALLBACK_ITEMS;
   try {
@@ -46,18 +48,19 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const key = todayKey;
     const stored = localStorage.getItem(key);
+    const merged: Record<string, boolean> = {};
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        const merged: Record<string, boolean> = {};
         routineKeys.forEach((k) => { merged[k] = !!parsed[k]; });
-        setRoutineItems(merged);
-        return;
-      } catch {}
+      } catch {
+        routineKeys.forEach((k) => { merged[k] = false; });
+      }
+    } else {
+      routineKeys.forEach((k) => { merged[k] = false; });
     }
-    const defaults: Record<string, boolean> = {};
-    routineKeys.forEach((k) => { defaults[k] = false; });
-    setRoutineItems(defaults);
+    setRoutineItems(merged);
+    setPlannerLoaded(true);
   }, [config.routine_items, todayKey]);
 
   useEffect(() => {
@@ -70,6 +73,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const scheduleReset = () => {
       timeoutId = setTimeout(() => {
         setTodayKey(getTodayKey());
+        setPlannerLoaded(false);
         scheduleReset();
       }, msUntilMidnight());
     };
@@ -96,10 +100,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     persist(reset);
   }, [routineKeys, persist]);
 
-  const isRoutineComplete = routineKeys.length > 0 && routineKeys.every((k) => routineItems[k]);
+  const isRoutineComplete = plannerLoaded && routineKeys.length > 0 && routineKeys.every((k) => routineItems[k]);
 
   return (
-    <PlannerContext.Provider value={{ routineItems, routineConfig, isRoutineComplete, routineCompletedToday: isRoutineComplete, toggleItem, resetRoutine }}>
+    <PlannerContext.Provider value={{ routineItems, routineConfig, isRoutineComplete, routineCompletedToday: isRoutineComplete, plannerLoaded, toggleItem, resetRoutine }}>
       {children}
     </PlannerContext.Provider>
   );

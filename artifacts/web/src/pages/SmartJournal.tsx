@@ -170,7 +170,7 @@ function StressSliderControl({ value, onChange }: { value: number; onChange: (v:
 
 export default function SmartJournal() {
   const { tierLevel, appMode } = useAuth();
-  const { isRoutineComplete, routineCompletedToday } = usePlanner();
+  const { isRoutineComplete, routineCompletedToday, routineItems, routineConfig, plannerLoaded } = usePlanner();
   const { getNumber } = useAppConfig();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -573,7 +573,18 @@ export default function SmartJournal() {
     );
   }
 
+  if (!plannerLoaded) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center">
+        <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+      </div>
+    );
+  }
+
   if (!routineCompletedToday) {
+    const coreKeys = routineConfig.map((r) => r.key);
+    const doneCount = coreKeys.filter((k) => routineItems[k]).length;
+    const totalCount = coreKeys.length;
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-8 text-center">
         <div className="p-5 rounded-full bg-amber-500/10 border border-amber-500/20">
@@ -584,6 +595,25 @@ export default function SmartJournal() {
           <p className="text-muted-foreground leading-relaxed">
             The Smart Journal is locked until you finish your morning routine. Build the discipline habit — routine first, then trade, then log.
           </p>
+        </div>
+        <div className="flex flex-col items-center gap-3">
+          <span className="text-amber-400 font-bold text-lg">
+            {doneCount} of {totalCount} done
+          </span>
+          <div className="flex flex-col items-start gap-2 text-sm">
+            {routineConfig.map((item) => (
+              <div key={item.key} className="flex items-center gap-2">
+                {routineItems[item.key] ? (
+                  <span className="text-green-400">✓</span>
+                ) : (
+                  <span className="text-muted-foreground">○</span>
+                )}
+                <span className={routineItems[item.key] ? "text-green-400" : "text-muted-foreground"}>
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
         <Link
           to="/planner"

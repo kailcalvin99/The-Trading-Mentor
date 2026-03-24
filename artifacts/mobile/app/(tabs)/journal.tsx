@@ -139,7 +139,7 @@ export default function JournalScreen() {
   const router = useRouter();
   const { new: newParam } = useLocalSearchParams<{ new?: string }>();
   const tierLevel = user?.role === "admin" ? 2 : (subscription?.tierLevel ?? 0);
-  const { isRoutineComplete, routineCompletedToday } = usePlanner();
+  const { isRoutineComplete, routineCompletedToday, routineItems, plannerLoaded } = usePlanner();
   const qc = useQueryClient();
   const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
@@ -490,7 +490,30 @@ export default function JournalScreen() {
     );
   }
 
+  if (!plannerLoaded) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["bottom"]}>
+        <View style={[styles.headerRow, { paddingTop: 20 }]}>
+          <Text style={styles.title}>Smart Journal</Text>
+        </View>
+        <View style={styles.lockedCenter}>
+          <Ionicons name="time-outline" size={36} color="#6B7280" />
+          <Text style={[styles.lockedSubtitle, { marginTop: 12 }]}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!routineCompletedToday) {
+    const CORE_KEYS = ["water", "breathing", "news", "bias"] as const;
+    const CORE_LABELS: Record<string, string> = {
+      water: "Drink Water",
+      breathing: "Breathing Exercise",
+      news: "Check for News",
+      bias: "Big Picture Chart",
+    };
+    const doneCount = CORE_KEYS.filter((k) => routineItems[k]).length;
+    const totalCount = CORE_KEYS.length;
     return (
       <SafeAreaView style={styles.safe} edges={["bottom"]}>
         <View style={[styles.headerRow, { paddingTop: 20 }]}>
@@ -504,6 +527,25 @@ export default function JournalScreen() {
           <Text style={styles.lockedSubtitle}>
             The Smart Journal is locked until you finish your morning routine. Build the discipline habit — routine first, then trade, then log.
           </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <Text style={{ color: "#F59E0B", fontWeight: "700", fontSize: 16 }}>
+              {doneCount} of {totalCount} done
+            </Text>
+          </View>
+          <View style={{ width: "100%", maxWidth: 280, marginBottom: 16, gap: 6 }}>
+            {CORE_KEYS.map((k) => (
+              <View key={k} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons
+                  name={routineItems[k] ? "checkmark-circle" : "ellipse-outline"}
+                  size={18}
+                  color={routineItems[k] ? "#00C896" : "#6B7280"}
+                />
+                <Text style={{ color: routineItems[k] ? "#00C896" : "#9CA3AF", fontSize: 14 }}>
+                  {CORE_LABELS[k]}
+                </Text>
+              </View>
+            ))}
+          </View>
           <TouchableOpacity style={styles.lockedBtn} onPress={() => router.navigate("/(tabs)/index" as never)}>
             <Text style={styles.lockedBtnText}>Go to Morning Routine</Text>
           </TouchableOpacity>

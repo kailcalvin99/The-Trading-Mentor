@@ -15,6 +15,7 @@ interface PlannerState {
   routineItems: Record<RoutineKey, boolean>;
   isRoutineComplete: boolean;
   routineCompletedToday: boolean;
+  plannerLoaded: boolean;
   hasRedNews: boolean;
   toggleItem: (key: RoutineKey) => void;
   toggleRedNews: () => void;
@@ -52,6 +53,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   const [hasRedNews, setHasRedNews] = useState(false);
   const [customItems, setCustomItems] = useState<CustomRoutineItem[]>([]);
   const [lastLoadedDate, setLastLoadedDate] = useState(getTodayDate());
+  const [plannerLoaded, setPlannerLoaded] = useState(false);
 
   const loadCustomItems = useCallback((forceReset = false) => {
     Promise.all([
@@ -79,7 +81,6 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.setItem(CUSTOM_ITEMS_LAST_RESET_KEY, today);
         }
       } catch {
-        // corrupted data — reset
         AsyncStorage.removeItem(CUSTOM_ITEMS_KEY);
         AsyncStorage.removeItem(CUSTOM_ITEMS_LAST_RESET_KEY);
       }
@@ -87,13 +88,24 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem(getTodayKey()).then((val) => {
-      if (val) {
-        const saved = JSON.parse(val);
-        setRoutineItems(saved.routineItems ?? DEFAULT_ITEMS);
-        setHasRedNews(saved.hasRedNews ?? false);
-      }
-    });
+    AsyncStorage.getItem(getTodayKey())
+      .then((val) => {
+        if (val) {
+          try {
+            const saved = JSON.parse(val);
+            setRoutineItems(saved.routineItems ?? DEFAULT_ITEMS);
+            setHasRedNews(saved.hasRedNews ?? false);
+          } catch {
+            // corrupted — keep defaults
+          }
+        }
+      })
+      .catch(() => {
+        // storage read failed — keep defaults
+      })
+      .finally(() => {
+        setPlannerLoaded(true);
+      });
     loadCustomItems();
   }, [loadCustomItems]);
 
@@ -205,6 +217,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
         routineItems,
         isRoutineComplete,
         routineCompletedToday: isRoutineComplete,
+        plannerLoaded,
         hasRedNews,
         toggleItem,
         toggleRedNews,
@@ -227,3 +240,6 @@ export function usePlanner() {
   if (!ctx) throw new Error("usePlanner must be used within PlannerProvider");
   return ctx;
 }
+
+export { ROUTINE_KEYS };
+export type { RoutineKey };
