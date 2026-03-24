@@ -50,8 +50,20 @@ function isPortInUse(port: number): Promise<boolean> {
   });
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function waitForPortFree(port: number, timeoutMs: number, intervalMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  
+  while (Date.now() < deadline) {
+    const inUse = await isPortInUse(port);
+    if (!inUse) {
+      return true; // The port is free!
+    }
+    await sleep(intervalMs); // Wait a bit before checking again
+  }
+  
+  return false; // Time ran out
 }
 
 async function killPortOccupant(port: number): Promise<void> {
@@ -101,35 +113,35 @@ async function killPortOccupant(port: number): Promise<void> {
   }
 }
 
-async function preparePort(port: number, maxAttempts: number = 8): Promise<number> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+async function preparePort(port: number, maxKillAttempts: number = 3): Promise<number> {
+  for (let attempt = 1; attempt <= maxKillAttempts; attempt++) {
     const inUse = await isPortInUse(port);
-    if (!inUse) return port;
-
-    console.warn(`Port ${port} is occupied (attempt ${attempt}/${maxAttempts}). Attempting to free it...`);
-    await killPortOccupant(port);
-
-    const delayMs = Math.min(300 * Math.pow(2, attempt - 1), 3000);
-    await sleep(delayMs);
-  }
-
-  const stillInUse = await isPortInUse(port);
-  if (stillInUse) {
-    console.warn(`Unable to free port ${port} after ${maxAttempts} attempts. Searching for fallback port...`);
-
-    for (let candidate = port + 1; candidate <= port + 20; candidate++) {
-      const candidateInUse = await isPortInUse(candidate);
-      if (!candidateInUse) {
-        console.warn(`WARNING: Falling back to port ${candidate} instead of ${port}`);
-        return candidate;
-      }
+    if (!inUse) {
+      return port;   // Success, the port is free
     }
-
-    console.warn(`WARNING: All nearby ports occupied. Will let the OS assign a free port.`);
-    return 0;
+    
+    console.log(`Port ${port} occupied, attempting kill... (Attempt ${attempt}/${maxKillAttempts})`);
+    await killPortOccupant(port);
+    
+    // POLL for the port to be free (up to 5 seconds, checking every 200ms)
+    const freed = await waitForPortFree(port, 5000, 200);
+    if (freed) {
+      return port;   // Kill worked, port is free
+    }
+    
+    console.log(`Port ${port} still occupied after kill attempt ${attempt}/${maxKillAttempts}`);
   }
-
-  return port;
+  
+  // All kill attempts exhausted — fall back to a nearby port
+  console.log(`Could not free port ${port}. Looking for a backup port...`);
+  for (let candidate = port + 1; candidate <= port + 20; candidate++) {
+    const candidateInUse = await isPortInUse(candidate);
+    if (!candidateInUse) {
+      return candidate;
+    }
+  }
+  
+  return 0;  // Let the OS assign a random port
 }
 
 function bindServer(port: number): Promise<{ server: ReturnType<typeof app.listen>; boundPort: number }> {
