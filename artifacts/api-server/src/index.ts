@@ -39,14 +39,15 @@ async function initStripe() {
 
 function isPortInUse(port: number): Promise<boolean> {
   return new Promise((resolve) => {
-    const probe = net.createServer();
+    const probe = net.createConnection({ port, host: "127.0.0.1" });
+    probe.once("connect", () => {
+      probe.destroy();
+      resolve(true);
+    });
     probe.once("error", (err: NodeJS.ErrnoException) => {
-      resolve(err.code === "EADDRINUSE");
+      probe.destroy();
+      resolve(err.code !== "ECONNREFUSED");
     });
-    probe.once("listening", () => {
-      probe.close(() => resolve(false));
-    });
-    probe.listen(port, "0.0.0.0");
   });
 }
 
