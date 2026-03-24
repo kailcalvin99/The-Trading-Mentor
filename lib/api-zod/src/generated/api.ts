@@ -90,6 +90,7 @@ export const SendGeminiMessageParams = zod.object({
 
 export const SendGeminiMessageBody = zod.object({
   content: zod.string(),
+  isCodeEditor: zod.boolean().optional(),
 });
 
 /**

@@ -148,7 +148,8 @@ export async function streamMessage(
   onDone: () => void,
   onError: (err: string) => void,
   pageContext?: Record<string, unknown>,
-  onToolCall?: (toolCall: ToolCallEvent) => void
+  onToolCall?: (toolCall: ToolCallEvent) => void,
+  isCodeEditor?: boolean
 ): Promise<void> {
   const headers = await authHeaders();
   const res = await fetch(
@@ -160,7 +161,7 @@ export async function streamMessage(
         Accept: "text/event-stream",
         ...headers,
       },
-      body: JSON.stringify({ content, pageContext }),
+      body: JSON.stringify({ content, pageContext, ...(isCodeEditor ? { isCodeEditor: true } : {}) }),
       credentials: "include",
     }
   );

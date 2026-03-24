@@ -368,6 +368,26 @@ When an admin asks you to read, fix, or update source files or your own system p
 - Never write a file without explicit admin confirmation in the current conversation.
 - Always preserve the existing file structure and formatting unless the admin specifically asks you to change it.`;
 
+export const CODE_EDITOR_SYSTEM_PROMPT = `You are a code editing agent for the ICT Trading Mentor platform. Your only job is to make code changes. You never ask about settings, data, or configurations — you treat every instruction as a code editing task.
+
+RULES — follow these without exception:
+
+1. ALWAYS interpret the user's message as a code change request. Never ask "what setting is that?" or respond conversationally about data.
+2. IMMEDIATELY use \`read_source_file\` to locate the relevant code. If no file is specified, search by feature name, component name, or keyword. Read multiple candidate files until you find the relevant code.
+3. MAKE the change using \`write_source_file\`. Do NOT ask for confirmation before writing — just make the change.
+4. AFTER writing, confirm exactly what you changed and what effect it will have.
+
+WORKFLOW (always follow this order):
+- Step 1 — Read: Use \`read_source_file\` to find and read the relevant source file(s).
+- Step 2 — Edit: Apply the requested change and use \`write_source_file\` to save it.
+- Step 3 — Confirm: Report what was changed and where.
+
+You have two tools available:
+- \`read_source_file(path)\` — Read a file from the artifacts directory.
+- \`write_source_file(path, content)\` — Overwrite a file with new content.
+
+Safety: You may only read or write files inside the \`artifacts/\` directory. Never go outside that boundary.`;
+
 async function getSystemPrompt(): Promise<string> {
   try {
     const [row] = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "ai_mentor_system_prompt"));
@@ -567,6 +587,33 @@ const ADMIN_TOOL_DECLARATIONS = [
         reason: { type: "STRING" as Type, description: "Brief explanation of why the prompt is being updated" },
       },
       required: ["prompt", "reason"],
+    },
+  },
+];
+
+const CODE_EDITOR_TOOL_DECLARATIONS = [
+  {
+    name: "read_source_file",
+    description: "Read the contents of a source file inside the artifacts/ directory. Always read the relevant file(s) before making any edits.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {
+        path: { type: "STRING" as Type, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "write_source_file",
+    description: "Overwrite a source file inside the artifacts/ directory with new content. Make the change immediately after reading — no confirmation required.",
+    parameters: {
+      type: "OBJECT" as Type,
+      properties: {
+        path: { type: "STRING" as Type, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
+        content: { type: "STRING" as Type, description: "The full new content to write to the file" },
+        reason: { type: "STRING" as Type, description: "Brief description of what changed and why" },
+      },
+      required: ["path", "content", "reason"],
     },
   },
 ];
@@ -1532,12 +1579,16 @@ router.post("/conversations/:id/messages", async (req, res) => {
       parts: [{ text: body.content }],
     });
 
-    const tools = isAdmin
-      ? [...USER_TOOL_DECLARATIONS, ...ADMIN_TOOL_DECLARATIONS]
-      : USER_TOOL_DECLARATIONS;
+    const isCodeEditor = body.isCodeEditor === true;
 
-    let systemPrompt = await getSystemPrompt();
-    if (pageContext) {
+    const tools = isCodeEditor
+      ? CODE_EDITOR_TOOL_DECLARATIONS
+      : isAdmin
+        ? [...USER_TOOL_DECLARATIONS, ...ADMIN_TOOL_DECLARATIONS]
+        : USER_TOOL_DECLARATIONS;
+
+    let systemPrompt = isCodeEditor ? CODE_EDITOR_SYSTEM_PROMPT : await getSystemPrompt();
+    if (!isCodeEditor && pageContext) {
       systemPrompt += `\n\nCurrent app context:\n- Current page: ${pageContext.currentPage || "unknown"}\n- Route: ${pageContext.route || "/"}\n`;
       if (pageContext.pageData) {
         systemPrompt += `- Page data: ${JSON.stringify(pageContext.pageData)}\n`;

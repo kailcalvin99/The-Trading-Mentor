@@ -196,8 +196,8 @@ export default function CodeEditorScreen() {
     abortRef.current = false;
 
     const context = selectedFile
-      ? `[Context: currently viewing file "${selectedFile}"] ${userText}`
-      : userText;
+      ? `[Code Editor Instruction — currently viewing file "${selectedFile}"] ${userText}`
+      : `[Code Editor Instruction — no file selected. Search the file list, read candidate files to locate the relevant code, then make the change.] ${userText}`;
 
     setChatMessages((prev) => [
       ...prev,
@@ -281,7 +281,8 @@ export default function CodeEditorScreen() {
             }
           }
         }
-      }
+      },
+      true
     );
   }
 
