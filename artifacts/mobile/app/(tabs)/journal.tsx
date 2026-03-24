@@ -364,9 +364,6 @@ export default function JournalScreen() {
   const handleSubmit = useCallback(async () => {
     if (!form.pair || !form.riskPct) return Alert.alert("Fill in pair and risk %");
     try {
-      if (editingDraftId) {
-        await deleteTradeMut({ id: editingDraftId });
-      }
       const notesWithMode = form.notes || "";
       const safeSetupScore = Number.isInteger(liveSetupScore) && !isNaN(liveSetupScore) ? liveSetupScore : 0;
       const result = await createTradeMut({
@@ -385,6 +382,11 @@ export default function JournalScreen() {
           tradingSession: form.tradingSession || undefined,
         },
       });
+      if (editingDraftId) {
+        deleteTradeMut({ id: editingDraftId }).catch((e: unknown) => {
+          console.warn("[handleSubmit] Draft delete failed (trade already saved):", e);
+        });
+      }
       if (appMode === "full") {
         const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
         const recentNegativeCount = completedTrades.filter(
