@@ -1,123 +1,46 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import CookieNotice from "@/components/CookieNotice";
-import { PlannerProvider } from "@/contexts/PlannerContext";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { AppConfigProvider } from "@/contexts/AppConfigContext";
-import { TourGuideProvider } from "@/contexts/TourGuideContext";
-import Layout from "@/components/Layout";
-import OnboardingQuiz, { hasCompletedQuiz, hasExistingAcademyProgress } from "@/components/OnboardingQuiz";
-import Welcome from "@/pages/Welcome";
-import Login from "@/pages/Login";
-import Signup from "@/pages/Signup";
-import Pricing from "@/pages/Pricing";
-import DailyPlanner from "@/pages/DailyPlanner";
-import IctAcademy from "@/pages/IctAcademy";
-import RiskShield from "@/pages/RiskShield";
-import PropTracker from "@/pages/PropTracker";
-import SmartJournal from "@/pages/SmartJournal";
-import Analytics from "@/pages/Analytics";
-import Admin from "@/pages/Admin";
-import Settings from "@/pages/Settings";
-import Dashboard from "@/pages/Dashboard";
-import Community from "@/pages/Community";
-import TradingViewWebhooks from "@/pages/TradingViewWebhooks";
-import Leaderboard from "@/pages/Leaderboard";
-import RefundPolicy from "@/pages/RefundPolicy";
-import TermsOfService from "@/pages/TermsOfService";
-import PrivacyPolicy from "@/pages/PrivacyPolicy";
-import RiskDisclosure from "@/pages/RiskDisclosure";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import VideoTourPage from "@/pages/VideoTourPage";
-import VideoLibrary from "@/pages/VideoLibrary";
-import NotFound from "@/pages/not-found";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60,
-      retry: 1,
-    },
-  },
-});
-
-function ResetApp() {
-  localStorage.clear();
-  window.location.href = import.meta.env.BASE_URL + "welcome";
-  return null;
-}
-
-function QuizGate({ children }: { children: React.ReactNode }) {
-  const [showQuiz, setShowQuiz] = useState(() => {
-    if (hasCompletedQuiz()) return false;
-    if (hasExistingAcademyProgress()) return false;
-    return true;
-  });
-
-  if (showQuiz) {
-    return <OnboardingQuiz onComplete={() => setShowQuiz(false)} />;
-  }
-
-  return <>{children}</>;
-}
-
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <QuizGate>{children}</QuizGate>;
-}
-
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-function OpenRoute({ children }: { children: React.ReactNode }) {
-  const { loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
-
-function FullModeGate({ children }: { children: React.ReactNode; routeKey?: string }) {
-  return <>{children}</>;
-}
+import { useEffect } from "react";
+import {
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+  useLocation,
+} from "react-router-dom";
+import { Toaster } from "sonner";
+import { useAuth } from "./contexts/AuthContext";
+import { AppConfigProvider } from "./contexts/AppConfigContext"; // Import AppConfigProvider
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import SmartJournal from "./pages/SmartJournal";
+import RiskShield from "./pages/RiskShield"; // Not actively used for /risk-shield route
+import DailyPlanner from "./pages/DailyPlanner";
+import IctAcademy from "./pages/IctAcademy";
+import Analytics from "./pages/Analytics";
+import PropTracker from "./pages/PropTracker";
+import Community from "./pages/Community";
+import Leaderboard from "./pages/Leaderboard";
+import Admin from "./pages/Admin";
+import Pricing from "./pages/Pricing";
+import VideoLibrary from "./pages/VideoLibrary";
+import TradingViewWebhooks from "./pages/TradingViewWebhooks";
+import Settings from "./pages/Settings";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Welcome from "./pages/Welcome";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import VideoTourPage from "./pages/VideoTourPage";
+import RefundPolicy from "./pages/RefundPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import RiskDisclosure from "./pages/RiskDisclosure";
+import NotFound from "./pages/not-found";
+import { AuthGuard, AdminGuard, TierGuard } from "./components/AuthGuard";
+import { TourGuideProvider } from "./contexts/TourGuideContext";
+import { PlannerProvider } from "./contexts/PlannerContext";
+import { useMobile } from "./hooks/use-mobile";
+import { AIAssistant } from "./components/AIAssistant";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 function IndexRoute() {
   const { user, loading } = useAuth();
@@ -130,63 +53,71 @@ function IndexRoute() {
     );
   }
 
+  // If user is authenticated, redirect to /dashboard
   if (user) return <Navigate to="/dashboard" replace />;
   return <Welcome />;
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
+
 function App() {
+  const isMobile = useMobile();
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AppConfigProvider>
-          <AuthProvider>
-            <PlannerProvider>
-            <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <AppConfigProvider>
+        <TourGuideProvider>
+          <PlannerProvider>
+            <Router>
+              <ScrollToTop />
               <Routes>
-                <Route index element={<IndexRoute />} />
+                <Route path="/" element={<IndexRoute />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/welcome" element={<Welcome />} /> {/* Added for explicit welcome access */}
+                <Route path="/video-tour" element={<VideoTourPage />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/terms-of-service" element={<TermsOfService />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/risk-disclosure" element={<RiskDisclosure />} />
+                <Route path="/pricing" element={<Pricing />} />
 
-                <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
-                <Route path="signup" element={<PublicRoute><Signup /></PublicRoute>} />
-
-                <Route path="welcome" element={<OpenRoute><Welcome /></OpenRoute>} />
-                <Route path="pricing" element={<OpenRoute><Pricing /></OpenRoute>} />
-                <Route path="refund" element={<OpenRoute><RefundPolicy /></OpenRoute>} />
-                <Route path="terms" element={<OpenRoute><TermsOfService /></OpenRoute>} />
-                <Route path="privacy" element={<OpenRoute><PrivacyPolicy /></OpenRoute>} />
-                <Route path="risk-disclosure" element={<OpenRoute><RiskDisclosure /></OpenRoute>} />
-                <Route path="forgot-password" element={<OpenRoute><ForgotPassword /></OpenRoute>} />
-                <Route path="reset-password" element={<OpenRoute><ResetPassword /></OpenRoute>} />
-
-                <Route element={<ProtectedRoute><TourGuideProvider><Layout /></TourGuideProvider></ProtectedRoute>}>
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="academy" element={<IctAcademy />} />
-                  <Route path="planner" element={<FullModeGate routeKey="planner"><DailyPlanner /></FullModeGate>} />
-                  <Route path="risk-shield" element={<Navigate to="/planner" replace />} />
-                  <Route path="prop-tracker" element={<FullModeGate routeKey="prop-tracker"><PropTracker /></FullModeGate>} />
-                  <Route path="journal" element={<SmartJournal />} />
-                  <Route path="analytics" element={<FullModeGate routeKey="analytics"><Analytics /></FullModeGate>} />
-                  <Route path="videos" element={<FullModeGate routeKey="videos"><VideoLibrary /></FullModeGate>} />
-                  <Route path="community" element={<Community />} />
-                  <Route path="leaderboard" element={<FullModeGate routeKey="leaderboard"><Leaderboard /></FullModeGate>} />
-                  <Route path="webhooks" element={<FullModeGate routeKey="webhooks"><TradingViewWebhooks /></FullModeGate>} />
-                  <Route path="admin" element={<Admin />} />
-                  <Route path="settings" element={<Settings />} />
-                  <Route path="*" element={<NotFound />} />
+                <Route element={<AuthGuard />}>
+                  <Route path="/" element={<Layout />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/academy" element={<IctAcademy />} />
+                    <Route path="/videos" element={<VideoLibrary />} />
+                    <Route path="/planner" element={<DailyPlanner />} />
+                    <Route path="/risk-shield" element={<Navigate to="/planner" replace />} /> {/* Redirect to planner for now */}
+                    <Route path="/prop-tracker" element={<TierGuard requiredTier={1}><PropTracker /></TierGuard>} />
+                    <Route path="/journal" element={<TierGuard requiredTier={2}><SmartJournal /></TierGuard>} />
+                    <Route path="/analytics" element={<TierGuard requiredTier={2}><Analytics /></TierGuard>} />
+                    <Route path="/leaderboard" element={<TierGuard requiredTier={2}><Leaderboard /></TierGuard>} />
+                    <Route path="/webhooks" element={<TierGuard requiredTier={2}><TradingViewWebhooks /></TierGuard>} />
+                    <Route path="/community" element={<Community />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/admin" element={<AdminGuard><Admin /></AdminGuard>} />
+                  </Route>
                 </Route>
-
-                <Route path="video-tour" element={<ProtectedRoute><VideoTourPage /></ProtectedRoute>} />
-
-                <Route path="reset" element={<ResetApp />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
-              <CookieNotice />
-            </BrowserRouter>
-            <Toaster />
-            </PlannerProvider>
-          </AuthProvider>
-        </AppConfigProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+              {!isMobile && <AIAssistant />}
+              <Toaster richColors position="top-right" />
+            </Router>
+          </PlannerProvider>
+        </TourGuideProvider>
+      </AppConfigProvider>
+    </ThemeProvider>
   );
 }
 
