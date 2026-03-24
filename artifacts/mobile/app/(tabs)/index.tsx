@@ -494,7 +494,7 @@ function PlannerScreen() {
   const criteriaCompleteCount = ENTRY_CRITERIA.filter((c) => plan.entryCriteria[c.key]).length;
   const allCriteriaGreen = criteriaCompleteCount === ENTRY_CRITERIA.length;
 
-  const biasSelected = plan.bias === "bull" || plan.bias === "bear";
+  const biasSelected = plan.bias === "bull" || plan.bias === "bear" || plan.bias === "neutral";
 
   const probScore = (() => {
     let score = 0;

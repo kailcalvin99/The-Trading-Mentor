@@ -436,7 +436,7 @@ export default function DailyPlanner() {
   }
 
   const bias = dayData.tradePlan.bias;
-  const biasSelected = bias === "bullish" || bias === "bearish";
+  const biasSelected = bias === "bullish" || bias === "bearish" || bias === "neutral";
 
   const probScore = (() => {
     let score = 0;
