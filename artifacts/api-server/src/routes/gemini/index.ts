@@ -2111,64 +2111,68 @@ router.post("/conversations/:id/messages", async (req, res) => {
     }
 
     let fullResponse = "";
+    let currentContents: Array<{ role: "user" | "model"; parts: Array<Record<string, unknown>> }> = chatHistory;
+    const MAX_AGENTIC_TURNS = 8;
 
-    const stream = await ai.models.generateContentStream({
-      model: "gemini-2.5-flash",
-      contents: chatHistory,
-      config: {
-        maxOutputTokens: 8192,
-        systemInstruction: systemPrompt,
-        tools: [{ functionDeclarations: tools }],
-      },
-    });
+    for (let turn = 0; turn < MAX_AGENTIC_TURNS; turn++) {
+      const stream = await ai.models.generateContentStream({
+        model: "gemini-2.5-flash",
+        contents: currentContents,
+        config: {
+          maxOutputTokens: 8192,
+          systemInstruction: systemPrompt,
+          tools: [{ functionDeclarations: tools }],
+        },
+      });
 
-    for await (const chunk of stream) {
-      if (chunk.candidates && chunk.candidates[0]?.content?.parts) {
-        for (const part of chunk.candidates[0].content.parts) {
-          if (part.text) {
-            fullResponse += part.text;
-            res.write(`data: ${JSON.stringify({ content: part.text })}\n\n`);
-          }
-          if (part.functionCall) {
-            const toolName = part.functionCall.name;
-            const toolArgs = (part.functionCall.args || {}) as Record<string, unknown>;
+      const turnFunctionCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+      const turnModelParts: Array<{ text?: string; functionCall?: { name: string; args: Record<string, unknown> } }> = [];
 
-            const result = await executeToolCall(toolName!, toolArgs, userId, isAdmin);
-
-            res.write(`data: ${JSON.stringify({ toolCall: { name: toolName, args: toolArgs, result } })}\n\n`);
-
-            const toolResponseContent = [{
-              role: "model" as const,
-              parts: [{ functionCall: { name: toolName!, args: toolArgs } }],
-            }, {
-              role: "user" as const,
-              parts: [{ functionResponse: { name: toolName!, response: result } }],
-            }];
-
-            const followUp = await ai.models.generateContentStream({
-              model: "gemini-2.5-flash",
-              contents: [...chatHistory, ...toolResponseContent],
-              config: {
-                maxOutputTokens: 4096,
-                systemInstruction: systemPrompt,
-              },
-            });
-
-            for await (const followChunk of followUp) {
-              const text = followChunk.text;
-              if (text) {
-                fullResponse += text;
-                res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
-              }
+      for await (const chunk of stream) {
+        if (chunk.candidates && chunk.candidates[0]?.content?.parts) {
+          for (const part of chunk.candidates[0].content.parts) {
+            if (part.text) {
+              fullResponse += part.text;
+              res.write(`data: ${JSON.stringify({ content: part.text })}\n\n`);
+              turnModelParts.push({ text: part.text });
+            }
+            if (part.functionCall) {
+              const toolName = part.functionCall.name;
+              const toolArgs = (part.functionCall.args || {}) as Record<string, unknown>;
+              turnFunctionCalls.push({ name: toolName!, args: toolArgs });
+              turnModelParts.push({ functionCall: { name: toolName!, args: toolArgs } });
             }
           }
+        } else {
+          const text = chunk.text;
+          if (text) {
+            fullResponse += text;
+            res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
+            turnModelParts.push({ text });
+          }
         }
-      } else {
-        const text = chunk.text;
-        if (text) {
-          fullResponse += text;
-          res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
-        }
+      }
+
+      if (turnFunctionCalls.length === 0) {
+        break;
+      }
+
+      const toolResponseParts: Array<{ functionResponse: { name: string; response: unknown } }> = [];
+
+      for (const fc of turnFunctionCalls) {
+        const result = await executeToolCall(fc.name, fc.args, userId, isAdmin);
+        res.write(`data: ${JSON.stringify({ toolCall: { name: fc.name, args: fc.args, result } })}\n\n`);
+        toolResponseParts.push({ functionResponse: { name: fc.name, response: result } });
+      }
+
+      currentContents = [
+        ...currentContents,
+        { role: "model" as const, parts: turnModelParts },
+        { role: "user" as const, parts: toolResponseParts },
+      ];
+
+      if (turn === MAX_AGENTIC_TURNS - 1) {
+        res.write(`data: ${JSON.stringify({ error: "Max tool call iterations reached" })}\n\n`);
       }
     }
 
