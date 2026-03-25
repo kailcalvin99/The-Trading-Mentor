@@ -24,7 +24,7 @@ export default function Pricing() {
   const [founderLimit, setFounderLimit] = useState(20);
   const [founderDiscountPct, setFounderDiscountPct] = useState(50);
   const [subscribing, setSubscribing] = useState<number | null>(null);
-  const { user, subscription, refreshUser } = useAuth();
+  const { user, subscription, refreshUser, isAdmin, tierLevel } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -208,7 +208,7 @@ export default function Pricing() {
           {tiers.map((tier, i) => {
             const Icon = tierIcons[i] || Star;
             const price = getPrice(tier);
-            const isCurrentTier = subscription?.tierId === tier.id;
+            const isCurrentTier = isAdmin ? tier.level === tierLevel : subscription?.tierId === tier.id;
             const originalPrice = annual ? parseFloat(tier.annualPrice) / 12 : parseFloat(tier.monthlyPrice);
             const hasFounderDiscount = user?.isFounder && tier.level > 0;
 
@@ -267,29 +267,36 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                <button
-                  onClick={() => handleUpgrade(tier.id, tier.level)}
-                  disabled={isCurrentTier || subscribing === tier.id}
-                  className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                    isCurrentTier
-                      ? "bg-muted text-muted-foreground cursor-default"
-                      : tier.level === 2
-                        ? "bg-gradient-to-r from-amber-500 to-primary text-white hover:opacity-90"
-                        : tier.level === 1
-                          ? "bg-primary text-primary-foreground hover:opacity-90"
-                          : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {subscribing === tier.id ? (
-                    <div className="h-5 w-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                  ) : isCurrentTier ? (
-                    "Current Plan"
-                  ) : tier.level === 0 ? (
-                    "Downgrade to Free"
-                  ) : (
-                    `Upgrade to ${tier.name}`
-                  )}
-                </button>
+                {!isAdmin && (
+                  <button
+                    onClick={() => handleUpgrade(tier.id, tier.level)}
+                    disabled={isCurrentTier || subscribing === tier.id}
+                    className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                      isCurrentTier
+                        ? "bg-muted text-muted-foreground cursor-default"
+                        : tier.level === 2
+                          ? "bg-gradient-to-r from-amber-500 to-primary text-white hover:opacity-90"
+                          : tier.level === 1
+                            ? "bg-primary text-primary-foreground hover:opacity-90"
+                            : "bg-secondary text-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {subscribing === tier.id ? (
+                      <div className="h-5 w-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                    ) : isCurrentTier ? (
+                      "Current Plan"
+                    ) : tier.level === 0 ? (
+                      "Downgrade to Free"
+                    ) : (
+                      `Upgrade to ${tier.name}`
+                    )}
+                  </button>
+                )}
+                {isAdmin && isCurrentTier && (
+                  <div className="w-full py-3 rounded-xl font-bold text-center bg-muted text-muted-foreground cursor-default">
+                    Current Plan
+                  </div>
+                )}
               </div>
             );
           })}

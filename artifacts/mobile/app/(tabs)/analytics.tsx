@@ -151,7 +151,7 @@ export default function AnalyticsScreenGated() {
 
 function AnalyticsScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
-  const { tierLevel } = useAuth();
+  const { tierLevel, isAdmin } = useAuth();
   const router = useRouter();
   const [expandedChart, setExpandedChart] = useState<"pnl" | "wlb" | null>(null);
   const { data: rawTrades, isLoading } = useListTrades();
@@ -257,7 +257,7 @@ function AnalyticsScreen() {
     } catch {}
   }
 
-  if (tierLevel < 2) {
+  if (!isAdmin && tierLevel < 2) {
     return (
       <SafeAreaView style={s.safe} edges={["bottom"]}>
         <FrostedGate mode="premium">

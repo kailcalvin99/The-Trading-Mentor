@@ -192,7 +192,7 @@ const sb = StyleSheet.create({
 export default function SettingsScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
   const router = useRouter();
-  const { logout, appMode, setAppMode, user, setAvatarUrl, tierLevel } = useAuth();
+  const { logout, appMode, setAppMode, user, setAvatarUrl, tierLevel, isAdmin } = useAuth();
   const [currentAppMode, setCurrentAppMode] = useState<"full" | "lite">(appMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -248,7 +248,7 @@ export default function SettingsScreen() {
         name: settingsData.profile?.name || "",
         email: settingsData.profile?.email || "",
         role: meData.user?.role || "user",
-        tierLevel: meData.subscription?.tierLevel ?? 0,
+        tierLevel: isAdmin ? 2 : (meData.subscription?.tierLevel ?? 0),
         isFounder: meData.user?.isFounder ?? false,
       });
       setTrading({

@@ -3,8 +3,48 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { db, usersTable, userSubscriptionsTable, subscriptionTiersTable, adminSettingsTable, passwordResetTokensTable } from "@workspace/db";
-import { eq, count, and, gt } from "drizzle-orm";
+import { eq, count, and, gt, desc } from "drizzle-orm";
 import { signToken, authRequired, setAuthCookie, clearAuthCookie } from "../../middleware/auth";
+
+async function upsertAdminSubscription(userId: number): Promise<void> {
+  try {
+    const topTiers = await db
+      .select()
+      .from(subscriptionTiersTable)
+      .where(eq(subscriptionTiersTable.isActive, true))
+      .orderBy(desc(subscriptionTiersTable.level))
+      .limit(1);
+
+    if (topTiers.length === 0) return;
+    const topTier = topTiers[0];
+
+    const existing = await db
+      .select()
+      .from(userSubscriptionsTable)
+      .where(eq(userSubscriptionsTable.userId, userId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      if (existing[0].tierId !== topTier.id) {
+        await db
+          .update(userSubscriptionsTable)
+          .set({ tierId: topTier.id, status: "active" })
+          .where(eq(userSubscriptionsTable.userId, userId));
+      }
+    } else {
+      await db.insert(userSubscriptionsTable).values({
+        userId,
+        tierId: topTier.id,
+        status: "active",
+        billingCycle: "monthly",
+        founderDiscount: false,
+        founderDiscountEndsAt: null,
+      });
+    }
+  } catch (err) {
+    console.error("upsertAdminSubscription error:", err);
+  }
+}
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -109,20 +149,24 @@ router.post("/register", registerLimiter, async (req, res) => {
       founderNumber,
     }).returning();
 
-    const defaultTier = await db.select().from(subscriptionTiersTable).where(eq(subscriptionTiersTable.level, 1));
-    if (defaultTier.length > 0) {
-      const founderDiscountMonthsSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_discount_months"));
-      const founderDiscountMonths = founderDiscountMonthsSetting.length > 0 ? parseInt(founderDiscountMonthsSetting[0].value) : 6;
-      const founderDiscountEndsAt = isFounder ? new Date(Date.now() + founderDiscountMonths * 30 * 24 * 60 * 60 * 1000) : null;
+    if (isAdmin) {
+      await upsertAdminSubscription(user.id);
+    } else {
+      const defaultTier = await db.select().from(subscriptionTiersTable).where(eq(subscriptionTiersTable.level, 1));
+      if (defaultTier.length > 0) {
+        const founderDiscountMonthsSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_discount_months"));
+        const founderDiscountMonths = founderDiscountMonthsSetting.length > 0 ? parseInt(founderDiscountMonthsSetting[0].value) : 6;
+        const founderDiscountEndsAt = isFounder ? new Date(Date.now() + founderDiscountMonths * 30 * 24 * 60 * 60 * 1000) : null;
 
-      await db.insert(userSubscriptionsTable).values({
-        userId: user.id,
-        tierId: defaultTier[0].id,
-        status: "active",
-        billingCycle: "monthly",
-        founderDiscount: isFounder,
-        founderDiscountEndsAt,
-      });
+        await db.insert(userSubscriptionsTable).values({
+          userId: user.id,
+          tierId: defaultTier[0].id,
+          status: "active",
+          billingCycle: "monthly",
+          founderDiscount: isFounder,
+          founderDiscountEndsAt,
+        });
+      }
     }
 
     const token = signToken({ userId: user.id, email: user.email });
@@ -170,6 +214,10 @@ router.post("/login", loginLimiter, async (req, res) => {
 
     await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
 
+    if (user.role === "admin") {
+      await upsertAdminSubscription(user.id);
+    }
+
     const token = signToken({ userId: user.id, email: user.email });
     setAuthCookie(res, token);
 
@@ -196,6 +244,10 @@ router.get("/me", authRequired, async (req, res) => {
     if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
+    }
+
+    if (user.role === "admin") {
+      await upsertAdminSubscription(user.id);
     }
 
     const subscription = await db

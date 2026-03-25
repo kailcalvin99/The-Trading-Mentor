@@ -155,17 +155,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // It will "stay" until manually removed from localStorage.
   };
 
-  // Modified isAdmin to include persistent admin status
-  const isAdmin = (user?.role === "admin" || isPersistentAdmin);
+  const isAdmin = user?.role === "admin" || isPersistentAdmin;
+
+  const MAX_TIER_LEVEL = 2;
 
   const hasFeature = (feature: string) => {
-    if (isAdmin) return true; // Admins always have all features, now including persistent admins
+    if (isAdmin) return true;
     if (!subscription) return false;
     const features = subscription.tierFeatures as string[];
     return features.some((f) => f.toLowerCase().includes(feature.toLowerCase()));
   };
 
-  const tierLevel = isAdmin ? 2 : (subscription?.tierLevel ?? 0);
+  const tierLevel = isAdmin ? MAX_TIER_LEVEL : (subscription?.tierLevel ?? 0);
   const appMode: "full" | "lite" = isAdmin ? "full" : (user?.appMode ?? "full");
 
   const setAppMode = useCallback(async (mode: "full" | "lite") => {

@@ -116,7 +116,7 @@ export default function WebhooksScreenGated() {
 }
 
 function WebhooksScreen() {
-  const { tierLevel } = useAuth();
+  const { tierLevel, isAdmin } = useAuth();
   const router = useRouter();
 
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
@@ -127,7 +127,7 @@ function WebhooksScreen() {
   const [expandedStep, setExpandedStep] = useState<number | null>(1);
 
   useEffect(() => {
-    if (tierLevel < 2) return;
+    if (!isAdmin && tierLevel < 2) return;
     setLoading(true);
     fetch(`${API_BASE}/webhook/tradingview/info`, { credentials: "include" })
       .then((r) => r.json())
@@ -140,9 +140,9 @@ function WebhooksScreen() {
       })
       .catch(() => setError("Failed to load webhook info"))
       .finally(() => setLoading(false));
-  }, [tierLevel]);
+  }, [tierLevel, isAdmin]);
 
-  if (tierLevel < 2) {
+  if (!isAdmin && tierLevel < 2) {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom"]}>
         <FrostedGate mode="premium">

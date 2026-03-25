@@ -63,7 +63,7 @@ function TierIcon({ level }: { level: number }) {
 }
 
 export default function SubscriptionScreen() {
-  const { user, subscription, refresh } = useAuth();
+  const { user, subscription, refresh, isAdmin, tierLevel } = useAuth();
 
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [founderDiscountPct, setFounderDiscountPct] = useState(50);
@@ -128,7 +128,7 @@ export default function SubscriptionScreen() {
     setSubscribing(null);
   }
 
-  const currentTierLevel = subscription?.tierLevel ?? 0;
+  const currentTierLevel = tierLevel;
 
   function getDisplayPrice(tier: Tier): number {
     const base = annual
@@ -168,7 +168,9 @@ export default function SubscriptionScreen() {
             <View style={s.currentInfo}>
               <Text style={s.currentLabel}>Current Plan</Text>
               <Text style={s.currentName}>
-                {subscription?.tierName ?? "Free"}
+                {isAdmin
+                  ? (tiers.find((t) => t.level === currentTierLevel)?.name ?? subscription?.tierName ?? "Executive")
+                  : (subscription?.tierName ?? "Free")}
                 {user?.isFounder ? " · Founder" : ""}
               </Text>
             </View>
@@ -267,7 +269,7 @@ export default function SubscriptionScreen() {
                 ))}
               </View>
 
-              {!isCurrent && (
+              {!isCurrent && !isAdmin && (
                 <TouchableOpacity
                   style={[s.upgradeBtn, { backgroundColor: accentColor }]}
                   onPress={() => handleUpgrade(tier)}

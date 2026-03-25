@@ -116,7 +116,7 @@ const NEGATIVE_TAGS = ["FOMO", "Chased", "Revenge", "Greedy", "Angry", "Overtrad
 
 export default function JournalScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
-  const { user, appMode, tierLevel } = useAuth();
+  const { user, appMode, tierLevel, isAdmin } = useAuth();
   const router = useRouter();
   const { new: newParam } = useLocalSearchParams<{ new?: string }>(); 
   const { isRoutineComplete, routineCompletedToday, routineItems, plannerLoaded } = usePlanner();
@@ -480,7 +480,7 @@ export default function JournalScreen() {
 
   const tagInfo = (tag: string) => BEHAVIOR_TAGS.find((b) => b.tag === tag);
 
-  if (tierLevel < 2) {
+  if (!isAdmin && tierLevel < 2) {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom"]}>
         <View style={[styles.headerRow, { paddingTop: 20 }]}>
