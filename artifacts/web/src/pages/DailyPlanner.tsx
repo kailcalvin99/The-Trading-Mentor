@@ -771,6 +771,7 @@ export default function DailyPlanner() {
                   >
                     Set Daily Bias
                   </button>
+                </div>
 
               {!biasSelected && (
                 <div className="relative rounded-xl border border-border overflow-hidden">
@@ -1064,6 +1065,7 @@ export default function DailyPlanner() {
                   </div>
                 </>
               )}
+              </div>
             </div>
           )}
         </CardContent>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
+const TOKEN_KEY = "ICT_TRADING_MENTOR_TOKEN";
 
 interface UserData {
   id: number;
@@ -47,11 +48,39 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function getStoredToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeToken(token: string): void {
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // ignore
+  }
+}
+
+function clearStoredToken(): void {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getStoredToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
-  // State for persistent admin status, initialized from localStorage
   const [isPersistentAdmin, setIsPersistentAdmin] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem("ICT_TRADING_MENTOR_ADMIN");
@@ -66,12 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch(`${API_BASE}/auth/me`, {
         credentials: "include",
+        headers: authHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
         setSubscription(data.subscription);
-        // If the refreshed user is an admin, persist this status
         if (data.user?.role === "admin") {
           setIsPersistentAdmin(true);
           localStorage.setItem("ICT_TRADING_MENTOR_ADMIN", "true");
@@ -103,9 +132,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (res.ok) {
+        if (data.token) storeToken(data.token);
         setUser(data.user);
         await refreshUser();
-        // If logged-in user is admin, make it persistent
         if (data.user?.role === "admin") {
           setIsPersistentAdmin(true);
           localStorage.setItem("ICT_TRADING_MENTOR_ADMIN", "true");
@@ -129,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (res.ok) {
+        if (data.token) storeToken(data.token);
         setUser(data.user);
         await refreshUser();
         return { success: true, isFounder: data.isFounder, founderNumber: data.founderNumber };
@@ -145,14 +175,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
         credentials: "include",
+        headers: authHeaders(),
       });
     } catch (error) {
       console.error("Error during logout API call:", error);
     }
+    clearStoredToken();
     setUser(null);
     setSubscription(null);
-    // As per user instruction, the persistent admin status is NOT cleared here.
-    // It will "stay" until manually removed from localStorage.
   };
 
   const isAdmin = user?.role === "admin" || isPersistentAdmin;
@@ -173,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch(`${API_BASE}/user/settings`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         credentials: "include",
         body: JSON.stringify({ section: "appMode", data: { mode } }),
       });
@@ -189,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch(`${API_BASE}/user-settings/avatar`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         credentials: "include",
         body: JSON.stringify({ avatarUrl: url }),
       });

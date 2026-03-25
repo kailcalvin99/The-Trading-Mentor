@@ -1,4 +1,3 @@
-// This is a test comment
 import { useEffect } from "react";
 import {
   Navigate,
@@ -8,12 +7,12 @@ import {
   useLocation,
 } from "react-router-dom";
 import { Toaster } from "sonner";
-import { useAuth } from "./contexts/AuthContext";
-import { AppConfigProvider } from "./contexts/AppConfigContext"; // Import AppConfigProvider
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "./contexts/AuthContext";
+import { AppConfigProvider } from "./contexts/AppConfigContext";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import SmartJournal from "./pages/SmartJournal";
-import RiskShield from "./pages/RiskShield"; // Not actively used for /risk-shield route
 import DailyPlanner from "./pages/DailyPlanner";
 import IctAcademy from "./pages/IctAcademy";
 import Analytics from "./pages/Analytics";
@@ -39,26 +38,9 @@ import NotFound from "./pages/not-found";
 import { AuthGuard, AdminGuard, TierGuard } from "./components/AuthGuard";
 import { TourGuideProvider } from "./contexts/TourGuideContext";
 import { PlannerProvider } from "./contexts/PlannerContext";
-import { useMobile } from "./hooks/use-mobile";
-import { AIAssistant } from "./components/AIAssistant";
+import { useIsMobile } from "./hooks/use-mobile";
+import AIAssistant from "./components/AIAssistant";
 import { ThemeProvider } from "./components/ThemeProvider";
-
-function IndexRoute() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // If user is authenticated, redirect to / (which will now render Dashboard via Layout's index route)
-  if (user) return <Navigate to="/" replace />;
-  // If user is not authenticated, redirect to /welcome for consistency
-  return <Navigate to="/welcome" replace />;
-}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -70,56 +52,66 @@ function ScrollToTop() {
   return null;
 }
 
+const queryClient = new QueryClient();
+
+const basename = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 function App() {
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
 
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <AppConfigProvider>
-        <TourGuideProvider>
-          <PlannerProvider>
-            <Router>
-              <ScrollToTop />
-              <Routes>
-                <Route path="/" element={<IndexRoute />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/welcome" element={<Welcome />} /> {/* Added for explicit welcome access */}
-                <Route path="/video-tour" element={<VideoTourPage />} />
-                <Route path="/refund-policy" element={<RefundPolicy />} />
-                <Route path="/terms-of-service" element={<TermsOfService />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/risk-disclosure" element={<RiskDisclosure />} />
-                <Route path="/pricing" element={<Pricing />} />
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <AuthProvider>
+          <AppConfigProvider>
+            <TourGuideProvider>
+              <PlannerProvider>
+                <Router basename={basename}>
+                  <ScrollToTop />
+                  <Routes>
+                    {/* Public routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/welcome" element={<Welcome />} />
+                    <Route path="/video-tour" element={<VideoTourPage />} />
+                    <Route path="/refund-policy" element={<RefundPolicy />} />
+                    <Route path="/terms-of-service" element={<TermsOfService />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="/risk-disclosure" element={<RiskDisclosure />} />
+                    <Route path="/pricing" element={<Pricing />} />
 
-                <Route element={<AuthGuard />}>
-                  <Route path="/" element={<Layout />}>
-                    <Route index element={<div>Hello from Gemini!<Dashboard /></div>} /> {/* Dashboard as the default route for authenticated users */}
-                    <Route path="/academy" element={<IctAcademy />} />
-                    <Route path="/videos" element={<VideoLibrary />} />
-                    <Route path="/planner" element={<DailyPlanner />} />
-                    <Route path="/risk-shield" element={<Navigate to="/planner" replace />} /> {/* Redirect to planner for now */}
-                    <Route path="/prop-tracker" element={<TierGuard requiredTier={1}><PropTracker /></TierGuard>} />
-                    <Route path="/journal" element={<TierGuard requiredTier={2}><SmartJournal /></TierGuard>} />
-                    <Route path="/analytics" element={<TierGuard requiredTier={2}><Analytics /></TierGuard>} />
-                    <Route path="/leaderboard" element={<TierGuard requiredTier={2}><Leaderboard /></TierGuard>} />
-                    <Route path="/webhooks" element={<TierGuard requiredTier={2}><TradingViewWebhooks /></TierGuard>} />
-                    <Route path="/community" element={<Community />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/admin" element={<AdminGuard><Admin /></AdminGuard>} />
-                  </Route>
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              {!isMobile && <AIAssistant />}
-              <Toaster richColors position="top-right" />
-            </Router>
-          </PlannerProvider>
-        </TourGuideProvider>
-      </AppConfigProvider>
-    </ThemeProvider>
+                    {/* Protected routes — AuthGuard is pathless, catches any unmatched path */}
+                    <Route element={<AuthGuard />}>
+                      <Route path="/" element={<Layout />}>
+                        <Route index element={<Dashboard />} />
+                        <Route path="academy" element={<IctAcademy />} />
+                        <Route path="videos" element={<VideoLibrary />} />
+                        <Route path="planner" element={<DailyPlanner />} />
+                        <Route path="risk-shield" element={<Navigate to="/planner" replace />} />
+                        <Route path="prop-tracker" element={<TierGuard requiredTier={1}><PropTracker /></TierGuard>} />
+                        <Route path="journal" element={<SmartJournal />} />
+                        <Route path="analytics" element={<TierGuard requiredTier={2}><Analytics /></TierGuard>} />
+                        <Route path="leaderboard" element={<TierGuard requiredTier={2}><Leaderboard /></TierGuard>} />
+                        <Route path="webhooks" element={<TierGuard requiredTier={2}><TradingViewWebhooks /></TierGuard>} />
+                        <Route path="community" element={<Community />} />
+                        <Route path="settings" element={<Settings />} />
+                        <Route path="admin" element={<AdminGuard><Admin /></AdminGuard>} />
+                      </Route>
+                    </Route>
+
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  {!isMobile && <AIAssistant />}
+                  <Toaster richColors position="top-right" />
+                </Router>
+              </PlannerProvider>
+            </TourGuideProvider>
+          </AppConfigProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
