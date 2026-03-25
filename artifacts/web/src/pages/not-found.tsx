@@ -15,7 +15,7 @@ export default function NotFound() {
             The page you're looking for doesn't exist.
           </p>
           <Link
-            to="/dashboard"
+            to="/"
             className="mt-4 inline-block text-sm text-primary hover:underline"
           >
             Go to Dashboard

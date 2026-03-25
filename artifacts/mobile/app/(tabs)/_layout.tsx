@@ -50,7 +50,7 @@ function TabLayoutInner() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || (!isAdmin && tierLevel < 2)) return;
+    if (!user || (!isAdmin && tierLevel < 1)) return;
     const isOnJournalPage = pathname.includes("journal");
     if (isOnJournalPage) {
       setJournalDraftBadge(0);

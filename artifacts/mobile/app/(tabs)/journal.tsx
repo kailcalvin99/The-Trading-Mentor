@@ -480,7 +480,7 @@ export default function JournalScreen() {
 
   const tagInfo = (tag: string) => BEHAVIOR_TAGS.find((b) => b.tag === tag);
 
-  if (!isAdmin && tierLevel < 2) {
+  if (!isAdmin && tierLevel < 1) {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom"]}>
         <View style={[styles.headerRow, { paddingTop: 20 }]}>
@@ -488,9 +488,9 @@ export default function JournalScreen() {
         </View>
         <View style={styles.lockedCenter}>
           <Ionicons name="lock-closed-outline" size={48} color={C.accent} />
-          <Text style={styles.lockedTitle}>Premium Feature</Text>
+          <Text style={styles.lockedTitle}>Standard Plan Required</Text>
           <Text style={styles.lockedSubtitle}>
-            Upgrade to Premium to unlock the Smart Journal and log, analyze, and review your trades with AI coaching.
+            Upgrade to Standard to unlock the Smart Journal and log, analyze, and review your trades.
           </Text>
           <TouchableOpacity style={styles.lockedBtn} onPress={() => router.navigate("/subscription" as never)}>
             <Text style={styles.lockedBtnText}>View Plans</Text>

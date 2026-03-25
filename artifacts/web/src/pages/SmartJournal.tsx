@@ -543,9 +543,9 @@ export default function SmartJournal() {
     return notes.replace(/^\[(Conservative|Silver Bullet)\]\s*/, "").trim();
   };
 
-  if (tierLevel < 2) {
+  if (tierLevel < 1) {
     return (
-      <FrostedGateOverlay mode="premium">
+      <FrostedGateOverlay mode="standard">
         <JournalDemoSnapshot />
       </FrostedGateOverlay>
     );
