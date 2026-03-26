@@ -227,35 +227,17 @@ export default function Welcome() {
             <p className="text-center text-muted-foreground mb-8 max-w-xl mx-auto text-sm">
               Watch a quick walkthrough of the platform and see exactly how The Trading Mentor helps you trade with structure and discipline.
             </p>
-            <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl border border-border bg-card">
-              <div
-                className="w-full"
-                style={{ paddingBottom: "56.25%" }}
+            <div className="w-full rounded-2xl overflow-hidden shadow-2xl border border-border bg-card aspect-video">
+              <video
+                className="w-full h-full object-cover block"
+                controls
+                muted
+                playsInline
+                poster={`${import.meta.env.BASE_URL}opengraph.jpg`}
+                src={`${import.meta.env.BASE_URL}landing-page-walkthrough.mp4`}
               >
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <img
-                    src={`${import.meta.env.BASE_URL}dashboard-preview.png`}
-                    alt="The Trading Mentor Dashboard Preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                      const parent = e.currentTarget.parentElement;
-                      if (parent) parent.classList.add("bg-gradient-to-br", "from-primary/10", "via-card", "to-secondary");
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-              <div className="absolute top-4 right-4">
-                <span className="inline-flex items-center gap-1.5 bg-amber-500 text-black text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                  Coming Soon
-                </span>
-              </div>
-              <div className="absolute bottom-4 left-4">
-                <p className="text-white/80 text-sm font-medium">Full walkthrough video</p>
-                <p className="text-white/50 text-xs">Watch how The Trading Mentor transforms your trading routine</p>
-              </div>
+                Your browser does not support the video tag.
+              </video>
             </div>
           </div>
         </section>
