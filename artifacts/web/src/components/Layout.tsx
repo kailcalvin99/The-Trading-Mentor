@@ -711,9 +711,9 @@ export default function Layout() {
             </button>
             <div className="flex-1 flex items-center justify-center pointer-events-none select-none">
               <span
-                className="text-sm font-bold tracking-[0.2em] uppercase text-emerald-400"
+                className="text-lg font-extrabold tracking-[0.18em] uppercase text-white"
                 style={{
-                  textShadow: "0 0 6px #00C896, 0 0 12px #00C896, 0 0 24px #00C896, 0 0 48px rgba(0,200,150,0.4)",
+                  textShadow: "0 0 8px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 40px rgba(255,255,255,0.3)",
                   fontFamily: "inherit",
                 }}
               >
