@@ -14,9 +14,11 @@ import {
   Animated,
   Alert,
   RefreshControl,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import Svg, { Polyline, Defs, LinearGradient, Stop, Polygon } from "react-native-svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, useFocusEffect } from "expo-router";
 import Colors from "@/constants/colors";
@@ -130,6 +132,331 @@ function AIGreetingCard() {
 }
 
 
+const SCREEN_WIDTH = Dimensions.get("window").width - 32;
+
+function mobileScoreToGrade(score: number | null | undefined): string {
+  if (score === null || score === undefined) return "—";
+  if (score >= 90) return "A+";
+  if (score >= 80) return "A";
+  if (score >= 70) return "B";
+  if (score >= 60) return "C";
+  return "D";
+}
+
+function MobileCumulativePnLChart() {
+  const router = useRouter();
+  const { data: apiTrades } = useListTrades();
+  const trades = (apiTrades || []) as Array<{
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+  }>;
+
+  const completed = trades
+    .filter((t) => !t.isDraft && t.createdAt && t.pnl !== null && t.pnl !== undefined)
+    .slice()
+    .reverse();
+
+  let cumulative = 0;
+  const points = completed.map((t) => {
+    const pnl = parseFloat(String(t.pnl ?? "0"));
+    cumulative += isNaN(pnl) ? 0 : pnl;
+    return parseFloat(cumulative.toFixed(2));
+  });
+
+  const hasData = points.length >= 1;
+  const isPositive = cumulative >= 0;
+  const chartColor = isPositive ? "#00C896" : "#EF4444";
+
+  const W = SCREEN_WIDTH - 28;
+  const H = 80;
+  const PADDING_X = 4;
+  const PADDING_Y = 8;
+
+  let polylinePoints = "";
+  let polygonPoints = "";
+
+  if (hasData) {
+    const minY = Math.min(...points);
+    const maxY = Math.max(...points);
+    const rangeY = maxY - minY || 1;
+
+    const toX = (i: number) =>
+      points.length === 1
+        ? W / 2
+        : PADDING_X + (i / (points.length - 1)) * (W - PADDING_X * 2);
+    const toY = (v: number) => H - PADDING_Y - ((v - minY) / rangeY) * (H - PADDING_Y * 2);
+
+    const coords = points.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`);
+    polylinePoints = coords.join(" ");
+    polygonPoints = `${PADDING_X},${H} ${coords.join(" ")} ${(W - PADDING_X).toFixed(1)},${H}`;
+  }
+
+  return (
+    <View style={[mobileChartStyles.card]}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="trending-up-outline" size={14} color={C.accent} />
+        <Text style={styles.cardLabel}>Cumulative P&L</Text>
+        {hasData && (
+          <View style={[mobileChartStyles.badge, { backgroundColor: isPositive ? "#00C89620" : "#EF444420", borderColor: isPositive ? "#00C89640" : "#EF444440" }]}>
+            <Text style={[mobileChartStyles.badgeText, { color: chartColor }]}>
+              {isPositive ? "+" : ""}{cumulative.toFixed(1)}R
+            </Text>
+          </View>
+        )}
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/analytics" })} activeOpacity={0.7} style={{ marginLeft: hasData ? 4 : "auto" }}>
+          <Text style={styles.editLink}>Analytics ↗</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+        {!hasData ? (
+          <View style={mobileChartStyles.emptyBox}>
+            <Text style={mobileChartStyles.emptyText}>Log trades to see your equity curve</Text>
+          </View>
+        ) : (
+          <Svg width={W} height={H}>
+            <Defs>
+              <LinearGradient id="mobileGrad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0%" stopColor={chartColor} stopOpacity={0.3} />
+                <Stop offset="100%" stopColor={chartColor} stopOpacity={0.02} />
+              </LinearGradient>
+            </Defs>
+            <Polygon points={polygonPoints} fill="url(#mobileGrad)" />
+            <Polyline
+              points={polylinePoints}
+              fill="none"
+              stroke={chartColor}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function MobileLastTradeGradeCard() {
+  const router = useRouter();
+  const { data: apiTrades } = useListTrades();
+  const trades = (apiTrades || []) as Array<{
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+    setupScore?: string | number | null;
+    pair?: string | null;
+    ticker?: string | null;
+    instrument?: string | null;
+  }>;
+
+  const lastTrade = trades.find((t) => !t.isDraft);
+
+  if (!lastTrade) {
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <Ionicons name="ribbon-outline" size={14} color={C.accent} />
+          <Text style={styles.cardLabel}>Last Trade Grade</Text>
+          <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/journal" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+            <Text style={styles.editLink}>Journal ↗</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={{ fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", paddingHorizontal: 14, paddingBottom: 12 }}>
+          No trades logged yet
+        </Text>
+      </View>
+    );
+  }
+
+  const rawScore = lastTrade.setupScore;
+  const score = rawScore !== null && rawScore !== undefined ? parseFloat(String(rawScore)) : null;
+  const grade = mobileScoreToGrade(score);
+  const symbol = lastTrade.ticker || lastTrade.pair || lastTrade.instrument || "—";
+  const pnl = lastTrade.pnl !== null && lastTrade.pnl !== undefined ? parseFloat(String(lastTrade.pnl)) : null;
+  const dateStr = lastTrade.createdAt
+    ? new Date(lastTrade.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "";
+
+  const gradeColor =
+    grade === "A+" || grade === "A" ? "#00C896"
+    : grade === "B" ? "#F59E0B"
+    : grade === "C" ? "#F97316"
+    : grade === "D" ? "#EF4444"
+    : C.textSecondary;
+
+  const pnlIsPositive = pnl !== null && pnl > 0;
+  const pnlIsNegative = pnl !== null && pnl < 0;
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeaderRow}>
+        <Ionicons name="ribbon-outline" size={14} color={C.accent} />
+        <Text style={styles.cardLabel}>Last Trade Grade</Text>
+        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/journal" })} activeOpacity={0.7} style={{ marginLeft: "auto" }}>
+          <Text style={styles.editLink}>Journal ↗</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingBottom: 14, gap: 14 }}>
+        <View style={[mobileChartStyles.gradeBox, { borderColor: gradeColor + "50", backgroundColor: gradeColor + "18" }]}>
+          <Text style={[mobileChartStyles.gradeText, { color: gradeColor }]}>{grade}</Text>
+        </View>
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: C.text }}>{symbol}</Text>
+            {dateStr ? <Text style={{ fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>{dateStr}</Text> : null}
+          </View>
+          {score !== null ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ flex: 1, height: 4, backgroundColor: C.backgroundTertiary, borderRadius: 2, overflow: "hidden", maxWidth: 96 }}>
+                <View style={{ height: 4, backgroundColor: gradeColor, borderRadius: 2, width: `${Math.min(score, 100)}%` }} />
+              </View>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary }}>{Math.round(score)}/100</Text>
+            </View>
+          ) : (
+            <Text style={{ fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>No setup score</Text>
+          )}
+          {pnl !== null && (
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: pnlIsPositive ? "#00C896" : pnlIsNegative ? "#EF4444" : C.textSecondary }}>
+              {pnlIsPositive ? "+" : ""}{pnl.toFixed(1)}R
+            </Text>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function PnLCalendarBottomSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const router = useRouter();
+  const { data: apiTrades } = useListTrades();
+  const [viewMonth, setViewMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+
+  const trades = (apiTrades || []) as Array<{
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+  }>;
+
+  const dailyPnl: Record<string, number> = {};
+  trades.forEach((t) => {
+    if (t.isDraft || !t.createdAt) return;
+    const dateStr = new Date(t.createdAt).toISOString().split("T")[0];
+    const pnl = parseFloat(String(t.pnl ?? "0"));
+    if (!isNaN(pnl)) dailyPnl[dateStr] = (dailyPnl[dateStr] ?? 0) + pnl;
+  });
+
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+  const { year, month } = viewMonth;
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startDow = firstDay.getDay();
+  const monthName = firstDay.toLocaleString("en-US", { month: "long" });
+
+  const prevMonth = () => setViewMonth(({ year: y, month: m }) =>
+    m === 0 ? { year: y - 1, month: 11 } : { year: y, month: m - 1 }
+  );
+  const nextMonth = () => setViewMonth(({ year: y, month: m }) =>
+    m === 11 ? { year: y + 1, month: 0 } : { year: y, month: m + 1 }
+  );
+
+  const monFirstOffset = (startDow + 6) % 7;
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < monFirstOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const cellSize = Math.floor((SCREEN_WIDTH - 16) / 7);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose} />
+      <View style={[styles.modalSheet, { maxHeight: "80%" }]}>
+        <View style={styles.modalHandle} />
+        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}>
+          <Ionicons name="calendar-outline" size={16} color={C.accent} />
+          <Text style={styles.modalTitle}>P&L Calendar</Text>
+          <TouchableOpacity onPress={onClose} style={{ marginLeft: "auto" }} activeOpacity={0.7}>
+            <Ionicons name="close" size={20} color={C.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, marginBottom: 10 }}>
+          <TouchableOpacity onPress={prevMonth} style={calStyles.navBtn} activeOpacity={0.7}>
+            <Ionicons name="chevron-back" size={16} color={C.textSecondary} />
+          </TouchableOpacity>
+          <Text style={calStyles.monthLabel}>{monthName} {year}</Text>
+          <TouchableOpacity onPress={nextMonth} style={calStyles.navBtn} activeOpacity={0.7}>
+            <Ionicons name="chevron-forward" size={16} color={C.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={calStyles.grid}>
+          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+            <Text key={i} style={[calStyles.dayHeader, { width: cellSize }]}>{d}</Text>
+          ))}
+        </View>
+
+        <ScrollView style={{ paddingHorizontal: 8, marginBottom: 16 }}>
+          <View style={calStyles.grid}>
+            {cells.map((day, i) => {
+              if (!day) return <View key={i} style={{ width: cellSize, height: cellSize }} />;
+              const mm = String(month + 1).padStart(2, "0");
+              const dd = String(day).padStart(2, "0");
+              const dateStr = `${year}-${mm}-${dd}`;
+              const pnl = dailyPnl[dateStr];
+              const hasTrades = pnl !== undefined;
+              const isProfit = hasTrades && pnl > 0;
+              const isLoss = hasTrades && pnl < 0;
+              const isToday = dateStr === todayStr;
+
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    calStyles.cell,
+                    { width: cellSize, height: cellSize },
+                    isProfit && calStyles.cellProfit,
+                    isLoss && calStyles.cellLoss,
+                    isToday && calStyles.cellToday,
+                  ]}
+                  onPress={() => hasTrades ? router.navigate({ pathname: "/(tabs)/journal" }) : undefined}
+                  activeOpacity={hasTrades ? 0.75 : 1}
+                >
+                  <Text style={[
+                    calStyles.cellText,
+                    isProfit && calStyles.cellTextProfit,
+                    isLoss && calStyles.cellTextLoss,
+                    isToday && calStyles.cellTextToday,
+                  ]}>
+                    {day}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={{ flexDirection: "row", gap: 16, marginTop: 12, paddingHorizontal: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: "#00C89675" }} />
+              <Text style={{ fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>Profit</Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: "#EF444475" }} />
+              <Text style={{ fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>Loss</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
 function TodayScheduleWidget() {
   const router = useRouter();
   const { routineItems, showRoutineWidget } = usePlanner();
@@ -184,7 +511,7 @@ function TodayScheduleWidget() {
   );
 }
 
-function StatsStripWidget() {
+function StatsStripWidget({ onCalendarPress }: { onCalendarPress?: () => void }) {
   const router = useRouter();
   const { data: apiTrades } = useListTrades();
   const trades = (apiTrades || []).filter(Boolean) as Array<{
@@ -243,9 +570,21 @@ function StatsStripWidget() {
       <View style={[styles.cardHeaderRow, { paddingBottom: 8 }]}>
         <Ionicons name="stats-chart-outline" size={14} color={C.accent} />
         <Text style={styles.cardLabel}>Today's Stats</Text>
-        <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/analytics" })} activeOpacity={0.7}>
-          <Text style={styles.editLink}>Analytics ↗</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {onCalendarPress && (
+            <TouchableOpacity
+              onPress={onCalendarPress}
+              activeOpacity={0.7}
+              style={{ padding: 4, borderRadius: 8, backgroundColor: C.backgroundTertiary, borderWidth: 1, borderColor: C.cardBorder }}
+              accessibilityLabel="Open P&L Calendar"
+            >
+              <Ionicons name="calendar-outline" size={14} color={C.accent} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={() => router.navigate({ pathname: "/(tabs)/analytics" })} activeOpacity={0.7}>
+            <Text style={styles.editLink}>Analytics ↗</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.statsRow}>
         {stats.map((s, i) => (
@@ -1893,6 +2232,7 @@ export default function DashboardScreen() {
   const [prefs, setPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showPnLCalendar, setShowPnLCalendar] = useState(false);
   const { fetchSignals } = useMobileLiveSignals();
 
   const handleRefresh = useCallback(async () => {
@@ -1953,6 +2293,10 @@ export default function DashboardScreen() {
         prefs={prefs}
         onToggle={toggleWidget}
       />
+      <PnLCalendarBottomSheet
+        visible={showPnLCalendar}
+        onClose={() => setShowPnLCalendar(false)}
+      />
 
 
       <ScrollView
@@ -1964,7 +2308,7 @@ export default function DashboardScreen() {
         {...scrollCollapseProps}
       >
         {/* Stats strip — always visible, sits above all other content */}
-        <StatsStripWidget />
+        <StatsStripWidget onCalendarPress={() => setShowPnLCalendar(true)} />
 
         {/* AI Morning Briefing — shows once per day, auto-dismisses after 15s */}
         <MorningBriefingWidget
@@ -1976,6 +2320,12 @@ export default function DashboardScreen() {
 
             {/* Full Mode Dashboard */}
             <AIGreetingCard />
+
+            {/* Cumulative P&L Chart */}
+            <MobileCumulativePnLChart />
+
+            {/* Last Trade Grade */}
+            <MobileLastTradeGradeCard />
 
             {/* Live Market Prices Strip */}
             {prefs.liveprices && (
@@ -3078,4 +3428,101 @@ const styles = StyleSheet.create({
     color: C.textSecondary,
     flex: 1,
   },
+});
+
+const mobileChartStyles = StyleSheet.create({
+  card: {
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    marginHorizontal: 0,
+    marginBottom: 12,
+    overflow: "hidden",
+  },
+  badge: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    marginLeft: "auto",
+  },
+  badgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+  },
+  emptyBox: {
+    height: 60,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: C.textSecondary,
+  },
+  gradeBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gradeText: {
+    fontSize: 26,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
+  },
+});
+
+const calStyles = StyleSheet.create({
+  navBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: C.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  monthLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: C.text,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 8,
+  },
+  dayHeader: {
+    textAlign: "center",
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: C.textSecondary,
+    paddingVertical: 4,
+  },
+  cell: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 6,
+    margin: 1,
+  },
+  cellText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: C.textSecondary,
+  },
+  cellProfit: {
+    backgroundColor: "#00C89625",
+  },
+  cellLoss: {
+    backgroundColor: "#EF444425",
+  },
+  cellToday: {
+    borderWidth: 1.5,
+    borderColor: C.accent,
+  },
+  cellTextProfit: { color: "#00C896", fontFamily: "Inter_700Bold" },
+  cellTextLoss: { color: "#EF4444", fontFamily: "Inter_700Bold" },
+  cellTextToday: { color: C.accent, fontFamily: "Inter_700Bold" },
 });

@@ -6,8 +6,11 @@ import {
   X, Camera, Shield, Pencil,
   CheckCircle2, Play, Pause, SkipBack, SkipForward, GraduationCap, Users, Lock,
   ChevronLeft, ChevronRight, Plus, Bot, Calendar,
-  Radio, Activity, ChevronDown, ChevronUp, Music2,
+  Radio, Activity, ChevronDown, ChevronUp, Music2, TrendingUp, Award,
 } from "lucide-react";
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
 import { useSpotify } from "@/contexts/SpotifyContext";
 import {
   EconomicCalendarWidget,
@@ -946,13 +949,223 @@ function TodayScheduleWidget() {
   );
 }
 
-function TradingCalendarWidget() {
+function CumulativePnLChart() {
+  const navigate = useNavigate();
+  const { data: apiTrades } = useListTrades();
+  const trades = (apiTrades || []) as Array<{
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+  }>;
+
+  const completed = trades
+    .filter((t) => !t.isDraft && t.createdAt && t.pnl !== null && t.pnl !== undefined)
+    .slice()
+    .reverse();
+
+  let cumulative = 0;
+  const chartData = completed.map((t, i) => {
+    const pnl = parseFloat(String(t.pnl ?? "0"));
+    cumulative += isNaN(pnl) ? 0 : pnl;
+    const date = t.createdAt ? new Date(t.createdAt) : new Date();
+    return {
+      label: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      cumPnL: parseFloat(cumulative.toFixed(2)),
+      idx: i + 1,
+    };
+  });
+
+  const isPositive = cumulative >= 0;
+  const chartColor = isPositive ? "#00C896" : "#EF4444";
+  const hasData = chartData.length > 0;
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <TrendingUp className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-semibold text-foreground flex-1">Cumulative P&L</h3>
+        {hasData && (
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+            isPositive
+              ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+              : "bg-red-500/15 border-red-500/30 text-red-400"
+          }`}>
+            {isPositive ? "+" : ""}{cumulative.toFixed(1)}R
+          </span>
+        )}
+        <button onClick={() => navigate("/analytics")} className="text-xs text-primary font-medium shrink-0">
+          Analytics ↗
+        </button>
+      </div>
+      {!hasData ? (
+        <div className="h-28 flex items-center justify-center">
+          <p className="text-xs text-muted-foreground">Log trades to see your equity curve</p>
+        </div>
+      ) : (
+        <div className="h-28">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="pnlGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={chartColor} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={chartColor} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="label"
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }}
+                tickLine={false}
+                axisLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `${v}R`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 8,
+                  fontSize: 11,
+                  color: "hsl(var(--foreground))",
+                }}
+                formatter={(v: number) => [`${v > 0 ? "+" : ""}${v.toFixed(2)}R`, "Cumul. P&L"]}
+                labelFormatter={(label) => label}
+              />
+              <Area
+                type="monotone"
+                dataKey="cumPnL"
+                stroke={chartColor}
+                strokeWidth={1.5}
+                fill="url(#pnlGrad)"
+                dot={false}
+                activeDot={{ r: 3, fill: chartColor }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function scoreToGrade(score: number | null | undefined): string {
+  if (score === null || score === undefined) return "—";
+  if (score >= 90) return "A+";
+  if (score >= 80) return "A";
+  if (score >= 70) return "B";
+  if (score >= 60) return "C";
+  return "D";
+}
+
+function LastTradeGradeCard() {
+  const navigate = useNavigate();
+  const { data: apiTrades } = useListTrades();
+  const trades = (apiTrades || []) as Array<{
+    pnl?: string | number | null;
+    createdAt?: string | null;
+    isDraft?: boolean | null;
+    setupScore?: string | number | null;
+    pair?: string | null;
+    ticker?: string | null;
+    instrument?: string | null;
+  }>;
+
+  const lastTrade = trades.find((t) => !t.isDraft);
+
+  if (!lastTrade) {
+    return (
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Award className="h-4 w-4 text-primary shrink-0" />
+          <h3 className="text-sm font-semibold text-foreground flex-1">Last Trade Grade</h3>
+          <button onClick={() => navigate("/journal")} className="text-xs text-primary font-medium shrink-0">
+            Journal ↗
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">No trades logged yet</p>
+      </div>
+    );
+  }
+
+  const rawScore = lastTrade.setupScore;
+  const score = rawScore !== null && rawScore !== undefined ? parseFloat(String(rawScore)) : null;
+  const grade = scoreToGrade(score);
+  const symbol = lastTrade.ticker || lastTrade.pair || lastTrade.instrument || "—";
+  const pnl = lastTrade.pnl !== null && lastTrade.pnl !== undefined
+    ? parseFloat(String(lastTrade.pnl))
+    : null;
+  const dateStr = lastTrade.createdAt
+    ? new Date(lastTrade.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "";
+
+  const gradeColor =
+    grade === "A+" || grade === "A" ? "#00C896"
+    : grade === "B" ? "#F59E0B"
+    : grade === "C" ? "#F97316"
+    : grade === "D" ? "#EF4444"
+    : "hsl(var(--muted-foreground))";
+
+  const pnlIsPositive = pnl !== null && pnl > 0;
+  const pnlIsNegative = pnl !== null && pnl < 0;
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Award className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-semibold text-foreground flex-1">Last Trade Grade</h3>
+        <button onClick={() => navigate("/journal")} className="text-xs text-primary font-medium shrink-0">
+          Journal ↗
+        </button>
+      </div>
+      <div className="flex items-center gap-4">
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 border"
+          style={{ borderColor: `${gradeColor}40`, backgroundColor: `${gradeColor}15` }}
+        >
+          <span className="text-3xl font-black" style={{ color: gradeColor }}>{grade}</span>
+        </div>
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-foreground">{symbol}</span>
+            {dateStr && <span className="text-xs text-muted-foreground">{dateStr}</span>}
+          </div>
+          {score !== null && (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-24">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${score}%`, backgroundColor: gradeColor }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground font-mono">{Math.round(score)}/100</span>
+            </div>
+          )}
+          {score === null && (
+            <p className="text-xs text-muted-foreground">No setup score recorded</p>
+          )}
+          {pnl !== null && (
+            <span className={`text-xs font-bold ${
+              pnlIsPositive ? "text-emerald-400" : pnlIsNegative ? "text-red-400" : "text-muted-foreground"
+            }`}>
+              {pnlIsPositive ? "+" : ""}{pnl.toFixed(1)}R
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TradingCalendarModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const [viewMonth, setViewMonth] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
-  const [expanded, setExpanded] = useState(false);
 
   const { data: apiTrades } = useListTrades();
   const trades = (apiTrades || []) as Array<{
@@ -992,18 +1205,20 @@ function TradingCalendarWidget() {
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      <button
-        onClick={() => setExpanded(e => !e)}
-        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-secondary/30 transition-colors"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
       >
-        <Calendar className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground flex-1 text-left">Trading Calendar</h3>
-        {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-      </button>
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+          <Calendar className="h-4 w-4 text-primary shrink-0" />
+          <h3 className="text-sm font-semibold text-foreground flex-1">Trading Calendar</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-      {expanded && (
-        <div className="px-4 pb-4 border-t border-border">
+        <div className="px-4 pb-4">
           <div className="flex items-center justify-between py-2">
             <button onClick={prevMonth} className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
               <ChevronLeft className="h-4 w-4" />
@@ -1060,8 +1275,24 @@ function TradingCalendarWidget() {
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
+  );
+}
+
+function TradingCalendarIconButton({ onClick }: { onClick: () => void }) {
+  const today = new Date();
+  const dayStr = today.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-xl hover:bg-secondary/40 hover:border-primary/40 transition-all"
+      title="Open trading calendar"
+    >
+      <Calendar className="h-4 w-4 text-primary shrink-0" />
+      <span className="text-xs font-semibold text-foreground">P&L Calendar</span>
+      <span className="text-[10px] text-muted-foreground">{dayStr}</span>
+    </button>
   );
 }
 
@@ -1589,6 +1820,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showQuickNote, setShowQuickNote] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const scrollDir = useScrollDirection();
 
   const firstName = user?.name?.split(" ")[0] || "Trader";
@@ -1623,6 +1855,8 @@ export default function Dashboard() {
       {showQuickNote && <QuickNoteModal onClose={() => setShowQuickNote(false)} />}
       <QuickNoteFAB onOpen={() => setShowQuickNote(true)} />
 
+      {showCalendar && <TradingCalendarModal onClose={() => setShowCalendar(false)} />}
+
       <FvgAlertPopup />
       <CommunityBanner tierLevel={tierLevel} />
 
@@ -1632,6 +1866,7 @@ export default function Dashboard() {
             <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
           </div>
           <div className="flex items-center gap-2">
+            <TradingCalendarIconButton onClick={() => setShowCalendar(true)} />
             <button
               onClick={() => navigate("/journal?new=1")}
               className="flex items-center gap-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-xl px-3 py-2 transition-colors"
@@ -1643,14 +1878,16 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <CumulativePnLChart />
+            <LastTradeGradeCard />
+          </div>
+
           <RoutineWidgetConditional />
 
           <SpotifyDashCard />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <EconomicCalendarWidget />
-            <TradingCalendarWidget />
-          </div>
+          <EconomicCalendarWidget />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <FvgSignalCard />
