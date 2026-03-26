@@ -206,9 +206,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.role === "admin";
   const MAX_TIER_LEVEL = 2;
   const tierLevel = isAdmin ? MAX_TIER_LEVEL : (subscription?.tierLevel ?? 0);
+  const effectiveAppMode: "full" | "lite" = isAdmin ? "full" : appMode;
 
   return (
-    <AuthContext.Provider value={{ user, subscription, isAdmin, tierLevel, loading, appMode, setAppMode, setAvatarUrl, refresh, logout }}>
+    <AuthContext.Provider value={{ user, subscription, isAdmin, tierLevel, loading, appMode: effectiveAppMode, setAppMode, setAvatarUrl, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   );

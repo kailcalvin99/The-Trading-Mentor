@@ -159,7 +159,7 @@ interface Props {
 }
 
 export default function OnboardingQuiz({ onComplete }: Props) {
-  const { setAppMode } = useAuth();
+  const { setAppMode, isAdmin } = useAuth();
   const [step, setStep] = useState<"intro" | "questions" | "result">("intro");
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
@@ -177,7 +177,7 @@ export default function OnboardingQuiz({ onComplete }: Props) {
       localStorage.setItem(SKILL_LEVEL_KEY, level);
       localStorage.setItem(QUIZ_DONE_KEY, "true");
       applyLevelToAcademy(level);
-      if (level === "beginner") {
+      if (level === "beginner" && !isAdmin) {
         setAppMode("lite");
       }
       setStep("result");
