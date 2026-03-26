@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { authRequired } from "../../middleware/auth";
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
+
+const yahooFinance = new YahooFinance();
 
 const router = Router();
 
@@ -118,20 +120,7 @@ router.get("/candles", authRequired, async (req: Request, res: Response): Promis
     const fromDate = new Date(from);
     const toDate = new Date(to);
 
-    const raw = await (yahooFinance as unknown as {
-      chart(
-        symbol: string,
-        opts: { period1: Date; period2: Date; interval: YahooChartInterval },
-      ): Promise<{
-        quotes: Array<{
-          date: Date;
-          open: number | null;
-          high: number | null;
-          low: number | null;
-          close: number | null;
-        }>;
-      }>;
-    }).chart(yahooSymbol, {
+    const raw = await yahooFinance.chart(yahooSymbol, {
       period1: fromDate,
       period2: toDate,
       interval: yahooInterval,
