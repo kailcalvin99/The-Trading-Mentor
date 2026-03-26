@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Webhook, Video, Zap, Layers, Flame, Star, Menu } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Video, Zap, Layers, Flame, Star, Menu } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { FreeSidebar, useDailyStreak } from "@/components/CasinoElements";
 import AIAssistant from "@/components/AIAssistant";
@@ -65,7 +65,6 @@ const navItems = [
   { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 2, minSkillLevel: 1 },
   { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2, minSkillLevel: 1 },
   { to: "/leaderboard", label: "Leaderboard", mobileLabel: "Rank", icon: Trophy, requiredTier: 2, minSkillLevel: 2 },
-  { to: "/webhooks", label: "TV Webhooks", mobileLabel: "Webhooks", icon: Webhook, requiredTier: 2, minSkillLevel: 2 },
   { to: "/community", label: "Community", mobileLabel: "Community", icon: Users, requiredTier: 0, minSkillLevel: 0 },
 ];
 
