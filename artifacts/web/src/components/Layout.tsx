@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import OnboardingQuiz, { getSkillLevel, hasCompletedQuiz, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Video, Zap, Layers, Flame, Star, Menu, CandlestickChart } from "lucide-react";
@@ -379,6 +380,22 @@ export default function Layout() {
   const [showLockToast, setShowLockToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const userPillRef = useRef<HTMLButtonElement>(null);
+  const [userMenuPos, setUserMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  const recalcUserMenuPos = useCallback(() => {
+    if (userPillRef.current) {
+      const rect = userPillRef.current.getBoundingClientRect();
+      setUserMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+    window.addEventListener("resize", recalcUserMenuPos);
+    return () => window.removeEventListener("resize", recalcUserMenuPos);
+  }, [showUserMenu, recalcUserMenuPos]);
+
   const [showShare, setShowShare] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
@@ -595,7 +612,13 @@ export default function Layout() {
               {/* User pill — right side */}
               <div className="relative ml-auto">
                 <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  ref={userPillRef}
+                  onClick={() => {
+                    if (!showUserMenu) {
+                      recalcUserMenuPos();
+                    }
+                    setShowUserMenu(!showUserMenu);
+                  }}
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                 >
                   <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden border border-border">
@@ -614,10 +637,13 @@ export default function Layout() {
                   <ChevronDown className="h-3 w-3 shrink-0" />
                 </button>
 
-                {showUserMenu && (
+                {showUserMenu && userMenuPos && createPortal(
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowAvatarPicker(false); }} />
-                    <div className="absolute top-full right-0 mt-1 w-52 bg-card border border-border rounded-lg shadow-xl z-50 py-1">
+                    <div className="fixed inset-0 z-[200]" onClick={() => { setShowUserMenu(false); setShowAvatarPicker(false); }} />
+                    <div
+                      className="fixed w-52 bg-card border border-border rounded-lg shadow-xl z-[201] py-1"
+                      style={{ top: userMenuPos.top, right: userMenuPos.right }}
+                    >
                       <div className="px-3 py-2 border-b border-border">
                         <p className="text-xs font-medium text-foreground">{user?.name}</p>
                         <p className="text-[10px] text-muted-foreground">{user?.email}</p>
@@ -693,7 +719,8 @@ export default function Layout() {
                         Sign Out
                       </button>
                     </div>
-                  </>
+                  </>,
+                  document.body
                 )}
               </div>
             </div>
