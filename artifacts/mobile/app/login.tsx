@@ -60,10 +60,6 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={s.header}>
-            <View style={s.logoCircle}>
-              <Ionicons name="trending-up" size={32} color={C.accent} />
-            </View>
-            <Text style={s.title}>The Trading Mentor</Text>
             <Text style={s.subtitle}>Sign in to your account</Text>
           </View>
 
@@ -147,23 +143,6 @@ const s = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 40,
-  },
-  logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: C.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: C.text,
-    marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
