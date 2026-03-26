@@ -709,7 +709,7 @@ export default function Layout() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none select-none">
+            <div className="flex-1 flex items-center justify-center pointer-events-none select-none">
               <span
                 className="text-sm font-bold tracking-[0.2em] uppercase text-emerald-400"
                 style={{
