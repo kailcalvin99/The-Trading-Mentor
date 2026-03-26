@@ -586,6 +586,116 @@ export const COURSE_CHAPTERS: Chapter[] = [
         takeaway: "Journal every trade — the setup, the result, and how you felt. Review weekly to find patterns. Your journal is how you learn from experience and improve over time."
       }
     ]
+  },
+  {
+    id: "ch8",
+    title: "Your Trading Toolkit",
+    color: "#0EA5E9",
+    icon: "🛠️",
+    description: "A tour of every tool built into this app — what it does, why it exists, and exactly how to use it in your daily trading workflow.",
+    lessons: [
+      {
+        id: "ch8-1",
+        title: "Mission Control — Your Daily Command Center",
+        chartImage: "lesson-morning-routine.png",
+        paragraphs: [
+          "Mission Control is the first screen you should open every morning before touching a chart. Think of it as your pre-flight checklist — pilots don't take off without it, and you shouldn't trade without it. It combines your morning routine, daily bias, and account health into one dashboard.",
+          "The morning routine portion guides you through four steps: hydrate (drink water before trading — dehydration impairs judgment), breathe (a 2-minute calming exercise), check the news calendar (so you know which red-folder events to avoid today), and set your directional bias (decide whether you're looking for buys or sells before the session opens).",
+          "The bias setting is powerful because it prevents mid-session confusion. You look at the Daily and 1-Hour charts BEFORE the market opens, decide 'today looks bullish' or 'today looks bearish,' and lock that in. If price does something unexpected during the session, you don't flip your bias on emotion — you go back to your analysis.",
+          "Once your routine is complete, Mission Control shows your daily P&L, how close you are to your daily loss limit, and whether you have any trade slots remaining. If you're at the 2% daily loss limit, Mission Control will show the lockout timer — this is the app protecting you from revenge trading. Every day starts here."
+        ],
+        takeaway: "Open Mission Control before every session. Complete the 4-step routine, set your bias, check your daily limits. This puts you in a calm, prepared state before a single chart is opened."
+      },
+      {
+        id: "ch8-2",
+        title: "Smart Journal — Your Trading Memory",
+        chartImage: "lesson-journal-habit.png",
+        paragraphs: [
+          "The Smart Journal is where every trade lives after you take it. Unlike a manual spreadsheet, the journal is structured to capture the things that actually matter: not just profit and loss, but WHY you took the trade, HOW you felt, and WHAT you could have done better. Over time, your journal becomes a mirror that shows you your patterns — both good and bad.",
+          "When you log a trade, you fill in: the instrument (NQ, MNQ, etc.), direction (long or short), your entry checklist status (were all 6 criteria checked?), entry and exit prices, and the result (TP1, TP2, or stop loss). You also select behavior tags — labels like 'Disciplined,' 'FOMO,' 'Chased,' 'Greedy,' or 'Revenge' that describe your mental state.",
+          "The behavior tags are the secret weapon. At the end of a month, you might see 'FOMO' tagged on every Friday trade — that's a signal to stop trading Fridays. Or you might see 'Disciplined' on all your winning trades and 'Chased' on all your losers — that's a signal to slow down and wait for your setup every time.",
+          "Use the journal analytics to review your stats: win rate by setup type, average winner vs. average loser, profit factor, and behavior frequency. When you see your profit factor is 2.1 on 'Disciplined' trades but 0.4 on 'FOMO' trades, you don't need a coach — the data tells you exactly what to change."
+        ],
+        takeaway: "Log every trade in the Smart Journal — entry, result, and behavior tags. Review weekly to find patterns. Your journal is how you turn experience into improvement."
+      },
+      {
+        id: "ch8-3",
+        title: "Risk Shield — Your Financial Safety Net",
+        chartImage: "lesson-risk-importance.png",
+        paragraphs: [
+          "Risk Shield is the enforcer. While the other tools guide and track, Risk Shield actually prevents you from doing damage. It's built around the same rules that prop firms like Topstep, Apex, and FTMO use in their evaluations — because if you can follow Risk Shield consistently, you can pass any funded account challenge.",
+          "The core rules are: 0.5% risk per trade (never bet more than 0.5% of your account on a single trade), 2% max daily loss (hit this and you're locked out for 24 hours), and 4% max weekly loss (hit this and you're done until Monday). These aren't suggestions — the app enforces them.",
+          "The position size calculator is Risk Shield's most practical tool. You enter your account balance, your risk percentage, and your stop-loss distance in points — and it calculates exactly how many NQ or MNQ contracts you can trade. Never guess your position size. Always run the calculator. The math takes 10 seconds and could save your account.",
+          "Risk Shield also tracks your real-time drawdown with color-coded warnings. Green means you're safe. Yellow means you're approaching the limit — trade more carefully. Red means you're at or near the limit — consider stopping. Learning to respect these colors is what separates traders who last from traders who blow up."
+        ],
+        takeaway: "Risk Shield enforces your limits: 0.5% per trade, 2% daily max, 4% weekly max. Use the position size calculator before every trade. Respect the color warnings. This is how you pass prop firm evaluations."
+      },
+      {
+        id: "ch8-4",
+        title: "Analytics — Seeing Your Progress Clearly",
+        chartImage: "lesson-discipline-toolkit.png",
+        paragraphs: [
+          "The Analytics tab transforms your journal entries into visual data that's easy to understand at a glance. Instead of scrolling through individual trades, you see the big picture: your equity curve, win rate trend, average risk:reward, best and worst performing setups, and your discipline score.",
+          "The equity curve is the most honest feedback you can get. A smooth, gradually rising curve means you're trading consistently and managing risk. A jagged, volatile curve means you're either sizing too large or letting emotional trades sneak in. You want your equity curve to look boring — steady and upward.",
+          "Pay special attention to the setup breakdown. Analytics will show you which of the 6 entry criteria setups perform best for you. Maybe your Conservative Entry win rate is 68%, but trades where you skipped step 2 (The Sweep) only win 41%. That data is telling you to never skip the sweep.",
+          "The time-of-day analysis shows when you trade best and worst. Most traders find they perform significantly better during the Silver Bullet window (10-11 AM) versus trying to trade outside their optimal window. Use Analytics to discover YOUR best window and protect it fiercely."
+        ],
+        takeaway: "Check Analytics weekly to see your equity curve, win rate, and setup performance. Use the data to find your strengths and fix your weaknesses. Data doesn't lie — your feelings do."
+      },
+      {
+        id: "ch8-5",
+        title: "AI Mentor — Your Always-On Trading Coach",
+        chartImage: "lesson-patience.png",
+        paragraphs: [
+          "The AI Mentor is your personal trading coach available 24/7. Unlike a YouTube video or a forum post, the AI Mentor can answer YOUR specific question right now, in plain English, without judgment. You can ask it anything — from 'What is an FVG?' to 'I just lost 3 trades in a row, what should I do?'",
+          "The AI Mentor is trained on ICT concepts and knows this app inside-out. Ask it to explain any lesson you found confusing. Show it a chart description and ask if it's a valid setup. Ask it to quiz you on a concept. Ask it to help you review your journal entry and find what you did wrong.",
+          "One of the most powerful ways to use the AI Mentor is during your weekly journal review. Walk through your losing trades with the AI: 'I entered this trade but it stopped me out. Here's what I saw: [description]. What did I miss?' The AI will point out common mistakes and help you see the trade differently.",
+          "The AI Mentor also provides real-time support during your morning routine. If you're unsure about your bias, describe the chart and ask. If you see conflicting signals across timeframes, ask the AI to help you resolve them. Think of it as having an experienced ICT trader sitting next to you, always available, never impatient."
+        ],
+        takeaway: "Use the AI Mentor to explain concepts, review trades, quiz yourself, and resolve chart confusion. It's your always-available coach — the more you use it, the faster you improve."
+      },
+      {
+        id: "ch8-6",
+        title: "Prop Tracker — Passing Your Funded Account Challenge",
+        chartImage: "lesson-prop-firm.png",
+        paragraphs: [
+          "Prop Tracker is specifically built for traders who are working toward a funded account — the ultimate goal for many ICT traders. It lets you set up a virtual prop firm evaluation with all the same rules as Topstep, Apex, FTMO, or any other firm, and tracks your progress in real time.",
+          "To set up Prop Tracker, enter your evaluation account size (e.g., $100,000), the profit target required (e.g., 8%), the maximum daily loss (e.g., 2%), and the maximum total drawdown (e.g., 10%). The tracker then shows you a dashboard with: current P&L, days remaining, how far you are from the profit target, and how close you are to the danger zones.",
+          "The key feature is the evaluation simulation mode. When you log trades through Risk Shield during an evaluation period, Prop Tracker automatically updates your challenge stats. You can see at a glance: 'I need $4,200 more to pass, I have 18 days left, and I'm at 1.3% drawdown out of my 10% max.' This real-time visibility keeps you focused and disciplined.",
+          "Most traders fail prop firm evaluations not because they lack skill, but because they get impatient near the end and take oversized risk to hit the profit target faster. Prop Tracker prevents this by showing you the math: consistent 0.5% daily gains get you to an 8% profit target in 16 trading days without breaking a single rule. Slow and steady is the fastest path to funded."
+        ],
+        takeaway: "Use Prop Tracker to simulate and track real prop firm evaluations. Set your targets and limits, then let the app track your progress. Consistency beats gambling — the math always wins."
+      }
+    ]
+  },
+  {
+    id: "ch9",
+    title: "A Day in the Life of an ICT Trader",
+    color: "#F97316",
+    icon: "📅",
+    description: "Follow one trader through a complete trading day — from morning prep to end-of-day review — using a real NQ Silver Bullet trade as the example.",
+    lessons: [
+      {
+        id: "ch9-1",
+        title: "A Full Trading Day — The Story of One Perfect Setup",
+        chartImage: "lesson-time-matters.png",
+        paragraphs: [
+          "Meet Marcus. He's been trading NQ Futures for eight months and is currently on his second Topstep evaluation — a $100,000 account with an 8% profit target and a 2% daily loss limit. Today is a Wednesday in March. Let's follow him through the entire day and see exactly which app tool he uses at each step.",
+          "8:00 AM — Mission Control. Marcus opens the app before even looking at a chart. He clicks through the morning routine: drinks his water (check), does the breathing exercise (check), opens ForexFactory and sees a Medium-impact ADP Employment number at 8:15 AM — he notes he'll wait until 9:15 AM before analyzing. He sets his bias: the Daily chart is in a clear bullish trend after sweeping the weekly low on Monday, and the 1-Hour has been making higher highs since Tuesday. Bias = Bullish. Mission Control confirms he has no open P&L and is 0% into his daily loss limit. He's ready.",
+          "9:15 AM — Top-Down Analysis. The ADP number is out and NQ reacted with a quick 40-point drop, then stabilized. Marcus opens TradingView. Daily: bullish, price above Tuesday's midpoint. 1-Hour: after the ADP dip, price swept the 9:00 AM session low (sell-side liquidity) and is now showing a potential bullish shift. 15-minute: he can see the sweep clearly — a sharp wick below the 9:00 low, then a big bullish displacement candle. He draws the Fibonacci from the 9:00 low to the recent 9:10 high. The OTE zone (62-79%) sits between 18,240 and 18,254. He spots a bullish FVG inside that zone — from 18,244 to 18,249. His entry criteria checklist starts forming: Step 1 (Bias) — bullish. Step 2 (Sweep) — SSL swept at 9:10 AM. Step 3 (MSS) — 5-minute bullish break above 9:05 high. He waits.",
+          "9:58 AM — The Setup Matures. Price is pulling back toward his FVG zone. Marcus opens the Smart Journal and starts a new trade draft. He records: Instrument = MNQ (he's trading micro contracts on this evaluation to stay conservative), Direction = Long, Notes = 'Silver Bullet window opens in 2 minutes. FVG at 18,244–18,249, OTE zone aligns. Waiting for price to enter the gap.' He uses Risk Shield to calculate position size: $100,000 account, 0.5% risk = $500 max risk. Stop loss = below the MSS candle low at 18,227 = 22 points of risk. MNQ = $2/point. $500 ÷ (22 × $2) = 11.36, rounded down to 11 MNQ contracts. He sets his limit order at 18,247 — the top of the FVG. Stop at 18,225. TP1 at 18,278 (the nearby high / internal liquidity). TP2 at 18,310 (the previous day's high / buy-side liquidity).",
+          "10:07 AM — Silver Bullet Window, Trade Fills. NQ dips into the FVG at 10:07 AM and Marcus's limit order fills at 18,247. He checks his entry criteria one final time: Step 1 (Bias) ✓, Step 2 (Sweep) ✓, Step 3 (MSS) ✓, Step 4 (FVG) ✓, Step 5 (OTE Fib) ✓, Step 6 (Trigger — limit placed at FVG) ✓. All 6 checked. He logs the trade in Smart Journal, marks the entry criteria as fully verified, tags his emotional state as 'Calm and Disciplined.' He sets alerts at TP1 and TP2 and walks away from the screen. No chart-watching. No second-guessing.",
+          "10:34 AM — TP1 Hit. His alert fires. NQ has rallied to 18,278 — TP1 is filled. Marcus closes 6 of his 11 MNQ contracts (roughly half his position), locking in approximately $186 profit on those 6 contracts (31 points × $2 × 6 contracts). He immediately moves the stop loss on his remaining 5 contracts to breakeven (18,247). He's now in a risk-free trade with 5 contracts riding toward TP2. He updates his Smart Journal: 'TP1 hit at 10:34 AM. Moved SL to breakeven. Feeling great — staying disciplined.'",
+          "11:52 AM — TP2 Hit. His second alert fires. NQ has reached 18,310 — TP2 is filled. His remaining 5 contracts close for 63 points of profit (18,310 − 18,247 = 63 points × $2 × 5 contracts = $630). Total trade P&L: $186 (TP1) + $630 (TP2) = $816 profit. Risk:Reward on the full trade: risked $484 ($22 stop × $2 × 11 contracts), made $816. That's approximately 1:1.7 overall, or better than 1:3 on the TP2 portion.",
+          "12:15 PM — Trade Complete, Morning Session Closed. Marcus is done trading for the day — one trade, one clean win. He opens Analytics to see his updated equity curve: it's ticked up smoothly, with no wild swings. His Prop Tracker now shows 0.82% profit progress toward the 8% target. Because he had no losing trades today, his drawdown allowance is completely intact — he hasn't touched a single cent of his 10% max drawdown. He completes his midday journal entry: reads through his trade notes, confirms the behavior tag 'Calm and Disciplined,' and writes a post-trade note: 'Perfect execution of Silver Bullet. Waited for all 6 criteria. Did not watch the screen. Trusted the plan.'",
+          "1:00 PM — Afternoon Watch. Some traders take a second session in the afternoon Silver Bullet window (2:00–3:00 PM EST). Marcus checks the 1-Hour chart briefly: NQ has been grinding sideways since his TP2 hit, and the afternoon has a Medium-impact Fed speaker at 2:30 PM. He consults the AI Mentor: 'Should I trade the afternoon Silver Bullet today with a Fed speaker at 2:30 PM?' The AI responds that scheduled speakers within the Silver Bullet window can cause unpredictable volatility — the safer choice is to skip the afternoon session and protect the morning's gain. Marcus agrees and closes his charting platform.",
+          "2:30 PM — Fed Speaker, No Trade. The Fed speaker comes and goes. NQ spikes 25 points, then drops 40 points in 8 minutes — exactly the kind of whipsaw that would have stopped out almost any position. Marcus is glad he sat out. He makes a note in the Smart Journal: 'Correctly skipped afternoon session due to Fed speaker volatility. Risk Shield discipline preserved today's gain.' This is an important lesson: sometimes the best trade is no trade.",
+          "3:30 PM — End-of-Day Prep. With 30 minutes left in the regular session, Marcus does his end-of-day review routine. He opens Mission Control one more time to log his final account state. He checks the Prop Tracker: 0.82% profit for the day, drawdown at 0% (no losing trades today — all drawdown allowance is still intact), 22 days remaining in the evaluation, and 7.18% still needed to reach the profit target. He does the math: at this pace — roughly 0.5–1% per day — he can comfortably reach the 8% target in the time remaining without ever having to take an oversized risk.",
+          "4:00 PM — Close and Reflect. Marcus closes TradingView at 4:00 PM Eastern — the regular session close. His final journal entry for the day: 'Entry criteria: 6/6. Behavior: Calm and Disciplined. Trade result: TP1 + TP2. No afternoon trade (correct decision due to news). Total daily gain: 0.82%. Key lesson: One clean trade beats three mediocre ones. Came in prepared, executed the plan, respected risk rules, protected the gain.' He saves the entry, closes the app, and goes for a walk. Tomorrow he'll do it all again — same routine, same discipline, different setup."
+        ],
+        takeaway: "One trade. One clean execution. Eight tools working together: Mission Control for prep, top-down analysis for bias, Risk Shield for position sizing, Smart Journal for logging, AI Mentor on standby, Prop Tracker for progress. This is what disciplined ICT trading looks like every day — from 8 AM to 4 PM."
+      }
+    ]
   }
 ];
 
@@ -776,6 +886,11 @@ export const QUIZ_BANK: QuizQuestion[] = [
   { difficulty: "hard", scenario: "You've been trading for a month. Your journal shows: 60% win rate, average winner $300, average loser $250. Profit Factor = 1.8. You notice most losses are tagged 'FOMO.' What should you focus on improving?", options: ["Finding better entries to increase win rate to 80%", "Increasing position size to make more per win", "Eliminating FOMO trades — they're dragging down your stats", "Nothing — 60% win rate and 1.8 PF is already great"], answer: 2, explanation: "Your stats are good (60% win rate, 1.8 profit factor). But the FOMO tag pattern reveals the weak link. If you eliminate the FOMO trades (which are likely lower quality), your win rate and profit factor will improve even more. The journal's behavior tags are showing you exactly what to fix." },
   { difficulty: "hard", scenario: "NQ creates a bullish FVG on the 15-minute chart during the London Kill Zone. The Daily is bullish, 1H is bullish. But there was NO liquidity sweep before the MSS. Should you take the Conservative entry?", options: ["Yes — the bias and FVG are enough", "No — Step 2 (The Sweep) is missing. Skip the trade.", "Yes — but use the Aggressive entry instead", "Take it on the 1-minute chart to reduce risk"], answer: 1, explanation: "The Conservative entry requires ALL 6 steps. Step 2 (The Sweep) is missing — price didn't take out a 15-minute high or low before the MSS. Without the sweep, there's no liquidity fuel for the move. This setup has a higher chance of failing. Skip it and wait for a complete setup." },
   { difficulty: "hard", scenario: "You're managing two MNQ contracts. TP1 (internal liquidity) is hit at 1:2 reward-to-risk. What's the best way to manage the position from here?", options: ["Close both contracts at TP1", "Close 1 contract at TP1, move SL to breakeven on the remaining contract, target TP2", "Keep both contracts open and move SL to breakeven", "Close 1 contract and widen the stop on the remaining contract"], answer: 1, explanation: "The textbook approach: take partial profit (1 contract) at TP1 to lock in gains, move the stop to breakeven on the remaining contract (risk-free), and let it ride to TP2 (external liquidity). This balances taking profit with letting winners run." },
+
+  { difficulty: "easy", scenario: "What is Mission Control used for in the ICT Trading Mentor app?", options: ["Placing trades directly in the market", "Completing your morning routine, setting daily bias, and checking risk limits before trading", "Analyzing chart patterns automatically", "Connecting to your broker account"], answer: 1, explanation: "Mission Control is your pre-trading command center. You use it to complete the 4-step morning routine (hydrate, breathe, news check, bias), confirm you're within daily loss limits, and get mentally prepared before touching a chart." },
+  { difficulty: "easy", scenario: "What does the Risk Shield's position size calculator help you determine?", options: ["Which direction to trade", "How many NQ or MNQ contracts to trade based on your account size and stop-loss distance", "When the best time to trade is", "What the daily news events are"], answer: 1, explanation: "Risk Shield calculates your position size using the formula: Contracts = Risk Amount ÷ (Stop Loss Points × Point Value). NQ = $20/point, MNQ = $2/point. Always run this before placing a trade — never guess." },
+  { difficulty: "medium", scenario: "In the 'Day in the Life' story, Marcus uses Risk Shield before entering his Silver Bullet trade. His account is $100,000, risk is 0.5%, stop loss is 22 points on MNQ ($2/point). How many MNQ contracts can he trade?", options: ["5 contracts", "8 contracts", "11 contracts", "25 contracts"], answer: 2, explanation: "Risk = $100,000 × 0.5% = $500. Stop cost per contract = 22 points × $2 = $44. Contracts = $500 ÷ $44 = 11.36, rounded down to 11. Always round DOWN, never up." },
+  { difficulty: "medium", scenario: "You've been using the Smart Journal for 6 weeks. You notice your 'FOMO' tag appears on 9 trades, all on Fridays, and all of them were losers. What is the correct action?", options: ["Ignore it — sample size is too small", "Stop trading on Fridays and review what makes Fridays different for your psychology", "Switch to a different strategy on Fridays", "Trade more on Fridays to average out the losses"], answer: 1, explanation: "Your journal data is telling you something important: Fridays trigger FOMO behavior that leads to losses. The correct response is to stop trading Fridays until you understand the pattern. The journal's behavior tags exist exactly for this purpose — to surface blind spots you can't see in the moment." },
 ];
 
 export const PLAN_SECTIONS: {
