@@ -1428,7 +1428,7 @@ export default function IctAcademy() {
           onClose={closeCelebration}
         />
       )}
-      <header className="sticky top-0 z-30 bg-background px-6 pt-3 pb-3 border-b">
+      <header className="sticky top-0 z-30 bg-background px-6 border-b text-left pl-[555px] pr-[555px] pt-[10px] pb-[10px]">
         <div className="flex bg-secondary rounded-xl p-1 max-w-lg">
           {TAB_CONFIG.map((t) => (
             <button
