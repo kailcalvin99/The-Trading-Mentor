@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Clock } from "lucide-react";
 import { useListTrades } from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SESSIONS = [
   { name: "London", emoji: "🌍", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B", time: "2:00–5:00 AM EST" },
@@ -36,14 +36,24 @@ function formatCountdown(ms: number): string {
 function formatESTTime(date: Date): string {
   let h = date.getHours();
   const m = String(date.getMinutes()).padStart(2, "0");
-  const s = String(date.getSeconds()).padStart(2, "0");
   const ampm = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
-  return `${String(h).padStart(2, "0")}:${m}:${s} ${ampm}`;
+  return `${h}:${m} ${ampm}`;
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" });
 }
 
 export default function KillZoneStrip() {
   const [, setTick] = useState(0);
+  const { user } = useAuth();
+
+  const firstName = user?.name ? user.name.split(" ")[0] : "Trader";
+  const avatarUrl = user?.avatarUrl ?? null;
+  const initials = user?.name
+    ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "T";
 
   const { data: apiTrades } = useListTrades();
   const trades = (apiTrades || []) as Array<{
@@ -160,7 +170,9 @@ export default function KillZoneStrip() {
     return [...sessionCards, ...statCards];
   }
 
-  const CLOCK_WIDTH = 215;
+  const CLOCK_WIDTH = 260;
+  const dateStr = formatDate(new Date());
+  const timeStr = formatESTTime(est);
 
   return (
     <div
@@ -174,21 +186,29 @@ export default function KillZoneStrip() {
         }
       `}</style>
 
-      {/* Locked EST clock — sits on top, cards scroll behind it */}
+      {/* Avatar + greeting — sits on top, cards scroll behind it */}
       <div
         className="absolute left-0 top-0 h-full flex items-center pl-3 pr-2 z-20"
         style={{ width: CLOCK_WIDTH, background: "hsl(var(--card) / 0.95)" }}
       >
-        <div
-          className="flex items-center gap-2 px-3 h-[48px] border border-border rounded-xl w-full"
-          style={{ background: "#02c896" }}
-        >
-          <Clock className="h-4 w-4 text-primary shrink-0" />
-          <div className="flex flex-row items-center gap-1 min-w-0">
-            <span className="text-xs font-bold text-muted-foreground">EST</span>
-            <span className="text-sm font-mono font-bold text-foreground whitespace-nowrap">
-              {formatESTTime(est)}
-            </span>
+        <div className="flex items-center gap-2.5 px-3 h-[48px] border border-border rounded-xl w-full bg-card">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={firstName}
+              className="w-8 h-8 rounded-full object-cover shrink-0 border border-border"
+            />
+          ) : (
+            <div
+              className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold border border-border"
+              style={{ background: "#00C896", color: "#020203" }}
+            >
+              {initials}
+            </div>
+          )}
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-semibold text-foreground whitespace-nowrap leading-tight">{firstName}</span>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap leading-tight">{dateStr} · {timeStr} EST</span>
           </div>
         </div>
       </div>

@@ -12,7 +12,6 @@ import {
   EconomicCalendarWidget,
 } from "@/components/LiveMarketWidgets";
 import { useListTrades } from "@workspace/api-client-react";
-import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { PremiumTeaser } from "@/components/CasinoElements";
 import { usePlanner } from "@/contexts/PlannerContext";
@@ -1476,7 +1475,6 @@ export default function Dashboard() {
 
   return (
     <>
-      <DashboardBanner user={user} onAvatarClick={() => setShowAvatarPicker(true)} />
 
       <LiveMarketPopover />
 
@@ -1513,8 +1511,6 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4">
-          <MorningBriefingWidget />
-
           <TodayScheduleWidget />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
