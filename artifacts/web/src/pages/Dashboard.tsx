@@ -1555,7 +1555,7 @@ export default function Dashboard() {
   function handleAIClick() {
     const btn = document.querySelector<HTMLButtonElement>("[data-ai-trigger]");
     if (btn) btn.click();
-    else navigate("/dashboard");
+    else navigate("/");
   }
 
   useEffect(() => {

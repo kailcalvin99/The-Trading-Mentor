@@ -17,7 +17,7 @@ export default function VideoTourPage() {
 
   const handleClose = () => {
     // Redirect back to dashboard when user closes the tour
-    navigate("/dashboard");
+    navigate("/");
   };
 
   return <VideoTour state={state} dispatch={dispatch} onClose={handleClose} />;

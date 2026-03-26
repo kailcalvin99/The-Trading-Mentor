@@ -388,7 +388,7 @@ export default function Settings() {
 
   function handleRetakeQuiz() {
     clearQuizData();
-    navigate("/dashboard");
+    navigate("/");
     window.location.reload();
   }
 
