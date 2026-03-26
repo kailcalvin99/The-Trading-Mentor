@@ -687,13 +687,13 @@ export default function DailyPlanner() {
   }
 
   function handleSetDailyBias() {
-    updateTradePlan("bias", dailyBiasInput);
+    updateTradePlan("bias", dailyBiasInput.toLowerCase());
     setShowDailyBiasWindow(false);
     setDailyBiasInput("");
   }
 
   function handleOpenDailyBiasWindow() {
-    setDailyBiasInput(dayData.tradePlan.bias); // Pre-fill with current bias if exists
+    setDailyBiasInput((dayData.tradePlan.bias || "").toLowerCase()); // Pre-fill with current bias if exists
     setShowDailyBiasWindow(true);
   }
 
@@ -1557,13 +1557,25 @@ export default function DailyPlanner() {
           <div className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Market Bias</label>
-              <input
-                type="text"
-                value={dailyBiasInput}
-                onChange={(e) => setDailyBiasInput(e.target.value)}
-                placeholder="e.g. Bullish, Bearish, Neutral"
-                className="w-full bg-secondary/40 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+              <div className="flex gap-2">
+                {(["bullish", "bearish", "neutral"] as const).map((bias) => (
+                  <button
+                    key={bias}
+                    onClick={() => setDailyBiasInput(bias)}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold border transition-all capitalize ${
+                      dailyBiasInput === bias
+                        ? bias === "bullish"
+                          ? "bg-green-500/20 border-green-500 text-green-400"
+                          : bias === "bearish"
+                          ? "bg-red-500/20 border-red-500 text-red-400"
+                          : "bg-amber-500/20 border-amber-500 text-amber-400"
+                        : "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {bias.charAt(0).toUpperCase() + bias.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <button
@@ -1574,7 +1586,8 @@ export default function DailyPlanner() {
               </button>
               <button
                 onClick={handleSetDailyBias}
-                className="py-2 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:brightness-110 transition-all"
+                disabled={!dailyBiasInput}
+                className="py-2 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Set Bias
               </button>
