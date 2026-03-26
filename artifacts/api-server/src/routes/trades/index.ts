@@ -212,7 +212,7 @@ Trade Data:
 Respond with ONLY the coaching feedback — no headers, no bullet points, just flowing sentences.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
 
