@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { useAppConfig } from "./AppConfigContext";
 
 interface RoutineItem {
@@ -83,7 +83,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     if (Array.isArray(parsed) && parsed.length > 0) routineConfig = parsed;
   } catch {}
 
-  const routineKeys = routineConfig.map((r) => r.key);
+  const routineKeys = useMemo(() => routineConfig.map((r) => r.key), [config.routine_items]);
 
   useEffect(() => {
     const key = todayKey;

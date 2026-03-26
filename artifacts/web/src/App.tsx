@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, Component, type ReactNode } from "react";
 import {
   Navigate,
   Route,
@@ -41,6 +41,26 @@ import { PlannerProvider } from "./contexts/PlannerContext";
 import { useIsMobile } from "./hooks/use-mobile";
 import AIAssistant from "./components/AIAssistant";
 import { ThemeProvider } from "./components/ThemeProvider";
+
+class AIAssistantErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed bottom-4 right-4 z-50 bg-destructive/10 border border-destructive/30 text-destructive text-xs rounded-xl px-4 py-3 max-w-xs">
+          Something went wrong with the AI assistant, please refresh.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -104,7 +124,7 @@ function App() {
 
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                  {!isMobile && <AIAssistant />}
+                  {!isMobile && <AIAssistantErrorBoundary><AIAssistant /></AIAssistantErrorBoundary>}
                   <Toaster richColors position="top-right" />
                 </Router>
               </PlannerProvider>
