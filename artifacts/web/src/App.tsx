@@ -90,6 +90,7 @@ function App() {
                         <Route path="videos" element={<VideoLibrary />} />
                         <Route path="planner" element={<DailyPlanner />} />
                         <Route path="risk-shield" element={<Navigate to="/planner" replace />} />
+                        <Route path="dashboard" element={<Navigate to="/" replace />} />
                         <Route path="prop-tracker" element={<TierGuard requiredTier={1}><PropTracker /></TierGuard>} />
                         <Route path="journal" element={<SmartJournal />} />
                         <Route path="analytics" element={<TierGuard requiredTier={2}><Analytics /></TierGuard>} />
