@@ -118,24 +118,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.user ?? null);
       setSubscription(data.subscription ?? null);
       if (data.user) {
-        const savedMode = await AsyncStorage.getItem(APP_MODE_KEY).catch(() => null);
-        if (savedMode === "full" || savedMode === "lite") {
-          setAppModeState(savedMode);
+        const serverMode = data.user.appMode;
+        if (serverMode === "full" || serverMode === "lite") {
+          setAppModeState(serverMode);
+          AsyncStorage.setItem(APP_MODE_KEY, serverMode).catch(() => {});
         } else {
-          const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
-          let completedIds: string[] = [];
-          try {
-            const progressData = await apiGet<{ lessonIds: string[] }>("academy/progress");
-            completedIds = progressData.lessonIds || [];
-          } catch {
+          const savedMode = await AsyncStorage.getItem(APP_MODE_KEY).catch(() => null);
+          if (savedMode === "full" || savedMode === "lite") {
+            setAppModeState(savedMode);
+          } else {
+            const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
+            let completedIds: string[] = [];
             try {
-              const raw = await AsyncStorage.getItem(ACADEMY_PROGRESS_KEY);
-              completedIds = raw ? JSON.parse(raw).filter(Boolean) : [];
-            } catch {}
+              const progressData = await apiGet<{ lessonIds: string[] }>("academy/progress");
+              completedIds = progressData.lessonIds || [];
+            } catch {
+              try {
+                const raw = await AsyncStorage.getItem(ACADEMY_PROGRESS_KEY);
+                completedIds = raw ? JSON.parse(raw).filter(Boolean) : [];
+              } catch {}
+            }
+            const uniqueCompleted = new Set<string>(completedIds).size;
+            const allDone = totalLessons > 0 && uniqueCompleted >= totalLessons;
+            setAppModeState(allDone ? "full" : "lite");
           }
-          const uniqueCompleted = new Set<string>(completedIds).size;
-          const allDone = totalLessons > 0 && uniqueCompleted >= totalLessons;
-          setAppModeState(allDone ? "full" : "lite");
         }
         prewarmAcademyProgress();
       }
@@ -150,6 +156,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setAppMode = useCallback((mode: "full" | "lite") => {
     setAppModeState(mode);
     AsyncStorage.setItem(APP_MODE_KEY, mode).catch(() => {});
+    apiPatch("user/settings", { section: "appMode", data: { mode } }).catch((err) => {
+      console.warn("Failed to sync app mode to server:", err);
+    });
   }, []);
 
   const setAvatarUrl = useCallback(async (url: string | null) => {
