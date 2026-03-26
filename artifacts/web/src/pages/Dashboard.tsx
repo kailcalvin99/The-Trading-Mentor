@@ -6,7 +6,7 @@ import {
   X, Camera, Shield, Pencil,
   CheckCircle2, Play, GraduationCap, Users, Lock,
   ChevronLeft, ChevronRight, Plus, Bot, Calendar,
-  Radio, Activity, ChevronDown, Edit2, ChevronUp,
+  Radio, Activity, ChevronDown, ChevronUp,
 } from "lucide-react";
 import {
   EconomicCalendarWidget,
@@ -16,7 +16,7 @@ import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { PremiumTeaser } from "@/components/CasinoElements";
 import { usePlanner } from "@/contexts/PlannerContext";
-import { useTodaySchedule } from "@/hooks/useTodaySchedule";
+import SmartMoneyChecklist from "@/components/SmartMoneyChecklist";
 import type { LucideIcon } from "lucide-react";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { usePrices, useOpenTrades } from "@/hooks/useLiveMarket";
@@ -724,8 +724,7 @@ function parseHhmm(timeStr: string): { h: number; m: number } | null {
 }
 
 function TodayScheduleWidget() {
-  const { routineItems, routineConfig, isRoutineComplete, toggleItem } = usePlanner();
-  const { sortedSchedule, saveTime } = useTodaySchedule(routineItems);
+  const { isRoutineComplete } = usePlanner();
   const [customItems, setCustomItems] = useState<CustomScheduleItem[]>(() => getCustomItems());
   const [newTime, setNewTime] = useState("");
   const [newLabel, setNewLabel] = useState("");
@@ -734,23 +733,10 @@ function TodayScheduleWidget() {
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingLabelVal, setEditingLabelVal] = useState("");
   const [showAddCustom, setShowAddCustom] = useState(false);
-  const [isLocked, setIsLocked] = useState(() => {
-    try { return localStorage.getItem(SCHEDULE_LOCKED_KEY) === "true"; } catch { return false; }
-  });
-  const [slidOff, setSlidOff] = useState(false);
-
-  const todayKey = new Date().toISOString().split("T")[0];
-  const completedTodayKey = SCHEDULE_COMPLETE_KEY + todayKey;
-
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(completedTodayKey) === "true") setSlidOff(true);
-    } catch {}
-  }, [completedTodayKey]);
 
   type RowItem = {
-    id: string; time: string; label: string; icon?: string;
-    done: boolean; isRoutine: boolean; routineKey?: string; customId?: string;
+    id: string; time: string; label: string;
+    done: boolean; customId?: string;
   };
 
   function rowTimeToMins(timeStr: string): number {
@@ -762,40 +748,9 @@ function TodayScheduleWidget() {
     return Infinity;
   }
 
-  const routineRows: RowItem[] = sortedSchedule.map((item): RowItem => ({
-    id: `routine_${item.id}`, time: item.timeStr, label: item.label,
-    icon: item.icon, done: item.checked, isRoutine: true, routineKey: item.id,
-  }));
-
   const customRows: RowItem[] = customItems.map((c): RowItem => ({
-    id: c.id, time: c.time, label: c.label, done: c.done ?? false,
-    isRoutine: false, customId: c.id,
-  }));
-
-  const allRows: RowItem[] = [...routineRows, ...customRows].sort(
-    (a, b) => rowTimeToMins(a.time) - rowTimeToMins(b.time)
-  );
-
-  const allDone = allRows.length > 0 && allRows.every(r => r.done);
-
-  useEffect(() => {
-    if (!allDone || slidOff) return;
-    const t = setTimeout(() => {
-      setSlidOff(true);
-      try { localStorage.setItem(completedTodayKey, "true"); } catch {}
-    }, 800);
-    return () => clearTimeout(t);
-  }, [allDone, slidOff, completedTodayKey]);
-
-  function lockSchedule() {
-    setIsLocked(true);
-    try { localStorage.setItem(SCHEDULE_LOCKED_KEY, "true"); } catch {}
-  }
-
-  function unlockSchedule() {
-    setIsLocked(false);
-    try { localStorage.setItem(SCHEDULE_LOCKED_KEY, "false"); } catch {}
-  }
+    id: c.id, time: c.time, label: c.label, done: c.done ?? false, customId: c.id,
+  })).sort((a, b) => rowTimeToMins(a.time) - rowTimeToMins(b.time));
 
   function addItem() {
     if (!newLabel.trim()) return;
@@ -820,16 +775,6 @@ function TodayScheduleWidget() {
     );
     setCustomItems(updated);
     saveCustomItems(updated);
-  }
-
-  function startEditRoutineTime(routineKey: string, currentTime: string) {
-    setEditingTimeId(`routine_${routineKey}`);
-    setEditingTimeVal(currentTime);
-  }
-
-  function saveRoutineTimeEdit(routineKey: string) {
-    saveTime(routineKey, editingTimeVal.trim());
-    setEditingTimeId(null);
   }
 
   function startEditCustomTime(customId: string, currentTime: string) {
@@ -865,173 +810,138 @@ function TodayScheduleWidget() {
   }
 
   return (
-    <div
-      className={`bg-card border border-border rounded-2xl p-4 transition-all duration-700 overflow-hidden ${
-        slidOff ? "opacity-0 max-h-0 py-0 px-0 my-0 border-0" : "opacity-100 max-h-[9999px]"
-      }`}
-    >
-      <div className="flex items-center gap-2 mb-3">
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-4">
         <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground flex-1">Today's Schedule</h3>
-        {allDone && !slidOff && (
+        <h3 className="text-sm font-semibold text-foreground flex-1">Morning Routine</h3>
+        {isRoutineComplete && (
           <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold animate-pulse">
-            All Done ✓
+            Complete ✓
           </span>
-        )}
-        {isLocked ? (
-          <button
-            onClick={unlockSchedule}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
-          >
-            <Edit2 className="h-3 w-3" />
-            Edit
-          </button>
-        ) : (
-          <button
-            onClick={lockSchedule}
-            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
-          >
-            <Lock className="h-3 w-3" />
-            Lock
-          </button>
         )}
       </div>
 
-      {allRows.length === 0 && !isLocked && (
-        <p className="text-xs text-muted-foreground mb-3">Add items to your schedule to get started.</p>
-      )}
+      <SmartMoneyChecklist />
 
-      {allRows.length > 0 && (
-        <div className="mb-2 space-y-0.5">
-          {allRows.map((row, idx) => (
-            <div key={row.id} className="flex items-center gap-2 py-1.5 group">
-              <div className="w-16 shrink-0">
-                {!isLocked && editingTimeId === row.id ? (
-                  <input
-                    type="text"
-                    value={editingTimeVal}
-                    onChange={(e) => setEditingTimeVal(e.target.value)}
-                    onBlur={() => {
-                      if (row.routineKey) saveRoutineTimeEdit(row.routineKey);
-                      else if (row.customId) saveCustomTime(row.customId);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        if (row.routineKey) saveRoutineTimeEdit(row.routineKey);
-                        else if (row.customId) saveCustomTime(row.customId);
-                      }
-                      if (e.key === "Escape") setEditingTimeId(null);
-                    }}
-                    placeholder="7:30 AM"
-                    autoFocus
-                    className="w-full bg-secondary border border-primary rounded px-1 py-0.5 text-xs text-foreground focus:outline-none"
-                  />
-                ) : (
+      {customRows.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Custom Items</p>
+          <div className="space-y-0.5">
+            {customRows.map((row, idx) => (
+              <div key={row.id} className="flex items-center gap-2 py-1.5 group">
+                <div className="w-16 shrink-0">
+                  {editingTimeId === row.id ? (
+                    <input
+                      type="text"
+                      value={editingTimeVal}
+                      onChange={(e) => setEditingTimeVal(e.target.value)}
+                      onBlur={() => row.customId && saveCustomTime(row.customId)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && row.customId) saveCustomTime(row.customId);
+                        if (e.key === "Escape") setEditingTimeId(null);
+                      }}
+                      placeholder="7:30 AM"
+                      autoFocus
+                      className="w-full bg-secondary border border-primary rounded px-1 py-0.5 text-xs text-foreground focus:outline-none"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => row.customId && startEditCustomTime(row.customId, row.time)}
+                      className="text-xs font-mono text-muted-foreground whitespace-nowrap leading-tight transition-colors hover:text-primary cursor-pointer"
+                    >
+                      {row.time || "—"}
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col items-center self-stretch shrink-0" style={{ width: 14 }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0 mt-1" />
+                  {idx < customRows.length - 1 && <div className="flex-1 w-px bg-border mt-0.5" />}
+                </div>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   <button
-                    onClick={() => {
-                      if (isLocked) return;
-                      if (row.routineKey) startEditRoutineTime(row.routineKey, row.time);
-                      else if (row.customId) startEditCustomTime(row.customId, row.time);
-                    }}
-                    className={`text-xs font-mono text-muted-foreground whitespace-nowrap leading-tight transition-colors ${
-                      isLocked ? "cursor-default" : "hover:text-primary cursor-pointer"
+                    onClick={() => row.customId && toggleCustomDone(row.customId)}
+                    className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
+                      row.done ? "bg-primary border-primary" : "border-border hover:border-primary/50"
                     }`}
                   >
-                    {row.time || "—"}
+                    {row.done && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
                   </button>
-                )}
+                  {editingLabelId === row.customId ? (
+                    <input
+                      type="text"
+                      value={editingLabelVal}
+                      onChange={(e) => setEditingLabelVal(e.target.value)}
+                      onBlur={() => row.customId && saveCustomLabel(row.customId)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && row.customId) saveCustomLabel(row.customId);
+                        if (e.key === "Escape") setEditingLabelId(null);
+                      }}
+                      autoFocus
+                      className="flex-1 bg-secondary border border-primary rounded px-1 py-0.5 text-xs text-foreground focus:outline-none min-w-0"
+                    />
+                  ) : (
+                    <span className={`text-xs leading-tight min-w-0 flex-1 ${row.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                      {row.label}
+                    </span>
+                  )}
+                  {editingLabelId !== row.customId && (
+                    <>
+                      <button
+                        onClick={() => row.customId && startEditCustomLabel(row.customId, row.label)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary shrink-0"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => row.customId && deleteItem(row.customId)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400 shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-col items-center self-stretch shrink-0" style={{ width: 14 }}>
-                <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0 mt-1" />
-                {idx < allRows.length - 1 && <div className="flex-1 w-px bg-border mt-0.5" />}
-              </div>
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <button
-                  onClick={() => row.isRoutine ? toggleItem(row.routineKey!) : row.customId && toggleCustomDone(row.customId)}
-                  className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
-                    row.done ? "bg-primary border-primary" : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  {row.done && <CheckSquare className="h-3 w-3 text-primary-foreground" />}
-                </button>
-                {row.icon && <span className="text-sm shrink-0 leading-none">{row.icon}</span>}
-                {!row.isRoutine && editingLabelId === row.customId ? (
-                  <input
-                    type="text"
-                    value={editingLabelVal}
-                    onChange={(e) => setEditingLabelVal(e.target.value)}
-                    onBlur={() => row.customId && saveCustomLabel(row.customId)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && row.customId) saveCustomLabel(row.customId);
-                      if (e.key === "Escape") setEditingLabelId(null);
-                    }}
-                    autoFocus
-                    className="flex-1 bg-secondary border border-primary rounded px-1 py-0.5 text-xs text-foreground focus:outline-none min-w-0"
-                  />
-                ) : (
-                  <span className={`text-xs leading-tight min-w-0 flex-1 ${row.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                    {row.label}
-                  </span>
-                )}
-                {!isLocked && !row.isRoutine && editingLabelId !== row.customId && (
-                  <>
-                    <button
-                      onClick={() => row.customId && startEditCustomLabel(row.customId, row.label)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary shrink-0"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => row.customId && deleteItem(row.customId)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400 shrink-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
-      {!isLocked && (
-        <div className="mt-2">
-          {showAddCustom ? (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                value={newTime}
-                onChange={(e) => setNewTime(e.target.value)}
-                placeholder="7:30 AM"
-                className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <input
-                type="text"
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { addItem(); setShowAddCustom(false); }
-                  if (e.key === "Escape") { setShowAddCustom(false); setNewLabel(""); setNewTime(""); }
-                }}
-                placeholder="Add to schedule..."
-                autoFocus
-                className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button onClick={() => { addItem(); setShowAddCustom(false); }} className="text-xs font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
-              <button onClick={() => { setShowAddCustom(false); setNewLabel(""); setNewTime(""); }} className="text-xs text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowAddCustom(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary/40 text-xs text-muted-foreground hover:text-primary transition-colors"
-            >
-              <Plus className="h-3 w-3" />
-              + Add to schedule
-            </button>
-          )}
-        </div>
-      )}
+      <div className="mt-3">
+        {showAddCustom ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              type="text"
+              value={newTime}
+              onChange={(e) => setNewTime(e.target.value)}
+              placeholder="7:30 AM"
+              className="w-20 bg-secondary border border-border rounded px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <input
+              type="text"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { addItem(); setShowAddCustom(false); }
+                if (e.key === "Escape") { setShowAddCustom(false); setNewLabel(""); setNewTime(""); }
+              }}
+              placeholder="Add custom item..."
+              autoFocus
+              className="flex-1 bg-secondary border border-border rounded px-2 py-0.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button onClick={() => { addItem(); setShowAddCustom(false); }} className="text-xs font-bold text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/10 transition-colors shrink-0">Add</button>
+            <button onClick={() => { setShowAddCustom(false); setNewLabel(""); setNewTime(""); }} className="text-xs text-muted-foreground hover:text-foreground shrink-0"><X className="h-3 w-3" /></button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAddCustom(true)}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary/40 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Plus className="h-3 w-3" />
+            + Add custom item
+          </button>
+        )}
+      </div>
     </div>
   );
 }

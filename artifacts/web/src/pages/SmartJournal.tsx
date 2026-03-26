@@ -148,7 +148,7 @@ function StressSliderControl({ value, onChange }: { value: number; onChange: (v:
 
 export default function SmartJournal() {
   const { tierLevel, appMode } = useAuth();
-  const { isRoutineComplete, routineCompletedToday, routineItems, routineConfig, plannerLoaded } = usePlanner();
+  const { isRoutineComplete, routineCompletedToday, routineItems, routineConfig, plannerLoaded, tradePlanDefaults } = usePlanner();
   const { getNumber } = useAppConfig();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -357,14 +357,26 @@ export default function SmartJournal() {
 
   function proceedToNewForm() {
     setEditingDraftId(null);
+    const sessionFromDefaults = tradePlanDefaults.detectedKillZone || tradePlanDefaults.targetSession || "";
+    const riskFromDefaults = tradePlanDefaults.riskPct || userSettings?.defaultRiskPct || DEFAULT_FORM.riskPct;
+    const biasFromDefaults = tradePlanDefaults.marketBias;
+    const dolFromDefaults = tradePlanDefaults.drawOnLiquidity;
+    const zoneFromDefaults = tradePlanDefaults.zoneNotes;
+
+    let notesFromDefaults = "";
+    if (biasFromDefaults) notesFromDefaults += `Bias: ${biasFromDefaults}`;
+    if (dolFromDefaults) notesFromDefaults += (notesFromDefaults ? " | " : "") + `DOL: ${dolFromDefaults}`;
+    if (zoneFromDefaults) notesFromDefaults += (notesFromDefaults ? "\nZones: " : "Zones: ") + zoneFromDefaults;
+
     setForm({
       ...DEFAULT_FORM,
       entryTime: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
       pair: userSettings?.defaultPairs || DEFAULT_FORM.pair,
-      riskPct: userSettings?.defaultRiskPct || DEFAULT_FORM.riskPct,
-      sideDirection: "",
-      tradingSession: "",
+      riskPct: riskFromDefaults,
+      sideDirection: biasFromDefaults === "Bullish" ? "BUY" : biasFromDefaults === "Bearish" ? "SELL" : "",
+      tradingSession: sessionFromDefaults,
       entryPrice: "",
+      notes: notesFromDefaults,
     });
     setShowForm(true);
     dispatchAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });

@@ -23,8 +23,10 @@ import {
   CheckSquare,
   Square,
   X,
+  CheckCircle2,
 } from "lucide-react";
 import { usePlanner } from "@/contexts/PlannerContext";
+import SmartMoneyChecklist from "@/components/SmartMoneyChecklist";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -164,6 +166,35 @@ function migrateKeyLevels(keyLevels: KeyLevel[] | string): KeyLevel[] {
     return [{ price: keyLevels.trim(), type: "support" }];
   }
   return [];
+}
+
+const KILL_ZONE_TO_SESSION: Record<string, string> = {
+  "London Open": "london_open",
+  "NY Open / AM": "ny_open",
+  "Silver Bullet": "silver_bullet",
+  "London Close": "ny_lunch",
+};
+
+function mapChecklistDefaultsToTradePlan(
+  base: TradePlan,
+  defaults: { marketBias?: string; riskPct?: string; detectedKillZone?: string; drawOnLiquidity?: string; zoneNotes?: string; targetSession?: string }
+): TradePlan {
+  const mapped: Partial<TradePlan> = {};
+  if (defaults.marketBias) mapped.bias = defaults.marketBias;
+  if (defaults.riskPct) mapped.riskPerTrade = defaults.riskPct;
+  if (defaults.detectedKillZone) {
+    const sessionId = KILL_ZONE_TO_SESSION[defaults.detectedKillZone];
+    if (sessionId) mapped.targetSession = sessionId;
+  } else if (defaults.targetSession) {
+    mapped.targetSession = defaults.targetSession;
+  }
+  if (defaults.drawOnLiquidity || defaults.zoneNotes) {
+    const parts: string[] = [];
+    if (defaults.drawOnLiquidity) parts.push(`DOL: ${defaults.drawOnLiquidity}`);
+    if (defaults.zoneNotes) parts.push(`Zones: ${defaults.zoneNotes}`);
+    mapped.sessionFocus = parts.join(" | ");
+  }
+  return { ...base, ...mapped };
 }
 
 function loadDayDataLocal(date: Date): DayData {
@@ -540,7 +571,10 @@ export default function DailyPlanner() {
         const apiDayData: DayData = {
           tasks: apiData.tasks ?? [],
           notes: apiData.notes ?? "",
-          tradePlan: { ...DEFAULT_TRADE_PLAN, ...tradePlanDefaults, ...apiData.tradePlan },
+          tradePlan: mapChecklistDefaultsToTradePlan(
+            { ...DEFAULT_TRADE_PLAN, ...apiData.tradePlan },
+            tradePlanDefaults
+          ),
         };
         setDayData(apiDayData);
         saveDayDataLocal(selectedDate, apiDayData);
@@ -550,6 +584,26 @@ export default function DailyPlanner() {
       }
     });
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (
+      !tradePlanDefaults.marketBias &&
+      !tradePlanDefaults.riskPct &&
+      !tradePlanDefaults.detectedKillZone &&
+      !tradePlanDefaults.drawOnLiquidity &&
+      !tradePlanDefaults.zoneNotes
+    ) return;
+    setDayData((prev) => ({
+      ...prev,
+      tradePlan: mapChecklistDefaultsToTradePlan(prev.tradePlan, tradePlanDefaults),
+    }));
+  }, [
+    tradePlanDefaults.marketBias,
+    tradePlanDefaults.riskPct,
+    tradePlanDefaults.detectedKillZone,
+    tradePlanDefaults.drawOnLiquidity,
+    tradePlanDefaults.zoneNotes,
+  ]);
 
   const persist = useCallback((data: DayData) => {
     setDayData(data);
@@ -814,6 +868,21 @@ export default function DailyPlanner() {
       )}
 
       <div>
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+            <h2 className="font-semibold text-sm flex-1">Morning Routine</h2>
+            {isRoutineComplete && (
+              <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">
+                Complete ✓
+              </span>
+            )}
+          </div>
+          <SmartMoneyChecklist />
+        </CardContent>
+      </Card>
+
       <Card className="mb-4">
         <CardContent className="p-4">
           <button onClick={() => setTradePlanOpen(!tradePlanOpen)} className="flex items-center justify-between w-full">
