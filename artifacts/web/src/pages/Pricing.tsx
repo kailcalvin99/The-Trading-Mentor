@@ -24,6 +24,7 @@ export default function Pricing() {
   const [founderLimit, setFounderLimit] = useState(20);
   const [founderDiscountPct, setFounderDiscountPct] = useState(50);
   const [subscribing, setSubscribing] = useState<number | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const { user, subscription, refreshUser, isAdmin, tierLevel } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -66,6 +67,7 @@ export default function Pricing() {
       return;
     }
     setSubscribing(tierId);
+    setCheckoutError(null);
     try {
       if (tierLevel === 0) {
         const res = await fetch(`${API_BASE}/subscriptions/subscribe`, {
@@ -77,6 +79,9 @@ export default function Pricing() {
         if (res.ok) {
           await refreshUser();
           navigate("/");
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          setCheckoutError(errData.error || "Failed to switch plan. Please try again.");
         }
       } else {
         const res = await fetch(`${API_BASE}/subscriptions/create-checkout-session`, {
@@ -90,14 +95,22 @@ export default function Pricing() {
           if (data.url) {
             window.location.href = data.url;
             return;
+          } else {
+            setCheckoutError("No checkout URL returned. Please try again.");
           }
         } else {
           const errData = await res.json().catch(() => ({}));
-          console.error("Checkout error:", errData.error);
+          const errMsg = errData.error || "";
+          if (errMsg.toLowerCase().includes("stripe") && (errMsg.toLowerCase().includes("key") || errMsg.toLowerCase().includes("not found") || errMsg.toLowerCase().includes("configure"))) {
+            setCheckoutError("Checkout is temporarily unavailable. Please contact support.");
+          } else {
+            setCheckoutError(errMsg || "Failed to start checkout. Please try again.");
+          }
         }
       }
     } catch (err) {
       console.error("Upgrade error:", err);
+      setCheckoutError("Failed to start checkout. Please check your connection and try again.");
     }
     setSubscribing(null);
   }
@@ -149,6 +162,16 @@ export default function Pricing() {
             <div>
               <p className="text-sm font-bold text-orange-500">Payment canceled</p>
               <p className="text-xs text-muted-foreground">No charges were made. You can try again anytime.</p>
+            </div>
+          </div>
+        )}
+
+        {checkoutError && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 flex items-center gap-3 animate-in fade-in duration-300">
+            <XCircle className="h-6 w-6 text-red-500 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-red-500">Checkout failed</p>
+              <p className="text-xs text-muted-foreground">{checkoutError}</p>
             </div>
           </div>
         )}

@@ -119,13 +119,28 @@ export default function SubscriptionScreen() {
       if (data.url) {
         await Linking.openURL(data.url);
       } else {
-        Alert.alert("Error", "No checkout URL returned");
+        Alert.alert("Error", "No checkout URL returned. Please try again.");
       }
     } catch (err: unknown) {
-      if (isSessionExpiredError(err)) return;
-      Alert.alert("Error", "Failed to start checkout");
+      if (isSessionExpiredError(err)) {
+        setSubscribing(null);
+        return;
+      }
+      const msg = err instanceof Error ? err.message : "Failed to start checkout";
+      const isStripeConfigError =
+        msg.toLowerCase().includes("stripe") &&
+        (msg.toLowerCase().includes("key") ||
+          msg.toLowerCase().includes("not found") ||
+          msg.toLowerCase().includes("configure"));
+      Alert.alert(
+        "Checkout Unavailable",
+        isStripeConfigError
+          ? "Checkout is temporarily unavailable. Please contact support."
+          : msg || "Failed to start checkout. Please try again."
+      );
+    } finally {
+      setSubscribing(null);
     }
-    setSubscribing(null);
   }
 
   const currentTierLevel = tierLevel;
