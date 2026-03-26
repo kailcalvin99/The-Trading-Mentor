@@ -1615,9 +1615,32 @@ export default function IctAcademy() {
   const [tab, setTab] = useState<Tab>("learn");
   const { user } = useAuth();
   const { showCelebration, closeCelebration } = useGraduationCheck();
+  const headerRef = useRef<HTMLElement>(null);
+  const lastScrollY = useRef(0);
+
   useEffect(() => {
     const interval = setInterval(checkAndUnlock, 2000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const mainEl = document.getElementById("academy-main");
+    if (!mainEl) return;
+    const header = headerRef.current;
+    if (!header) return;
+
+    const onScroll = () => {
+      const currentY = mainEl.scrollTop;
+      if (currentY > lastScrollY.current && currentY > 60) {
+        header.style.transform = `translateY(-100%)`;
+      } else {
+        header.style.transform = "translateY(0)";
+      }
+      lastScrollY.current = currentY;
+    };
+
+    mainEl.addEventListener("scroll", onScroll, { passive: true });
+    return () => mainEl.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
@@ -1628,8 +1651,15 @@ export default function IctAcademy() {
           onClose={closeCelebration}
         />
       )}
-      <header className="sticky top-0 z-30 bg-background px-6 border-b text-left pl-[555px] pr-[555px] pt-[10px] pb-[10px]">
-        <div className="flex bg-secondary rounded-xl p-1 max-w-lg pr-[0px] pl-[0px] pt-[5px] pb-[5px] ml-[0px]">
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-30 bg-background border-b px-6 py-2.5 flex items-center gap-4"
+        style={{ transition: "transform 0.3s ease" }}
+      >
+        <span className="text-sm font-bold whitespace-nowrap text-foreground">
+          ICT Trading Academy
+        </span>
+        <div className="flex flex-1 bg-secondary rounded-xl p-1">
           {TAB_CONFIG.map((t) => (
             <button
               key={t.key}
@@ -1645,7 +1675,7 @@ export default function IctAcademy() {
           ))}
         </div>
       </header>
-      <main className="flex-1 overflow-y-auto">
+      <main id="academy-main" className="flex-1 overflow-y-auto">
         {tab === "learn" && <LearnView />}
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
