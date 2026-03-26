@@ -36,6 +36,47 @@ const C = Colors.dark;
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
+const WEBHOOK_API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : "http://localhost:8080/api";
+
+const WEBHOOK_SETUP_STEPS = [
+  { step: 1, title: "Copy your Webhook URL", desc: "Copy the unique URL shown above — this is your personal webhook endpoint." },
+  { step: 2, title: "Open TradingView", desc: "Go to TradingView and open your NQ/MNQ chart. Tap the Alert button (clock icon) to create a new alert." },
+  { step: 3, title: "Set the webhook URL", desc: 'In Alert settings, switch to the "Notifications" tab. Enable "Webhook URL" and paste your URL.' },
+  { step: 4, title: "Configure the alert message", desc: 'In the "Alert message" field, paste one of the example payloads. TradingView will send this JSON when the alert fires.' },
+  { step: 5, title: "Fire the alert", desc: "When TradingView fires the alert, a draft trade is automatically created in your Smart Journal — ready for you to review and confirm." },
+];
+
+const WEBHOOK_ALERT_EXAMPLES = [
+  {
+    label: "Long Entry (Buy) — Full",
+    payload: `{\n  "ticker": "NQ1!",\n  "side": "BUY",\n  "price": "{{close}}",\n  "sl": "{{plot_0}}",\n  "tp": "{{plot_1}}",\n  "session": "NY Open",\n  "timestamp": "{{timenow}}"\n}`,
+  },
+  {
+    label: "Short Entry (Sell) — Full",
+    payload: `{\n  "ticker": "NQ1!",\n  "side": "SELL",\n  "price": "{{close}}",\n  "sl": "{{plot_0}}",\n  "tp": "{{plot_1}}",\n  "session": "London Open",\n  "timestamp": "{{timenow}}"\n}`,
+  },
+  {
+    label: "Simple Buy (minimal)",
+    payload: `{\n  "ticker": "NQ1!",\n  "side": "BUY",\n  "price": "{{close}}",\n  "timestamp": "{{timenow}}"\n}`,
+  },
+  {
+    label: "MNQ Long",
+    payload: `{\n  "ticker": "MNQ1!",\n  "side": "BUY",\n  "price": "{{close}}",\n  "timestamp": "{{timenow}}"\n}`,
+  },
+];
+
+const WEBHOOK_FIELD_NOTES = [
+  { field: "ticker", required: true, desc: "Symbol (e.g. NQ1!, MNQ1!, ES1!)" },
+  { field: "side", required: true, desc: "BUY or SELL" },
+  { field: "price", required: true, desc: "Entry price — use {{close}} for current bar" },
+  { field: "sl", required: false, desc: "Stop loss price — used to auto-calculate risk %" },
+  { field: "tp", required: false, desc: "Take profit price" },
+  { field: "timestamp", required: false, desc: "Alert time — use {{timenow}} for accurate session detection" },
+  { field: "session", required: false, desc: "Override session label manually — skips auto-detection" },
+];
+
 const STOCK_AVATARS = [
   { id: "bull", emoji: "🐂", label: "Bull" },
   { id: "bear", emoji: "🐻", label: "Bear" },
@@ -225,6 +266,14 @@ export default function SettingsScreen() {
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
   const [widgetPrefs, setWidgetPrefs] = useState<WidgetPrefs>(DEFAULT_WIDGET_PREFS);
 
+  const [webhooksExpanded, setWebhooksExpanded] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
+  const [webhookLoading, setWebhookLoading] = useState(false);
+  const [webhookError, setWebhookError] = useState<string | null>(null);
+  const [webhookCopied, setWebhookCopied] = useState(false);
+  const [webhookStepExpanded, setWebhookStepExpanded] = useState<number | null>(null);
+  const [webhookExampleCopied, setWebhookExampleCopied] = useState<number | null>(null);
+
   useEffect(() => {
     load();
     AsyncStorage.getItem(WIDGET_PREFS_KEY).then((raw) => {
@@ -334,6 +383,43 @@ export default function SettingsScreen() {
       Alert.alert("Error", "Failed to save risk rules");
     }
     setSaving(null);
+  }
+
+  async function loadWebhookUrl() {
+    if (webhookUrl || webhookLoading) return;
+    if (!isAdmin && tierLevel < 2) return;
+    setWebhookLoading(true);
+    setWebhookError(null);
+    try {
+      const res = await fetch(`${WEBHOOK_API_BASE}/webhook/tradingview/info`, { credentials: "include" });
+      const data = await res.json();
+      if (data.webhookUrl) {
+        setWebhookUrl(data.webhookUrl);
+      } else {
+        setWebhookError(data.error || "Failed to load webhook info");
+      }
+    } catch {
+      setWebhookError("Failed to load webhook info");
+    } finally {
+      setWebhookLoading(false);
+    }
+  }
+
+  async function copyWebhookUrl() {
+    if (!webhookUrl) return;
+    try {
+      await Share.share({ message: webhookUrl });
+      setWebhookCopied(true);
+      setTimeout(() => setWebhookCopied(false), 2000);
+    } catch {}
+  }
+
+  async function copyWebhookExample(idx: number, payload: string) {
+    try {
+      await Share.share({ message: payload });
+      setWebhookExampleCopied(idx);
+      setTimeout(() => setWebhookExampleCopied(null), 2000);
+    } catch {}
   }
 
   async function handleShare() {
@@ -806,6 +892,126 @@ export default function SettingsScreen() {
             />
           </View>
         </View>
+
+        {/* TradingView Webhooks — Premium feature */}
+        {(isAdmin || tierLevel >= 2) && (
+          <View style={s.card}>
+            <TouchableOpacity
+              onPress={() => {
+                const next = !webhooksExpanded;
+                setWebhooksExpanded(next);
+                if (next) loadWebhookUrl();
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[hdr.row, { justifyContent: "space-between" }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Ionicons name="flash" size={15} color={C.accent} />
+                  <Text style={hdr.title}>TradingView Webhooks</Text>
+                </View>
+                <Ionicons name={webhooksExpanded ? "chevron-up" : "chevron-down"} size={16} color={C.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            {webhooksExpanded && (
+              <View style={s.section}>
+                <Text style={{ fontSize: 12, color: C.textSecondary, marginBottom: 8 }}>
+                  Auto-create draft trades in your Smart Journal when TradingView alerts fire.
+                </Text>
+
+                {/* Webhook URL */}
+                <Text style={[s.label, { marginBottom: 6 }]}>Your Webhook URL</Text>
+                {webhookLoading ? (
+                  <ActivityIndicator size="small" color={C.accent} style={{ alignSelf: "flex-start" }} />
+                ) : webhookError ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="warning-outline" size={14} color="#EF4444" />
+                    <Text style={{ fontSize: 12, color: "#EF4444", flex: 1 }}>{webhookError}</Text>
+                  </View>
+                ) : webhookUrl ? (
+                  <>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <Text
+                        style={[s.input, { flex: 1, fontSize: 10, color: C.textSecondary, paddingVertical: 8 }]}
+                        numberOfLines={2}
+                      >
+                        {webhookUrl}
+                      </Text>
+                      <TouchableOpacity
+                        style={{ backgroundColor: C.accent, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 4 }}
+                        onPress={copyWebhookUrl}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name={webhookCopied ? "checkmark" : "copy-outline"} size={14} color="#0A0A0F" />
+                        <Text style={{ fontSize: 12, fontWeight: "700", color: "#0A0A0F" }}>{webhookCopied ? "Copied!" : "Copy"}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, backgroundColor: "#F59E0B12", borderRadius: 8, padding: 8, borderWidth: 1, borderColor: "#F59E0B30", marginBottom: 12 }}>
+                      <Ionicons name="warning-outline" size={13} color="#F59E0B" />
+                      <Text style={{ fontSize: 11, color: "#F59E0B", flex: 1 }}>Keep this URL private. Anyone with it can create draft trades in your journal.</Text>
+                    </View>
+                  </>
+                ) : null}
+
+                {/* Setup Steps */}
+                <Text style={[s.label, { marginBottom: 8 }]}>Setup Guide</Text>
+                {WEBHOOK_SETUP_STEPS.map((step) => (
+                  <View key={step.step} style={{ borderWidth: 1, borderColor: C.cardBorder, borderRadius: 10, overflow: "hidden", marginBottom: 6 }}>
+                    <TouchableOpacity
+                      style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 10 }}
+                      onPress={() => setWebhookStepExpanded(webhookStepExpanded === step.step ? null : step.step)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: C.accent + "20", alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: C.accent }}>{step.step}</Text>
+                      </View>
+                      <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: C.text }}>{step.title}</Text>
+                      <Ionicons name={webhookStepExpanded === step.step ? "chevron-up" : "chevron-down"} size={14} color={C.textSecondary} />
+                    </TouchableOpacity>
+                    {webhookStepExpanded === step.step && (
+                      <Text style={{ fontSize: 12, color: C.textSecondary, lineHeight: 18, paddingHorizontal: 10, paddingBottom: 10, paddingLeft: 42 }}>{step.desc}</Text>
+                    )}
+                  </View>
+                ))}
+
+                {/* Alert Message Examples */}
+                <Text style={[s.label, { marginTop: 12, marginBottom: 4 }]}>Alert Message Examples</Text>
+                <Text style={{ fontSize: 11, color: C.textSecondary, marginBottom: 8, lineHeight: 16 }}>
+                  Paste one of these into the TradingView alert message field.
+                </Text>
+                {WEBHOOK_ALERT_EXAMPLES.map((ex, i) => (
+                  <View key={i} style={{ borderWidth: 1, borderColor: C.cardBorder, borderRadius: 10, overflow: "hidden", marginBottom: 6 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 10, backgroundColor: C.backgroundSecondary, borderBottomWidth: 1, borderBottomColor: C.cardBorder }}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: C.text, flex: 1 }}>{ex.label}</Text>
+                      <TouchableOpacity
+                        onPress={() => copyWebhookExample(i, ex.payload)}
+                        style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name={webhookExampleCopied === i ? "checkmark" : "copy-outline"} size={13} color={webhookExampleCopied === i ? C.accent : C.textSecondary} />
+                        <Text style={{ fontSize: 11, color: webhookExampleCopied === i ? C.accent : C.textSecondary }}>{webhookExampleCopied === i ? "Copied" : "Copy"}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={{ fontFamily: "Inter_400Regular", fontSize: 10, color: C.textSecondary, padding: 10, lineHeight: 16 }}>{ex.payload}</Text>
+                  </View>
+                ))}
+
+                {/* Payload Field Reference */}
+                <Text style={[s.label, { marginTop: 12, marginBottom: 8 }]}>Payload Field Reference</Text>
+                {WEBHOOK_FIELD_NOTES.map((f) => (
+                  <View key={f.field} style={{ marginBottom: 10 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: C.text }}>{f.field}</Text>
+                      <View style={{ borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: f.required ? "#EF444420" : C.accent + "15" }}>
+                        <Text style={{ fontSize: 10, fontWeight: "600", color: f.required ? "#EF4444" : C.accent }}>{f.required ? "required" : "optional"}</Text>
+                      </View>
+                    </View>
+                    <Text style={{ fontSize: 12, color: C.textSecondary, lineHeight: 17 }}>{f.desc}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Share / Invite Friends */}
         <View style={s.card}>

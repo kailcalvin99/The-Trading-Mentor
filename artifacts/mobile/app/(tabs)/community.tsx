@@ -296,7 +296,7 @@ function CommunityScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
-  const [showHallOfFame, setShowHallOfFame] = useState(false);
+  const [activeTab, setActiveTab] = useState<"forum" | "leaderboard">("forum");
   const [selectedPost, setSelectedPost] = useState<PostDetail | null>(null);
   const [showNewPost, setShowNewPost] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -335,11 +335,11 @@ function CommunityScreen() {
   }, [activeCategory]);
 
   useEffect(() => {
-    if (!showHallOfFame) {
+    if (activeTab === "forum") {
       setLoading(true);
       fetchPosts();
     }
-  }, [fetchPosts, showHallOfFame]);
+  }, [fetchPosts, activeTab]);
 
   async function openThread(postId: number) {
     try {
@@ -485,16 +485,10 @@ function CommunityScreen() {
       <View style={s.header}>
         <Text style={s.pageTitle}>Community</Text>
         <View style={{ flexDirection: "row", gap: 8 }}>
-          <TouchableOpacity
-            style={[s.newPostBtn, { backgroundColor: C.backgroundSecondary }, showHallOfFame && { borderWidth: 1, borderColor: "#E53E3E" }]}
-            onPress={() => setShowHallOfFame((v) => !v)}
-          >
-            <Ionicons name="trophy-outline" size={18} color={showHallOfFame ? "#E53E3E" : C.accent} />
-          </TouchableOpacity>
           <TouchableOpacity style={[s.newPostBtn, { backgroundColor: C.backgroundSecondary }]} onPress={handleShare}>
             <Ionicons name="share-outline" size={20} color={C.accent} />
           </TouchableOpacity>
-          {!showHallOfFame && (
+          {activeTab === "forum" && (
             <TouchableOpacity style={s.newPostBtn} onPress={() => setShowNewPost(true)}>
               <Ionicons name="add" size={20} color="#0A0A0F" />
             </TouchableOpacity>
@@ -502,7 +496,25 @@ function CommunityScreen() {
         </View>
       </View>
 
-      {showHallOfFame ? (
+      {/* Sub-tab bar: Forum / Leaderboard */}
+      <View style={s.subTabBar}>
+        <TouchableOpacity
+          style={[s.subTab, activeTab === "forum" && s.subTabActive]}
+          onPress={() => setActiveTab("forum")}
+        >
+          <Ionicons name="chatbubbles-outline" size={14} color={activeTab === "forum" ? "#0A0A0F" : C.textSecondary} />
+          <Text style={[s.subTabText, activeTab === "forum" && s.subTabTextActive]}>Forum</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.subTab, activeTab === "leaderboard" && s.subTabActive]}
+          onPress={() => setActiveTab("leaderboard")}
+        >
+          <Ionicons name="trophy-outline" size={14} color={activeTab === "leaderboard" ? "#0A0A0F" : C.textSecondary} />
+          <Text style={[s.subTabText, activeTab === "leaderboard" && s.subTabTextActive]}>Leaderboard</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === "leaderboard" ? (
         <HallOfFame />
       ) : (
         <>
@@ -647,6 +659,11 @@ const s = StyleSheet.create({
   pageTitle: { fontSize: 22, fontWeight: "800", color: C.text },
   backBtn: { padding: 4 },
   newPostBtn: { backgroundColor: C.accent, width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  subTabBar: { flexDirection: "row", paddingHorizontal: 12, paddingVertical: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
+  subTab: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 8, borderRadius: 10, backgroundColor: C.backgroundSecondary },
+  subTabActive: { backgroundColor: C.accent },
+  subTabText: { fontSize: 13, fontWeight: "600", color: C.textSecondary },
+  subTabTextActive: { color: "#0A0A0F", fontWeight: "700" },
   catBar: { maxHeight: 44, borderBottomWidth: 1, borderBottomColor: C.cardBorder },
   subBell: { paddingHorizontal: 12, paddingVertical: 10, borderLeftWidth: 1, borderLeftColor: C.cardBorder },
   catChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: C.backgroundSecondary },

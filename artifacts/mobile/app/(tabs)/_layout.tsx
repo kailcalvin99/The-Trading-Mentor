@@ -174,8 +174,8 @@ function TabLayoutInner() {
             options={{ title: "Code Editor" }}
           />
           <Tabs.Screen
-            name="webhooks"
-            options={{ title: "TradingView Webhooks" }}
+            name="flashcards"
+            options={{ title: "Flashcards" }}
           />
         </Tabs>
       </Animated.View>
