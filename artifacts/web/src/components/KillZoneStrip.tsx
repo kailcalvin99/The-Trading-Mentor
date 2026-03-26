@@ -164,7 +164,7 @@ export default function KillZoneStrip() {
               </div>
               {isLive ? (
                 <span
-                  className="text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0 ml-1"
+                  className="font-bold px-1.5 py-0.5 rounded-full shrink-0 text-[14px] text-right ml-[0px]"
                   style={{ backgroundColor: `${session.color}20`, color: session.color }}
                 >
                   LIVE
