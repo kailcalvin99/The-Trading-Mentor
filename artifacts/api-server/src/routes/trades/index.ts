@@ -80,19 +80,31 @@ router.get("/export/csv", authRequired, tierRequired(2), async (req, res) => {
       "notes",
     ];
 
-    const rows = trades.map((t) => [
-      t.createdAt ? new Date(t.createdAt).toISOString().split("T")[0] : "",
-      t.pair,
-      t.sideDirection === "BUY" ? "long" : t.sideDirection === "SELL" ? "short" : (t.sideDirection ?? ""),
-      "",
-      "",
-      "",
-      t.outcome ?? "",
-      "",
-      t.setupScore !== null && t.setupScore !== undefined ? t.setupScore : "",
-      t.behaviorTag ?? "",
-      stripModePrefix(t.notes),
-    ]);
+    const rows = trades.map((t) => {
+      const entry = t.entryPrice ? parseFloat(t.entryPrice) : null;
+      const sl = t.stopLoss ? parseFloat(t.stopLoss) : null;
+      const tp = t.takeProfit ? parseFloat(t.takeProfit) : null;
+      let rrAchieved = "";
+      if (entry !== null && sl !== null && tp !== null && entry !== sl) {
+        const side = t.sideDirection === "SELL" ? -1 : 1;
+        const reward = side === 1 ? tp - entry : entry - tp;
+        const risk = side === 1 ? entry - sl : sl - entry;
+        if (risk > 0) rrAchieved = (reward / risk).toFixed(2);
+      }
+      return [
+        t.createdAt ? new Date(t.createdAt).toISOString().split("T")[0] : "",
+        t.pair,
+        t.sideDirection === "BUY" ? "long" : t.sideDirection === "SELL" ? "short" : (t.sideDirection ?? ""),
+        entry !== null ? entry.toString() : "",
+        tp !== null ? tp.toString() : "",
+        "",
+        t.outcome ?? "",
+        rrAchieved,
+        t.setupScore !== null && t.setupScore !== undefined ? t.setupScore : "",
+        t.behaviorTag ?? "",
+        stripModePrefix(t.notes),
+      ];
+    });
 
     const csv = [
       headers.join(","),
