@@ -114,11 +114,11 @@ async function killPortOccupant(port: number): Promise<void> {
   }
 }
 
-async function preparePort(port: number, maxKillAttempts: number = 3): Promise<number> {
+async function preparePort(port: number, maxKillAttempts: number = 3): Promise<void> {
   for (let attempt = 1; attempt <= maxKillAttempts; attempt++) {
     const inUse = await isPortInUse(port);
     if (!inUse) {
-      return port;   // Success, the port is free
+      return;   // Port is free, proceed
     }
     
     console.log(`Port ${port} occupied, attempting kill... (Attempt ${attempt}/${maxKillAttempts})`);
@@ -127,22 +127,20 @@ async function preparePort(port: number, maxKillAttempts: number = 3): Promise<n
     // POLL for the port to be free (up to 5 seconds, checking every 200ms)
     const freed = await waitForPortFree(port, 5000, 200);
     if (freed) {
-      return port;   // Kill worked, port is free
+      return;   // Kill worked, port is free
     }
     
     console.log(`Port ${port} still occupied after kill attempt ${attempt}/${maxKillAttempts}`);
   }
   
-  // All kill attempts exhausted — fall back to a nearby port
-  console.log(`Could not free port ${port}. Looking for a backup port...`);
-  for (let candidate = port + 1; candidate <= port + 20; candidate++) {
-    const candidateInUse = await isPortInUse(candidate);
-    if (!candidateInUse) {
-      return candidate;
-    }
-  }
-  
-  return 0;  // Let the OS assign a random port
+  // All kill attempts exhausted — cannot safely fall back to a different port because the
+  // Replit proxy routes traffic to the exact PORT assigned. Using a different port would
+  // silently break all API calls without any visible error.
+  console.error(
+    `FATAL: Could not free assigned port ${port} after ${maxKillAttempts} attempts. ` +
+    `Falling back to a different port would break proxy routing. Exiting.`
+  );
+  process.exit(1);
 }
 
 function bindServer(port: number): Promise<{ server: ReturnType<typeof app.listen>; boundPort: number }> {
@@ -159,28 +157,31 @@ function bindServer(port: number): Promise<{ server: ReturnType<typeof app.liste
 }
 
 async function startServer(requestedPort: number): Promise<void> {
-  const preferredPort = await preparePort(requestedPort);
+  // Ensure the assigned port is free before binding. preparePort exits the
+  // process if the port cannot be freed — we never fall back to a different
+  // port because Replit's proxy routes traffic only to the exact PORT value.
+  await preparePort(requestedPort);
 
   let server: ReturnType<typeof app.listen>;
   let boundPort: number;
 
   try {
-    ({ server, boundPort } = await bindServer(preferredPort));
+    ({ server, boundPort } = await bindServer(requestedPort));
   } catch (firstErr: unknown) {
     const code = firstErr instanceof Error && "code" in firstErr
       ? (firstErr as NodeJS.ErrnoException).code
       : undefined;
 
     if (code === "EADDRINUSE") {
-      console.warn(
-        `Port ${preferredPort} taken at bind time (TOCTOU race). Binding on OS-assigned port...`
-      );
+      // TOCTOU race: port was freed but something grabbed it again. Retry
+      // once more rather than silently binding to a wrong port.
+      console.warn(`Port ${requestedPort} taken at bind time (TOCTOU race). Retrying...`);
+      await sleep(200);
       try {
-        ({ server, boundPort } = await bindServer(0));
-        console.warn(`WARNING: Listening on OS-assigned port ${boundPort} instead of ${requestedPort}`);
-      } catch (innerErr: unknown) {
-        const msg = innerErr instanceof Error ? innerErr.message : String(innerErr);
-        console.error("Failed to bind on any port:", msg);
+        ({ server, boundPort } = await bindServer(requestedPort));
+      } catch (retryErr: unknown) {
+        const msg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+        console.error(`FATAL: Could not bind to assigned port ${requestedPort} after retry: ${msg}`);
         process.exit(1);
       }
     } else {

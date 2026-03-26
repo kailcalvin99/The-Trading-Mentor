@@ -277,12 +277,17 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
     return undefined;
   }, [state.machineState, state.currentStep, dispatch]);
 
+  const introducingNavigatedRef = useRef<string | null>(null);
   useEffect(() => {
     if (state.machineState === "INTRODUCING") {
       const targetRoute = TOUR_STEPS[state.currentStep]?.targetRoute;
-      if (targetRoute) {
+      const key = `${state.currentStep}:${targetRoute}`;
+      if (targetRoute && introducingNavigatedRef.current !== key) {
+        introducingNavigatedRef.current = key;
         navigateRef.current(targetRoute, { replace: true });
       }
+    } else {
+      introducingNavigatedRef.current = null;
     }
   }, [state.machineState, state.currentStep]);
 

@@ -9,6 +9,7 @@ import { TourGuide } from "@/components/TourGuide";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
 import KillZoneStrip from "@/components/KillZoneStrip";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
@@ -731,7 +732,9 @@ export default function Layout() {
           <main className="flex-1 overflow-auto relative">
             <div className="flex h-full">
               <div className="flex-1 overflow-auto">
-                <Outlet />
+                <ErrorBoundary>
+                  <Outlet />
+                </ErrorBoundary>
               </div>
 
               {isFreeUser && (

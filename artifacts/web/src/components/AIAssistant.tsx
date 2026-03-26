@@ -410,9 +410,11 @@ export default function AIAssistant() {
   }, [isNewUser]);
 
   const autoOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
 
   const handleAITrigger = useCallback((trigger: AITrigger) => {
-    if (isOpen) return;
+    if (isOpenRef.current) return;
     setNudge(trigger);
     setNudgeExpanded(true);
     if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
@@ -435,7 +437,7 @@ export default function AIAssistant() {
         setNudgeExpanded(false);
       }, 800);
     }
-  }, [isOpen]);
+  }, []);
 
   useEffect(() => {
     return () => {
