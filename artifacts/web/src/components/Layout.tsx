@@ -617,7 +617,7 @@ export default function Layout() {
                 {showUserMenu && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowAvatarPicker(false); }} />
-                    <div className="absolute bottom-full right-0 mb-1 w-52 bg-card border border-border rounded-lg shadow-xl z-50 py-1">
+                    <div className="absolute top-full right-0 mt-1 w-52 bg-card border border-border rounded-lg shadow-xl z-50 py-1">
                       <div className="px-3 py-2 border-b border-border">
                         <p className="text-xs font-medium text-foreground">{user?.name}</p>
                         <p className="text-[10px] text-muted-foreground">{user?.email}</p>
