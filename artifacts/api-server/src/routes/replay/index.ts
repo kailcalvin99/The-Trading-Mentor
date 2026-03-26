@@ -53,8 +53,16 @@ interface CandleCache {
   expiresAt: number;
 }
 
+interface CrumbCache {
+  crumb: string;
+  cookie: string;
+  expiresAt: number;
+}
+
 const cache = new Map<string, CandleCache>();
 const CACHE_TTL_MS = 60 * 60 * 1000;
+
+let crumbCache: CrumbCache | null = null;
 
 setInterval(() => {
   const now = Date.now();
@@ -64,6 +72,56 @@ setInterval(() => {
     }
   }
 }, 30 * 60 * 1000);
+
+const YAHOO_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+async function fetchFreshCrumb(): Promise<{ crumb: string; cookie: string }> {
+  const cookieRes = await fetch("https://fc.yahoo.com", {
+    signal: AbortSignal.timeout(10000),
+    headers: {
+      "User-Agent": YAHOO_UA,
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+  });
+
+  const rawCookies = cookieRes.headers.getSetCookie?.() ?? [];
+  if (rawCookies.length === 0) {
+    throw new Error("No cookies returned from Yahoo consent endpoint");
+  }
+  const cookieHeader = rawCookies.map((c) => c.split(";")[0]).join("; ");
+
+  const crumbRes = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
+    signal: AbortSignal.timeout(10000),
+    headers: {
+      "User-Agent": YAHOO_UA,
+      "Accept": "text/plain, */*",
+      "Cookie": cookieHeader,
+    },
+  });
+
+  if (!crumbRes.ok) {
+    throw new Error(`Failed to fetch Yahoo crumb: ${crumbRes.status}`);
+  }
+
+  const crumb = (await crumbRes.text()).trim();
+  if (!crumb || crumb.length === 0) {
+    throw new Error("Empty crumb returned from Yahoo Finance");
+  }
+
+  return { crumb, cookie: cookieHeader };
+}
+
+async function getYahooCrumb(): Promise<{ crumb: string; cookie: string }> {
+  const now = Date.now();
+  if (crumbCache && crumbCache.expiresAt > now) {
+    return { crumb: crumbCache.crumb, cookie: crumbCache.cookie };
+  }
+
+  const auth = await fetchFreshCrumb();
+
+  crumbCache = { crumb: auth.crumb, cookie: auth.cookie, expiresAt: now + CACHE_TTL_MS };
+  return { crumb: auth.crumb, cookie: auth.cookie };
+}
 
 function isSupportedInterval(value: string): value is SupportedInterval {
   return value in INTERVAL_MAP;
@@ -131,15 +189,48 @@ router.get("/candles", authRequired, async (req: Request, res: Response): Promis
 
     const period1 = Math.floor(fromDate.getTime() / 1000);
     const period2 = Math.floor(toDate.getTime() / 1000);
-    const url = `${YAHOO_V8}/${encodeURIComponent(yahooSymbol)}?period1=${period1}&period2=${period2}&interval=${yahooInterval}`;
 
-    const response = await fetch(url, {
+    const buildHeaders = (cookie: string | null): Record<string, string> => {
+      const h: Record<string, string> = { "User-Agent": YAHOO_UA, "Accept": "application/json" };
+      if (cookie) h["Cookie"] = cookie;
+      return h;
+    };
+
+    const buildUrl = (c: string | null) => {
+      const crumbParam = c ? `&crumb=${encodeURIComponent(c)}` : "";
+      return `${YAHOO_V8}/${encodeURIComponent(yahooSymbol)}?period1=${period1}&period2=${period2}&interval=${yahooInterval}${crumbParam}`;
+    };
+
+    let crumb: string | null = null;
+    let cookie: string | null = null;
+    try {
+      const auth = await getYahooCrumb();
+      crumb = auth.crumb;
+      cookie = auth.cookie;
+    } catch (authErr) {
+      console.warn("Yahoo crumb fetch failed, proceeding without auth:", authErr instanceof Error ? authErr.message : String(authErr));
+    }
+
+    let response = await fetch(buildUrl(crumb), {
       signal: AbortSignal.timeout(10000),
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; ICT-Mentor/1.0)",
-        "Accept": "application/json",
-      },
+      headers: buildHeaders(cookie),
     });
+
+    if (response.status === 401) {
+      crumbCache = null;
+      try {
+        const retryAuth = await fetchFreshCrumb();
+        crumbCache = { crumb: retryAuth.crumb, cookie: retryAuth.cookie, expiresAt: Date.now() + CACHE_TTL_MS };
+        crumb = retryAuth.crumb;
+        cookie = retryAuth.cookie;
+        response = await fetch(buildUrl(crumb), {
+          signal: AbortSignal.timeout(10000),
+          headers: buildHeaders(cookie),
+        });
+      } catch (retryErr) {
+        console.warn("Yahoo crumb retry failed:", retryErr instanceof Error ? retryErr.message : String(retryErr));
+      }
+    }
 
     if (!response.ok) {
       throw new Error(`Yahoo Finance returned ${response.status}`);
