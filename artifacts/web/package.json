@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "lightweight-charts": "^4.2.3",
     "react-router-dom": "^7.13.1"
   }
 }

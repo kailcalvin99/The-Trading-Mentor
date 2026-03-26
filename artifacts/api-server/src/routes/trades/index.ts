@@ -129,6 +129,8 @@ router.post("/", authRequired, async (req, res) => {
       setupScore,
       setupType,
       entryPrice,
+      stopLoss,
+      takeProfit,
       tradingSession,
     } = req.body;
 
@@ -157,6 +159,8 @@ router.post("/", authRequired, async (req, res) => {
         setupScore: setupScore ?? null,
         setupType: setupType || null,
         entryPrice: entryPrice ? entryPrice.toString() : null,
+        stopLoss: stopLoss ? stopLoss.toString() : null,
+        takeProfit: takeProfit ? takeProfit.toString() : null,
         tradingSession: tradingSession || null,
       })
       .returning();

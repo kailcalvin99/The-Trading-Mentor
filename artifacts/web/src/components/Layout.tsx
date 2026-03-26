@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import OnboardingQuiz, { getSkillLevel, hasCompletedQuiz, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Video, Zap, Layers, Flame, Star, Menu } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Video, Zap, Layers, Flame, Star, Menu, CandlestickChart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { FreeSidebar, useDailyStreak } from "@/components/CasinoElements";
 import AIAssistant from "@/components/AIAssistant";
@@ -63,6 +63,7 @@ const navItems = [
   { to: "/videos", label: "Videos", mobileLabel: "Videos", icon: Video, requiredTier: 0, minSkillLevel: 0 },
   { to: "/planner", label: "Mission Control", mobileLabel: "Mission", icon: Calendar, requiredTier: 0, minSkillLevel: 0 },
   { to: "/prop-tracker", label: "Prop Tracker", mobileLabel: "Prop", icon: Trophy, requiredTier: 1, minSkillLevel: 1 },
+  { to: "/paper-trading", label: "Paper Trading", mobileLabel: "Replay", icon: CandlestickChart, requiredTier: 1, minSkillLevel: 1 },
   { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 1, minSkillLevel: 1 },
   { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2, minSkillLevel: 1 },
   { to: "/leaderboard", label: "Leaderboard", mobileLabel: "Rank", icon: Trophy, requiredTier: 2, minSkillLevel: 2 },
@@ -413,6 +414,7 @@ export default function Layout() {
     const lockedPaths: Record<string, number> = {
       "/risk-shield": 1,
       "/prop-tracker": 1,
+      "/paper-trading": 1,
       "/journal": 2,
       "/analytics": 2,
       "/leaderboard": 2,

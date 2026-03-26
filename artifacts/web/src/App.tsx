@@ -35,6 +35,7 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RiskDisclosure from "./pages/RiskDisclosure";
 import SpotifyCallback from "./pages/SpotifyCallback";
+import PaperTradingPage from "./pages/PaperTradingPage";
 import NotFound from "./pages/not-found";
 import { SpotifyProvider } from "./contexts/SpotifyContext";
 import { AuthGuard, AdminGuard, TierGuard } from "./components/AuthGuard";
@@ -96,6 +97,7 @@ function App() {
                         <Route path="analytics" element={<TierGuard requiredTier={2}><Analytics /></TierGuard>} />
                         <Route path="leaderboard" element={<TierGuard requiredTier={2}><Leaderboard /></TierGuard>} />
                         <Route path="webhooks" element={<TierGuard requiredTier={2}><TradingViewWebhooks /></TierGuard>} />
+                        <Route path="paper-trading" element={<TierGuard requiredTier={1}><PaperTradingPage /></TierGuard>} />
                         <Route path="community" element={<Community />} />
                         <Route path="settings" element={<Settings />} />
                         <Route path="admin" element={<AdminGuard><Admin /></AdminGuard>} />
