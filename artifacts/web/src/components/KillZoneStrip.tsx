@@ -160,7 +160,7 @@ export default function KillZoneStrip() {
     return [...sessionCards, ...statCards];
   }
 
-  const CLOCK_WIDTH = 178;
+  const CLOCK_WIDTH = 215;
 
   return (
     <div
