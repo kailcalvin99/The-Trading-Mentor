@@ -323,6 +323,23 @@ function ShareModal({
 }
 
 
+function ModeSwitcher({ appMode, setAppMode }: { appMode: "full" | "lite"; setAppMode: (m: "full" | "lite") => Promise<void> }) {
+  const isLite = appMode === "lite";
+  return (
+    <button
+      onClick={() => setAppMode(isLite ? "full" : "lite")}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+        isLite
+          ? "text-red-500 hover:bg-red-500/10"
+          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+      }`}
+    >
+      {isLite ? <Zap className="h-3.5 w-3.5" /> : <Layers className="h-3.5 w-3.5" />}
+      <span className="hidden sm:inline">{isLite ? "Learning" : "Full Mode"}</span>
+    </button>
+  );
+}
+
 const STOCK_AVATARS = [
   { id: "bull", emoji: "🐂", label: "Bull" },
   { id: "bear", emoji: "🐻", label: "Bear" },
@@ -566,6 +583,7 @@ export default function Layout() {
                 <Share2 className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Invite</span>
               </button>
+              <ModeSwitcher appMode={appMode} setAppMode={setAppMode} />
 
               {/* User pill — right side */}
               <div className="relative ml-auto">
