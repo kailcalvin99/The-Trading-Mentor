@@ -1,5 +1,4 @@
-import { useReducer, useEffect, useLayoutEffect, useCallback, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useReducer, useEffect, useCallback, useRef, useState } from "react";
 import {
   ChevronRight,
   ChevronLeft,
@@ -11,11 +10,28 @@ import {
 import {
   TOUR_STEPS,
   TOUR_STORAGE_KEY,
-  DEFAULT_TOUR_STATE,
-  type TourState,
-  type TourMachineState,
 } from "./tourConfig";
 import { useAppConfig } from "@/contexts/AppConfigContext";
+
+type VideoTourMachineState =
+  | "IDLE"
+  | "INTRODUCING"
+  | "PLAYING_VIDEO"
+  | "COMPLETED";
+
+interface VideoTourState {
+  visible: boolean;
+  machineState: VideoTourMachineState;
+  currentStep: number;
+  completedSteps: number[];
+}
+
+const DEFAULT_VIDEO_TOUR_STATE: VideoTourState = {
+  visible: false,
+  machineState: "IDLE",
+  currentStep: 0,
+  completedSteps: [],
+};
 
 type TourAction =
   | { type: "START_TOUR" }
@@ -28,7 +44,7 @@ type TourAction =
   | { type: "NAVIGATE_DONE" }
   | { type: "FINISH_TOUR" };
 
-function tourReducer(state: TourState, action: TourAction): TourState {
+function tourReducer(state: VideoTourState, action: TourAction): VideoTourState {
   switch (action.type) {
     case "START_TOUR":
       return {
@@ -123,15 +139,15 @@ function makeStorageKey(userId: string | number, suffix: string) {
   return `${TOUR_STORAGE_KEY}:${userId}:${suffix}`;
 }
 
-function loadPersistedState(stateKey: string): TourState {
+function loadPersistedState(stateKey: string): VideoTourState {
   try {
     const raw = localStorage.getItem(stateKey);
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<TourState>;
-      return { ...DEFAULT_TOUR_STATE, ...parsed };
+      const parsed = JSON.parse(raw) as Partial<VideoTourState>;
+      return { ...DEFAULT_VIDEO_TOUR_STATE, ...parsed };
     }
   } catch {}
-  return DEFAULT_TOUR_STATE;
+  return DEFAULT_VIDEO_TOUR_STATE;
 }
 
 export function useVideoTour(userId?: string | number) {
@@ -159,7 +175,7 @@ export function useVideoTour(userId?: string | number) {
 }
 
 interface VideoTourProps {
-  state: TourState;
+  state: VideoTourState;
   dispatch: React.Dispatch<TourAction>;
   onClose?: () => void;
 }
@@ -179,7 +195,7 @@ export function VideoTour({ state, dispatch, onClose }: VideoTourProps) {
   const isLast = state.currentStep >= TOUR_STEPS.length - 1;
   const isFirst = state.currentStep === 0;
 
-  const videoId = config[`tour_video_${state.currentStep}`] || step?.videoId || "";
+  const videoId = config[`tour_video_${state.currentStep}`] || "";
   const heygenShareUrl = videoId ? `https://app.heygen.com/share/${videoId}` : "";
 
   function cancelSignalTimer() {
@@ -272,7 +288,6 @@ export function VideoTour({ state, dispatch, onClose }: VideoTourProps) {
     onClose?.();
   }
 
-  // Add escape key handler to exit
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -285,7 +300,6 @@ export function VideoTour({ state, dispatch, onClose }: VideoTourProps) {
 
   if (!state.visible) return null;
 
-  // Completion screen
   if (state.machineState === "COMPLETED") {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -306,11 +320,9 @@ export function VideoTour({ state, dispatch, onClose }: VideoTourProps) {
     );
   }
 
-  // Video viewer - with exit button
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/92 backdrop-blur-sm p-4 animate-in fade-in duration-300">
       <div className="w-full max-w-4xl">
-        {/* Top bar with title and action buttons */}
         <div className="flex items-center justify-between mb-3 px-1">
           <p className="text-white/80 text-sm font-medium">
             Video {state.currentStep + 1} of {TOUR_STEPS.length}: {step.title}
@@ -333,7 +345,6 @@ export function VideoTour({ state, dispatch, onClose }: VideoTourProps) {
           </div>
         </div>
 
-        {/* Video container */}
         <div
           className="relative w-full bg-black rounded-2xl overflow-hidden shadow-2xl"
           style={{ paddingBottom: "56.25%" }}
@@ -392,7 +403,6 @@ export function VideoTour({ state, dispatch, onClose }: VideoTourProps) {
             : "Video will auto-advance when finished. Use buttons below to navigate or skip."}
         </p>
 
-        {/* Navigation buttons - No X button to close */}
         <div className="flex items-center justify-center gap-3 mt-6">
           <button
             onClick={handlePrev}

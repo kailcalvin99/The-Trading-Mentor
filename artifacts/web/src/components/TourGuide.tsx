@@ -4,11 +4,7 @@ import {
   X,
   ChevronRight,
   ChevronLeft,
-  SkipForward,
   List,
-  Play,
-  ExternalLink,
-  VideoOff,
 } from "lucide-react";
 import {
   TOUR_STEPS,
@@ -19,15 +15,13 @@ import {
   type TourMachineState,
 } from "./tourConfig";
 import TourChecklist from "./TourChecklist";
-import { useAppConfig } from "@/contexts/AppConfigContext";
 
 export type { TourMachineState };
 
 type TourAction =
   | { type: "START_TOUR" }
   | { type: "CLOSE_TOUR" }
-  | { type: "PLAY_VIDEO" }
-  | { type: "VIDEO_ENDED" }
+  | { type: "WELCOME_VIDEO_DONE" }
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
   | { type: "JUMP_TO_STEP"; step: number }
@@ -43,7 +37,7 @@ function tourReducer(state: TourState, action: TourAction): TourState {
       return {
         ...state,
         visible: true,
-        machineState: "INTRODUCING",
+        machineState: "WELCOME_VIDEO",
       };
 
     case "CLOSE_TOUR":
@@ -57,7 +51,7 @@ function tourReducer(state: TourState, action: TourAction): TourState {
       return {
         ...DEFAULT_TOUR_STATE,
         visible: true,
-        machineState: "INTRODUCING",
+        machineState: "WELCOME_VIDEO",
         currentStep: 0,
         completedSteps: [],
       };
@@ -65,31 +59,12 @@ function tourReducer(state: TourState, action: TourAction): TourState {
     case "LOAD_STATE":
       return { ...action.payload };
 
-    case "PLAY_VIDEO":
+    case "WELCOME_VIDEO_DONE":
       return {
         ...state,
-        machineState: "PLAYING_VIDEO",
+        machineState: "INTRODUCING",
+        currentStep: 0,
       };
-
-    case "VIDEO_ENDED": {
-      const nextCompleted = state.completedSteps.includes(state.currentStep)
-        ? state.completedSteps
-        : [...state.completedSteps, state.currentStep];
-      const isLast = state.currentStep >= TOUR_STEPS.length - 1;
-      if (isLast) {
-        return {
-          ...state,
-          completedSteps: nextCompleted,
-          machineState: "COMPLETED",
-          visible: true,
-        };
-      }
-      return {
-        ...state,
-        completedSteps: nextCompleted,
-        machineState: "NAVIGATING",
-      };
-    }
 
     case "NAVIGATE_DONE": {
       const nextStep = state.currentStep + 1;
@@ -250,81 +225,37 @@ interface TourGuideProps {
   dispatch: React.Dispatch<TourAction>;
 }
 
-const HEYGEN_ORIGIN = "https://app.heygen.com";
-const HEYGEN_SIGNAL_TIMEOUT_MS = 10_000;
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
+const WELCOME_VIDEO_SRC = `${BASE_URL}videos/intro.mp4`.replace(/\/\//g, "/");
 
 export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuideProps) {
   const navigate = useNavigate();
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { config } = useAppConfig();
-  const [videoLoading, setVideoLoading] = useState(false);
-  const [videoError, setVideoError] = useState(false);
-  const signalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const heygenConfirmedRef = useRef(false);
   const navigateRef = useRef(navigate);
   useLayoutEffect(() => { navigateRef.current = navigate; });
   const navigatingRef = useRef(false);
+
+  const [videoEnded, setVideoEnded] = useState(false);
+  const [videoMinTimePassed, setVideoMinTimePassed] = useState(false);
+  const minTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const step = TOUR_STEPS[state.currentStep];
   const isLast = state.currentStep >= TOUR_STEPS.length - 1;
   const isFirst = state.currentStep === 0;
 
-  const adminOverrideId = config[`tour_video_${state.currentStep}`];
-  const videoId = adminOverrideId || step?.videoId || "";
-  const heygenShareUrl = videoId ? `https://app.heygen.com/share/${videoId}` : "";
-
-  const localVideoSrc = !adminOverrideId && step?.videoSrc
-    ? `${BASE_URL}${step.videoSrc.replace(/^\//, "")}`
-    : null;
-
-  const useLocalVideo = Boolean(localVideoSrc);
-
-  function cancelSignalTimer() {
-    if (signalTimerRef.current !== null) {
-      clearTimeout(signalTimerRef.current);
-      signalTimerRef.current = null;
-    }
-  }
-
-  function startSignalTimer() {
-    cancelSignalTimer();
-    signalTimerRef.current = setTimeout(() => {
-      if (!heygenConfirmedRef.current) {
-        setVideoLoading(false);
-        setVideoError(true);
-      }
-    }, HEYGEN_SIGNAL_TIMEOUT_MS);
-  }
-
   useEffect(() => {
-    if (state.machineState === "PLAYING_VIDEO") {
-      setVideoError(false);
-      if (useLocalVideo) {
-        setVideoLoading(true);
-        cancelSignalTimer();
-      } else {
-        heygenConfirmedRef.current = false;
-        cancelSignalTimer();
-        if (!videoId) {
-          setVideoLoading(false);
-          setVideoError(true);
-        } else {
-          setVideoLoading(true);
-        }
-      }
+    if (state.machineState === "WELCOME_VIDEO") {
+      setVideoEnded(false);
+      setVideoMinTimePassed(false);
+      if (minTimerRef.current) clearTimeout(minTimerRef.current);
+      minTimerRef.current = setTimeout(() => {
+        setVideoMinTimePassed(true);
+      }, 5000);
     }
-    return () => { cancelSignalTimer(); };
-  }, [state.machineState, state.currentStep, videoId, useLocalVideo]);
-
-  useEffect(() => {
-    if (state.machineState !== "PLAYING_VIDEO" || !useLocalVideo) return;
-    const el = videoRef.current;
-    if (!el) return;
-    el.load();
-    el.play().catch(() => {});
-  }, [state.machineState, state.currentStep, useLocalVideo]);
+    return () => {
+      if (minTimerRef.current) clearTimeout(minTimerRef.current);
+    };
+  }, [state.machineState]);
 
   useEffect(() => {
     if (state.machineState === "NAVIGATING" && !navigatingRef.current) {
@@ -356,26 +287,10 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
   }, [state.machineState, state.currentStep]);
 
   useEffect(() => {
-    if (state.machineState !== "PLAYING_VIDEO" || useLocalVideo) return;
-
-    function handleMessage(e: MessageEvent) {
-      if (e.origin !== HEYGEN_ORIGIN) return;
-      if (!heygenConfirmedRef.current) {
-        heygenConfirmedRef.current = true;
-        cancelSignalTimer();
-        setVideoLoading(false);
-        setVideoError(false);
-      }
-      if (
-        e.data === "heygen:video:ended" ||
-        (e.data && typeof e.data === "object" && e.data.type === "heygen:video:ended")
-      ) {
-        dispatch({ type: "VIDEO_ENDED" });
-      }
+    if (state.machineState === "COMPLETED") {
+      navigateRef.current("/");
     }
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [state.machineState, dispatch, useLocalVideo]);
+  }, [state.machineState]);
 
   function handleClose() {
     dispatch({ type: "CLOSE_TOUR" });
@@ -386,14 +301,6 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
     try { localStorage.setItem(TOUR_NEVER_SHOW_KEY, "1"); } catch {}
     dispatch({ type: "CLOSE_TOUR" });
     onNeverShow?.();
-  }
-
-  function handlePlayVideo() {
-    dispatch({ type: "PLAY_VIDEO" });
-  }
-
-  function handleSkipVideo() {
-    dispatch({ type: "VIDEO_ENDED" });
   }
 
   function handleNext() {
@@ -412,7 +319,68 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
     dispatch({ type: "TOGGLE_CHECKLIST" });
   }
 
+  function handleSkipVideo() {
+    dispatch({ type: "WELCOME_VIDEO_DONE" });
+  }
+
+  function handleStartTour() {
+    dispatch({ type: "WELCOME_VIDEO_DONE" });
+  }
+
   if (!state.visible) return null;
+
+  if (state.machineState === "WELCOME_VIDEO") {
+    const canStartTour = videoEnded || videoMinTimePassed;
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="w-full max-w-4xl px-4">
+          <div className="flex items-center justify-between mb-3 px-1">
+            <p className="text-white/70 text-sm font-medium">Welcome to ICT Trading Mentor</p>
+            <button
+              onClick={handleSkipVideo}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
+            >
+              Skip
+            </button>
+          </div>
+
+          <div
+            className="relative w-full bg-black rounded-2xl overflow-hidden shadow-2xl"
+            style={{ paddingBottom: "56.25%" }}
+          >
+            <video
+              ref={videoRef}
+              src={WELCOME_VIDEO_SRC}
+              controls
+              playsInline
+              autoPlay
+              className="absolute inset-0 w-full h-full object-contain bg-black"
+              onEnded={() => setVideoEnded(true)}
+            />
+          </div>
+
+          <div className="flex items-center justify-center mt-5">
+            <button
+              onClick={handleStartTour}
+              disabled={!canStartTour}
+              className={`px-8 py-3 font-bold rounded-xl text-sm transition-all ${
+                canStartTour
+                  ? "bg-primary text-primary-foreground hover:opacity-90 cursor-pointer"
+                  : "bg-white/10 text-white/30 cursor-not-allowed"
+              }`}
+            >
+              {canStartTour ? "Start Tour" : "Please wait..."}
+            </button>
+          </div>
+          {!canStartTour && (
+            <p className="text-center text-white/30 text-xs mt-2">
+              Start Tour will be available after a few seconds
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (state.machineState === "COMPLETED") {
     return (
@@ -447,106 +415,11 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
 
   return (
     <>
-      {state.machineState === "PLAYING_VIDEO" && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/92 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-4xl">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <p className="text-white/80 text-sm font-medium">
-                Step {state.currentStep + 1} of {TOUR_STEPS.length}: {step.title}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleSkipVideo}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
-                >
-                  <SkipForward className="h-3.5 w-3.5" />
-                  Continue
-                </button>
-                <button
-                  onClick={handleClose}
-                  className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div
-              className="relative w-full bg-black rounded-2xl overflow-hidden shadow-2xl"
-              style={{ paddingBottom: "56.25%" }}
-            >
-              {useLocalVideo && !videoError && (
-                <video
-                  ref={videoRef}
-                  key={localVideoSrc ?? undefined}
-                  src={localVideoSrc ?? undefined}
-                  controls
-                  playsInline
-                  className="absolute inset-0 w-full h-full object-contain bg-black"
-                  onCanPlay={() => setVideoLoading(false)}
-                  onEnded={() => dispatch({ type: "VIDEO_ENDED" })}
-                  onError={() => { setVideoLoading(false); setVideoError(true); }}
-                />
-              )}
-
-              {!useLocalVideo && !videoError && (
-                <iframe
-                  ref={iframeRef}
-                  src={heygenShareUrl}
-                  allow="autoplay; fullscreen"
-                  allowFullScreen
-                  className="absolute inset-0 w-full h-full border-0"
-                  title={step.title}
-                  onLoad={() => { if (!heygenConfirmedRef.current) startSignalTimer(); }}
-                  onError={() => { cancelSignalTimer(); setVideoLoading(false); setVideoError(true); }}
-                />
-              )}
-
-              {videoLoading && !videoError && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 pointer-events-none">
-                  <div className="h-10 w-10 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3" />
-                  <p className="text-white/60 text-sm">Loading video...</p>
-                </div>
-              )}
-
-              {videoError && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 p-6 text-center">
-                  <VideoOff className="h-12 w-12 text-white/30 mb-4" />
-                  <p className="text-white font-semibold mb-1">{step.title}</p>
-                  <p className="text-white/50 text-sm mb-6 max-w-sm">
-                    This video couldn't be loaded. Click Continue to proceed to the next step.
-                  </p>
-                  <button
-                    onClick={handleSkipVideo}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity text-sm"
-                  >
-                    <SkipForward className="h-4 w-4" />
-                    Continue
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <p className="text-center text-white/40 text-xs mt-3">
-              {videoError
-                ? "Video couldn't load. Click 'Continue' above to proceed to the next step."
-                : "Video not advancing? Click 'Continue' above to proceed to the next step."}
-            </p>
-          </div>
-        </div>
-      )}
-
       {state.machineState === "INTRODUCING" && (
         <div className="fixed bottom-4 right-4 z-[99] w-64 animate-in slide-in-from-bottom-4 fade-in duration-300">
           <div className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-primary/5">
               <div className="flex items-center gap-1.5">
-                <span
-                  className="text-base select-none"
-                  style={{ filter: "drop-shadow(0 0 6px hsl(165 100% 39% / 0.5))" }}
-                >
-                  🤖
-                </span>
                 <div>
                   <p className="text-[10px] font-bold text-foreground">ICT Tour Guide</p>
                   <p className="text-[9px] text-muted-foreground">
@@ -578,7 +451,7 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
               <h3 className="text-[10px] font-bold text-foreground mb-1.5 leading-tight">{step.title}</h3>
 
               <div className="relative bg-secondary/50 border border-border rounded-lg p-2 mb-2">
-                <p className="text-[10px] text-foreground/80 leading-relaxed line-clamp-3">{step.description}</p>
+                <p className="text-[10px] text-foreground/80 leading-relaxed line-clamp-4">{step.description}</p>
               </div>
 
               <div className="mb-2">
@@ -598,14 +471,6 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
                 </div>
               </div>
 
-              <button
-                onClick={handlePlayVideo}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-opacity text-[10px] mb-2"
-              >
-                <Play className="h-3 w-3 fill-current" />
-                Watch Video
-              </button>
-
               <div className="flex items-center gap-1">
                 <button
                   onClick={handlePrev}
@@ -618,9 +483,9 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
                 <div className="flex-1" />
                 <button
                   onClick={handleNext}
-                  className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium text-primary hover:text-primary/80 hover:bg-primary/10 transition-colors font-bold"
                 >
-                  {isLast ? "Finish" : "Skip"}
+                  {isLast ? "Finish" : "Next"}
                   <ChevronRight className="h-3 w-3" />
                 </button>
               </div>

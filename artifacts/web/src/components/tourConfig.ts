@@ -1,46 +1,54 @@
 export interface TourStep {
   title: string;
   description: string;
-  videoId: string;
-  videoSrc?: string;
   targetRoute: string;
 }
 
 export const TOUR_STEPS: TourStep[] = [
   {
-    title: "Welcome to ICT AI Trading Mentor",
-    description: "Hey trader! Welcome aboard. I'm your personal ICT mentor. Let me give you a quick 5-step tour of the most important tools on the platform. You'll be ready to trade with structure in under 5 minutes.",
-    videoId: "f84fcfe5a9104aed9666060e0c2b8fc6",
-    videoSrc: "/tour-videos/step-00.mp4",
-    targetRoute: "/dashboard",
+    title: "Your Dashboard",
+    description: "This is your home base. The live KillZone ticker at the top shows you exactly when London, New York Open, and Silver Bullet windows are active. Check your XP level, daily streak, and let the AI Mentor assist you anytime.",
+    targetRoute: "/",
   },
   {
-    title: "The Daily Planner: Your Morning Routine",
-    description: "Every profitable trader starts the day with a plan. The Daily Planner helps you set your bias, identify key levels, and prepare mentally before the market opens. Complete your morning routine before every session.",
-    videoId: "daaddb169de14b6b93670fe93eb19bed",
-    videoSrc: "/tour-videos/step-01.mp4",
+    title: "ICT Academy",
+    description: "Start here if you're new. The Academy walks you through every ICT concept — from Smart Money basics to advanced PD Arrays. Complete lessons to unlock the full app.",
+    targetRoute: "/academy",
+  },
+  {
+    title: "Mission Control",
+    description: "Before every session, come to Mission Control. Set your market bias, check the economic calendar, and complete your pre-trade checklist. The Probability Meter scores your setup quality in real time.",
     targetRoute: "/planner",
   },
   {
-    title: "The Risk Shield: Protect Your Account",
-    description: "The Risk Shield is your most important tool. It tracks your daily drawdown, calculates exact position sizes, and locks you out if you hit your loss limit. Capital preservation is rule #1.",
-    videoId: "24d4952d27d046a7b20f348bec868bbd",
-    videoSrc: "/tour-videos/step-03.mp4",
-    targetRoute: "/risk-shield",
+    title: "Risk Tools (inside Mission Control)",
+    description: "Still inside Mission Control — scroll down to see the Risk Shield tools. Set your account balance, define your max daily drawdown, and calculate exact position sizes for NQ, ES, Gold, and more.",
+    targetRoute: "/planner",
   },
   {
-    title: "The Smart Journal: Log Every Trade",
-    description: "Elite traders review every single trade. The Smart Journal lets you log entries, track your win rate, and identify patterns in your performance. Consistency builds the edge.",
-    videoId: "e1d4717f408344a1a3e6eb2078c5d4e3",
-    videoSrc: "/tour-videos/step-06.mp4",
+    title: "Smart Journal",
+    description: "After every trade, log it here. The Smart Journal captures your entry, exit, emotions, and setup quality. The AI Trade Coach gives you instant feedback on what you did well and what to improve.",
     targetRoute: "/journal",
   },
   {
-    title: "The AI Mentor: Your 24/7 ICT Tutor",
-    description: "Got a question about ICT concepts at 2 AM? Your AI Mentor is always available. Ask anything from smart money concepts to trade management — it's trained specifically on ICT methodology.",
-    videoId: "947090857d98427d9fe930ffe82747e2",
-    videoSrc: "/tour-videos/step-08.mp4",
-    targetRoute: "/dashboard",
+    title: "Analytics",
+    description: "Review your edge every week. Analytics breaks down your performance by session, setup type, and behavior tag — so you know exactly where your money is coming from and where it's leaking.",
+    targetRoute: "/analytics",
+  },
+  {
+    title: "Prop Tracker",
+    description: "Trading a funded account? The Prop Tracker monitors your daily loss limit, max drawdown, and profit target so you never blow a challenge by accident.",
+    targetRoute: "/prop-tracker",
+  },
+  {
+    title: "Community",
+    description: "You're not alone. Connect with other ICT traders, share trade ideas, ask questions, and stay accountable inside the Community hub.",
+    targetRoute: "/community",
+  },
+  {
+    title: "Your AI Mentor",
+    description: "That wraps up the tour! Remember — your AI Mentor is always one click away. Ask it anything about ICT concepts, setups, or trade reviews. It's trained specifically on ICT methodology. Let's get to work!",
+    targetRoute: "/",
   },
 ];
 
@@ -49,8 +57,8 @@ export const TOUR_NEVER_SHOW_KEY = "ict-tour-never-show";
 
 export type TourMachineState =
   | "IDLE"
+  | "WELCOME_VIDEO"
   | "INTRODUCING"
-  | "PLAYING_VIDEO"
   | "NAVIGATING"
   | "COMPLETED";
 

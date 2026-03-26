@@ -1014,7 +1014,7 @@ export default function Admin() {
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
                         <p className="text-xs font-semibold text-foreground">Step {idx + 1}: {step.title}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">Default: {step.videoId}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">Route: {step.targetRoute}</p>
                       </div>
                       {settings[key] && (
                         <button
@@ -1031,7 +1031,7 @@ export default function Admin() {
                       type="text"
                       value={settings[key] || ""}
                       onChange={(e) => updateSetting(key, e.target.value)}
-                      placeholder={`Override video ID (default: ${step.videoId})`}
+                      placeholder={`Override video ID for step ${idx + 1}`}
                       className="w-full bg-muted/30 border border-border rounded px-2.5 py-1.5 text-xs font-mono"
                     />
                     {settings[key] && (
