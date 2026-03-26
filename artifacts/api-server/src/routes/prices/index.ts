@@ -5,6 +5,7 @@ const router: IRouter = Router();
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY || "";
 const FINNHUB_BASE = "https://finnhub.io/api/v1";
 const FX_FALLBACK_BASE = "https://open.er-api.com/v6/latest/USD";
+const YAHOO_FINANCE_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
 
 interface PriceEntry {
   price: number;
@@ -20,6 +21,9 @@ const PRICE_TTL_MS = 15 * 1000;
 const FX_CACHE_TTL_MS = 15 * 1000;
 
 let fxCacheStore: { rates: Record<string, number>; fetchedAt: number } | null = null;
+
+const yahooCache = new Map<string, { c: number; pc: number; fetchedAt: number }>();
+const YAHOO_TTL_MS = 15 * 1000;
 
 const EQUITY_INSTRUMENTS = [
   { symbol: "NQ", label: "NQ1!", finnhubSymbol: "QQQ", approx: true },
@@ -42,6 +46,43 @@ async function fetchFinnhubQuote(ticker: string): Promise<{ c: number; pc: numbe
     const data = await res.json() as { c: number; pc: number; error?: string };
     if (data.error || !data.c || data.c === 0) return null;
     return { c: data.c, pc: data.pc };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchYahooQuote(ticker: string): Promise<{ c: number; pc: number } | null> {
+  const cached = yahooCache.get(ticker);
+  if (cached && Date.now() - cached.fetchedAt < YAHOO_TTL_MS) {
+    return { c: cached.c, pc: cached.pc };
+  }
+  try {
+    const url = `${YAHOO_FINANCE_BASE}/${encodeURIComponent(ticker)}?interval=1d&range=2d`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; ICT-Mentor/1.0)",
+        "Accept": "application/json",
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as {
+      chart?: {
+        result?: Array<{
+          meta?: { regularMarketPrice?: number; previousClose?: number; chartPreviousClose?: number };
+        }>;
+        error?: unknown;
+      };
+    };
+    const result = data?.chart?.result?.[0];
+    const meta = result?.meta;
+    const price = meta?.regularMarketPrice;
+    const prevClose = meta?.previousClose ?? meta?.chartPreviousClose;
+    if (!price || price === 0) return null;
+    const pc = prevClose ?? price;
+    const entry = { c: price, pc, fetchedAt: Date.now() };
+    yahooCache.set(ticker, entry);
+    return { c: price, pc };
   } catch {
     return null;
   }
@@ -157,8 +198,19 @@ router.get("/", async (req, res) => {
 
     if (cached && Date.now() - cached.fetchedAt < PRICE_TTL_MS) {
       entry = cached;
-    } else if (FINNHUB_KEY) {
-      const quote = await fetchFinnhubQuote(inst.finnhubSymbol);
+    } else {
+      let quote: { c: number; pc: number } | null = null;
+      let isDelayed = true;
+
+      if (FINNHUB_KEY) {
+        quote = await fetchFinnhubQuote(inst.finnhubSymbol);
+        if (quote) isDelayed = false;
+      }
+
+      if (!quote) {
+        quote = await fetchYahooQuote(inst.finnhubSymbol);
+      }
+
       if (quote) {
         const change = quote.c - quote.pc;
         const changePct = quote.pc !== 0 ? (change / quote.pc) * 100 : 0;
@@ -167,15 +219,13 @@ router.get("/", async (req, res) => {
           prevClose: Math.round(quote.pc * 100) / 100,
           change: Math.round(change * 100) / 100,
           changePct: Math.round(changePct * 100) / 100,
-          delayed: false,
+          delayed: isDelayed,
           fetchedAt: Date.now(),
         };
         priceCache.set(inst.symbol, entry);
       } else {
         entry = cached ?? null;
       }
-    } else {
-      entry = cached ?? null;
     }
 
     results.push({

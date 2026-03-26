@@ -114,7 +114,7 @@ async function killPortOccupant(port: number): Promise<void> {
   }
 }
 
-async function preparePort(port: number, maxKillAttempts: number = 3): Promise<void> {
+async function preparePort(port: number, maxKillAttempts: number = 5): Promise<void> {
   for (let attempt = 1; attempt <= maxKillAttempts; attempt++) {
     const inUse = await isPortInUse(port);
     if (!inUse) {
@@ -124,23 +124,23 @@ async function preparePort(port: number, maxKillAttempts: number = 3): Promise<v
     console.log(`Port ${port} occupied, attempting kill... (Attempt ${attempt}/${maxKillAttempts})`);
     await killPortOccupant(port);
     
-    // POLL for the port to be free (up to 5 seconds, checking every 200ms)
-    const freed = await waitForPortFree(port, 5000, 200);
+    // POLL for the port to be free (up to 8 seconds, checking every 200ms)
+    const freed = await waitForPortFree(port, 8000, 200);
     if (freed) {
       return;   // Kill worked, port is free
     }
     
     console.log(`Port ${port} still occupied after kill attempt ${attempt}/${maxKillAttempts}`);
+    // Give the OS a bit more time between attempts
+    await sleep(500);
   }
   
-  // All kill attempts exhausted — cannot safely fall back to a different port because the
-  // Replit proxy routes traffic to the exact PORT assigned. Using a different port would
-  // silently break all API calls without any visible error.
-  console.error(
-    `FATAL: Could not free assigned port ${port} after ${maxKillAttempts} attempts. ` +
-    `Falling back to a different port would break proxy routing. Exiting.`
+  // All kill attempts exhausted — log a warning but attempt to bind anyway.
+  // The OS may free the socket after TIME_WAIT even if lsof no longer sees a process.
+  console.warn(
+    `Could not confirm port ${port} is free after ${maxKillAttempts} attempts. ` +
+    `Attempting to bind anyway — the OS may accept it.`
   );
-  process.exit(1);
 }
 
 function bindServer(port: number): Promise<{ server: ReturnType<typeof app.listen>; boundPort: number }> {
@@ -157,38 +157,51 @@ function bindServer(port: number): Promise<{ server: ReturnType<typeof app.liste
 }
 
 async function startServer(requestedPort: number): Promise<void> {
-  // Ensure the assigned port is free before binding. preparePort exits the
-  // process if the port cannot be freed — we never fall back to a different
-  // port because Replit's proxy routes traffic only to the exact PORT value.
+  // Best-effort port cleanup before binding. preparePort warns but no longer
+  // exits fatally — it falls through so we attempt to bind regardless.
+  // We never fall back to a different port because Replit's proxy routes
+  // traffic only to the exact PORT value assigned by the platform.
   await preparePort(requestedPort);
 
   let server: ReturnType<typeof app.listen>;
   let boundPort: number;
 
-  try {
-    ({ server, boundPort } = await bindServer(requestedPort));
-  } catch (firstErr: unknown) {
-    const code = firstErr instanceof Error && "code" in firstErr
-      ? (firstErr as NodeJS.ErrnoException).code
-      : undefined;
+  const MAX_BIND_ATTEMPTS = 4;
+  let lastBindErr: unknown;
 
-    if (code === "EADDRINUSE") {
-      // TOCTOU race: port was freed but something grabbed it again. Retry
-      // once more rather than silently binding to a wrong port.
-      console.warn(`Port ${requestedPort} taken at bind time (TOCTOU race). Retrying...`);
-      await sleep(200);
-      try {
-        ({ server, boundPort } = await bindServer(requestedPort));
-      } catch (retryErr: unknown) {
-        const msg = retryErr instanceof Error ? retryErr.message : String(retryErr);
-        console.error(`FATAL: Could not bind to assigned port ${requestedPort} after retry: ${msg}`);
+  for (let attempt = 1; attempt <= MAX_BIND_ATTEMPTS; attempt++) {
+    try {
+      ({ server, boundPort } = await bindServer(requestedPort));
+      lastBindErr = undefined;
+      break;
+    } catch (err: unknown) {
+      lastBindErr = err;
+      const code = err instanceof Error && "code" in err
+        ? (err as NodeJS.ErrnoException).code
+        : undefined;
+
+      if (code !== "EADDRINUSE") {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("Server error:", msg);
         process.exit(1);
       }
-    } else {
-      const msg = firstErr instanceof Error ? firstErr.message : String(firstErr);
-      console.error("Server error:", msg);
-      process.exit(1);
+
+      if (attempt < MAX_BIND_ATTEMPTS) {
+        const delay = attempt * 300;
+        console.warn(
+          `Port ${requestedPort} taken at bind time (attempt ${attempt}/${MAX_BIND_ATTEMPTS}). ` +
+          `Retrying in ${delay}ms...`
+        );
+        await killPortOccupant(requestedPort);
+        await sleep(delay);
+      }
     }
+  }
+
+  if (lastBindErr !== undefined) {
+    const msg = lastBindErr instanceof Error ? lastBindErr.message : String(lastBindErr);
+    console.error(`FATAL: Could not bind to assigned port ${requestedPort} after ${MAX_BIND_ATTEMPTS} attempts: ${msg}`);
+    process.exit(1);
   }
 
   server!.on("error", (err: NodeJS.ErrnoException) => {
