@@ -246,10 +246,6 @@ router.get("/me", authRequired, async (req, res) => {
       return;
     }
 
-    if (user.role === "admin") {
-      await upsertAdminSubscription(user.id);
-    }
-
     const subscription = await db
       .select({
         id: userSubscriptionsTable.id,

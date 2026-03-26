@@ -375,7 +375,12 @@ router.patch("/", authRequired, async (req, res) => {
         res.status(400).json({ error: "times object is required" });
         return;
       }
-      await db.update(usersTable).set({ routineTimes: JSON.stringify(data.times) }).where(eq(usersTable.id, userId));
+      const serialized = JSON.stringify(data.times);
+      if (serialized.length > 10_000) {
+        res.status(400).json({ error: "Routine times data is too large" });
+        return;
+      }
+      await db.update(usersTable).set({ routineTimes: serialized }).where(eq(usersTable.id, userId));
       res.json({ success: true, message: "Routine times updated successfully" });
       return;
     }
@@ -385,7 +390,12 @@ router.patch("/", authRequired, async (req, res) => {
         res.status(400).json({ error: "prefs object is required" });
         return;
       }
-      await db.update(usersTable).set({ widgetPrefs: JSON.stringify(data.prefs) }).where(eq(usersTable.id, userId));
+      const serialized = JSON.stringify(data.prefs);
+      if (serialized.length > 10_000) {
+        res.status(400).json({ error: "Widget preferences data is too large" });
+        return;
+      }
+      await db.update(usersTable).set({ widgetPrefs: serialized }).where(eq(usersTable.id, userId));
       res.json({ success: true, message: "Widget preferences updated successfully" });
       return;
     }

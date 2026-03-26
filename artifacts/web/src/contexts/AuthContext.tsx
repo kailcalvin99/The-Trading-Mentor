@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 const TOKEN_KEY = "ICT_TRADING_MENTOR_TOKEN";
@@ -81,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
+  const prevModeRef = useRef<"full" | "lite">("full");
+
   const [isPersistentAdmin, setIsPersistentAdmin] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem("ICT_TRADING_MENTOR_ADMIN");
@@ -200,7 +202,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const appMode: "full" | "lite" = user?.appMode ?? "full";
 
   const setAppMode = useCallback(async (mode: "full" | "lite") => {
-    setUser((prev) => prev ? { ...prev, appMode: mode } : null);
+    setUser((prev) => {
+      prevModeRef.current = prev?.appMode ?? "full";
+      return prev ? { ...prev, appMode: mode } : null;
+    });
     try {
       const res = await fetch(`${API_BASE}/user/settings`, {
         method: "PATCH",
@@ -209,11 +214,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ section: "appMode", data: { mode } }),
       });
       if (!res.ok) {
-        setUser((prev) => prev ? { ...prev, appMode: mode === "full" ? "lite" : "full" } : null);
+        setUser((prev) => prev ? { ...prev, appMode: prevModeRef.current } : null);
       }
     } catch (error) {
       console.error("Error setting app mode:", error);
-      setUser((prev) => prev ? { ...prev, appMode: mode === "full" ? "lite" : "full" } : null);
+      setUser((prev) => prev ? { ...prev, appMode: prevModeRef.current } : null);
     }
   }, []);
 
