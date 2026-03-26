@@ -192,12 +192,19 @@ export default function KillZoneStrip() {
         style={{ width: CLOCK_WIDTH, background: "hsl(var(--card) / 0.95)" }}
       >
         <div className="flex items-center gap-2.5 px-3 h-[48px] border border-border rounded-xl w-full bg-card">
-          {avatarUrl ? (
+          {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:")) ? (
             <img
               src={avatarUrl}
               alt={firstName}
               className="w-8 h-8 rounded-full object-cover shrink-0 border border-border"
             />
+          ) : avatarUrl && avatarUrl.length <= 4 ? (
+            <div
+              className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center border border-border text-lg leading-none"
+              style={{ background: "#00C896" }}
+            >
+              {avatarUrl}
+            </div>
           ) : (
             <div
               className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold border border-border"
