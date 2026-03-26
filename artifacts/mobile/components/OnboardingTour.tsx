@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
   Platform,
+  AppState,
   type DimensionValue,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +19,7 @@ const C = Colors.dark;
 const { width: SW, height: SH } = Dimensions.get("window");
 
 const TOUR_DONE_KEY = "mobile-onboarding-tour-done";
+const TOUR_DISMISSED_KEY = "mobile-onboarding-tour-dismissed";
 
 type SpotlightPosition = {
   x: number;
@@ -96,30 +98,59 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
+async function isTourComplete(): Promise<boolean> {
+  try {
+    const [done, dismissed] = await Promise.all([
+      AsyncStorage.getItem(TOUR_DONE_KEY),
+      AsyncStorage.getItem(TOUR_DISMISSED_KEY),
+    ]);
+    return !!(done || dismissed);
+  } catch {
+    return false;
+  }
+}
+
 export function useOnboardingTour() {
   const [shouldShow, setShouldShow] = useState(false);
   const [checked, setChecked] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function checkAndShow() {
+    const complete = await isTourComplete();
+    if (!complete) {
+      try {
+        await AsyncStorage.setItem(TOUR_DONE_KEY, "1");
+      } catch {}
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setShouldShow(true);
+      }, 1200);
+    } else {
+      setShouldShow(false);
+    }
+    setChecked(true);
+  }
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    (async () => {
-      try {
-        const done = await AsyncStorage.getItem(TOUR_DONE_KEY);
-        if (!done) {
-          try {
-            await AsyncStorage.setItem(TOUR_DONE_KEY, "1");
-          } catch {}
-          timer = setTimeout(() => {
-            setShouldShow(true);
-          }, 1200);
-        }
-      } catch {}
-      setChecked(true);
-    })();
-    return () => clearTimeout(timer);
+    checkAndShow();
+
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        checkAndShow();
+      }
+    });
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      subscription.remove();
+    };
   }, []);
 
   async function completeTour() {
+    try {
+      await AsyncStorage.setItem(TOUR_DISMISSED_KEY, "1");
+      await AsyncStorage.setItem(TOUR_DONE_KEY, "1");
+    } catch {}
     setShouldShow(false);
   }
 

@@ -169,17 +169,26 @@ export function useTourGuide(userId?: string | number) {
     } catch {}
   }, [state, activeKey]);
 
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  });
+
   useEffect(() => {
     if (userId === undefined) return undefined;
+    if (!activeKey) return undefined;
     const seen = localStorage.getItem(TOUR_AUTO_SHOWN_KEY);
     const neverShow = localStorage.getItem(TOUR_NEVER_SHOW_KEY);
-    if (!seen && !neverShow && !state.visible && state.machineState === "IDLE" && state.completedSteps.length === 0) {
+    const currentState = stateRef.current;
+    if (!seen && !neverShow && !currentState.visible && currentState.machineState === "IDLE" && currentState.completedSteps.length === 0) {
       const timer = setTimeout(() => {
+        const latest = stateRef.current;
         const stillEligible =
           !localStorage.getItem(TOUR_AUTO_SHOWN_KEY) &&
           !localStorage.getItem(TOUR_NEVER_SHOW_KEY) &&
-          !state.visible &&
-          state.machineState === "IDLE";
+          !latest.visible &&
+          latest.machineState === "IDLE" &&
+          latest.completedSteps.length === 0;
         if (stillEligible) {
           localStorage.setItem(TOUR_AUTO_SHOWN_KEY, "1");
           dispatch({ type: "START_TOUR" });
@@ -188,7 +197,7 @@ export function useTourGuide(userId?: string | number) {
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [userId, state.visible, state.machineState, state.completedSteps.length]);
+  }, [userId, activeKey]);
 
   const startTour = useCallback(() => {
     dispatch({ type: "START_TOUR" });
