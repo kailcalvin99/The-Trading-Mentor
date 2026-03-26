@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
-import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Star, GraduationCap, Shield, Calendar, DollarSign, Crown } from "lucide-react";
+import { Eye, EyeOff, LogIn, TrendingUp, Zap, Trophy, BrainCircuit, Bot, Sparkles, Rocket, Star, GraduationCap, Shield, Calendar, DollarSign, Crown, BookOpen, BarChart2, PlayCircle, CheckSquare, Lightbulb, Users, Webhook } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -248,12 +248,12 @@ export default function Login() {
       )}
 
       <section id="features-section" className="w-full bg-card/30 border-t border-border py-16 px-6">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-2xl font-bold text-foreground mb-2">Everything You Need to Trade Like a Pro</h2>
-            <p className="text-muted-foreground">Built on ICT methodology with AI-powered guidance at every step</p>
+            <h2 className="text-2xl font-bold text-foreground mb-2">10 Tools Built for Serious ICT Traders</h2>
+            <p className="text-muted-foreground">Everything from lessons and journaling to AI coaching and community — all in one place</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
             <div className="bg-card border border-border rounded-xl p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <GraduationCap className="h-6 w-6 text-primary" />
@@ -281,6 +281,62 @@ export default function Login() {
               </div>
               <h3 className="font-semibold text-foreground mb-2">Daily Planner</h3>
               <p className="text-sm text-muted-foreground">Morning routine checklists, discipline tracking, and trade preparation workflows.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">Smart Journal</h3>
+              <p className="text-sm text-muted-foreground">Log every trade with screenshots and notes, then let AI spot patterns in your wins and losses.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <BarChart2 className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">Analytics Dashboard</h3>
+              <p className="text-sm text-muted-foreground">See your win rate, best sessions, and biggest mistakes at a glance — so you always know where to improve.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <PlayCircle className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">Paper Trading Replay</h3>
+              <p className="text-sm text-muted-foreground">Replay real market sessions and practice entries risk-free — perfect for building confidence without losing money.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <CheckSquare className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">Setup Quality Score</h3>
+              <p className="text-sm text-muted-foreground">Rate every trade setup before you enter. Get a sit-out warning when conditions are not right, so you skip bad trades.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Lightbulb className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">Personal Insight Engine</h3>
+              <p className="text-sm text-muted-foreground">AI surfaces your personal trading strengths and blind spots, giving you a custom improvement plan each week.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Users className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">Community Hub</h3>
+              <p className="text-sm text-muted-foreground">Share trade ideas, ask questions, and learn alongside other ICT traders working toward the same goals.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Webhook className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">TradingView Webhooks</h3>
+              <p className="text-sm text-muted-foreground">Connect your TradingView alerts directly to your journal — trades get logged automatically the moment you take them.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Trophy className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">Leaderboard & Hall of Fame</h3>
+              <p className="text-sm text-muted-foreground">Compete for top spots, celebrate milestones, and get recognized for consistent, disciplined trading.</p>
             </div>
           </div>
           <div className="text-center mt-10">
