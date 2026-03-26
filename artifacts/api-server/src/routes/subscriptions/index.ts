@@ -25,7 +25,7 @@ router.get("/tiers", async (_req: Request, res: Response) => {
       founderSpotsLeft: Math.max(0, founderLimit - Number(founderCount)),
       founderLimit,
       founderDiscountPct: parseInt(founderDiscountSetting[0]?.value || "50"),
-      annualDiscountPct: parseInt(annualDiscountSetting[0]?.value || "17"),
+      annualDiscountPct: parseInt(annualDiscountSetting[0]?.value || "20"),
     });
   } catch (err) {
     console.error("Get tiers error:", err);

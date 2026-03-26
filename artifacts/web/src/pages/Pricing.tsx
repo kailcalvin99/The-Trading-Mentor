@@ -200,7 +200,7 @@ export default function Pricing() {
           </button>
           <span className={`text-sm font-medium ${annual ? "text-foreground" : "text-muted-foreground"}`}>
             Annual
-            <span className="ml-1.5 text-xs text-primary font-bold">Save 17%</span>
+            <span className="ml-1.5 text-xs text-primary font-bold">Save 20%</span>
           </span>
         </div>
 
@@ -302,7 +302,25 @@ export default function Pricing() {
           })}
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-10 rounded-2xl border border-border bg-card/50 p-6">
+          <h4 className="text-sm font-bold text-foreground mb-4 text-center">Why traders choose us over the alternatives</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-muted-foreground">
+            <div className="space-y-1.5">
+              <p className="font-semibold text-foreground">Trading Journal alone</p>
+              <p>TraderSync, Tradervue, Edgewonk — $30–$80/mo just for journaling. No education. No AI. No risk tools.</p>
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-semibold text-foreground">Trading Education courses</p>
+              <p>Most ICT courses cost $500–$2,000 one-time or $50+/mo. No ongoing AI support or live tools included.</p>
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-semibold text-foreground">The Trading Mentor</p>
+              <p className="text-primary font-semibold">Journal + Full ICT Academy + AI Mentor + Risk Shield + Prop Tracker — all in one plan.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 text-center">
           <Link to="/refund" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <Shield className="h-4 w-4" />
             7-Day Money-Back Guarantee
