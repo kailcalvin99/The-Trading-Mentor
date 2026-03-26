@@ -47,6 +47,7 @@ import { AIAssistantContext } from "../../contexts/AIAssistantContext";
 import { cn } from "../../lib/utils";
 import { Logo } from "../logo";
 import { useListUserTags } from "@workspace/api-client-react";
+import SpotifyPlayer from "../SpotifyPlayer";
 
 interface NavItem {
   href: string;
@@ -305,6 +306,8 @@ export const Layout = () => {
         </div>
 
         {isMobile && <MobileBottomNav navItems={filteredNavItems} handleNavClick={handleNavClick} />}
+
+        <SpotifyPlayer />
 
         <AnimatePresence>
           {isAIAssistantOpen && (

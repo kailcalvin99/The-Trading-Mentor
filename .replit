@@ -34,3 +34,4 @@ packages = ["k6"]
 
 [userenv.shared]
 ADMIN_EMAIL = "alexcalvin.ac@gmail.com"
+VITE_SPOTIFY_CLIENT_ID = "fd6d7ed1bea14365b900d1c4bd604f5f"

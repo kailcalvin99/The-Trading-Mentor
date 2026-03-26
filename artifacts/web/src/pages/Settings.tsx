@@ -29,7 +29,9 @@ import {
   X,
   Camera,
   Globe,
+  Music,
 } from "lucide-react";
+import { useSpotify } from "@/contexts/SpotifyContext";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -899,6 +901,8 @@ export default function Settings() {
 
         <DashboardWidgetsCard />
 
+        <SpotifySection />
+
         <div className="bg-card border border-red-500/30 rounded-xl overflow-hidden">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-red-500/30">
             <Trash2 className="h-5 w-5 text-red-500" />
@@ -975,6 +979,64 @@ const DASHBOARD_DEFAULT_VISIBLE: Record<DashboardWidgetId, boolean> = {
   swipemode: true,
   achievements: true,
 };
+
+function SpotifySection() {
+  const { isConnected, connect, disconnect, isPremium, premiumError } = useSpotify();
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+        <Music className="h-5 w-5 text-[#1DB954]" />
+        <h2 className="text-sm font-bold text-foreground">Spotify</h2>
+        {isConnected && (
+          <span className="ml-auto text-[10px] font-bold text-[#1DB954] bg-[#1DB954]/10 border border-[#1DB954]/30 px-2 py-0.5 rounded-full">
+            CONNECTED
+          </span>
+        )}
+      </div>
+      <div className="px-5 py-5">
+        {isConnected ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Your Spotify account is connected.
+              {isPremium === false && premiumError && (
+                <span className="block mt-1 text-amber-500 text-xs">{premiumError}</span>
+              )}
+              {isPremium === true && (
+                <span className="block mt-1 text-[#1DB954] text-xs">Premium account — in-browser playback is available via the floating player.</span>
+              )}
+            </p>
+            <button
+              onClick={disconnect}
+              className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive border border-destructive/30 rounded-lg text-sm font-medium hover:bg-destructive/20 transition-colors"
+            >
+              <X className="h-4 w-4" />
+              Disconnect Spotify
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Connect your Spotify account to control music playback while trading. A floating mini-player will appear in the corner of your screen.
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              Spotify Premium is required for in-browser playback.
+            </p>
+            <button
+              onClick={connect}
+              className="flex items-center gap-2 px-4 py-2 bg-[#1DB954] hover:bg-[#1ed760] text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+              </svg>
+              Connect Spotify
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function DashboardWidgetsCard() {
   const [prefs, setPrefs] = useState<Record<DashboardWidgetId, boolean>>(() => {

@@ -34,7 +34,9 @@ import RefundPolicy from "./pages/RefundPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RiskDisclosure from "./pages/RiskDisclosure";
+import SpotifyCallback from "./pages/SpotifyCallback";
 import NotFound from "./pages/not-found";
+import { SpotifyProvider } from "./contexts/SpotifyContext";
 import { AuthGuard, AdminGuard, TierGuard } from "./components/AuthGuard";
 import { TourGuideProvider } from "./contexts/TourGuideContext";
 import { PlannerProvider } from "./contexts/PlannerContext";
@@ -60,9 +62,10 @@ function App() {
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <AuthProvider>
           <AppConfigProvider>
-            <TourGuideProvider>
-              <PlannerProvider>
-                <Router basename={basename}>
+            <SpotifyProvider>
+              <TourGuideProvider>
+                <PlannerProvider>
+                  <Router basename={basename}>
                   <ScrollToTop />
                   <Routes>
                     {/* Public routes */}
@@ -77,6 +80,7 @@ function App() {
                     <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                     <Route path="/risk-disclosure" element={<RiskDisclosure />} />
                     <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/spotify-callback" element={<SpotifyCallback />} />
 
                     {/* Protected routes — AuthGuard is pathless, catches any unmatched path */}
                     <Route element={<AuthGuard />}>
@@ -102,8 +106,9 @@ function App() {
                   </Routes>
                   <Toaster richColors position="top-right" />
                 </Router>
-              </PlannerProvider>
-            </TourGuideProvider>
+                </PlannerProvider>
+              </TourGuideProvider>
+            </SpotifyProvider>
           </AppConfigProvider>
         </AuthProvider>
       </ThemeProvider>
