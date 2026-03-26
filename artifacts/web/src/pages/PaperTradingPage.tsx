@@ -139,6 +139,11 @@ export default function PaperTradingPage() {
         setCurrentIndex(1);
         prevIndexRef.current = 1;
       }
+      if (data.length < 5) {
+        toast.warning(
+          "Limited candle data returned for the selected range or symbol. Try a wider date range or different instrument."
+        );
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load candles";
       toast.error(message);

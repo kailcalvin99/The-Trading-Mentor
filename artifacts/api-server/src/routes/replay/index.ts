@@ -119,6 +119,7 @@ router.get("/candles", authRequired, async (req: Request, res: Response): Promis
   try {
     const fromDate = new Date(from);
     const toDate = new Date(to);
+    toDate.setUTCHours(23, 59, 59, 999);
 
     const raw = await yahooFinance.chart(yahooSymbol, {
       period1: fromDate,
