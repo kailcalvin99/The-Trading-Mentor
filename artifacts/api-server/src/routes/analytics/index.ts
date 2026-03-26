@@ -1,27 +1,25 @@
 import { Router } from "express";
 import { db, tradesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { authRequired, tierRequired } from "../../middleware/auth";
 
 const router = Router();
 
 function getSessionForTime(entryTime: string): string {
-  if (!entryTime) return "No Session";
-
+  if (!entryTime) return "Other";
   const match = entryTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-  if (!match) return "No Session";
-
+  if (!match) return "Other";
   let hour = parseInt(match[1]);
   const period = match[3]?.toUpperCase();
   if (period === "PM" && hour !== 12) hour += 12;
   if (period === "AM" && hour === 12) hour = 0;
-
   const mins = hour * 60 + parseInt(match[2]);
-
-  if (mins >= 2 * 60 && mins < 5 * 60) return "London";
-  if (mins >= 9 * 60 + 30 && mins < 10 * 60) return "NY Open";
-  if (mins >= 10 * 60 && mins < 11 * 60) return "NY PM";
-  return "No Session";
+  if (mins >= 2 * 60 && mins < 7 * 60) return "London";
+  if (mins >= 8 * 60 && mins < 10 * 60) return "London/NY Overlap";
+  if (mins >= 10 * 60 && mins < 11 * 60) return "NY Kill Zone";
+  if (mins >= 11 * 60 && mins < 13 * 60) return "NY Lunch";
+  if (mins >= 13 * 60 && mins < 15 * 60) return "NY Afternoon";
+  return "Other";
 }
 
 function isHighNewsDay(dateStr: string): boolean {
@@ -34,17 +32,16 @@ router.get("/ict-breakdown", authRequired, tierRequired(2), async (req, res) => 
   try {
     const userId = req.user!.userId;
 
-    const rawTrades = await db
+    const trades = await db
       .select()
       .from(tradesTable)
-      .where(eq(tradesTable.userId, userId));
-
-    const trades = rawTrades
-      .filter((t) => !t.isDraft && (t.outcome === "win" || t.outcome === "loss"))
-      .map((t) => ({
-        ...t,
-        riskPct: parseFloat(t.riskPct),
-      }));
+      .where(
+        and(
+          eq(tradesTable.userId, userId),
+          eq(tradesTable.isDraft, false),
+          or(eq(tradesTable.outcome, "win"), eq(tradesTable.outcome, "loss"))
+        )
+      );
 
     const sessionMap: Record<string, { wins: number; losses: number; totalR: number }> = {};
 
@@ -55,10 +52,10 @@ router.get("/ict-breakdown", authRequired, tierRequired(2), async (req, res) => 
       }
       if (t.outcome === "win") {
         sessionMap[session].wins++;
-        sessionMap[session].totalR += t.riskPct;
+        sessionMap[session].totalR += parseFloat(t.riskPct);
       } else if (t.outcome === "loss") {
         sessionMap[session].losses++;
-        sessionMap[session].totalR -= t.riskPct;
+        sessionMap[session].totalR -= parseFloat(t.riskPct);
       }
     }
 

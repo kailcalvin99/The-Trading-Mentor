@@ -54,10 +54,16 @@ router.get("/posts", async (req, res) => {
     const userId = req.user!.userId;
     let likedPostIds: number[] = [];
     if (posts.length > 0) {
-      const likes = await db
-        .select({ postId: postLikesTable.postId })
-        .from(postLikesTable)
-        .where(eq(postLikesTable.userId, userId));
+      const pagePostIds = posts.map((p) => p.id);
+      const likes = pagePostIds.length > 0
+        ? await db
+            .select({ postId: postLikesTable.postId })
+            .from(postLikesTable)
+            .where(and(
+              eq(postLikesTable.userId, userId),
+              inArray(postLikesTable.postId, pagePostIds)
+            ))
+        : [];
       likedPostIds = likes.map((l) => l.postId);
     }
 
