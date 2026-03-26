@@ -79,10 +79,9 @@ export default function PaperTradingPage() {
   const [timeframe, setTimeframe] = useState("15m");
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 30);
+    d.setDate(d.getDate() - 1);
     return d.toISOString().split("T")[0];
   });
-  const [endDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [allCandles, setAllCandles] = useState<Candle[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -129,7 +128,7 @@ export default function PaperTradingPage() {
         symbol: instrument,
         interval: timeframe,
         from: startDate,
-        to: endDate,
+        to: startDate,
       });
       const res = await fetch(`${API_BASE}/replay/candles?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch candles");
@@ -490,11 +489,11 @@ export default function PaperTradingPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground font-medium">Start Date</label>
+            <label className="text-xs text-muted-foreground font-medium">Date</label>
             <input
               type="date"
               value={startDate}
-              max={endDate}
+              max={new Date().toISOString().split("T")[0]}
               min={new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
               onChange={(e) => setStartDate(e.target.value)}
               className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
