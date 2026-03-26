@@ -159,7 +159,7 @@ export default function KillZoneStrip() {
                 style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
               />
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold text-foreground whitespace-nowrap leading-tight">{session.emoji} {session.name}</span>
+                <span className="font-bold text-foreground whitespace-nowrap text-left text-[15px]">{session.emoji} {session.name}</span>
                 <span className="text-muted-foreground whitespace-nowrap text-left text-[11px]">{session.time}</span>
               </div>
               {isLive ? (
