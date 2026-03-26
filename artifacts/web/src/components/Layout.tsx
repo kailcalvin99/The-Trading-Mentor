@@ -700,7 +700,7 @@ export default function Layout() {
         </div>
 
         <div className="flex flex-col flex-1 min-w-0">
-          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0 h-12 border-t-[#020203] border-r-[#020203] border-b-[#020203] border-l-[#020203] bg-[#242438]">
+          <div className="relative flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0 h-12 border-t-[#020203] border-r-[#020203] border-b-[#020203] border-l-[#020203] bg-[#242438]">
             <button
               onClick={() => setDrawerOpen((prev) => !prev)}
               className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
@@ -709,6 +709,17 @@ export default function Layout() {
             >
               <Menu className="h-5 w-5" />
             </button>
+            <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none select-none">
+              <span
+                className="text-sm font-bold tracking-[0.2em] uppercase text-emerald-400"
+                style={{
+                  textShadow: "0 0 6px #00C896, 0 0 12px #00C896, 0 0 24px #00C896, 0 0 48px rgba(0,200,150,0.4)",
+                  fontFamily: "inherit",
+                }}
+              >
+                The Trading Mentor
+              </span>
+            </div>
             <div className="ml-auto flex items-center gap-2">
               <AIAssistant />
               <HeaderGamificationBadges />
