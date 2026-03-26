@@ -1,7 +1,36 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { createChart, ColorType, type IChartApi, type ISeriesApi, type SeriesMarker, type Time } from "lightweight-charts";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  createChart,
+  ColorType,
+  type IChartApi,
+  type ISeriesApi,
+  type IPriceLine,
+  type SeriesMarker,
+  type Time,
+  type ISeriesPrimitive,
+  type SeriesAttachedParameter,
+  type SeriesType,
+  type IChartApiBase,
+} from "lightweight-charts";
 import { Play, Pause, SkipForward, SkipBack, TrendingUp, TrendingDown, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import {
+  detectFVGs,
+  updateFVGMitigation,
+  detectOrderBlocks,
+  updateOBMitigation,
+  detectSwingPoints,
+  detectMarketStructure,
+  getKillZoneTimestamps,
+  calcPDHL,
+  calcPremiumDiscount,
+  isIntradayTimeframe,
+  type Candle as ICTCandle,
+  type FVG,
+  type OrderBlock,
+  type StructureLabel,
+  type SwingPoint,
+} from "@/utils/ictIndicators";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -43,18 +72,21 @@ interface ClosedTrade {
   closedBy: "sl" | "tp" | "manual";
 }
 
+interface IndicatorToggles {
+  fvg: boolean;
+  ob: boolean;
+  structure: boolean;
+  killZones: boolean;
+  premiumDiscount: boolean;
+  pdhl: boolean;
+}
+
 function calcPnl(pos: Position, exitPrice: number): number {
-  const priceDiff = pos.direction === "buy"
-    ? (exitPrice - pos.entryPrice)
-    : (pos.entryPrice - exitPrice);
+  const priceDiff =
+    pos.direction === "buy" ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
 
-  if (pos.pair === "NAS100" || pos.pair === "US30") {
-    return priceDiff * pos.lotSize;
-  }
-
-  if (pos.pair === "XAU/USD") {
-    return priceDiff * pos.lotSize * 100;
-  }
+  if (pos.pair === "NAS100" || pos.pair === "US30") return priceDiff * pos.lotSize;
+  if (pos.pair === "XAU/USD") return priceDiff * pos.lotSize * 100;
 
   const pipSize = pos.pair === "GBP/JPY" ? 0.01 : 0.0001;
   const pipsCount = priceDiff / pipSize;
@@ -68,12 +100,409 @@ function formatPrice(price: number): string {
   return price.toFixed(5);
 }
 
+type BitmapScope = {
+  context: CanvasRenderingContext2D;
+  bitmapSize: { width: number; height: number };
+  horizontalPixelRatio: number;
+  verticalPixelRatio: number;
+};
+
+type DrawTarget = { useBitmapCoordinateSpace: (cb: (scope: BitmapScope) => void) => void };
+
+type AttachedSeries = ISeriesApi<SeriesType, Time>;
+type AttachedChart = IChartApiBase<Time>;
+
+class RectanglePrimitive implements ISeriesPrimitive<Time> {
+  private _rects: Array<{
+    startTime: number;
+    endTime: number;
+    top: number;
+    bottom: number;
+    fillColor: string;
+    borderColor: string;
+    opacity: number;
+  }> = [];
+  private _series: AttachedSeries | null = null;
+  private _chart: AttachedChart | null = null;
+
+  attached(param: SeriesAttachedParameter<Time>): void {
+    this._series = param.series;
+    this._chart = param.chart;
+  }
+
+  detached(): void {
+    this._series = null;
+    this._chart = null;
+  }
+
+  setRects(rects: typeof this._rects): void {
+    this._rects = rects;
+  }
+
+  paneViews() {
+    return [this];
+  }
+
+  renderer() {
+    const chart = this._chart;
+    const series = this._series;
+    const rects = this._rects;
+
+    return {
+      draw(target: DrawTarget) {
+        if (!chart || !series) return;
+        target.useBitmapCoordinateSpace((scope: BitmapScope) => {
+          const ctx = scope.context;
+          const ts = chart.timeScale();
+
+          for (const rect of rects) {
+            const x1 = ts.timeToCoordinate(rect.startTime as Time);
+            const x2 = ts.timeToCoordinate(rect.endTime as Time);
+            const y1 = series.priceToCoordinate(rect.top);
+            const y2 = series.priceToCoordinate(rect.bottom);
+
+            if (x1 === null || x2 === null || y1 === null || y2 === null) continue;
+
+            const px1 = Math.round(x1 * scope.horizontalPixelRatio);
+            const px2 = Math.round(x2 * scope.horizontalPixelRatio);
+            const py1 = Math.round(y1 * scope.verticalPixelRatio);
+            const py2 = Math.round(y2 * scope.verticalPixelRatio);
+
+            const left = Math.min(px1, px2);
+            const top = Math.min(py1, py2);
+            const width = Math.abs(px2 - px1);
+            const height = Math.abs(py2 - py1);
+            if (width === 0 || height === 0) continue;
+
+            ctx.save();
+            ctx.globalAlpha = rect.opacity;
+            ctx.fillStyle = rect.fillColor;
+            ctx.fillRect(left, top, width, height);
+            ctx.globalAlpha = Math.min(1, rect.opacity * 2.5);
+            ctx.strokeStyle = rect.borderColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(left, top, width, height);
+            ctx.restore();
+          }
+        });
+      },
+    };
+  }
+}
+
+class LabelPrimitive implements ISeriesPrimitive<Time> {
+  private _labels: Array<{
+    time: number;
+    price: number;
+    text: string;
+    color: string;
+  }> = [];
+  private _series: AttachedSeries | null = null;
+  private _chart: AttachedChart | null = null;
+
+  attached(param: SeriesAttachedParameter<Time>): void {
+    this._series = param.series;
+    this._chart = param.chart;
+  }
+
+  detached(): void {
+    this._series = null;
+    this._chart = null;
+  }
+
+  setLabels(labels: typeof this._labels): void {
+    this._labels = labels;
+  }
+
+  paneViews() {
+    return [this];
+  }
+
+  renderer() {
+    const chart = this._chart;
+    const series = this._series;
+    const labels = this._labels;
+
+    return {
+      draw(target: DrawTarget) {
+        if (!chart || !series) return;
+        target.useBitmapCoordinateSpace((scope: BitmapScope) => {
+          const ctx = scope.context;
+          const ts = chart.timeScale();
+          const fontSize = Math.round(10 * scope.verticalPixelRatio);
+          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+
+          for (const lbl of labels) {
+            const x = ts.timeToCoordinate(lbl.time as Time);
+            const y = series.priceToCoordinate(lbl.price);
+            if (x === null || y === null) continue;
+
+            const px = Math.round(x * scope.horizontalPixelRatio);
+            const py = Math.round(y * scope.verticalPixelRatio);
+
+            const textW = ctx.measureText(lbl.text).width;
+            const pad = 3 * scope.horizontalPixelRatio;
+            const boxH = fontSize + pad * 2;
+            const boxW = textW + pad * 2;
+
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            ctx.fillStyle = lbl.color;
+            ctx.beginPath();
+            ctx.roundRect(px - boxW / 2, py - boxH / 2, boxW, boxH, 3);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = "#ffffff";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(lbl.text, px, py);
+            ctx.restore();
+          }
+        });
+      },
+    };
+  }
+}
+
+class HLinePrimitive implements ISeriesPrimitive<Time> {
+  private _lines: Array<{
+    price: number;
+    color: string;
+    dash: number[];
+    label?: string;
+    labelSide?: "left" | "right";
+    lineWidth?: number;
+    opacity?: number;
+  }> = [];
+  private _series: AttachedSeries | null = null;
+
+  attached(param: SeriesAttachedParameter<Time>): void {
+    this._series = param.series;
+  }
+
+  detached(): void {
+    this._series = null;
+  }
+
+  setLines(lines: typeof this._lines): void {
+    this._lines = lines;
+  }
+
+  paneViews() {
+    return [this];
+  }
+
+  renderer() {
+    const series = this._series;
+    const lines = this._lines;
+
+    return {
+      draw(target: DrawTarget) {
+        if (!series) return;
+        target.useBitmapCoordinateSpace((scope: BitmapScope) => {
+          const ctx = scope.context;
+          const width = scope.bitmapSize.width;
+
+          for (const line of lines) {
+            const y = series.priceToCoordinate(line.price);
+            if (y === null) continue;
+            const py = Math.round(y * scope.verticalPixelRatio);
+
+            ctx.save();
+            ctx.globalAlpha = line.opacity ?? 1;
+            ctx.strokeStyle = line.color;
+            ctx.lineWidth = (line.lineWidth ?? 1.5) * scope.horizontalPixelRatio;
+            ctx.setLineDash(line.dash.map((d) => d * scope.horizontalPixelRatio));
+            ctx.beginPath();
+            ctx.moveTo(0, py);
+            ctx.lineTo(width, py);
+            ctx.stroke();
+
+            if (line.label) {
+              const fontSize = Math.round(9 * scope.verticalPixelRatio);
+              ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+              ctx.setLineDash([]);
+              ctx.fillStyle = line.color;
+              ctx.textBaseline = "bottom";
+              if (line.labelSide === "left") {
+                ctx.textAlign = "left";
+                ctx.fillText(line.label, 4, py - 2);
+              } else {
+                ctx.textAlign = "right";
+                ctx.fillText(line.label, width - 4, py - 2);
+              }
+            }
+            ctx.restore();
+          }
+        });
+      },
+    };
+  }
+}
+
+class ShadePrimitive implements ISeriesPrimitive<Time> {
+  private _bands: Array<{
+    top: number;
+    bottom: number;
+    fillColor: string;
+    opacity: number;
+    label?: string;
+    labelColor?: string;
+  }> = [];
+  private _series: AttachedSeries | null = null;
+
+  attached(param: SeriesAttachedParameter<Time>): void {
+    this._series = param.series;
+  }
+
+  detached(): void {
+    this._series = null;
+  }
+
+  setBands(bands: typeof this._bands): void {
+    this._bands = bands;
+  }
+
+  paneViews() {
+    return [this];
+  }
+
+  renderer() {
+    const series = this._series;
+    const bands = this._bands;
+
+    return {
+      draw(target: DrawTarget) {
+        if (!series) return;
+        target.useBitmapCoordinateSpace((scope: BitmapScope) => {
+          const ctx = scope.context;
+          const width = scope.bitmapSize.width;
+
+          for (const band of bands) {
+            const y1 = series.priceToCoordinate(band.top);
+            const y2 = series.priceToCoordinate(band.bottom);
+            if (y1 === null || y2 === null) continue;
+
+            const py1 = Math.round(y1 * scope.verticalPixelRatio);
+            const py2 = Math.round(y2 * scope.verticalPixelRatio);
+            const top = Math.min(py1, py2);
+            const height = Math.abs(py2 - py1);
+            if (height === 0) continue;
+
+            ctx.save();
+            ctx.globalAlpha = band.opacity;
+            ctx.fillStyle = band.fillColor;
+            ctx.fillRect(0, top, width, height);
+
+            if (band.label && band.labelColor) {
+              ctx.globalAlpha = 0.6;
+              const fontSize = Math.round(10 * scope.verticalPixelRatio);
+              ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+              ctx.fillStyle = band.labelColor;
+              ctx.textAlign = "left";
+              ctx.textBaseline = "middle";
+              ctx.fillText(band.label, 8, top + height / 2);
+            }
+            ctx.restore();
+          }
+        });
+      },
+    };
+  }
+}
+
+class KillZonePrimitive implements ISeriesPrimitive<Time> {
+  private _zones: Array<{ start: number; end: number; color: string; label: string }> = [];
+  private _chart: AttachedChart | null = null;
+
+  attached(param: SeriesAttachedParameter<Time>): void {
+    this._chart = param.chart;
+  }
+
+  detached(): void {
+    this._chart = null;
+  }
+
+  setZones(zones: typeof this._zones): void {
+    this._zones = zones;
+  }
+
+  paneViews() {
+    return [this];
+  }
+
+  renderer() {
+    const chart = this._chart;
+    const zones = this._zones;
+
+    return {
+      draw(target: DrawTarget) {
+        if (!chart) return;
+        target.useBitmapCoordinateSpace((scope: BitmapScope) => {
+          const ctx = scope.context;
+          const ts = chart.timeScale();
+          const height = scope.bitmapSize.height;
+
+          for (const zone of zones) {
+            const x1 = ts.timeToCoordinate(zone.start as Time);
+            const x2 = ts.timeToCoordinate(zone.end as Time);
+            if (x1 === null || x2 === null) continue;
+
+            const px1 = Math.round(x1 * scope.horizontalPixelRatio);
+            const px2 = Math.round(x2 * scope.horizontalPixelRatio);
+            const left = Math.min(px1, px2);
+            const width = Math.abs(px2 - px1);
+            if (width === 0) continue;
+
+            ctx.save();
+            ctx.globalAlpha = 0.07;
+            ctx.fillStyle = zone.color;
+            ctx.fillRect(left, 0, width, height);
+
+            ctx.globalAlpha = 0.35;
+            ctx.strokeStyle = zone.color;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(left, 0);
+            ctx.lineTo(left, height);
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
+      },
+    };
+  }
+}
+
+const INDICATOR_LABELS: Record<keyof IndicatorToggles, string> = {
+  fvg: "FVG",
+  ob: "OB",
+  structure: "Structure",
+  killZones: "Kill Zones",
+  premiumDiscount: "Prem/Disc",
+  pdhl: "PDH/PDL",
+};
+
 export default function PaperTradingPage() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const markersRef = useRef<SeriesMarker<Time>[]>([]);
   const prevIndexRef = useRef<number>(0);
+
+  const fvgPrimitiveRef = useRef<RectanglePrimitive | null>(null);
+  const obPrimitiveRef = useRef<RectanglePrimitive | null>(null);
+  const structureLabelPrimitiveRef = useRef<LabelPrimitive | null>(null);
+  const structureLinesPrimitiveRef = useRef<HLinePrimitive | null>(null);
+  const killZonePrimitiveRef = useRef<KillZonePrimitive | null>(null);
+  const pdShadePrimitiveRef = useRef<ShadePrimitive | null>(null);
+  const pdLinePrimitiveRef = useRef<HLinePrimitive | null>(null);
+
+  const pdhlLinesRef = useRef<{ pdh: IPriceLine | null; pdl: IPriceLine | null }>({
+    pdh: null,
+    pdl: null,
+  });
 
   const [instrument, setInstrument] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("15m");
@@ -97,6 +526,17 @@ export default function PaperTradingPage() {
   const [closedTrades, setClosedTrades] = useState<ClosedTrade[]>([]);
   const [savingJournal, setSavingJournal] = useState<string[]>([]);
 
+  const [indicators, setIndicators] = useState<IndicatorToggles>({
+    fvg: false,
+    ob: false,
+    structure: false,
+    killZones: false,
+    premiumDiscount: false,
+    pdhl: false,
+  });
+
+  const [visibleTimeRange, setVisibleTimeRange] = useState<{ from: number; to: number } | null>(null);
+
   const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function updateChartMarkers(newMarkers: SeriesMarker<Time>[]) {
@@ -108,7 +548,7 @@ export default function PaperTradingPage() {
 
   function addMarker(marker: SeriesMarker<Time>) {
     const sorted = [...markersRef.current, marker].sort(
-      (a, b) => (a.time as number) - (b.time as number),
+      (a, b) => (a.time as number) - (b.time as number)
     );
     updateChartMarkers(sorted);
   }
@@ -137,11 +577,6 @@ export default function PaperTradingPage() {
       if (data.length > 0) {
         setCurrentIndex(1);
         prevIndexRef.current = 1;
-      }
-      if (data.length < 5) {
-        toast.warning(
-          "Limited candle data returned for the selected range or symbol. Try a wider date range or different instrument."
-        );
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load candles";
@@ -185,6 +620,38 @@ export default function PaperTradingPage() {
     chartRef.current = chart;
     seriesRef.current = series;
 
+    const fvgPrim = new RectanglePrimitive();
+    const obPrim = new RectanglePrimitive();
+    const structLabelPrim = new LabelPrimitive();
+    const structLinesPrim = new HLinePrimitive();
+    const killPrim = new KillZonePrimitive();
+    const pdShadePrim = new ShadePrimitive();
+    const pdLinePrim = new HLinePrimitive();
+
+    series.attachPrimitive(fvgPrim);
+    series.attachPrimitive(obPrim);
+    series.attachPrimitive(structLabelPrim);
+    series.attachPrimitive(structLinesPrim);
+    series.attachPrimitive(killPrim);
+    series.attachPrimitive(pdShadePrim);
+    series.attachPrimitive(pdLinePrim);
+
+    fvgPrimitiveRef.current = fvgPrim;
+    obPrimitiveRef.current = obPrim;
+    structureLabelPrimitiveRef.current = structLabelPrim;
+    structureLinesPrimitiveRef.current = structLinesPrim;
+    killZonePrimitiveRef.current = killPrim;
+    pdShadePrimitiveRef.current = pdShadePrim;
+    pdLinePrimitiveRef.current = pdLinePrim;
+
+    const handleVisibleRangeChange = () => {
+      const range = chart.timeScale().getVisibleRange();
+      if (range) {
+        setVisibleTimeRange({ from: range.from as number, to: range.to as number });
+      }
+    };
+    chart.timeScale().subscribeVisibleTimeRangeChange(handleVisibleRangeChange);
+
     const observer = new ResizeObserver(() => {
       if (chartContainerRef.current) {
         chart.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -193,10 +660,18 @@ export default function PaperTradingPage() {
     observer.observe(chartContainerRef.current);
 
     return () => {
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(handleVisibleRangeChange);
       observer.disconnect();
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
+      fvgPrimitiveRef.current = null;
+      obPrimitiveRef.current = null;
+      structureLabelPrimitiveRef.current = null;
+      structureLinesPrimitiveRef.current = null;
+      killZonePrimitiveRef.current = null;
+      pdShadePrimitiveRef.current = null;
+      pdLinePrimitiveRef.current = null;
     };
   }, []);
 
@@ -210,13 +685,233 @@ export default function PaperTradingPage() {
         high: c.high,
         low: c.low,
         close: c.close,
-      })),
+      }))
     );
     if (chartRef.current && visible.length > 0) {
       chartRef.current.timeScale().fitContent();
     }
     seriesRef.current.setMarkers(markersRef.current);
   }, [allCandles, currentIndex]);
+
+  const visibleCandles = useMemo(
+    () => allCandles.slice(0, currentIndex) as ICTCandle[],
+    [allCandles, currentIndex]
+  );
+
+  const allFVGs = useMemo(() => detectFVGs(visibleCandles), [visibleCandles]);
+  const mitigatedFVGs = useMemo(
+    () => updateFVGMitigation(allFVGs, visibleCandles),
+    [allFVGs, visibleCandles]
+  );
+
+  const allOBs = useMemo(() => detectOrderBlocks(visibleCandles), [visibleCandles]);
+  const mitigatedOBs = useMemo(
+    () => updateOBMitigation(allOBs, visibleCandles),
+    [allOBs, visibleCandles]
+  );
+
+  const swingPoints = useMemo(() => detectSwingPoints(visibleCandles, 3), [visibleCandles]);
+  const structureLabels = useMemo(
+    () => detectMarketStructure(visibleCandles, swingPoints),
+    [visibleCandles, swingPoints]
+  );
+
+  const killZones = useMemo(() => {
+    if (!isIntradayTimeframe(timeframe)) return [];
+    return getKillZoneTimestamps(visibleCandles);
+  }, [visibleCandles, timeframe]);
+
+  const pdhl = useMemo(() => calcPDHL(visibleCandles), [visibleCandles]);
+
+  const premiumDiscount = useMemo(
+    () =>
+      calcPremiumDiscount(
+        visibleCandles,
+        visibleTimeRange?.from,
+        visibleTimeRange?.to
+      ),
+    [visibleCandles, visibleTimeRange]
+  );
+
+  const endTime = useMemo(() => {
+    if (visibleCandles.length === 0) return 0;
+    return visibleCandles[visibleCandles.length - 1].time + 86400 * 30;
+  }, [visibleCandles]);
+
+  function invalidateChart() {
+    chartRef.current?.applyOptions({});
+  }
+
+  useEffect(() => {
+    if (!fvgPrimitiveRef.current) return;
+    if (!indicators.fvg || visibleCandles.length === 0) {
+      fvgPrimitiveRef.current.setRects([]);
+      invalidateChart();
+      return;
+    }
+
+    const rects = mitigatedFVGs.map((fvg: FVG) => ({
+      startTime: fvg.startTime,
+      endTime: fvg.mitigated ? fvg.mitigatedTime! : endTime,
+      top: fvg.top,
+      bottom: fvg.bottom,
+      fillColor: fvg.type === "bullish" ? "#22c55e" : "#ef4444",
+      borderColor: fvg.type === "bullish" ? "#22c55e" : "#ef4444",
+      opacity: fvg.mitigated ? 0.04 : 0.13,
+    }));
+
+    fvgPrimitiveRef.current.setRects(rects);
+    invalidateChart();
+  }, [mitigatedFVGs, indicators.fvg, visibleCandles.length, endTime]);
+
+  useEffect(() => {
+    if (!obPrimitiveRef.current) return;
+    if (!indicators.ob || visibleCandles.length === 0) {
+      obPrimitiveRef.current.setRects([]);
+      invalidateChart();
+      return;
+    }
+
+    const rects = mitigatedOBs.map((ob: OrderBlock) => ({
+      startTime: ob.startTime,
+      endTime: ob.mitigated ? ob.mitigatedTime! : endTime,
+      top: ob.top,
+      bottom: ob.bottom,
+      fillColor: ob.type === "bullish" ? "#3b82f6" : "#f97316",
+      borderColor: ob.type === "bullish" ? "#3b82f6" : "#f97316",
+      opacity: ob.mitigated ? 0.03 : 0.11,
+    }));
+
+    obPrimitiveRef.current.setRects(rects);
+    invalidateChart();
+  }, [mitigatedOBs, indicators.ob, visibleCandles.length, endTime]);
+
+  useEffect(() => {
+    if (!structureLabelPrimitiveRef.current || !structureLinesPrimitiveRef.current) return;
+
+    if (!indicators.structure || visibleCandles.length === 0) {
+      structureLabelPrimitiveRef.current.setLabels([]);
+      structureLinesPrimitiveRef.current.setLines([]);
+      invalidateChart();
+      return;
+    }
+
+    const labels = structureLabels.map((sl: StructureLabel) => ({
+      time: sl.time,
+      price: sl.price,
+      text: sl.label,
+      color:
+        sl.label === "BOS"
+          ? sl.direction === "bullish"
+            ? "#22c55e"
+            : "#ef4444"
+          : "#f59e0b",
+    }));
+    structureLabelPrimitiveRef.current.setLabels(labels);
+
+    const swingLines = swingPoints.map((sp: SwingPoint) => ({
+      price: sp.price,
+      color: sp.type === "high" ? "#ef444466" : "#22c55e66",
+      dash: [2, 4],
+      lineWidth: 1,
+      opacity: 0.5,
+    }));
+    structureLinesPrimitiveRef.current.setLines(swingLines);
+
+    invalidateChart();
+  }, [structureLabels, swingPoints, indicators.structure, visibleCandles.length]);
+
+  useEffect(() => {
+    if (!killZonePrimitiveRef.current) return;
+    if (!indicators.killZones || killZones.length === 0) {
+      killZonePrimitiveRef.current.setZones([]);
+      invalidateChart();
+      return;
+    }
+    killZonePrimitiveRef.current.setZones(killZones);
+    invalidateChart();
+  }, [killZones, indicators.killZones]);
+
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+
+    const { pdh: existingPdh, pdl: existingPdl } = pdhlLinesRef.current;
+    if (existingPdh) {
+      try { series.removePriceLine(existingPdh); } catch {}
+    }
+    if (existingPdl) {
+      try { series.removePriceLine(existingPdl); } catch {}
+    }
+    pdhlLinesRef.current = { pdh: null, pdl: null };
+
+    if (!indicators.pdhl || !pdhl) return;
+
+    const pdhLine = series.createPriceLine({
+      price: pdhl.pdh,
+      color: "#ef4444",
+      lineWidth: 1,
+      lineStyle: 2,
+      axisLabelVisible: true,
+      title: `PDH ${formatPrice(pdhl.pdh)}`,
+    });
+
+    const pdlLine = series.createPriceLine({
+      price: pdhl.pdl,
+      color: "#22c55e",
+      lineWidth: 1,
+      lineStyle: 2,
+      axisLabelVisible: true,
+      title: `PDL ${formatPrice(pdhl.pdl)}`,
+    });
+
+    pdhlLinesRef.current = { pdh: pdhLine, pdl: pdlLine };
+
+    return () => {
+      try { series.removePriceLine(pdhLine); } catch {}
+      try { series.removePriceLine(pdlLine); } catch {}
+    };
+  }, [pdhl, indicators.pdhl]);
+
+  useEffect(() => {
+    if (!pdShadePrimitiveRef.current || !pdLinePrimitiveRef.current) return;
+    if (!indicators.premiumDiscount || !premiumDiscount) {
+      pdShadePrimitiveRef.current.setBands([]);
+      pdLinePrimitiveRef.current.setLines([]);
+      invalidateChart();
+      return;
+    }
+
+    pdShadePrimitiveRef.current.setBands([
+      {
+        top: premiumDiscount.high,
+        bottom: premiumDiscount.mid,
+        fillColor: "#ef4444",
+        opacity: 0.05,
+        label: "Premium",
+        labelColor: "#ef4444",
+      },
+      {
+        top: premiumDiscount.mid,
+        bottom: premiumDiscount.low,
+        fillColor: "#22c55e",
+        opacity: 0.05,
+        label: "Discount",
+        labelColor: "#22c55e",
+      },
+    ]);
+
+    pdLinePrimitiveRef.current.setLines([
+      {
+        price: premiumDiscount.mid,
+        color: "#f59e0b",
+        dash: [4, 4],
+        label: "EQ 50%",
+        labelSide: "left",
+      },
+    ]);
+    invalidateChart();
+  }, [premiumDiscount, indicators.premiumDiscount]);
 
   useEffect(() => {
     if (!isPlaying || allCandles.length === 0) return;
@@ -280,21 +975,23 @@ export default function PaperTradingPage() {
 
         if (closed) {
           const pnl = calcPnl(pos, exitPrice);
-          const closedTrade: ClosedTrade = {
+          newClosed.push({
             ...pos,
             exitPrice,
             exitTime: latestCandle.time,
             pnlUsd: pnl,
             closedBy,
-          };
-          newClosed.push(closedTrade);
+          });
 
           addMarker({
             time: latestCandle.time as Time,
             position: closedBy === "tp" ? "aboveBar" : "belowBar",
             color: closedBy === "tp" ? "#22c55e" : "#ef4444",
             shape: closedBy === "tp" ? "arrowUp" : "arrowDown",
-            text: closedBy === "tp" ? `TP +$${pnl.toFixed(0)}` : `SL -$${Math.abs(pnl).toFixed(0)}`,
+            text:
+              closedBy === "tp"
+                ? `TP +$${pnl.toFixed(0)}`
+                : `SL -$${Math.abs(pnl).toFixed(0)}`,
           });
         } else {
           remaining.push(pos);
@@ -305,9 +1002,13 @@ export default function PaperTradingPage() {
         setClosedTrades((ct) => [...ct, ...newClosed]);
         for (const ct of newClosed) {
           if (ct.closedBy === "tp") {
-            toast.success(`${ct.pair} ${ct.direction.toUpperCase()} — TP hit! +$${ct.pnlUsd.toFixed(2)}`);
+            toast.success(
+              `${ct.pair} ${ct.direction.toUpperCase()} — TP hit! +$${ct.pnlUsd.toFixed(2)}`
+            );
           } else {
-            toast.error(`${ct.pair} ${ct.direction.toUpperCase()} — SL hit. -$${Math.abs(ct.pnlUsd).toFixed(2)}`);
+            toast.error(
+              `${ct.pair} ${ct.direction.toUpperCase()} — SL hit. -$${Math.abs(ct.pnlUsd).toFixed(2)}`
+            );
           }
         }
       }
@@ -374,7 +1075,13 @@ export default function PaperTradingPage() {
     setPositions((prev) => prev.filter((p) => p.id !== id));
     setClosedTrades((prev) => [
       ...prev,
-      { ...pos, exitPrice, exitTime: latestCandle.time, pnlUsd: pnl, closedBy: "manual" as const },
+      {
+        ...pos,
+        exitPrice,
+        exitTime: latestCandle.time,
+        pnlUsd: pnl,
+        closedBy: "manual" as const,
+      },
     ]);
 
     addMarker({
@@ -405,7 +1112,12 @@ export default function PaperTradingPage() {
           entryPrice: trade.entryPrice.toString(),
           stopLoss: trade.stopLoss.toString(),
           takeProfit: trade.takeProfit.toString(),
-          outcome: trade.closedBy === "tp" ? "win" : trade.closedBy === "sl" ? "loss" : "breakeven",
+          outcome:
+            trade.closedBy === "tp"
+              ? "win"
+              : trade.closedBy === "sl"
+              ? "loss"
+              : "breakeven",
           notes: `Paper trade replay. PnL: $${trade.pnlUsd.toFixed(2)}. Closed by: ${trade.closedBy}`,
         }),
       });
@@ -417,6 +1129,10 @@ export default function PaperTradingPage() {
     } finally {
       setSavingJournal((prev) => prev.filter((id) => id !== trade.id));
     }
+  }
+
+  function toggleIndicator(key: keyof IndicatorToggles) {
+    setIndicators((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
   const totalTrades = closedTrades.length;
@@ -438,6 +1154,8 @@ export default function PaperTradingPage() {
     currentIndex > 0 && allCandles[currentIndex - 1]
       ? allCandles[currentIndex - 1].close
       : null;
+
+  const killZonesDisabled = !isIntradayTimeframe(timeframe);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -494,7 +1212,11 @@ export default function PaperTradingPage() {
               type="date"
               value={startDate}
               max={new Date().toISOString().split("T")[0]}
-              min={new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
+              min={
+                new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000)
+                  .toISOString()
+                  .split("T")[0]
+              }
               onChange={(e) => setStartDate(e.target.value)}
               className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             />
@@ -545,7 +1267,9 @@ export default function PaperTradingPage() {
                     key={s}
                     onClick={() => setSpeed(s)}
                     className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
-                      speed === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                      speed === s
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {s}×
@@ -556,6 +1280,41 @@ export default function PaperTradingPage() {
                 {currentIndex}/{allCandles.length}
               </span>
             </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mr-1">
+            ICT Overlays
+          </span>
+          {(Object.keys(INDICATOR_LABELS) as Array<keyof IndicatorToggles>).map((key) => {
+            const isDisabled = key === "killZones" && killZonesDisabled;
+            const isOn = indicators[key];
+            return (
+              <button
+                key={key}
+                onClick={() => !isDisabled && toggleIndicator(key)}
+                disabled={isDisabled}
+                title={
+                  isDisabled ? "Kill Zones only available on 1m, 5m, 15m" : undefined
+                }
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                  isDisabled
+                    ? "opacity-30 cursor-not-allowed border-border text-muted-foreground"
+                    : isOn
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                {isOn ? "● " : "○ "}
+                {INDICATOR_LABELS[key]}
+              </button>
+            );
+          })}
+          {killZonesDisabled && (
+            <span className="text-[10px] text-muted-foreground ml-1">
+              Kill Zones: intraday only
+            </span>
           )}
         </div>
 
@@ -583,7 +1342,10 @@ export default function PaperTradingPage() {
               <h3 className="text-sm font-semibold">Place Order</h3>
               {latestPrice !== null && (
                 <p className="text-xs text-muted-foreground">
-                  Current price: <span className="text-foreground font-mono">{formatPrice(latestPrice)}</span>
+                  Current price:{" "}
+                  <span className="text-foreground font-mono">
+                    {formatPrice(latestPrice)}
+                  </span>
                 </p>
               )}
 
@@ -670,22 +1432,39 @@ export default function PaperTradingPage() {
                   return (
                     <div key={pos.id} className="bg-secondary/50 rounded-lg p-3 space-y-1 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className={`font-bold ${pos.direction === "buy" ? "text-green-400" : "text-red-400"}`}>
+                        <span
+                          className={`font-bold ${
+                            pos.direction === "buy" ? "text-green-400" : "text-red-400"
+                          }`}
+                        >
                           {pos.direction.toUpperCase()} {pos.lotSize} lots
                         </span>
-                        <span className={`font-mono font-bold ${currentPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        <span
+                          className={`font-mono font-bold ${
+                            currentPnl >= 0 ? "text-green-400" : "text-red-400"
+                          }`}
+                        >
                           {currentPnl >= 0 ? "+" : ""}${currentPnl.toFixed(2)}
                         </span>
                       </div>
                       <div className="text-muted-foreground">
-                        Entry: <span className="font-mono text-foreground">{formatPrice(pos.entryPrice)}</span>
+                        Entry:{" "}
+                        <span className="font-mono text-foreground">
+                          {formatPrice(pos.entryPrice)}
+                        </span>
                       </div>
                       <div className="flex gap-3">
                         <span className="text-muted-foreground">
-                          SL: <span className="font-mono text-red-400">{formatPrice(pos.stopLoss)}</span>
+                          SL:{" "}
+                          <span className="font-mono text-red-400">
+                            {formatPrice(pos.stopLoss)}
+                          </span>
                         </span>
                         <span className="text-muted-foreground">
-                          TP: <span className="font-mono text-green-400">{formatPrice(pos.takeProfit)}</span>
+                          TP:{" "}
+                          <span className="font-mono text-green-400">
+                            {formatPrice(pos.takeProfit)}
+                          </span>
                         </span>
                       </div>
                       <button
@@ -710,14 +1489,20 @@ export default function PaperTradingPage() {
             </div>
             <div className="bg-card border border-border rounded-xl p-4 text-center">
               <div
-                className={`text-2xl font-bold ${parseFloat(winRate) >= 50 ? "text-green-400" : "text-red-400"}`}
+                className={`text-2xl font-bold ${
+                  parseFloat(winRate) >= 50 ? "text-green-400" : "text-red-400"
+                }`}
               >
                 {winRate}%
               </div>
               <div className="text-xs text-muted-foreground mt-1">Win Rate</div>
             </div>
             <div className="bg-card border border-border rounded-xl p-4 text-center">
-              <div className={`text-2xl font-bold ${totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+              <div
+                className={`text-2xl font-bold ${
+                  totalPnl >= 0 ? "text-green-400" : "text-red-400"
+                }`}
+              >
                 {totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}
               </div>
               <div className="text-xs text-muted-foreground mt-1">Total P&L</div>
@@ -752,7 +1537,11 @@ export default function PaperTradingPage() {
                   {closedTrades.map((t) => (
                     <tr key={t.id} className="border-b border-border/50 hover:bg-secondary/30">
                       <td className="py-2 font-medium">{t.pair}</td>
-                      <td className={`py-2 font-bold ${t.direction === "buy" ? "text-green-400" : "text-red-400"}`}>
+                      <td
+                        className={`py-2 font-bold ${
+                          t.direction === "buy" ? "text-green-400" : "text-red-400"
+                        }`}
+                      >
                         {t.direction.toUpperCase()}
                       </td>
                       <td className="py-2">{t.lotSize}</td>
@@ -762,7 +1551,9 @@ export default function PaperTradingPage() {
                       <td className="py-2 font-mono text-green-400">{formatPrice(t.takeProfit)}</td>
                       <td className="py-2 capitalize">{t.closedBy}</td>
                       <td
-                        className={`py-2 text-right font-mono font-bold ${t.pnlUsd >= 0 ? "text-green-400" : "text-red-400"}`}
+                        className={`py-2 text-right font-mono font-bold ${
+                          t.pnlUsd >= 0 ? "text-green-400" : "text-red-400"
+                        }`}
                       >
                         {t.pnlUsd >= 0 ? "+" : ""}${t.pnlUsd.toFixed(2)}
                       </td>
