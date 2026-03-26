@@ -151,7 +151,7 @@ export default function KillZoneStrip() {
           return (
             <div
               key={session.name}
-              className={`flex-shrink-0 flex items-center gap-2 px-4 h-full bg-card border rounded-xl transition-all ${isLive ? "border-2" : "border-border"}`}
+              className="flex-shrink-0 flex items-center gap-2 px-4 h-full border rounded-xl transition-all border-border text-[14px] text-center bg-[#020203] pl-[20px] pr-[20px]"
               style={{ ...cardStyle, ...(isLive ? { borderColor: session.color, boxShadow: `0 0 10px ${session.color}30` } : {}) }}
             >
               <div
