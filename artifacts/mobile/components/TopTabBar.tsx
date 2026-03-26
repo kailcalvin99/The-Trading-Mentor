@@ -3,6 +3,7 @@ import { Href, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -227,6 +228,7 @@ export default function TopTabBar({
   const insets = useSafeAreaInsets();
   const { colors: C } = useTheme();
   const { setAppMode, user, logout } = useAuth();
+  const avatarUrl = user?.avatarUrl ?? null;
   const { xp, streak } = useDailyGamification();
   const level = Math.floor(xp / 100) + 1;
   const router = useRouter();
@@ -315,7 +317,13 @@ export default function TopTabBar({
             accessibilityRole="button"
           >
             <View style={[styles.avatar, { backgroundColor: C.accent + "25", borderColor: C.accent + "50" }]}>
-              <Text style={[styles.avatarText, { color: C.accent }]}>{initials}</Text>
+              {avatarUrl && (avatarUrl.startsWith("data:") || avatarUrl.startsWith("http")) ? (
+                <Image source={{ uri: avatarUrl }} style={styles.dashAvatarImage} />
+              ) : avatarUrl && avatarUrl.length <= 4 ? (
+                <Text style={[styles.avatarText, { color: C.accent }]}>{avatarUrl}</Text>
+              ) : (
+                <Text style={[styles.avatarText, { color: C.accent }]}>{initials}</Text>
+              )}
             </View>
           </TouchableOpacity>
         </View>
@@ -350,7 +358,13 @@ export default function TopTabBar({
             accessibilityRole="button"
           >
             <View style={[styles.avatar, { backgroundColor: C.accent + "25", borderColor: C.accent + "50" }]}>
-              <Text style={[styles.avatarText, { color: C.accent }]}>{initials}</Text>
+              {avatarUrl && (avatarUrl.startsWith("data:") || avatarUrl.startsWith("http")) ? (
+                <Image source={{ uri: avatarUrl }} style={styles.dashAvatarImage} />
+              ) : avatarUrl && avatarUrl.length <= 4 ? (
+                <Text style={[styles.avatarText, { color: C.accent }]}>{avatarUrl}</Text>
+              ) : (
+                <Text style={[styles.avatarText, { color: C.accent }]}>{initials}</Text>
+              )}
             </View>
           </TouchableOpacity>
         </View>
