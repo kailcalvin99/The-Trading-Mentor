@@ -104,7 +104,15 @@ const ENTRY_STYLE_OPTIONS = [
 ];
 
 interface UserSettingsData {
-  profile: { name: string; email: string };
+  profile: {
+    name: string;
+    email: string;
+    bio?: string;
+    twitterHandle?: string;
+    discordHandle?: string;
+    isPublic?: boolean;
+    avatarUrl?: string | null;
+  };
   tradingDefaults: {
     defaultSession: string;
     preferredEntryStyle: string;
@@ -245,6 +253,10 @@ export default function SettingsScreen() {
     role: "user",
     tierLevel: 0,
     isFounder: false,
+    bio: "",
+    twitterHandle: "",
+    discordHandle: "",
+    isPublic: false,
   });
   const [trading, setTrading] = useState({
     defaultSession: "",
@@ -299,6 +311,10 @@ export default function SettingsScreen() {
         role: meData.user?.role || "user",
         tierLevel: isAdmin ? 2 : (meData.subscription?.tierLevel ?? 0),
         isFounder: meData.user?.isFounder ?? false,
+        bio: settingsData.profile?.bio || "",
+        twitterHandle: settingsData.profile?.twitterHandle || "",
+        discordHandle: settingsData.profile?.discordHandle || "",
+        isPublic: settingsData.profile?.isPublic ?? false,
       });
       setTrading({
         defaultSession: settingsData.tradingDefaults?.defaultSession || "",
@@ -333,15 +349,31 @@ export default function SettingsScreen() {
       return;
     }
     setSaving("profile");
-    const data: Record<string, string> = {};
-    if (profile.name) data.name = profile.name;
-    if (profile.email) data.email = profile.email;
+    const profileData: Record<string, unknown> = {};
+    if (profile.name) profileData.name = profile.name;
+    if (profile.email) profileData.email = profile.email;
     if (curPw && newPw) {
-      data.currentPassword = curPw;
-      data.newPassword = newPw;
+      profileData.currentPassword = curPw;
+      profileData.newPassword = newPw;
     }
+    profileData.bio = profile.bio;
+    profileData.twitterHandle = profile.twitterHandle;
+    profileData.discordHandle = profile.discordHandle;
+    profileData.isPublic = profile.isPublic;
     try {
-      await apiPatch("user/settings", { section: "profile", data });
+      await Promise.all([
+        apiPatch("user/settings", { section: "profile", data: profileData }),
+        apiPatch("user/settings", {
+          section: "socialProfile",
+          data: {
+            bio: profile.bio,
+            twitterHandle: profile.twitterHandle,
+            discordHandle: profile.discordHandle,
+            isPublic: profile.isPublic,
+            avatarUrl: user?.avatarUrl ?? null,
+          },
+        }),
+      ]);
       setCurPw("");
       setNewPw("");
       setConfirmPw("");
@@ -724,6 +756,30 @@ export default function SettingsScreen() {
         <View style={s.card}>
           <CardHeader icon="person-outline" title="Profile" />
           <View style={s.section}>
+            {/* Avatar */}
+            <View style={{ alignItems: "center", marginBottom: 4 }}>
+              <TouchableOpacity
+                style={[s.avatar, { width: 64, height: 64, borderRadius: 32 }]}
+                onPress={() => setShowAvatarPicker(true)}
+                activeOpacity={0.8}
+                accessibilityLabel="Change avatar"
+              >
+                {avatarUrl ? (
+                  avatarUrl.startsWith("data:") || avatarUrl.startsWith("http") ? (
+                    <Image source={{ uri: avatarUrl }} style={{ width: 64, height: 64, borderRadius: 32 }} />
+                  ) : (
+                    <Text style={{ fontSize: 30 }}>{avatarUrl}</Text>
+                  )
+                ) : (
+                  <Text style={[s.avatarText, { fontSize: 26 }]}>{initials}</Text>
+                )}
+                <View style={[s.avatarEditBadge, { width: 20, height: 20, borderRadius: 10 }]}>
+                  <Ionicons name="pencil" size={10} color="#0A0A0F" />
+                </View>
+              </TouchableOpacity>
+              <Text style={[s.hint, { marginTop: 6, textAlign: "center" }]}>Tap to change avatar</Text>
+            </View>
+
             <Text style={s.label}>Name</Text>
             <TextInput
               style={s.input}
@@ -743,6 +799,57 @@ export default function SettingsScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
             />
+
+            <Text style={[s.label, s.mt]}>Bio</Text>
+            <Text style={s.hint}>Shown on the leaderboard (max 160 chars)</Text>
+            <TextInput
+              style={[s.input, { height: 72, textAlignVertical: "top" }]}
+              value={profile.bio}
+              onChangeText={(v) => setProfile((p) => ({ ...p, bio: v.slice(0, 160) }))}
+              placeholder="A short bio about your trading journey..."
+              placeholderTextColor={C.textSecondary}
+              multiline
+              maxLength={160}
+            />
+            <Text style={[s.hint, { textAlign: "right", marginTop: 2 }]}>{profile.bio.length}/160</Text>
+
+            <Text style={[s.label, s.mt]}>Twitter / X Handle</Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={{ color: C.textSecondary, fontSize: 14, paddingLeft: 12, position: "absolute", zIndex: 1 }}>@</Text>
+              <TextInput
+                style={[s.input, { flex: 1, paddingLeft: 26 }]}
+                value={profile.twitterHandle}
+                onChangeText={(v) => setProfile((p) => ({ ...p, twitterHandle: v.replace(/^@/, "").slice(0, 64) }))}
+                placeholder="yourhandle"
+                placeholderTextColor={C.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <Text style={[s.label, s.mt]}>Discord Handle</Text>
+            <TextInput
+              style={s.input}
+              value={profile.discordHandle}
+              onChangeText={(v) => setProfile((p) => ({ ...p, discordHandle: v.slice(0, 64) }))}
+              placeholder="username or username#1234"
+              placeholderTextColor={C.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <View style={[s.toggleRow, { borderTopWidth: 0, marginTop: 8, paddingTop: 0 }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: C.text }}>Make Profile Public</Text>
+                <Text style={[s.hint, { marginTop: 2 }]}>Appear on the Leaderboard; hidden posts show as Anonymous</Text>
+              </View>
+              <Switch
+                value={profile.isPublic}
+                onValueChange={(v) => setProfile((p) => ({ ...p, isPublic: v }))}
+                trackColor={{ false: C.cardBorder, true: C.accent + "60" }}
+                thumbColor={profile.isPublic ? C.accent : C.textSecondary}
+              />
+            </View>
 
             <Text style={[s.label, s.mt]}>Change Password</Text>
             <Text style={s.hint}>Leave blank to keep current password</Text>

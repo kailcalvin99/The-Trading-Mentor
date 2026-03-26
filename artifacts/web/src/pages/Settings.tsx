@@ -28,7 +28,6 @@ import {
   Plus,
   X,
   Camera,
-  Globe,
   Music,
 } from "lucide-react";
 import { useSpotify } from "@/contexts/SpotifyContext";
@@ -194,7 +193,6 @@ export default function Settings() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [savingSocialProfile, setSavingSocialProfile] = useState(false);
   const [savingTrading, setSavingTrading] = useState(false);
   const [savingRisk, setSavingRisk] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -315,7 +313,7 @@ export default function Settings() {
     }
   }
 
-  function handleSaveProfile() {
+  async function handleSaveProfile() {
     if (profile.newPassword && profile.newPassword !== profile.confirmPassword) {
       toast({ title: "Error", description: "New passwords do not match", variant: "destructive" });
       return;
@@ -324,34 +322,62 @@ export default function Settings() {
       toast({ title: "Error", description: "Enter your current password to change it", variant: "destructive" });
       return;
     }
-    const data: Record<string, unknown> = {};
-    if (profile.name) data.name = profile.name;
-    if (profile.email) data.email = profile.email;
-    if (profile.currentPassword && profile.newPassword) {
-      data.currentPassword = profile.currentPassword;
-      data.newPassword = profile.newPassword;
-    }
-    data.bio = profile.bio;
-    data.twitterHandle = profile.twitterHandle;
-    data.discordHandle = profile.discordHandle;
-    data.isPublic = profile.isPublic;
-    saveSection("profile", data, setSavingProfile);
-  }
+    setSavingProfile(true);
+    try {
+      const profileData: Record<string, unknown> = {};
+      if (profile.name) profileData.name = profile.name;
+      if (profile.email) profileData.email = profile.email;
+      if (profile.currentPassword && profile.newPassword) {
+        profileData.currentPassword = profile.currentPassword;
+        profileData.newPassword = profile.newPassword;
+      }
+      profileData.bio = profile.bio;
+      profileData.twitterHandle = profile.twitterHandle;
+      profileData.discordHandle = profile.discordHandle;
+      profileData.isPublic = profile.isPublic;
 
-  async function handleSaveSocialProfile() {
-    const avatarToSave = socialProfile.avatarUrl ?? user?.avatarUrl ?? null;
-    await saveSection(
-      "socialProfile",
-      {
-        bio: socialProfile.bio,
-        twitterHandle: socialProfile.twitterHandle,
-        discordHandle: socialProfile.discordHandle,
-        isPublic: socialProfile.isPublic,
-        avatarUrl: avatarToSave,
-      },
-      setSavingSocialProfile
-    );
-    await refreshUser();
+      const avatarToSave = socialProfile.avatarUrl ?? user?.avatarUrl ?? null;
+
+      const [profileRes, socialRes] = await Promise.all([
+        fetch(`${API_BASE}/user/settings`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ section: "profile", data: profileData }),
+        }),
+        fetch(`${API_BASE}/user/settings`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            section: "socialProfile",
+            data: {
+              bio: profile.bio,
+              twitterHandle: profile.twitterHandle,
+              discordHandle: profile.discordHandle,
+              isPublic: profile.isPublic,
+              avatarUrl: avatarToSave,
+            },
+          }),
+        }),
+      ]);
+
+      const profileResult = await profileRes.json();
+      const socialResult = await socialRes.json();
+
+      if (profileRes.ok && socialRes.ok) {
+        toast({ title: "Saved", description: "Profile updated successfully" });
+        setProfile((p) => ({ ...p, currentPassword: "", newPassword: "", confirmPassword: "" }));
+        await refreshUser();
+      } else {
+        const errMsg = (!profileRes.ok ? profileResult.error : null) || (!socialRes.ok ? socialResult.error : null) || "Failed to save";
+        toast({ title: "Error", description: errMsg, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to save settings", variant: "destructive" });
+    } finally {
+      setSavingProfile(false);
+    }
   }
 
   async function handleAvatarSelect(val: string) {
@@ -426,10 +452,11 @@ export default function Settings() {
 
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-            <Globe className="h-5 w-5 text-primary" />
-            <h2 className="text-sm font-bold text-foreground">Public Profile</h2>
+            <User className="h-5 w-5 text-primary" />
+            <h2 className="text-sm font-bold text-foreground">Profile</h2>
           </div>
           <div className="px-5 py-5 space-y-4">
+            {/* Avatar */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowAvatarPicker(true)}
@@ -455,84 +482,7 @@ export default function Settings() {
               </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Bio</label>
-              <textarea
-                value={socialProfile.bio}
-                onChange={(e) => setSocialProfile({ ...socialProfile, bio: e.target.value.slice(0, 160) })}
-                placeholder="A short bio shown on the leaderboard..."
-                maxLength={160}
-                rows={3}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-              />
-              <p className="text-xs text-muted-foreground mt-1 text-right">{socialProfile.bio.length}/160</p>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Twitter / X Handle</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">@</span>
-                <input
-                  type="text"
-                  value={socialProfile.twitterHandle}
-                  onChange={(e) => setSocialProfile({ ...socialProfile, twitterHandle: e.target.value.replace(/^@/, "").slice(0, 64) })}
-                  placeholder="yourhandle"
-                  className="w-full bg-background border border-border rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Discord Handle</label>
-              <input
-                type="text"
-                value={socialProfile.discordHandle}
-                onChange={(e) => setSocialProfile({ ...socialProfile, discordHandle: e.target.value.slice(0, 64) })}
-                placeholder="username or username#1234"
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3 bg-background">
-              <div>
-                <p className="text-sm font-medium text-foreground">Make Profile Public</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Appear on the Leaderboard; hidden posts show as Anonymous</p>
-              </div>
-              <button
-                onClick={() => setSocialProfile({ ...socialProfile, isPublic: !socialProfile.isPublic })}
-                className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                  socialProfile.isPublic ? "bg-primary" : "bg-muted"
-                }`}
-                role="switch"
-                aria-checked={socialProfile.isPublic}
-              >
-                <span
-                  className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
-                    socialProfile.isPublic ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="pt-2">
-              <button
-                onClick={handleSaveSocialProfile}
-                disabled={savingSocialProfile}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                {savingSocialProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save Public Profile
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-            <User className="h-5 w-5 text-primary" />
-            <h2 className="text-sm font-bold text-foreground">Profile</h2>
-          </div>
-          <div className="px-5 py-5 space-y-4">
+            {/* Name & Email */}
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Name</label>
               <input
@@ -551,17 +501,22 @@ export default function Settings() {
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
+
+            {/* Bio */}
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Bio</label>
               <textarea
                 value={profile.bio}
-                onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                placeholder="Tell the community about your trading journey..."
+                onChange={(e) => setProfile({ ...profile, bio: e.target.value.slice(0, 160) })}
+                placeholder="A short bio shown on the leaderboard..."
+                maxLength={160}
                 rows={3}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
               />
-              <p className="text-xs text-muted-foreground mt-1">{profile.bio.length}/500 characters</p>
+              <p className="text-xs text-muted-foreground mt-1 text-right">{profile.bio.length}/160</p>
             </div>
+
+            {/* Social handles */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Twitter / X Handle</label>
@@ -570,7 +525,7 @@ export default function Settings() {
                   <input
                     type="text"
                     value={profile.twitterHandle}
-                    onChange={(e) => setProfile({ ...profile, twitterHandle: e.target.value.replace(/^@/, "") })}
+                    onChange={(e) => setProfile({ ...profile, twitterHandle: e.target.value.replace(/^@/, "").slice(0, 64) })}
                     placeholder="yourhandle"
                     className="w-full bg-background border border-border rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   />
@@ -581,27 +536,37 @@ export default function Settings() {
                 <input
                   type="text"
                   value={profile.discordHandle}
-                  onChange={(e) => setProfile({ ...profile, discordHandle: e.target.value })}
-                  placeholder="username#0000"
+                  onChange={(e) => setProfile({ ...profile, discordHandle: e.target.value.slice(0, 64) })}
+                  placeholder="username or username#1234"
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
             </div>
-            <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border border-border">
+
+            {/* Visibility toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3 bg-background">
               <div>
-                <p className="text-sm font-medium text-foreground">Public Profile</p>
-                <p className="text-xs text-muted-foreground">Allow others to see your trading stats on the leaderboard</p>
+                <p className="text-sm font-medium text-foreground">Make Profile Public</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Appear on the Leaderboard; hidden posts show as Anonymous</p>
               </div>
               <button
                 type="button"
                 onClick={() => setProfile({ ...profile, isPublic: !profile.isPublic })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${profile.isPublic ? "bg-primary" : "bg-secondary border border-border"}`}
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                  profile.isPublic ? "bg-primary" : "bg-muted"
+                }`}
+                role="switch"
+                aria-checked={profile.isPublic}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${profile.isPublic ? "translate-x-6" : "translate-x-1"}`}
+                  className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                    profile.isPublic ? "translate-x-5" : "translate-x-0"
+                  }`}
                 />
               </button>
             </div>
+
+            {/* Password change */}
             <div className="pt-2 border-t border-border">
               <p className="text-xs text-muted-foreground mb-3">Leave password fields blank to keep your current password</p>
               <div className="space-y-3">
@@ -655,6 +620,7 @@ export default function Settings() {
                 </div>
               </div>
             </div>
+
             <div className="pt-2">
               <button
                 onClick={handleSaveProfile}
