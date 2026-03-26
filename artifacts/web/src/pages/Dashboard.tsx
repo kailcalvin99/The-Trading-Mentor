@@ -1451,6 +1451,12 @@ function DashAvatarPickerModal({
   );
 }
 
+function RoutineWidgetConditional() {
+  const { showRoutineWidget } = usePlanner();
+  if (!showRoutineWidget) return null;
+  return <TodayScheduleWidget />;
+}
+
 export default function Dashboard() {
   const { user, tierLevel, appMode, setAvatarUrl } = useAuth();
   const isFreeUser = tierLevel === 0;
@@ -1511,7 +1517,7 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4">
-          <TodayScheduleWidget />
+          <RoutineWidgetConditional />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <EconomicCalendarWidget />

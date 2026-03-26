@@ -132,7 +132,8 @@ function AIGreetingCard() {
 
 function TodayScheduleWidget() {
   const router = useRouter();
-  const { routineItems } = usePlanner();
+  const { routineItems, showRoutineWidget } = usePlanner();
+  if (!showRoutineWidget) return null;
 
   const total = ROUTINE_DISPLAY.length;
   const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
@@ -263,8 +264,9 @@ function StatsStripWidget() {
 
 function MorningRoutineWidget({ showWhy = false }: { showWhy?: boolean }) {
   const router = useRouter();
-  const { routineItems, isRoutineComplete, toggleItem } = usePlanner();
+  const { routineItems, isRoutineComplete, showRoutineWidget, toggleItem } = usePlanner();
   const [newsModalVisible, setNewsModalVisible] = useState(false);
+  if (!showRoutineWidget) return null;
 
   const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
   const totalCount = ROUTINE_DISPLAY.length;
@@ -335,12 +337,13 @@ function MorningRoutineWidget({ showWhy = false }: { showWhy?: boolean }) {
 }
 
 function MasterRoutineWidget() {
-  const { routineItems, isRoutineComplete, toggleItem, customItems, addCustomItem, removeCustomItem, renameCustomItem, toggleCustomItem } = usePlanner();
+  const { routineItems, isRoutineComplete, showRoutineWidget, toggleItem, customItems, addCustomItem, removeCustomItem, renameCustomItem, toggleCustomItem } = usePlanner();
   const [newItemText, setNewItemText] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [newsModalVisible, setNewsModalVisible] = useState(false);
+  if (!showRoutineWidget) return null;
 
   const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
   const totalCount = ROUTINE_DISPLAY.length;
@@ -1373,7 +1376,7 @@ function LessonCarousel() {
 }
 
 function RoutinePillContent() {
-  const { routineItems, isRoutineComplete, toggleItem } = usePlanner();
+  const { routineItems, isRoutineComplete, showRoutineWidget, toggleItem } = usePlanner();
   const doneCount = ROUTINE_DISPLAY.filter((item) => routineItems[item.key]).length;
   const totalCount = ROUTINE_DISPLAY.length;
 
@@ -1477,6 +1480,8 @@ type TodayPill = "routine" | "sessions" | "learn";
 function TodayRoutineWidget() {
   const [pill, setPill] = useState<TodayPill>("routine");
   const router = useRouter();
+  const { showRoutineWidget } = usePlanner();
+  if (!showRoutineWidget) return null;
 
   const PILLS: { key: TodayPill; label: string }[] = [
     { key: "routine", label: "Routine" },

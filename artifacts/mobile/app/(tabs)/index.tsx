@@ -341,7 +341,7 @@ export default function PlannerScreenGated() {
 function PlannerScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
   const {
-    routineItems, isRoutineComplete, routineCompletedToday, hasRedNews, toggleItem, toggleRedNews,
+    routineItems, isRoutineComplete, routineCompletedToday, showRoutineWidget, hasRedNews, toggleItem, toggleRedNews,
   } = usePlanner();
 
   const [plan, setPlan] = useState<TradePlan>({ ...DEFAULT_PLAN });
@@ -872,39 +872,36 @@ function PlannerScreen() {
           <ProbabilityMeter score={probScore} />
         </View>
 
-        {/* Morning Routine */}
-        <View style={styles.card}>
-          <View style={styles.routineCardHeader}>
-            <Ionicons name="sunny-outline" size={14} color="#E53E3E" />
-            <Text style={styles.routineCardLabel}>Morning Routine</Text>
-            {isRoutineComplete && (
-              <View style={styles.doneBadge}>
-                <Text style={styles.doneBadgeText}>Done ✓</Text>
-              </View>
-            )}
+        {/* Morning Routine — hidden for 24h after completion */}
+        {showRoutineWidget ? (
+          <View style={styles.card}>
+            <View style={styles.routineCardHeader}>
+              <Ionicons name="sunny-outline" size={14} color="#E53E3E" />
+              <Text style={styles.routineCardLabel}>Morning Routine</Text>
+            </View>
+            {MORNING_ROUTINE_ITEMS.map((item) => {
+              const done = routineItems[item.key];
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  style={styles.routineRow}
+                  onPress={() => handleRoutineItemPress(item.key)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.routineCheckbox, done && styles.routineCheckboxDone]}>
+                    {done && <Ionicons name="checkmark" size={10} color="#0A0A0F" />}
+                  </View>
+                  <Text style={[styles.routineLabel, done && styles.routineLabelDone]}>
+                    {item.label}
+                  </Text>
+                  {(item.key === "news" || item.key === "rules") && !done && (
+                    <Ionicons name="chevron-forward" size={14} color={C.textTertiary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
-          {MORNING_ROUTINE_ITEMS.map((item) => {
-            const done = routineItems[item.key];
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={styles.routineRow}
-                onPress={() => handleRoutineItemPress(item.key)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.routineCheckbox, done && styles.routineCheckboxDone]}>
-                  {done && <Ionicons name="checkmark" size={10} color="#0A0A0F" />}
-                </View>
-                <Text style={[styles.routineLabel, done && styles.routineLabelDone]}>
-                  {item.label}
-                </Text>
-                {(item.key === "news" || item.key === "rules") && !done && (
-                  <Ionicons name="chevron-forward" size={14} color={C.textTertiary} />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        ) : null}
 
         {/* Red News Warning Banner */}
         {hasRedNews && (

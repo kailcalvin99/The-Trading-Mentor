@@ -31,6 +31,7 @@ interface PlannerState {
   routineConfig: RoutineItem[];
   isRoutineComplete: boolean;
   routineCompletedToday: boolean;
+  showRoutineWidget: boolean;
   plannerLoaded: boolean;
   tradePlanDefaults: TradePlanDefaults;
   toggleItem: (key: string) => void;
@@ -39,6 +40,9 @@ interface PlannerState {
 }
 
 const PlannerContext = createContext<PlannerState | null>(null);
+
+const ROUTINE_COMPLETED_AT_KEY = "planner_routine_completed_at";
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 function getTodayKey() {
   return `planner_web_${new Date().toISOString().split("T")[0]}`;
@@ -70,12 +74,45 @@ function loadTradePlanDefaults(): TradePlanDefaults {
   return { ...DEFAULT_TRADE_PLAN_DEFAULTS };
 }
 
+function readCompletedAt(): string | null {
+  try {
+    return localStorage.getItem(ROUTINE_COMPLETED_AT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveCompletedAt(iso: string) {
+  try {
+    localStorage.setItem(ROUTINE_COMPLETED_AT_KEY, iso);
+  } catch {}
+}
+
+function clearCompletedAt() {
+  try {
+    localStorage.removeItem(ROUTINE_COMPLETED_AT_KEY);
+  } catch {}
+}
+
+function isWithin24Hours(isoTimestamp: string | null): boolean {
+  if (!isoTimestamp) return false;
+  const completedTime = new Date(isoTimestamp).getTime();
+  if (isNaN(completedTime)) return false;
+  return Date.now() - completedTime < TWENTY_FOUR_HOURS_MS;
+}
+
+function buildEmptyItems(keys: string[]): Record<string, boolean> {
+  const map: Record<string, boolean> = {};
+  keys.forEach((k) => { map[k] = false; });
+  return map;
+}
+
 export function PlannerProvider({ children }: { children: ReactNode }) {
   const { config } = useAppConfig();
   const [routineItems, setRoutineItems] = useState<Record<string, boolean>>({});
-  const [todayKey, setTodayKey] = useState(getTodayKey);
   const [plannerLoaded, setPlannerLoaded] = useState(false);
   const [tradePlanDefaults, setTradePlanDefaultsState] = useState<TradePlanDefaults>(loadTradePlanDefaults);
+  const [routineCompletedAt, setRoutineCompletedAt] = useState<string | null>(() => readCompletedAt());
 
   let routineConfig: RoutineItem[] = FALLBACK_ITEMS;
   try {
@@ -85,42 +122,73 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
   const routineKeys = useMemo(() => routineConfig.map((r) => r.key), [config.routine_items]);
 
-  useEffect(() => {
-    const key = todayKey;
-    const stored = localStorage.getItem(key);
-    const merged: Record<string, boolean> = {};
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        routineKeys.forEach((k) => { merged[k] = !!parsed[k]; });
-      } catch {
-        routineKeys.forEach((k) => { merged[k] = false; });
-      }
-    } else {
-      routineKeys.forEach((k) => { merged[k] = false; });
-    }
-    setRoutineItems(merged);
-    setPlannerLoaded(true);
-  }, [config.routine_items, todayKey]);
+  const within24h = isWithin24Hours(routineCompletedAt);
 
   useEffect(() => {
-    const msUntilMidnight = () => {
-      const now = new Date();
-      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
-      return midnight.getTime() - now.getTime();
-    };
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const scheduleReset = () => {
-      timeoutId = setTimeout(() => {
-        setTodayKey(getTodayKey());
-        setPlannerLoaded(false);
-        setTradePlanDefaultsState({ ...DEFAULT_TRADE_PLAN_DEFAULTS });
-        scheduleReset();
-      }, msUntilMidnight());
-    };
-    scheduleReset();
+    const completedAt = readCompletedAt();
+    if (isWithin24Hours(completedAt)) {
+      setRoutineCompletedAt(completedAt);
+      const stored = localStorage.getItem(getTodayKey());
+      const merged: Record<string, boolean> = {};
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          routineKeys.forEach((k) => { merged[k] = !!parsed[k]; });
+        } catch {
+          routineKeys.forEach((k) => { merged[k] = false; });
+        }
+      } else {
+        routineKeys.forEach((k) => { merged[k] = false; });
+      }
+      setRoutineItems(merged);
+    } else {
+      if (completedAt !== null) {
+        clearCompletedAt();
+        setRoutineCompletedAt(null);
+      }
+      const stored = localStorage.getItem(getTodayKey());
+      const merged: Record<string, boolean> = {};
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          routineKeys.forEach((k) => { merged[k] = !!parsed[k]; });
+        } catch {
+          routineKeys.forEach((k) => { merged[k] = false; });
+        }
+      } else {
+        routineKeys.forEach((k) => { merged[k] = false; });
+      }
+      setRoutineItems(merged);
+    }
+    setPlannerLoaded(true);
+  }, [config.routine_items]);
+
+  useEffect(() => {
+    if (!routineCompletedAt) return;
+    if (!isWithin24Hours(routineCompletedAt)) {
+      clearCompletedAt();
+      setRoutineCompletedAt(null);
+      setRoutineItems(buildEmptyItems(routineKeys));
+      return;
+    }
+
+    const completedTime = new Date(routineCompletedAt).getTime();
+    const msUntilExpiry = completedTime + TWENTY_FOUR_HOURS_MS - Date.now();
+    if (msUntilExpiry <= 0) {
+      clearCompletedAt();
+      setRoutineCompletedAt(null);
+      setRoutineItems(buildEmptyItems(routineKeys));
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      clearCompletedAt();
+      setRoutineCompletedAt(null);
+      setRoutineItems(buildEmptyItems(routineKeys));
+    }, msUntilExpiry);
+
     return () => clearTimeout(timeoutId);
-  }, []);
+  }, [routineCompletedAt, routineKeys]);
 
   const persist = useCallback((items: Record<string, boolean>) => {
     localStorage.setItem(getTodayKey(), JSON.stringify(items));
@@ -135,10 +203,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   }, [persist]);
 
   const resetRoutine = useCallback(() => {
-    const reset: Record<string, boolean> = {};
-    routineKeys.forEach((k) => { reset[k] = false; });
+    const reset = buildEmptyItems(routineKeys);
     setRoutineItems(reset);
     persist(reset);
+    clearCompletedAt();
+    setRoutineCompletedAt(null);
   }, [routineKeys, persist]);
 
   const setTradePlanDefault = useCallback((key: keyof TradePlanDefaults, value: string) => {
@@ -151,7 +220,18 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const isRoutineComplete = plannerLoaded && routineKeys.length > 0 && routineKeys.every((k) => routineItems[k]);
+  const allChecked = plannerLoaded && routineKeys.length > 0 && routineKeys.every((k) => routineItems[k]);
+
+  useEffect(() => {
+    if (allChecked && !isWithin24Hours(routineCompletedAt)) {
+      const now = new Date().toISOString();
+      saveCompletedAt(now);
+      setRoutineCompletedAt(now);
+    }
+  }, [allChecked, routineCompletedAt]);
+
+  const isRoutineComplete = within24h;
+  const showRoutineWidget = !within24h;
 
   return (
     <PlannerContext.Provider value={{
@@ -159,6 +239,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       routineConfig,
       isRoutineComplete,
       routineCompletedToday: isRoutineComplete,
+      showRoutineWidget,
       plannerLoaded,
       tradePlanDefaults,
       toggleItem,
