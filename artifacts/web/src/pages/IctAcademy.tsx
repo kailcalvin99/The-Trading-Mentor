@@ -204,6 +204,15 @@ function LearnView() {
   useEffect(() => {
     syncProgressFromApi().then((apiProgress) => {
       if (apiProgress) {
+        if (apiProgress.size === 0) {
+          localStorage.removeItem(PROGRESS_KEY);
+          localStorage.removeItem(STREAK_KEY);
+          localStorage.removeItem(XP_KEY);
+          localStorage.removeItem("ict-quiz-passed");
+          localStorage.removeItem("ict-academy-unlocked");
+          setCompleted(new Set());
+          return;
+        }
         const local = getProgress();
         const merged = new Set([...local, ...apiProgress]);
         setCompleted(merged);

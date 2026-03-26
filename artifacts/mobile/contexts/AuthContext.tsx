@@ -18,12 +18,29 @@ async function clearSessionOnce(): Promise<void> {
 }
 
 const ACADEMY_PROGRESS_KEY = "ict-academy-progress";
+const ACADEMY_STORAGE_KEYS = [
+  ACADEMY_PROGRESS_KEY,
+  "mobile-total-xp",
+  "mobile-login-streak",
+  "mobile-last-login-date",
+  "ict-academy-unlocked",
+  "ict-quiz-passed",
+];
+
+async function clearAcademyStorage(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove(ACADEMY_STORAGE_KEYS);
+  } catch {}
+}
 
 async function prewarmAcademyProgress(): Promise<void> {
   try {
     const data = await apiGet<{ lessonIds: string[] }>("academy/progress");
     const serverIds: string[] = data.lessonIds || [];
-    if (serverIds.length === 0) return;
+    if (serverIds.length === 0) {
+      await clearAcademyStorage();
+      return;
+    }
     const raw = await AsyncStorage.getItem(ACADEMY_PROGRESS_KEY);
     const localIds: string[] = raw ? JSON.parse(raw).filter(Boolean) : [];
     const merged = Array.from(new Set([...localIds, ...serverIds]));
@@ -140,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await apiPost("auth/logout", {});
     } catch {}
     await deleteToken();
+    await clearAcademyStorage();
     setUser(null);
     setSubscription(null);
   }, []);
