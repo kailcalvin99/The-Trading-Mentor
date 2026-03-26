@@ -14,6 +14,7 @@ function getJwtSecret(): string {
 export interface AuthPayload {
   userId: number;
   email: string;
+  role?: string;
 }
 
 declare global {
@@ -24,7 +25,7 @@ declare global {
   }
 }
 
-export function signToken(payload: AuthPayload): string {
+export function signToken(payload: AuthPayload & { role?: string }): string {
   return jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
 }
 
@@ -69,7 +70,13 @@ export async function authRequired(req: Request, res: Response, next: NextFuncti
   }
 
   try {
-    const payload = verifyToken(token);
+    const payload = verifyToken(token) as AuthPayload & { role?: string };
+
+    if (payload.role) {
+      req.user = { ...payload, role: payload.role };
+      next();
+      return;
+    }
 
     const [user] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, payload.userId));
     if (!user) {

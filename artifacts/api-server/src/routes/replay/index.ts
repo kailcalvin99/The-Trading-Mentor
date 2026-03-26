@@ -56,6 +56,15 @@ interface CandleCache {
 const cache = new Map<string, CandleCache>();
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of cache.entries()) {
+    if (entry.expiresAt <= now) {
+      cache.delete(key);
+    }
+  }
+}, 30 * 60 * 1000);
+
 function isSupportedInterval(value: string): value is SupportedInterval {
   return value in INTERVAL_MAP;
 }

@@ -169,7 +169,7 @@ router.post("/register", registerLimiter, async (req, res) => {
       }
     }
 
-    const token = signToken({ userId: user.id, email: user.email });
+    const token = signToken({ userId: user.id, email: user.email, role: user.role });
     setAuthCookie(res, token);
 
     res.status(201).json({
@@ -218,7 +218,7 @@ router.post("/login", loginLimiter, async (req, res) => {
       await upsertAdminSubscription(user.id);
     }
 
-    const token = signToken({ userId: user.id, email: user.email });
+    const token = signToken({ userId: user.id, email: user.email, role: user.role });
     setAuthCookie(res, token);
 
     res.json({

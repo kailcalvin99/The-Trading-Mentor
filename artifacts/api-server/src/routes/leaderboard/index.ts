@@ -8,6 +8,7 @@ const router: IRouter = Router();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cachedEntries: object[] | null = null;
 let cacheExpiresAt = 0;
+let isBuilding = false;
 
 async function buildLeaderboard() {
   const rows = await db
@@ -80,12 +81,20 @@ router.get("/", authRequired, async (req, res) => {
 
     const now = Date.now();
     if (!cachedEntries || now > cacheExpiresAt) {
-      cachedEntries = await buildLeaderboard();
-      cacheExpiresAt = now + CACHE_TTL_MS;
+      if (!isBuilding) {
+        isBuilding = true;
+        try {
+          cachedEntries = await buildLeaderboard();
+          cacheExpiresAt = now + CACHE_TTL_MS;
+        } finally {
+          isBuilding = false;
+        }
+      }
     }
 
     res.setHeader("Cache-Control", "public, max-age=300");
-    res.json({ entries: cachedEntries, cachedAt: new Date(cacheExpiresAt - CACHE_TTL_MS).toISOString() });
+    const cachedAt = cacheExpiresAt > 0 ? new Date(cacheExpiresAt - CACHE_TTL_MS).toISOString() : null;
+    res.json({ entries: cachedEntries ?? [], cachedAt });
   } catch (err) {
     console.error("Leaderboard error:", err);
     res.status(500).json({ error: "Failed to load leaderboard" });
