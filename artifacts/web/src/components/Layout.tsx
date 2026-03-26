@@ -337,8 +337,8 @@ function ModeSwitcher({ appMode, setAppMode }: { appMode: "full" | "lite"; setAp
           : "text-muted-foreground hover:text-foreground hover:bg-secondary"
       }`}
     >
-      {isLite ? <Zap className="h-3.5 w-3.5" /> : <Layers className="h-3.5 w-3.5" />}
-      <span className="hidden sm:inline">{isLite ? "Learning" : "Full Mode"}</span>
+      {isLite ? <Layers className="h-3.5 w-3.5" /> : <Zap className="h-3.5 w-3.5" />}
+      <span className="hidden sm:inline">{isLite ? "Full Mode" : "Learning Mode"}</span>
     </button>
   );
 }

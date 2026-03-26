@@ -200,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const appMode: "full" | "lite" = user?.appMode ?? "full";
 
   const setAppMode = useCallback(async (mode: "full" | "lite") => {
+    setUser((prev) => prev ? { ...prev, appMode: mode } : null);
     try {
       const res = await fetch(`${API_BASE}/user/settings`, {
         method: "PATCH",
@@ -207,11 +208,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include",
         body: JSON.stringify({ section: "appMode", data: { mode } }),
       });
-      if (res.ok) {
-        setUser((prev) => prev ? { ...prev, appMode: mode } : null);
+      if (!res.ok) {
+        setUser((prev) => prev ? { ...prev, appMode: mode === "full" ? "lite" : "full" } : null);
       }
     } catch (error) {
       console.error("Error setting app mode:", error);
+      setUser((prev) => prev ? { ...prev, appMode: mode === "full" ? "lite" : "full" } : null);
     }
   }, []);
 
