@@ -248,7 +248,7 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
             {loading ? "..." : `${watchedCount} / ${ALL_VIDEOS.length} watched`}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-[14px]">
           {ALL_VIDEOS.length} focused videos across all ICT concepts
         </p>
       </div>
