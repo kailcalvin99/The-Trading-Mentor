@@ -1408,29 +1408,41 @@ function IctBreakdownSection() {
   const [data, setData] = useState<IctBreakdownData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
   const [needsUpgrade, setNeedsUpgrade] = useState(false);
   const hasFetched = useRef(false);
 
-  useEffect(() => {
-    if (!open || hasFetched.current) return;
-    hasFetched.current = true;
+  const fetchData = () => {
     const apiBase = import.meta.env.VITE_API_URL || "/api";
     setLoading(true);
+    setError(null);
+    setRateLimited(false);
     const token = localStorage.getItem(TOKEN_KEY);
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     fetch(`${apiBase}/analytics/ict-breakdown`, { credentials: "include", headers })
       .then((r) => {
         if (r.status === 403) { setNeedsUpgrade(true); setLoading(false); return null; }
+        if (r.status === 429) throw new Error("rate_limited");
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
       .then((d) => { if (d) { setData(d); } setLoading(false); })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : "Unable to load ICT analytics";
-        setError(msg);
+        if (msg === "rate_limited") {
+          setRateLimited(true);
+        } else {
+          setError(msg);
+        }
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    if (!open || hasFetched.current) return;
+    hasFetched.current = true;
+    fetchData();
   }, [open]);
 
   const sessionChartConfig: ChartConfig = {
@@ -1470,6 +1482,17 @@ function IctBreakdownSection() {
               <p className="text-sm font-medium">Premium feature</p>
               <p className="text-xs text-muted-foreground">Upgrade to Premium to unlock ICT session breakdown, FVG hit rate, and news day impact analytics.</p>
               <Link to="/pricing" className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">View Pricing</Link>
+            </div>
+          )}
+          {rateLimited && (
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <p className="text-sm font-medium">Too many requests — please wait a moment and try again.</p>
+              <button
+                onClick={fetchData}
+                className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Retry
+              </button>
             </div>
           )}
           {error && <p className="text-sm text-red-500 text-center py-4">{error}</p>}

@@ -517,22 +517,31 @@ function IctBreakdownMobileSection() {
   const [data, setData] = useState<MobileIctBreakdownData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
   const [needsUpgrade, setNeedsUpgrade] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
+  const fetchData = () => {
     setLoading(true);
+    setError(null);
+    setRateLimited(false);
     apiGet<MobileIctBreakdownData>("analytics/ict-breakdown")
       .then((d) => { setData(d); setLoading(false); })
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("403")) {
           setNeedsUpgrade(true);
+        } else if (msg.includes("429")) {
+          setRateLimited(true);
         } else {
           setError("Unable to load ICT analytics");
         }
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   const newsBarData = data ? [
@@ -569,6 +578,21 @@ function IctBreakdownMobileSection() {
                 onPress={() => router.push("/(tabs)/subscription")}
               >
                 <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#000" }}>View Plans</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {rateLimited && (
+            <View style={{ alignItems: "center", gap: 10, paddingVertical: 16 }}>
+              <Ionicons name="time-outline" size={24} color={C.textSecondary} />
+              <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: C.text }}>Too Many Requests</Text>
+              <Text style={{ fontSize: 12, color: C.textSecondary, textAlign: "center", lineHeight: 18 }}>
+                Please wait a moment and try again.
+              </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: C.accent, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 }}
+                onPress={fetchData}
+              >
+                <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#000" }}>Retry</Text>
               </TouchableOpacity>
             </View>
           )}
