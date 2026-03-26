@@ -19,7 +19,6 @@ import { useListTrades } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PremiumTeaser } from "@/components/CasinoElements";
 import { usePlanner } from "@/contexts/PlannerContext";
-import SmartMoneyChecklist from "@/components/SmartMoneyChecklist";
 import type { LucideIcon } from "lucide-react";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { usePrices, useOpenTrades } from "@/hooks/useLiveMarket";
@@ -816,7 +815,7 @@ function TodayScheduleWidget() {
     <div className="bg-card border border-border rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-4">
         <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground flex-1">Morning Routine</h3>
+        <h3 className="text-sm font-semibold text-foreground flex-1">My Routine</h3>
         {isRoutineComplete && (
           <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold animate-pulse">
             Complete ✓
@@ -824,11 +823,8 @@ function TodayScheduleWidget() {
         )}
       </div>
 
-      <SmartMoneyChecklist />
-
       {customRows.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-border">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Custom Items</p>
+        <div>
           <div className="space-y-0.5">
             {customRows.map((row, idx) => (
               <div key={row.id} className="flex items-center gap-2 py-1.5 group">
