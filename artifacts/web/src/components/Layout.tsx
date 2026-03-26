@@ -515,7 +515,7 @@ export default function Layout() {
             }`}
           >
             {/* Nav grid */}
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-3">
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-3 pl-[30px] pr-[30px] pb-[0px] pt-[0px]">
               {visibleNavItems.map((item) => {
                 const isActive = location.pathname === item.to;
                 const isLocked = !isAdmin && tierLevel < (item.requiredTier ?? 0);
