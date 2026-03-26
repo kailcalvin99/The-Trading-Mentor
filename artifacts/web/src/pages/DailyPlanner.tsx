@@ -457,6 +457,7 @@ export default function DailyPlanner() {
   const [fvgOpen, setFvgOpen] = useState(true);
   const [rulesOpen, setRulesOpen] = useState(true);
   const [posCalcPoints, setPosCalcPoints] = useState("");
+  const [successToast, setSuccessToast] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   const { data: apiTrades } = useListTrades();
@@ -1424,44 +1425,45 @@ export default function DailyPlanner() {
       </div>
     </div>
 
-    {/* Floating Action Buttons — bottom-right */}
-    <div className="fixed bottom-6 right-4 z-40 flex flex-col items-end gap-3">
+    {/* Floating Action Buttons — bottom-right, horizontal row */}
+    <div className="fixed bottom-6 right-4 z-40 flex flex-row items-center gap-2">
       {speechSupported && (
-        <div className="relative group">
-          <button
-            onClick={isListening ? stopVoiceNote : startVoiceNote}
-            title={isListening ? "Stop recording" : "Voice Note"}
-            className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all ${
-              isListening
-                ? "bg-red-500 text-white animate-pulse"
-                : "bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:scale-105"
-            }`}
-          >
-            {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          </button>
-          <span className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold bg-card border border-border rounded-lg px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow">
-            {isListening ? "Stop Recording" : "Voice Note"}
-          </span>
-        </div>
-      )}
-      <div className="relative group">
         <button
-          onClick={handleSendToJournal}
-          disabled={showHaltBanner}
-          title={showHaltBanner ? "Trading halted" : "Ready to Trade"}
-          className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all ${
-            showHaltBanner
-              ? "bg-secondary border border-border text-muted-foreground cursor-not-allowed opacity-50"
-              : "bg-primary text-primary-foreground hover:brightness-110 hover:scale-105"
+          onClick={isListening ? stopVoiceNote : startVoiceNote}
+          title={isListening ? "Stop recording" : "Voice Note"}
+          className={`w-12 h-12 rounded-full shadow-xl flex items-center justify-center transition-all ${
+            isListening
+              ? "bg-red-500 text-white animate-pulse"
+              : "bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:scale-105"
           }`}
         >
-          <Send className="h-5 w-5" />
+          {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </button>
-        <span className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold bg-card border border-border rounded-lg px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow">
-          {showHaltBanner ? "Trading Halted" : "Ready to Trade"}
-        </span>
-      </div>
+      )}
+      <button
+        onClick={handleSendToJournal}
+        disabled={showHaltBanner}
+        title={showHaltBanner ? "Trading halted" : "Submit Trade"}
+        className={`h-12 px-5 rounded-full shadow-xl flex items-center gap-2 font-bold text-sm transition-all ${
+          showHaltBanner
+            ? "bg-secondary border border-border text-muted-foreground cursor-not-allowed opacity-50"
+            : "bg-primary text-primary-foreground hover:brightness-110 hover:scale-105"
+        }`}
+      >
+        <Send className="h-4 w-4 shrink-0" />
+        <span>Submit Trade</span>
+      </button>
     </div>
+
+    {/* Success Toast */}
+    {successToast && (
+      <div className="fixed bottom-24 right-4 z-50 animate-in slide-in-from-bottom-2 fade-in duration-300">
+        <div className="flex items-center gap-2.5 bg-emerald-900/90 border border-emerald-500/40 text-emerald-300 text-sm font-semibold px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+          Plan sent — ready for next trade!
+        </div>
+      </div>
+    )}
 
     {sendModalOpen && (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSendModalOpen(false)}>
@@ -1529,7 +1531,22 @@ export default function DailyPlanner() {
                   bias: planPayload.bias,
                   isDraft: true,
                 }));
-                navigate("/journal");
+
+                setRiskChecked({});
+                resetRiskChecklistState();
+                setFvgChecked({});
+                resetFvgChecklistState();
+                setRulesChecked({});
+                resetRulesChecklistState();
+                persist({
+                  ...dayData,
+                  tradePlan: { ...dayData.tradePlan, voiceNote: "" },
+                });
+                setSuccessToast(true);
+                setTimeout(() => {
+                  setSuccessToast(false);
+                  navigate("/journal");
+                }, 1400);
               }}
               className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:brightness-110 transition-all"
             >
