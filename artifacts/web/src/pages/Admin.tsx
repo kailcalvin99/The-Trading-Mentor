@@ -1386,7 +1386,7 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
     setPsychLoading(true);
     setAiLeakInsight(null);
     try {
-      const res = await fetch(`${API_BASE}/admin/psychology-analytics`, fetchOpts);
+      const res = await fetch(`${API_BASE}/admin/psychology-analytics`, { ...fetchOpts, headers });
       if (res.ok) {
         const data = await res.json();
         setPsychData(data);
@@ -1790,7 +1790,7 @@ function AdminCodeEditorPanel() {
     setLoadingFiles(true);
     setFileLoadError(false);
     try {
-      const res = await fetch(`${API_BASE}/admin/files`, fetchOpts);
+      const res = await fetch(`${API_BASE}/admin/files`, { ...fetchOpts, headers });
       if (res.ok) {
         const data = await res.json();
         setFiles(data.files);
