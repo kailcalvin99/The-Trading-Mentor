@@ -322,29 +322,6 @@ function ShareModal({
   );
 }
 
-function ModeSwitcher({ collapsed, appMode, setAppMode }: { collapsed: boolean; appMode: "full" | "lite"; setAppMode: (m: "full" | "lite") => Promise<void> }) {
-  const isLite = appMode === "lite";
-
-  return (
-    <button
-      onClick={() => setAppMode(isLite ? "full" : "lite")}
-      title={collapsed ? (isLite ? "Switch to Full Mode" : "Switch to Learning Mode") : undefined}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left ${
-        isLite
-          ? "bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600/20"
-          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-      }`}
-    >
-      {isLite ? <Zap className="h-5 w-5 shrink-0" /> : <Layers className="h-5 w-5 shrink-0" />}
-      {!collapsed && (
-        <div className="flex flex-col">
-          <span className="text-xs font-bold leading-tight">{isLite ? "Learning Mode" : "Full Mode"}</span>
-          <span className="text-[10px] opacity-60 leading-tight">{isLite ? "Tap for Full" : "Tap for Learning"}</span>
-        </div>
-      )}
-    </button>
-  );
-}
 
 const STOCK_AVATARS = [
   { id: "bull", emoji: "🐂", label: "Bull" },
@@ -548,7 +525,6 @@ export default function Layout() {
 
             {/* Utility strip */}
             <div className="flex items-center gap-1 px-3 py-2 border-t border-sidebar-border flex-wrap">
-              <ModeSwitcher collapsed={true} appMode={appMode} setAppMode={setAppMode} />
               <Link
                 to="/pricing"
                 onClick={closeDrawer}
