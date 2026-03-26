@@ -1243,11 +1243,16 @@ function CommunityBanner({ tierLevel }: { tierLevel: number }) {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(false);
   const [post, setPost] = useState<{ authorName?: string | null; content?: string | null; likesCount?: number } | null>(null);
-  const shown = useRef(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (tierLevel === 0 || shown.current) return;
+    if (tierLevel === 0) return;
+    if (window.innerWidth < 768) return;
+    const STORAGE_KEY = "community_banner_last_shown";
+    const lastShown = localStorage.getItem(STORAGE_KEY);
+    const now = Date.now();
+    if (lastShown && now - parseInt(lastShown, 10) < 24 * 60 * 60 * 1000) return;
+
     const apiBase = import.meta.env.VITE_API_URL || "/api";
     fetch(`${apiBase}/community/posts?limit=1`, { credentials: "include" })
       .then(r => r.json())
@@ -1259,7 +1264,7 @@ function CommunityBanner({ tierLevel }: { tierLevel: number }) {
 
     const showTimer = setTimeout(() => {
       setVisible(true);
-      shown.current = true;
+      localStorage.setItem(STORAGE_KEY, String(Date.now()));
       hideTimer.current = setTimeout(() => setVisible(false), 5500);
     }, 3000);
 
