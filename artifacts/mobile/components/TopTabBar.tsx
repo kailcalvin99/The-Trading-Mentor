@@ -5,11 +5,9 @@ import {
   Animated,
   Image,
   Modal,
-  Platform,
   Pressable,
   Share,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -236,6 +234,17 @@ export default function TopTabBar({
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
+  const pillAnim = useRef(new Animated.Value(appMode === "full" ? 0 : 1)).current;
+
+  useEffect(() => {
+    Animated.spring(pillAnim, {
+      toValue: appMode === "full" ? 0 : 1,
+      useNativeDriver: false,
+      damping: 20,
+      stiffness: 300,
+    }).start();
+  }, [appMode]);
+
   const baseRoutes = appMode === "lite" ? LITE_TAB_ROUTES : BASE_TAB_ROUTES;
   const TAB_ROUTES: TabRoute[] = baseRoutes;
 
@@ -404,14 +413,31 @@ export default function TopTabBar({
               {appMode === "full" ? "All features enabled" : "Learning Mode active"}
             </Text>
           </View>
-          <Switch
-            value={appMode === "full"}
-            onValueChange={(val) => setAppMode(val ? "full" : "lite")}
-            trackColor={{ false: "#3A3A55", true: C.accent + "80" }}
-            thumbColor={appMode === "full" ? C.accent : "#55556A"}
-            ios_backgroundColor="#3A3A55"
-            style={styles.switch}
-          />
+          <View style={[styles.pillTrack, { backgroundColor: C.backgroundSecondary, borderColor: C.cardBorder }]}>
+            <Animated.View
+              style={[
+                styles.pillIndicator,
+                {
+                  backgroundColor: C.accent,
+                  left: pillAnim.interpolate({ inputRange: [0, 1], outputRange: ["2%", "50%"] }),
+                },
+              ]}
+            />
+            <TouchableOpacity
+              style={styles.pillSide}
+              onPress={() => setAppMode("full")}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.pillLabel, { color: appMode === "full" ? "#fff" : C.textSecondary }]}>Full</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.pillSide}
+              onPress={() => setAppMode("lite")}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.pillLabel, { color: appMode === "lite" ? "#fff" : C.textSecondary }]}>Learning</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={[styles.dropdownDivider, { backgroundColor: C.cardBorder }]} />
@@ -609,8 +635,31 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.3,
   },
-  switch: {
-    transform: Platform.OS === "ios" ? [{ scaleX: 0.75 }, { scaleY: 0.75 }] : [{ scaleX: 0.85 }, { scaleY: 0.85 }],
+  pillTrack: {
+    flexDirection: "row",
+    width: 128,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+    position: "relative",
+  },
+  pillIndicator: {
+    position: "absolute",
+    top: 2,
+    bottom: 2,
+    width: "48%",
+    borderRadius: 13,
+  },
+  pillSide: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1,
+  },
+  pillLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
   avatar: {
     width: 32,

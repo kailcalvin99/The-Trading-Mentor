@@ -6,6 +6,7 @@ import * as SecureStore from "expo-secure-store";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 
 const SESSION_CLEARED_KEY = "session_cleared_v1";
+const APP_MODE_KEY = "ict-app-mode";
 
 async function clearSessionOnce(): Promise<void> {
   try {
@@ -117,20 +118,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.user ?? null);
       setSubscription(data.subscription ?? null);
       if (data.user) {
-        const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
-        let completedIds: string[] = [];
-        try {
-          const progressData = await apiGet<{ lessonIds: string[] }>("academy/progress");
-          completedIds = progressData.lessonIds || [];
-        } catch {
+        const savedMode = await AsyncStorage.getItem(APP_MODE_KEY).catch(() => null);
+        if (savedMode === "full" || savedMode === "lite") {
+          setAppModeState(savedMode);
+        } else {
+          const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
+          let completedIds: string[] = [];
           try {
-            const raw = await AsyncStorage.getItem(ACADEMY_PROGRESS_KEY);
-            completedIds = raw ? JSON.parse(raw).filter(Boolean) : [];
-          } catch {}
+            const progressData = await apiGet<{ lessonIds: string[] }>("academy/progress");
+            completedIds = progressData.lessonIds || [];
+          } catch {
+            try {
+              const raw = await AsyncStorage.getItem(ACADEMY_PROGRESS_KEY);
+              completedIds = raw ? JSON.parse(raw).filter(Boolean) : [];
+            } catch {}
+          }
+          const uniqueCompleted = new Set<string>(completedIds).size;
+          const allDone = totalLessons > 0 && uniqueCompleted >= totalLessons;
+          setAppModeState(allDone ? "full" : "lite");
         }
-        const uniqueCompleted = new Set<string>(completedIds).size;
-        const allDone = totalLessons > 0 && uniqueCompleted >= totalLessons;
-        setAppModeState(allDone ? "full" : "lite");
         prewarmAcademyProgress();
       }
     } catch {
@@ -143,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setAppMode = useCallback((mode: "full" | "lite") => {
     setAppModeState(mode);
+    AsyncStorage.setItem(APP_MODE_KEY, mode).catch(() => {});
   }, []);
 
   const setAvatarUrl = useCallback(async (url: string | null) => {
@@ -158,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     await deleteToken();
     await clearAcademyStorage();
+    await AsyncStorage.removeItem(APP_MODE_KEY).catch(() => {});
     setUser(null);
     setSubscription(null);
   }, []);
