@@ -484,6 +484,117 @@ const INDICATOR_LABELS: Record<keyof IndicatorToggles, string> = {
   pdhl: "PDH/PDL",
 };
 
+interface LegendItem {
+  color: string;
+  label: string;
+  type?: "box" | "line" | "dashed";
+}
+
+const INDICATOR_LEGEND_ITEMS: Record<keyof IndicatorToggles, LegendItem[]> = {
+  fvg: [
+    { color: "#22c55e", label: "Bullish FVG", type: "box" },
+    { color: "#ef4444", label: "Bearish FVG", type: "box" },
+  ],
+  ob: [
+    { color: "#3b82f6", label: "Bullish OB", type: "box" },
+    { color: "#f97316", label: "Bearish OB", type: "box" },
+  ],
+  structure: [
+    { color: "#22c55e", label: "BOS (Bull)", type: "line" },
+    { color: "#ef4444", label: "BOS (Bear)", type: "line" },
+    { color: "#f59e0b", label: "CHoCH", type: "line" },
+    { color: "#ef444466", label: "Swing High", type: "dashed" },
+    { color: "#22c55e66", label: "Swing Low", type: "dashed" },
+  ],
+  killZones: [
+    { color: "#818cf8", label: "London KZ", type: "box" },
+    { color: "#F59E0B", label: "NY Open KZ", type: "box" },
+    { color: "#ef4444", label: "Silver Bullet", type: "box" },
+  ],
+  premiumDiscount: [
+    { color: "#ef4444", label: "Premium", type: "box" },
+    { color: "#22c55e", label: "Discount", type: "box" },
+    { color: "#f59e0b", label: "Equilibrium", type: "dashed" },
+  ],
+  pdhl: [
+    { color: "#ef4444", label: "PDH", type: "dashed" },
+    { color: "#22c55e", label: "PDL", type: "dashed" },
+  ],
+};
+
+function IndicatorLegend({
+  indicators,
+  killZonesDisabled,
+}: {
+  indicators: IndicatorToggles;
+  killZonesDisabled: boolean;
+}) {
+  const activeItems: LegendItem[] = (
+    Object.keys(indicators) as Array<keyof IndicatorToggles>
+  ).flatMap((key) => {
+    if (!indicators[key]) return [];
+    if (key === "killZones" && killZonesDisabled) return [];
+    return INDICATOR_LEGEND_ITEMS[key];
+  });
+
+  if (activeItems.length === 0) return null;
+
+  return (
+    <div
+      className="absolute top-2 right-2 z-10 rounded-md px-2 py-1.5 space-y-0.5 pointer-events-none"
+      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+    >
+      {activeItems.map((item, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <Swatch color={item.color} type={item.type} />
+          <span className="text-[10px] leading-none text-white/90 font-medium whitespace-nowrap">
+            {item.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Swatch({ color, type }: { color: string; type?: "box" | "line" | "dashed" }) {
+  if (type === "line") {
+    return (
+      <span
+        className="inline-block flex-shrink-0"
+        style={{
+          width: 14,
+          height: 2,
+          borderRadius: 1,
+          backgroundColor: color,
+        }}
+      />
+    );
+  }
+  if (type === "dashed") {
+    return (
+      <span
+        className="inline-block flex-shrink-0"
+        style={{
+          width: 14,
+          height: 0,
+          borderTop: `2px dashed ${color}`,
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      className="inline-block flex-shrink-0 rounded-sm"
+      style={{
+        width: 10,
+        height: 10,
+        backgroundColor: color,
+        opacity: 0.85,
+      }}
+    />
+  );
+}
+
 export default function PaperTradingPage() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -1346,7 +1457,7 @@ export default function PaperTradingPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <div className="lg:col-span-3 bg-card border border-border rounded-xl overflow-hidden">
+          <div className="lg:col-span-3 bg-card border border-border rounded-xl overflow-hidden relative">
             {allCandles.length === 0 && !loading && (
               <div className="flex items-center justify-center h-[420px] text-muted-foreground text-sm">
                 Select an instrument and click "Load Candles" to begin
@@ -1362,6 +1473,9 @@ export default function PaperTradingPage() {
               className={allCandles.length === 0 || loading ? "hidden" : ""}
               style={{ height: 420 }}
             />
+            {allCandles.length > 0 && !loading && (
+              <IndicatorLegend indicators={indicators} killZonesDisabled={killZonesDisabled} />
+            )}
           </div>
 
           <div className="space-y-3">
