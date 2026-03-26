@@ -8,12 +8,21 @@ interface RoutineItem {
   icon: string;
 }
 
+export interface TradePlanDefaults {
+  targetSession: string;
+}
+
+export const DEFAULT_TRADE_PLAN_DEFAULTS: TradePlanDefaults = {
+  targetSession: "",
+};
+
 interface PlannerState {
   routineItems: Record<string, boolean>;
   routineConfig: RoutineItem[];
   isRoutineComplete: boolean;
   routineCompletedToday: boolean;
   plannerLoaded: boolean;
+  tradePlanDefaults: TradePlanDefaults;
   toggleItem: (key: string) => void;
   resetRoutine: () => void;
 }
@@ -103,7 +112,16 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   const isRoutineComplete = plannerLoaded && routineKeys.length > 0 && routineKeys.every((k) => routineItems[k]);
 
   return (
-    <PlannerContext.Provider value={{ routineItems, routineConfig, isRoutineComplete, routineCompletedToday: isRoutineComplete, plannerLoaded, toggleItem, resetRoutine }}>
+    <PlannerContext.Provider value={{
+      routineItems,
+      routineConfig,
+      isRoutineComplete,
+      routineCompletedToday: isRoutineComplete,
+      plannerLoaded,
+      tradePlanDefaults: DEFAULT_TRADE_PLAN_DEFAULTS,
+      toggleItem,
+      resetRoutine,
+    }}>
       {children}
     </PlannerContext.Provider>
   );

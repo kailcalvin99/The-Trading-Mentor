@@ -39,6 +39,20 @@ import {
   resetPretradeChecklistState as resetRiskChecklistState,
 } from "@/lib/pretradeChecklist";
 
+import {
+  PRETRADE_FVG_ITEMS,
+  getFvgChecklistState,
+  saveFvgChecklistState,
+  resetFvgChecklistState,
+} from "@/lib/fvgChecklist";
+
+import {
+  RULES_CHECKLIST_ITEMS,
+  getRulesChecklistState,
+  saveRulesChecklistState,
+  resetRulesChecklistState,
+} from "@/lib/ruleChecklist";
+
 const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
 
@@ -65,6 +79,7 @@ interface TradePlan {
   stopLossTicks: string;
   selectedAsset: string;
   voiceNote: string;
+  targetSession: string;
 }
 
 interface DayData {
@@ -122,6 +137,25 @@ const DEFAULT_TRADE_PLAN: TradePlan = {
   stopLossTicks: "",
   selectedAsset: "NQ",
   voiceNote: "",
+  targetSession: "",
+};
+
+const TARGET_SESSIONS = [
+  { id: "london_open",    label: "London Open",    time: "2:00–5:00 AM",   color: "blue",   tip: "Cleanest liquidity sweeps · Best FVGs form in early London · PDH/PDL raids common." },
+  { id: "ny_premarket",   label: "NY Pre-Market",  time: "6:00–7:00 AM",   color: "violet", tip: "Gap fills common · Power hour setup window · Watch overnight highs/lows." },
+  { id: "ny_open",        label: "NY Open / AM",   time: "7:00–10:00 AM",  color: "amber",  tip: "High volatility · Institutional order flow starts · Best for aggressive entries." },
+  { id: "silver_bullet",  label: "Silver Bullet",  time: "10:00–11:00 AM", color: "emerald",tip: "3-candle displacement · look for FVG fill on 1m · usually aligns with HTF draw." },
+  { id: "ny_lunch",       label: "NY Lunch",       time: "12:00–1:00 PM",  color: "orange", tip: "Low liquidity · Whipsaw risk is high · Avoid unless very clear setup." },
+  { id: "ny_pm",          label: "NY PM",          time: "2:00–4:00 PM",   color: "rose",   tip: "Late day reversals common · Close out positions before 4 PM · Watch daily close." },
+] as const;
+
+const SESSION_COLOR_MAP: Record<string, { active: string; border: string; bg: string; text: string }> = {
+  blue:    { active: "bg-blue-500/20 border-blue-500 text-blue-400",    border: "border-blue-500/40 text-blue-400 hover:bg-blue-500/10",    bg: "bg-blue-500/10 border-blue-500/25",    text: "text-blue-400" },
+  violet:  { active: "bg-violet-500/20 border-violet-500 text-violet-400", border: "border-violet-500/40 text-violet-400 hover:bg-violet-500/10", bg: "bg-violet-500/10 border-violet-500/25", text: "text-violet-400" },
+  amber:   { active: "bg-amber-500/20 border-amber-500 text-amber-400",  border: "border-amber-500/40 text-amber-400 hover:bg-amber-500/10",  bg: "bg-amber-500/10 border-amber-500/25",  text: "text-amber-400" },
+  emerald: { active: "bg-emerald-500/20 border-emerald-500 text-emerald-400", border: "border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10", bg: "bg-emerald-500/10 border-emerald-500/25", text: "text-emerald-400" },
+  orange:  { active: "bg-orange-500/20 border-orange-500 text-orange-400", border: "border-orange-500/40 text-orange-400 hover:bg-orange-500/10", bg: "bg-orange-500/10 border-orange-500/25", text: "text-orange-400" },
+  rose:    { active: "bg-rose-500/20 border-rose-500 text-rose-400",    border: "border-rose-500/40 text-rose-400 hover:bg-rose-500/10",    bg: "bg-rose-500/10 border-rose-500/25",    text: "text-rose-400" },
 };
 
 function migrateKeyLevels(keyLevels: KeyLevel[] | string): KeyLevel[] {
@@ -370,7 +404,7 @@ function PlannerConfidenceScorePanel() {
 
 export default function DailyPlanner() {
   const navigate = useNavigate();
-  const { isRoutineComplete } = usePlanner();
+  const { isRoutineComplete, tradePlanDefaults } = usePlanner();
   const { isFeatureEnabled } = useAppConfig();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dayData, setDayData] = useState<DayData>(() => loadDayDataLocal(new Date()));
@@ -387,6 +421,10 @@ export default function DailyPlanner() {
   const [showDailyBiasWindow, setShowDailyBiasWindow] = useState(false);
   const [dailyBiasInput, setDailyBiasInput] = useState<string>("");
   const [riskChecked, setRiskChecked] = useState<Record<string, boolean>>(() => getRiskChecklistState());
+  const [fvgChecked, setFvgChecked] = useState<Record<string, boolean>>(() => getFvgChecklistState());
+  const [rulesChecked, setRulesChecked] = useState<Record<string, boolean>>(() => getRulesChecklistState());
+  const [fvgOpen, setFvgOpen] = useState(true);
+  const [rulesOpen, setRulesOpen] = useState(true);
   const [posCalcPoints, setPosCalcPoints] = useState("");
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
@@ -423,6 +461,9 @@ export default function DailyPlanner() {
   const nqContracts = posCalcPts > 0 ? riskAmount / (posCalcPts * NQ_POINT_VALUE) : 0;
   const mnqContracts = posCalcPts > 0 ? riskAmount / (posCalcPts * MNQ_POINT_VALUE) : 0;
   const riskAllChecked = RISK_CHECKLIST_ITEMS.every((i) => riskChecked[i.id]);
+  const fvgAllChecked = PRETRADE_FVG_ITEMS.every((i) => fvgChecked[i.id]);
+  const rulesAllChecked = RULES_CHECKLIST_ITEMS.every((i) => rulesChecked[i.id]);
+  const allChecklistsDone = riskAllChecked && fvgAllChecked && rulesAllChecked;
 
   function toggleRiskChecklist(id: string) {
     const next = { ...riskChecked, [id]: !riskChecked[id] };
@@ -435,22 +476,47 @@ export default function DailyPlanner() {
     resetRiskChecklistState();
   }
 
+  function toggleFvgChecklist(id: string) {
+    const next = { ...fvgChecked, [id]: !fvgChecked[id] };
+    setFvgChecked(next);
+    saveFvgChecklistState(next);
+  }
+
+  function resetFvgChecklist() {
+    setFvgChecked({});
+    resetFvgChecklistState();
+  }
+
+  function toggleRulesChecklist(id: string) {
+    const next = { ...rulesChecked, [id]: !rulesChecked[id] };
+    setRulesChecked(next);
+    saveRulesChecklistState(next);
+  }
+
+  function resetRulesChecklist() {
+    setRulesChecked({});
+    resetRulesChecklistState();
+  }
+
   const bias = dayData.tradePlan.bias;
   const biasSelected = bias === "bullish" || bias === "bearish" || bias === "neutral";
 
   const probScore = (() => {
     let score = 0;
-    if (biasSelected) score++;
-    if (keyLevels.length >= 1) score++;
-    if (riskChecked["htf_bias"]) score++;
-    if (riskChecked["sweep_idm"] || riskChecked["displacement_fvg"]) score++;
-    if (riskChecked["kill_zone"]) score++;
-    if (riskAllChecked) score++;
-    if (dayData.tradePlan.strategy === "conservative" || dayData.tradePlan.strategy === "aggressive") score++;
+    if (biasSelected) score += 8;
+    if (keyLevels.length >= 1) score += 8;
+    if (riskChecked["htf_bias"]) score += 4;
+    if (riskChecked["sweep_idm"] || riskChecked["displacement_fvg"]) score += 4;
+    if (riskChecked["kill_zone"]) score += 4;
+    if (riskAllChecked) score += 5;
+    if (dayData.tradePlan.strategy === "conservative" || dayData.tradePlan.strategy === "aggressive") score += 8;
     const sl = parseFloat(dayData.tradePlan.stopLossTicks);
-    if (!isNaN(sl) && sl > 0) score++;
-    if (dayData.tradePlan.pairsToWatch.trim()) score++;
-    return score * 10;
+    if (!isNaN(sl) && sl > 0) score += 8;
+    if (dayData.tradePlan.pairsToWatch.trim()) score += 8;
+    if (dayData.tradePlan.targetSession) score += 5;
+    PRETRADE_FVG_ITEMS.forEach((i) => { if (fvgChecked[i.id]) score += 5; });
+    RULES_CHECKLIST_ITEMS.forEach((i) => { if (rulesChecked[i.id]) score += 3; });
+    return Math.min(score, 100);
   })();
 
   useEffect(() => {
@@ -474,7 +540,7 @@ export default function DailyPlanner() {
         const apiDayData: DayData = {
           tasks: apiData.tasks ?? [],
           notes: apiData.notes ?? "",
-          tradePlan: { ...DEFAULT_TRADE_PLAN, ...apiData.tradePlan },
+          tradePlan: { ...DEFAULT_TRADE_PLAN, ...tradePlanDefaults, ...apiData.tradePlan },
         };
         setDayData(apiDayData);
         saveDayDataLocal(selectedDate, apiDayData);
@@ -788,6 +854,37 @@ export default function DailyPlanner() {
               {biasSelected && (
                 <>
                   <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">Target Session</label>
+                    <div className="flex flex-wrap gap-2">
+                      {TARGET_SESSIONS.map((s) => {
+                        const colors = SESSION_COLOR_MAP[s.color];
+                        const isActive = dayData.tradePlan.targetSession === s.id;
+                        return (
+                          <button
+                            key={s.id}
+                            onClick={() => updateTradePlan("targetSession", isActive ? "" : s.id)}
+                            className={`flex flex-col items-start px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${isActive ? colors.active : `bg-secondary/30 ${colors.border}`}`}
+                          >
+                            <span>{s.label}</span>
+                            <span className="text-[10px] font-normal opacity-70">{s.time}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {dayData.tradePlan.targetSession && (() => {
+                      const sess = TARGET_SESSIONS.find((s) => s.id === dayData.tradePlan.targetSession);
+                      if (!sess) return null;
+                      const colors = SESSION_COLOR_MAP[sess.color];
+                      return (
+                        <div className={`mt-2 p-2.5 rounded-lg border ${colors.bg} flex items-start gap-2`}>
+                          <span className={`text-[10px] font-bold uppercase tracking-widest ${colors.text} mt-0.5 shrink-0`}>ICT</span>
+                          <p className={`text-xs ${colors.text}`}>{sess.tip}</p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div>
                     <label className="text-xs font-medium text-muted-foreground mb-2 block">Strategy Branch</label>
                     <div className="flex gap-2">
                       <button
@@ -935,6 +1032,102 @@ export default function DailyPlanner() {
                     </div>
                   </div>
 
+                  {/* FVG Scan */}
+                  <div className="border-t border-border pt-4">
+                    <button
+                      onClick={() => setFvgOpen(!fvgOpen)}
+                      className="flex items-center justify-between w-full mb-3"
+                    >
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 cursor-pointer">
+                        <ClipboardCheck className="h-3.5 w-3.5 text-cyan-400" />
+                        FVG Scan
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${fvgAllChecked ? "bg-cyan-500/20 text-cyan-400" : "bg-secondary text-muted-foreground"}`}>
+                          {PRETRADE_FVG_ITEMS.filter((i) => fvgChecked[i.id]).length}/{PRETRADE_FVG_ITEMS.length}
+                        </span>
+                        {fvgOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                      </div>
+                    </button>
+                    {fvgOpen && (
+                      <>
+                        <div className="space-y-2">
+                          {PRETRADE_FVG_ITEMS.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => toggleFvgChecklist(item.id)}
+                              className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${fvgChecked[item.id] ? "bg-cyan-500/10 border-cyan-500/30" : "bg-secondary/30 border-border hover:border-cyan-500/30"}`}
+                            >
+                              {fvgChecked[item.id]
+                                ? <CheckSquare className="h-4 w-4 text-cyan-500 shrink-0 mt-0.5" />
+                                : <Square className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
+                              <div>
+                                <div className={`text-sm font-semibold ${fvgChecked[item.id] ? "text-cyan-400" : "text-foreground"}`}>{item.label}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                        {fvgAllChecked && (
+                          <button
+                            onClick={resetFvgChecklist}
+                            className="mt-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
+                          >
+                            Reset FVG scan
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Rules Before Trade */}
+                  <div className="border-t border-border pt-4">
+                    <button
+                      onClick={() => setRulesOpen(!rulesOpen)}
+                      className="flex items-center justify-between w-full mb-3"
+                    >
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 cursor-pointer">
+                        <ClipboardCheck className="h-3.5 w-3.5 text-orange-400" />
+                        Rules Before Trade
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${rulesAllChecked ? "bg-orange-500/20 text-orange-400" : "bg-secondary text-muted-foreground"}`}>
+                          {RULES_CHECKLIST_ITEMS.filter((i) => rulesChecked[i.id]).length}/{RULES_CHECKLIST_ITEMS.length}
+                        </span>
+                        {rulesOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                      </div>
+                    </button>
+                    {rulesOpen && (
+                      <>
+                        <div className="space-y-2">
+                          {RULES_CHECKLIST_ITEMS.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => toggleRulesChecklist(item.id)}
+                              className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${rulesChecked[item.id] ? "bg-orange-500/10 border-orange-500/30" : "bg-secondary/30 border-border hover:border-orange-500/30"}`}
+                            >
+                              {rulesChecked[item.id]
+                                ? <CheckSquare className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                                : <Square className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
+                              <div>
+                                <div className={`text-sm font-semibold ${rulesChecked[item.id] ? "text-orange-400" : "text-foreground"}`}>{item.label}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                        {rulesAllChecked && (
+                          <button
+                            onClick={resetRulesChecklist}
+                            className="mt-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
+                          >
+                            Reset rules
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-2 block">Position Sizer</label>
                     <div className="flex flex-wrap gap-1.5 mb-3">
@@ -1051,9 +1244,6 @@ export default function DailyPlanner() {
                         </button>
                       ))}
                     </div>
-                    <div className={`mt-3 rounded-xl border p-3 text-center text-sm font-bold transition-all ${riskAllChecked ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-secondary/30 border-border text-muted-foreground"}`}>
-                      {riskAllChecked ? "✓ Ready to Trade" : `${RISK_CHECKLIST_ITEMS.filter((i) => riskChecked[i.id]).length} / ${RISK_CHECKLIST_ITEMS.length} criteria met`}
-                    </div>
                     {riskAllChecked && (
                       <button
                         onClick={resetRiskChecklist}
@@ -1061,6 +1251,25 @@ export default function DailyPlanner() {
                       >
                         Reset criteria
                       </button>
+                    )}
+                  </div>
+
+                  {/* Unified Ready-to-Trade Gate */}
+                  <div className={`rounded-xl border p-3 text-center text-sm font-bold transition-all ${allChecklistsDone ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-secondary/30 border-border text-muted-foreground"}`}>
+                    {allChecklistsDone ? (
+                      "✓ CLEARED FOR TAKEOFF"
+                    ) : (
+                      <span className="space-x-2 text-xs font-semibold">
+                        {!riskAllChecked && (
+                          <span>Entry Criteria: {RISK_CHECKLIST_ITEMS.filter((i) => riskChecked[i.id]).length}/{RISK_CHECKLIST_ITEMS.length}</span>
+                        )}
+                        {!fvgAllChecked && (
+                          <span className={!riskAllChecked ? "ml-2" : ""}>FVG Scan: {PRETRADE_FVG_ITEMS.filter((i) => fvgChecked[i.id]).length}/{PRETRADE_FVG_ITEMS.length}</span>
+                        )}
+                        {!rulesAllChecked && (
+                          <span className={(!riskAllChecked || !fvgAllChecked) ? "ml-2" : ""}>Rules: {RULES_CHECKLIST_ITEMS.filter((i) => rulesChecked[i.id]).length}/{RULES_CHECKLIST_ITEMS.length}</span>
+                        )}
+                      </span>
                     )}
                   </div>
                 </>
