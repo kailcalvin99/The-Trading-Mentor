@@ -252,7 +252,7 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
           {ALL_VIDEOS.length} focused videos across all ICT concepts
         </p>
       </div>
-      <div className="border-b border-border px-6 py-3 shrink-0 space-y-3">
+      <div className="border-b border-border px-6 py-3 shrink-0 space-y-3 pl-[0px] pr-[0px] pt-[5px] pb-[5px]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
