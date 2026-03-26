@@ -127,6 +127,11 @@ function MonteCarloChart({ paths, width = 780, height = 320 }: { paths: number[]
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem("ICT_TRADING_MENTOR_TOKEN");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 interface AdminUser {
   id: number;
   email: string;
@@ -275,7 +280,7 @@ export default function Admin() {
   const [copiedResetId, setCopiedResetId] = useState<number | null>(null);
 
   const fetchOpts: RequestInit = { credentials: "include" };
-  const headers = { "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   useEffect(() => { loadData(); }, []);
 
@@ -1218,7 +1223,7 @@ function AdminAIPanel({ settings, updateSetting, saveSettings, saving }: {
   const [leakInsightLoading, setLeakInsightLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fetchOpts: RequestInit = { credentials: "include" };
-  const headers = { "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -1761,7 +1766,7 @@ function AdminCodeEditorPanel() {
   const initialized = useRef(false);
 
   const fetchOpts: RequestInit = { credentials: "include" };
-  const headers = { "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   useEffect(() => {
     if (initialized.current) return;
