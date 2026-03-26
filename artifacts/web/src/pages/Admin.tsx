@@ -254,6 +254,8 @@ export default function Admin() {
     return { blown, profitable, median, best, worst };
   }, [mcPaths]);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const [tiers, setTiers] = useState<AdminTier[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [editingUser, setEditingUser] = useState<number | null>(null);
@@ -278,18 +280,42 @@ export default function Admin() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
+    setUsersLoading(true);
+    setUsersError(null);
     try {
-      const [usersRes, tiersRes, settingsRes, resetsRes] = await Promise.all([
+      const [usersResult, tiersResult, settingsResult, resetsResult] = await Promise.allSettled([
         fetch(`${API_BASE}/admin/users`, { ...fetchOpts, headers }),
         fetch(`${API_BASE}/admin/tiers`, { ...fetchOpts, headers }),
         fetch(`${API_BASE}/admin/settings`, { ...fetchOpts, headers }),
         fetch(`${API_BASE}/admin/password-resets`, { ...fetchOpts, headers }),
       ]);
-      if (usersRes.ok) setUsers((await usersRes.json()).users);
-      if (tiersRes.ok) setTiers((await tiersRes.json()).tiers);
-      if (settingsRes.ok) setSettings((await settingsRes.json()).settings);
-      if (resetsRes.ok) setPasswordResets((await resetsRes.json()).resets);
-    } catch {}
+
+      if (usersResult.status === "fulfilled") {
+        const usersRes = usersResult.value;
+        if (usersRes.ok) {
+          setUsers((await usersRes.json()).users);
+        } else {
+          const errData = await usersRes.json().catch(() => ({}));
+          setUsersError(errData.error || `Failed to load users (${usersRes.status})`);
+          console.error("Failed to load users:", usersRes.status, errData);
+        }
+      } else {
+        console.error("Network error loading users:", usersResult.reason);
+        setUsersError("Network error: could not reach the server.");
+      }
+
+      if (tiersResult.status === "fulfilled" && tiersResult.value.ok)
+        setTiers((await tiersResult.value.json()).tiers);
+      if (settingsResult.status === "fulfilled" && settingsResult.value.ok)
+        setSettings((await settingsResult.value.json()).settings);
+      if (resetsResult.status === "fulfilled" && resetsResult.value.ok)
+        setPasswordResets((await resetsResult.value.json()).resets);
+    } catch (err) {
+      console.error("Admin loadData error:", err);
+      setUsersError("Unexpected error loading admin data.");
+    } finally {
+      setUsersLoading(false);
+    }
   }
 
   async function saveUserSub(userId: number) {
@@ -586,9 +612,32 @@ export default function Admin() {
               Inactive (30+ days)
             </button>
             <span className="text-xs text-muted-foreground">
-              {filteredUsers.length} of {users.length} users
+              {usersLoading ? "Loading..." : `${filteredUsers.length} of ${users.length} users`}
             </span>
           </div>
+          {usersLoading && (
+            <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Loading users...</span>
+            </div>
+          )}
+          {!usersLoading && usersError && (
+            <div className="flex items-center gap-3 px-4 py-4 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Failed to load users</p>
+                <p className="text-xs mt-0.5 opacity-80">{usersError}</p>
+              </div>
+              <button
+                onClick={loadData}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-destructive/10 hover:bg-destructive/20 transition-colors"
+              >
+                <RefreshCcw className="h-3.5 w-3.5" />
+                Retry
+              </button>
+            </div>
+          )}
+          {!usersLoading && !usersError && (
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -717,6 +766,7 @@ export default function Admin() {
               </table>
             </div>
           </div>
+          )}
 
           {passwordResets.length > 0 && (
             <div className="bg-card border border-amber-500/30 rounded-xl overflow-hidden">

@@ -70,7 +70,7 @@ router.use(authRequired, adminRequired);
 
 router.get("/users", async (_req, res) => {
   try {
-    const users = await db
+    const baseUsers = await db
       .select({
         id: usersTable.id,
         email: usersTable.email,
@@ -79,24 +79,73 @@ router.get("/users", async (_req, res) => {
         isFounder: usersTable.isFounder,
         founderNumber: usersTable.founderNumber,
         createdAt: usersTable.createdAt,
-        subId: userSubscriptionsTable.id,
-        tierId: userSubscriptionsTable.tierId,
-        subStatus: userSubscriptionsTable.status,
-        billingCycle: userSubscriptionsTable.billingCycle,
-        founderDiscount: userSubscriptionsTable.founderDiscount,
-        customMonthlyPrice: userSubscriptionsTable.customMonthlyPrice,
-        customAnnualPrice: userSubscriptionsTable.customAnnualPrice,
-        tierName: subscriptionTiersTable.name,
-        tierLevel: subscriptionTiersTable.level,
         lastLoginAt: usersTable.lastLoginAt,
       })
-      .from(usersTable)
-      .leftJoin(userSubscriptionsTable, eq(usersTable.id, userSubscriptionsTable.userId))
-      .leftJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id));
+      .from(usersTable);
 
+    let subscriptionMap: Record<number, {
+      subId: number | null;
+      tierId: number | null;
+      subStatus: string | null;
+      billingCycle: string | null;
+      founderDiscount: boolean | null;
+      customMonthlyPrice: string | null;
+      customAnnualPrice: string | null;
+      tierName: string | null;
+      tierLevel: number | null;
+    }> = {};
+
+    try {
+      const subs = await db
+        .select({
+          userId: userSubscriptionsTable.userId,
+          subId: userSubscriptionsTable.id,
+          tierId: userSubscriptionsTable.tierId,
+          subStatus: userSubscriptionsTable.status,
+          billingCycle: userSubscriptionsTable.billingCycle,
+          founderDiscount: userSubscriptionsTable.founderDiscount,
+          customMonthlyPrice: userSubscriptionsTable.customMonthlyPrice,
+          customAnnualPrice: userSubscriptionsTable.customAnnualPrice,
+          tierName: subscriptionTiersTable.name,
+          tierLevel: subscriptionTiersTable.level,
+        })
+        .from(userSubscriptionsTable)
+        .leftJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id));
+
+      for (const sub of subs) {
+        subscriptionMap[sub.userId] = {
+          subId: sub.subId,
+          tierId: sub.tierId,
+          subStatus: sub.subStatus,
+          billingCycle: sub.billingCycle,
+          founderDiscount: sub.founderDiscount,
+          customMonthlyPrice: sub.customMonthlyPrice,
+          customAnnualPrice: sub.customAnnualPrice,
+          tierName: sub.tierName,
+          tierLevel: sub.tierLevel,
+        };
+      }
+    } catch (subErr) {
+      console.error("[admin/users] Subscription join failed (users still returned without sub data):", subErr);
+    }
+
+    const users = baseUsers.map((u) => ({
+      ...u,
+      subId: subscriptionMap[u.id]?.subId ?? null,
+      tierId: subscriptionMap[u.id]?.tierId ?? null,
+      subStatus: subscriptionMap[u.id]?.subStatus ?? null,
+      billingCycle: subscriptionMap[u.id]?.billingCycle ?? null,
+      founderDiscount: subscriptionMap[u.id]?.founderDiscount ?? null,
+      customMonthlyPrice: subscriptionMap[u.id]?.customMonthlyPrice ?? null,
+      customAnnualPrice: subscriptionMap[u.id]?.customAnnualPrice ?? null,
+      tierName: subscriptionMap[u.id]?.tierName ?? null,
+      tierLevel: subscriptionMap[u.id]?.tierLevel ?? null,
+    }));
+
+    console.log(`[admin/users] Returning ${users.length} users`);
     res.json({ users });
   } catch (err) {
-    console.error("Get users error:", err);
+    console.error("[admin/users] DB query failed:", err);
     res.status(500).json({ error: "Failed to get users" });
   }
 });
