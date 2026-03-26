@@ -204,7 +204,7 @@ export default function KillZoneStrip() {
           </div>
         </div>
 
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl text-right" style={cardStyle}>
+        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl text-right pl-[0px] pr-[0px]" style={cardStyle}>
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Trades</span>
             <span className="text-sm font-bold text-foreground whitespace-nowrap leading-tight">
