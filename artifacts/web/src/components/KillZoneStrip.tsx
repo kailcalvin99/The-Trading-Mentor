@@ -122,7 +122,7 @@ export default function KillZoneStrip() {
         className="flex gap-2 overflow-x-auto h-full items-center px-4 scrollbar-hide"
         style={{ scrollbarWidth: "none" }}
       >
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full border border-border rounded-xl bg-[#02c896] rounded-br-[50px] rounded-tr-[50px] rounded-tl-[50px] rounded-bl-[48px] ml-[0px] mr-[0px] pl-[12px] pr-[12px] pt-[0px] pb-[0px]" style={{ minWidth: 160 }}>
+        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full border border-border rounded-xl bg-[#02c896] rounded-br-[50px] rounded-tr-[50px] rounded-tl-[50px] rounded-bl-[48px] ml-[0px] mr-[0px] pl-[12px] pr-[12px] pt-[0px] pb-[0px] text-[20px]" style={{ minWidth: 160 }}>
           <Clock className="h-4 w-4 text-primary shrink-0" />
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-bold text-muted-foreground leading-tight">EST</span>
@@ -180,7 +180,7 @@ export default function KillZoneStrip() {
           );
         })}
 
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl text-right rounded-tl-[1px] rounded-tr-[1px] rounded-br-[1px] rounded-bl-[1px]" style={cardStyle}>
+        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl text-right rounded-tl-[18px] rounded-tr-[18px] rounded-br-[18px] rounded-bl-[18px]" style={cardStyle}>
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Today's P&L</span>
             <span
