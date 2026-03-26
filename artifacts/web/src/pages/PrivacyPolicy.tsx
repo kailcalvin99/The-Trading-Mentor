@@ -35,7 +35,7 @@ export default function PrivacyPolicy() {
           <div className="space-y-5 text-sm text-foreground/80 leading-relaxed">
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">1. Information We Collect</h2>
-              <p className="mb-2">We collect the following types of information when you use ICT Trading Mentor:</p>
+              <p className="mb-2">We collect the following types of information when you use The Trading Mentor:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li><strong className="text-foreground">Account Information:</strong> Name, email address, and password when you create an account.</li>
                 <li><strong className="text-foreground">Payment Information:</strong> Billing details processed securely through Stripe. We do not store your full credit card number on our servers.</li>

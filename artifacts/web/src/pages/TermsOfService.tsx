@@ -28,7 +28,7 @@ export default function TermsOfService() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">Terms of Service</h1>
-              <p className="text-sm text-muted-foreground">Please read these terms carefully before using ICT Trading Mentor.</p>
+              <p className="text-sm text-muted-foreground">Please read these terms carefully before using The Trading Mentor.</p>
             </div>
           </div>
 
@@ -36,14 +36,14 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">1. Acceptance of Terms</h2>
               <p>
-                By accessing or using the ICT Trading Mentor platform ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not use the Service. We reserve the right to update these Terms at any time, and your continued use of the Service constitutes acceptance of any changes.
+                By accessing or using The Trading Mentor platform ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not use the Service. We reserve the right to update these Terms at any time, and your continued use of the Service constitutes acceptance of any changes.
               </p>
             </div>
 
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">2. Description of Service</h2>
               <p>
-                ICT Trading Mentor is a subscription-based educational platform that provides AI-powered trading mentorship, educational content, trade planning tools, risk management utilities, journaling features, and analytics. The Service is designed for educational and decision-support purposes only and does not constitute financial advice, investment recommendations, or trading signals.
+                The Trading Mentor is a subscription-based educational platform that provides AI-powered trading mentorship, educational content, trade planning tools, risk management utilities, journaling features, and analytics. The Service is designed for educational and decision-support purposes only and does not constitute financial advice, investment recommendations, or trading signals.
               </p>
             </div>
 
@@ -92,7 +92,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">7. Intellectual Property</h2>
               <p>
-                All content, features, and functionality of the Service — including text, graphics, logos, educational materials, AI-generated responses, and software — are owned by ICT Trading Mentor and are protected by copyright, trademark, and other intellectual property laws. You may not reproduce, distribute, or create derivative works from any content without our prior written consent.
+                All content, features, and functionality of the Service — including text, graphics, logos, educational materials, AI-generated responses, and software — are owned by The Trading Mentor and are protected by copyright, trademark, and other intellectual property laws. You may not reproduce, distribute, or create derivative works from any content without our prior written consent.
               </p>
             </div>
 
@@ -113,7 +113,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">10. Limitation of Liability</h2>
               <p>
-                To the maximum extent permitted by law, ICT Trading Mentor and its officers, directors, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or trading losses, arising out of or related to your use of the Service.
+                To the maximum extent permitted by law, The Trading Mentor and its officers, directors, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or trading losses, arising out of or related to your use of the Service.
               </p>
             </div>
 

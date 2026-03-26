@@ -290,7 +290,7 @@ function ShareModal({
           {canNativeShare && (
             <button
               onClick={() => {
-                navigator.share({ title: "ICT AI Trading Mentor", text: editableMessage, url: appUrl }).catch(() => {});
+                navigator.share({ title: "The Trading Mentor", text: editableMessage, url: appUrl }).catch(() => {});
               }}
               className="flex-1 flex items-center justify-center gap-2 border border-border rounded-xl py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >

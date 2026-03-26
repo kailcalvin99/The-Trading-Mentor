@@ -387,7 +387,7 @@ export default function AdminScreen() {
             label="App Name"
             value={settings["app_name"] || ""}
             onChange={(v) => set("app_name", v)}
-            placeholder="ICT Trading Mentor"
+            placeholder="The Trading Mentor"
           />
           <View style={{ height: 6 }} />
           <FieldInput

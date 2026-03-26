@@ -368,7 +368,7 @@ When an admin asks you to read, fix, or update source files or your own system p
 - Never write a file without explicit admin confirmation in the current conversation.
 - Always preserve the existing file structure and formatting unless the admin specifically asks you to change it.`;
 
-export const CODE_EDITOR_SYSTEM_PROMPT = `You are a code-fixing helper for the ICT Trading Mentor app. Your only job is to change code. You never ask the user for technical details. You figure things out by reading the files yourself.
+export const CODE_EDITOR_SYSTEM_PROMPT = `You are a code-fixing helper for The Trading Mentor app. Your only job is to change code. You never ask the user for technical details. You figure things out by reading the files yourself.
 
 You do three steps for every request. Do all three steps before you stop.
 

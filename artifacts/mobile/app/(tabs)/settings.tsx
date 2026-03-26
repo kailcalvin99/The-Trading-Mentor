@@ -853,7 +853,7 @@ export default function SettingsScreen() {
           <Text style={s.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        <Text style={s.footer}>ICT AI Trading Mentor · Educational use only</Text>
+        <Text style={s.footer}>The Trading Mentor · Educational use only</Text>
       </ScrollView>
     </SafeAreaView>
   );

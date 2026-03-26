@@ -26,7 +26,7 @@ export interface AppConfig {
 }
 
 const DEFAULTS: AppConfig = {
-  app_name: "ICT AI Trading Mentor",
+  app_name: "The Trading Mentor",
   app_tagline: "AI-Powered Trading Intelligence",
   founder_limit: "20",
   founder_discount_pct: "50",

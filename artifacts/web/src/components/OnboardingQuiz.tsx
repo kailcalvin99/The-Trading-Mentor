@@ -207,7 +207,7 @@ export default function OnboardingQuiz({ onComplete }: Props) {
               </div>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground mb-2">Welcome to ICT AI Trading Mentor</h1>
+              <h1 className="text-2xl font-bold text-foreground mb-2">Welcome to The Trading Mentor</h1>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Before we get started, let's figure out where you are in your trading journey. Answer 5 quick questions and we'll personalise the platform to match your experience level.
               </p>

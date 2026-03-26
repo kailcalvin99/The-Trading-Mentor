@@ -114,12 +114,12 @@ const FEATURES = [
 
 const FAQS = [
   {
-    q: "What exactly is ICT Trading Mentor?",
-    a: "ICT Trading Mentor is a decision-support tool for futures traders who follow the Inner Circle Trader (ICT) methodology. It combines a structured course (39 lessons), an AI-powered mentor, a daily planner with pre-session checklists, a smart trading journal, and a risk shield that enforces hard drawdown limits. It is not a trading signal service or broker.",
+    q: "What exactly is The Trading Mentor?",
+    a: "The Trading Mentor is a decision-support tool for futures traders who follow the Inner Circle Trader (ICT) methodology. It combines a structured course (39 lessons), an AI-powered mentor, a daily planner with pre-session checklists, a smart trading journal, and a risk shield that enforces hard drawdown limits. It is not a trading signal service or broker.",
   },
   {
     q: "Is this financial advice?",
-    a: "No. ICT Trading Mentor is an educational and decision-support tool only. It does not provide investment advice, trading signals, or recommendations to buy or sell any financial instrument. All trading decisions remain entirely yours. Trading futures involves significant risk of loss.",
+    a: "No. The Trading Mentor is an educational and decision-support tool only. It does not provide investment advice, trading signals, or recommendations to buy or sell any financial instrument. All trading decisions remain entirely yours. Trading futures involves significant risk of loss.",
   },
   {
     q: "What's included in the free tier?",
@@ -225,7 +225,7 @@ export default function Welcome() {
               Meet Your AI Trading Mentor
             </h2>
             <p className="text-center text-muted-foreground mb-8 max-w-xl mx-auto text-sm">
-              Watch a quick walkthrough of the platform and see exactly how ICT Trading Mentor helps you trade with structure and discipline.
+              Watch a quick walkthrough of the platform and see exactly how The Trading Mentor helps you trade with structure and discipline.
             </p>
             <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl border border-border bg-card">
               <div
@@ -235,7 +235,7 @@ export default function Welcome() {
                 <div className="absolute inset-0 flex items-center justify-center">
                   <img
                     src={`${import.meta.env.BASE_URL}dashboard-preview.png`}
-                    alt="ICT Trading Mentor Dashboard Preview"
+                    alt="The Trading Mentor Dashboard Preview"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -254,7 +254,7 @@ export default function Welcome() {
               </div>
               <div className="absolute bottom-4 left-4">
                 <p className="text-white/80 text-sm font-medium">Full walkthrough video</p>
-                <p className="text-white/50 text-xs">Watch how ICT AI Trading Mentor transforms your trading routine</p>
+                <p className="text-white/50 text-xs">Watch how The Trading Mentor transforms your trading routine</p>
               </div>
             </div>
           </div>
@@ -501,7 +501,7 @@ export default function Welcome() {
               Ready to Trade With Discipline?
             </h2>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto text-sm leading-relaxed">
-              Join traders who are using ICT Trading Mentor to build consistent habits, protect their capital, and learn the ICT methodology properly.
+              Join traders who are using The Trading Mentor to build consistent habits, protect their capital, and learn the ICT methodology properly.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
@@ -531,7 +531,7 @@ export default function Welcome() {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Logo size={26} />
-                <span className="font-bold text-foreground text-sm">ICT Trading Mentor</span>
+                <span className="font-bold text-foreground text-sm">The Trading Mentor</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
                 A decision-support tool for futures traders following the ICT methodology. Not a broker. Not a signal service. Not financial advice.
@@ -589,7 +589,7 @@ export default function Welcome() {
 
           {/* Bottom bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span>© {new Date().getFullYear()} ICT Trading Mentor. All rights reserved. For educational and decision-support purposes only.</span>
+            <span>© {new Date().getFullYear()} The Trading Mentor. All rights reserved. For educational and decision-support purposes only.</span>
             <span>Payments secured by Stripe</span>
           </div>
         </div>

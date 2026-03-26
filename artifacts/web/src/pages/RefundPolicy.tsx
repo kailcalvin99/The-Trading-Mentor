@@ -51,7 +51,7 @@ export default function RefundPolicy() {
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">24-Hour Drawdown Lock</h2>
               <p>
-                ICT Trading Mentor includes a Risk Shield feature that automatically locks your account from trading for 24 hours when your daily loss limit is reached. This lock is a safety feature — not a service outage — and does not affect your access to educational content, the AI mentor, the academy, or the journal during the lock period. Activation of the 24-hour drawdown lock does not constitute grounds for a refund, as the Service continues to function as intended.
+                The Trading Mentor includes a Risk Shield feature that automatically locks your account from trading for 24 hours when your daily loss limit is reached. This lock is a safety feature — not a service outage — and does not affect your access to educational content, the AI mentor, the academy, or the journal during the lock period. Activation of the 24-hour drawdown lock does not constitute grounds for a refund, as the Service continues to function as intended.
               </p>
             </div>
 

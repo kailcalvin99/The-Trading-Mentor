@@ -1,4 +1,4 @@
-# ICT NQ Futures Trading Mentor App
+# The Trading Mentor App
 
 ## Overview
 

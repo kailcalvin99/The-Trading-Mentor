@@ -12,7 +12,7 @@ export default function ForgotPassword() {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const { config } = useAppConfig();
-  const appName = config.app_name || "ICT AI Trading Mentor";
+  const appName = config.app_name || "The Trading Mentor";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

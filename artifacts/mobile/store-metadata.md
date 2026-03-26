@@ -1,7 +1,7 @@
-# ICT Trading Mentor — App Store & Play Store Metadata
+# The Trading Mentor — App Store & Play Store Metadata
 
 ## App Name
-ICT Trading Mentor
+The Trading Mentor
 
 ## Subtitle (iOS, max 30 chars)
 Master ICT Price Action
@@ -11,7 +11,7 @@ Learn and apply ICT trading concepts with structured mentorship tools.
 
 ## Full Description (max ~4000 chars)
 
-ICT Trading Mentor is the all-in-one mobile companion for traders learning and applying Inner Circle Trader (ICT) methodology. Whether you're studying market structure, Fair Value Gaps, or Optimal Trade Entry, this app keeps every concept, checklist, and journal entry in your pocket.
+The Trading Mentor is the all-in-one mobile companion for traders learning and applying Inner Circle Trader (ICT) methodology. Whether you're studying market structure, Fair Value Gaps, or Optimal Trade Entry, this app keeps every concept, checklist, and journal entry in your pocket.
 
 **Learn**
 - Academy module with step-by-step ICT concept guides

@@ -35,14 +35,14 @@ export default function RiskDisclosure() {
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">1. Educational Purpose Only</h2>
               <p>
-                ICT Trading Mentor is an educational platform designed to teach trading concepts and methodologies. All content, tools, AI coaching, analysis, and materials provided on this platform are for <strong>educational and informational purposes only</strong>. Nothing on this platform constitutes financial advice, investment advice, trading advice, or any other type of professional advice.
+                The Trading Mentor is an educational platform designed to teach trading concepts and methodologies. All content, tools, AI coaching, analysis, and materials provided on this platform are for <strong>educational and informational purposes only</strong>. Nothing on this platform constitutes financial advice, investment advice, trading advice, or any other type of professional advice.
               </p>
             </div>
 
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">2. No Financial Advice</h2>
               <p>
-                ICT Trading Mentor is not a registered investment advisor, broker-dealer, or financial institution. Our AI mentor, coaching tools, and educational content do not constitute personalized financial or investment advice. You should always consult with a qualified financial professional before making any trading or investment decisions.
+                The Trading Mentor is not a registered investment advisor, broker-dealer, or financial institution. Our AI mentor, coaching tools, and educational content do not constitute personalized financial or investment advice. You should always consult with a qualified financial professional before making any trading or investment decisions.
               </p>
             </div>
 
@@ -83,21 +83,21 @@ export default function RiskDisclosure() {
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">7. Proprietary Trading Challenge Disclaimer</h2>
               <p>
-                Any proprietary trading challenge tracking features on this platform are for educational and self-tracking purposes only. ICT Trading Mentor does not operate as a proprietary trading firm and does not provide or guarantee access to third-party funding programs.
+                Any proprietary trading challenge tracking features on this platform are for educational and self-tracking purposes only. The Trading Mentor does not operate as a proprietary trading firm and does not provide or guarantee access to third-party funding programs.
               </p>
             </div>
 
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">8. Your Responsibility</h2>
               <p>
-                By using this platform, you acknowledge that you are solely responsible for your own trading decisions. You agree to trade only with capital you can afford to lose and to conduct your own due diligence before executing any trade. ICT Trading Mentor shall not be liable for any trading losses incurred as a result of using our educational tools or acting on information from our platform.
+                By using this platform, you acknowledge that you are solely responsible for your own trading decisions. You agree to trade only with capital you can afford to lose and to conduct your own due diligence before executing any trade. The Trading Mentor shall not be liable for any trading losses incurred as a result of using our educational tools or acting on information from our platform.
               </p>
             </div>
 
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">9. Regulatory Notice</h2>
               <p>
-                ICT Trading Mentor operates solely as an educational technology company and does not hold any financial licenses or regulatory approvals to provide investment advice. Always ensure that any broker or financial service you use is properly regulated in your jurisdiction.
+                The Trading Mentor operates solely as an educational technology company and does not hold any financial licenses or regulatory approvals to provide investment advice. Always ensure that any broker or financial service you use is properly regulated in your jurisdiction.
               </p>
             </div>
 

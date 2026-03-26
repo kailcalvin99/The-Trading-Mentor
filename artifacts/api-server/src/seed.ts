@@ -41,7 +41,7 @@ export async function seedDefaults() {
         annualPrice: "0",
         annualDiscountPct: 0,
         features: ["ICT Academy (5 lessons)", "Daily Planner", "AI Mentor (3 questions/day)", "Daily Spin Wheel"],
-        description: "Get a taste of what ICT Trading Mentor can do",
+        description: "Get a taste of what The Trading Mentor can do",
         isActive: true,
       },
       {
@@ -72,7 +72,7 @@ export async function seedDefaults() {
     founder_discount_pct: "50",
     founder_discount_months: "6",
     annual_discount_pct: "17",
-    app_name: "ICT AI Trading Mentor",
+    app_name: "The Trading Mentor",
     app_tagline: "AI-Powered Trading Intelligence",
     cooldown_duration_hours: "4",
     consecutive_loss_threshold: "2",

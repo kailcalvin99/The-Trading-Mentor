@@ -290,7 +290,7 @@ export default function SubscriptionScreen() {
         })}
 
         <Text style={s.disclaimer}>
-          ICT Trading Mentor is an educational platform. Content is for informational purposes only and does not constitute financial advice. Trading involves substantial risk.
+          The Trading Mentor is an educational platform. Content is for informational purposes only and does not constitute financial advice. Trading involves substantial risk.
         </Text>
       </ScrollView>
     </SafeAreaView>

@@ -474,8 +474,8 @@ function CommunityScreen() {
   async function handleShare() {
     try {
       await Share.share({
-        message: "🚀 I've been using ICT AI Trading Mentor — an AI-powered app that teaches you the ICT methodology step by step. They're in their Founder phase so the first 20 members get a special discount. Check it out: ictmentor.com",
-        title: "Join me on ICT AI Trading Mentor",
+        message: "🚀 I've been using The Trading Mentor — an AI-powered app that teaches you the ICT methodology step by step. They're in their Founder phase so the first 20 members get a special discount. Check it out: ictmentor.com",
+        title: "Join me on The Trading Mentor",
       });
     } catch {}
   }

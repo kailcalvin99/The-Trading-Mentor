@@ -251,7 +251,7 @@ function AnalyticsScreen() {
       `⚡ Profit Factor: ${stats.profitFactor === Infinity ? "∞" : stats.profitFactor.toFixed(2)}×\n` +
       `📈 Total Trades: ${stats.totalTrades}\n` +
       `🧠 Discipline: ${Math.round(stats.disciplineScore)}%\n\n` +
-      `Trained with ICT AI Trading Mentor 🤖\nNot financial advice.`;
+      `Trained with The Trading Mentor 🤖\nNot financial advice.`;
     try {
       await Share.share({ message: text, title: "My ICT Trading Stats" });
     } catch {}

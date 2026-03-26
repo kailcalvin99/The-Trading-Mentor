@@ -6,7 +6,7 @@ export interface TourStep {
 
 export const TOUR_STEPS: TourStep[] = [
   {
-    title: "Your Dashboard",
+    title: "Welcome to The Trading Mentor",
     description: "This is your home base. The live KillZone ticker at the top shows you exactly when London, New York Open, and Silver Bullet windows are active. Check your XP level, daily streak, and let the AI Mentor assist you anytime.",
     targetRoute: "/",
   },

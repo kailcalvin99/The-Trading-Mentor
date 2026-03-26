@@ -33,7 +33,7 @@ function buildShareText(stats: ShareStats): string {
     `⚡ Profit Factor: ${pf}×\n` +
     `📈 Total Trades: ${trades}` +
     disc +
-    `\n\nTrained with ICT AI Trading Mentor 🤖\nNot financial advice.`
+    `\n\nTrained with The Trading Mentor 🤖\nNot financial advice.`
   );
 }
 

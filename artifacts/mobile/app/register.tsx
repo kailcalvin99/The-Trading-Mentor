@@ -77,7 +77,7 @@ export default function RegisterScreen() {
             <View style={s.logoCircle}>
               <Ionicons name="trending-up" size={32} color={C.accent} />
             </View>
-            <Text style={s.title}>ICT Trading Mentor</Text>
+            <Text style={s.title}>The Trading Mentor</Text>
             <Text style={s.subtitle}>Create your account</Text>
           </View>
 

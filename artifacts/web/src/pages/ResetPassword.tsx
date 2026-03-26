@@ -11,7 +11,7 @@ export default function ResetPassword() {
   const token = searchParams.get("token");
   const navigate = useNavigate();
   const { config } = useAppConfig();
-  const appName = config.app_name || "ICT AI Trading Mentor";
+  const appName = config.app_name || "The Trading Mentor";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

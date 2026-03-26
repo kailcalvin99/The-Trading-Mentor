@@ -120,7 +120,7 @@ export default function Signup() {
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8 justify-center">
           <Logo size={44} />
-          <span className="text-xl font-bold text-foreground">ICT AI Trading Mentor</span>
+          <span className="text-xl font-bold text-foreground">The Trading Mentor</span>
         </div>
 
         {founderSpotsLeft !== null && founderSpotsLeft > 0 && (
@@ -243,7 +243,7 @@ export default function Signup() {
       </div>
       <footer className="w-full border-t border-border bg-card/30 py-4 px-6">
         <div className="max-w-md mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-muted-foreground/60">
-          <p>© {new Date().getFullYear()} ICT AI Trading Mentor. For educational purposes only.</p>
+          <p>© {new Date().getFullYear()} The Trading Mentor. For educational purposes only.</p>
           <div className="flex items-center gap-3">
             <Link to="/terms" className="hover:text-muted-foreground transition-colors">Terms</Link>
             <span>·</span>

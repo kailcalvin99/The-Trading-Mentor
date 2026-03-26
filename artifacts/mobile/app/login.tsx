@@ -63,7 +63,7 @@ export default function LoginScreen() {
             <View style={s.logoCircle}>
               <Ionicons name="trending-up" size={32} color={C.accent} />
             </View>
-            <Text style={s.title}>ICT Trading Mentor</Text>
+            <Text style={s.title}>The Trading Mentor</Text>
             <Text style={s.subtitle}>Sign in to your account</Text>
           </View>
 

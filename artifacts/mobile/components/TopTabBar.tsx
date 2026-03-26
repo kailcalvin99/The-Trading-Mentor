@@ -265,8 +265,8 @@ export default function TopTabBar({
   async function handleInviteFriends() {
     try {
       await Share.share({
-        message: "Join me on ICT Trading Mentor — the best app for mastering ICT concepts and leveling up your trading! Download it now.",
-        title: "Invite Friends to ICT Trading Mentor",
+        message: "Join me on The Trading Mentor — the best app for mastering ICT concepts and leveling up your trading! Download it now.",
+        title: "Invite Friends to The Trading Mentor",
       });
     } catch {
     }
@@ -467,7 +467,7 @@ export default function TopTabBar({
           </View>
           <View>
             <Text style={[styles.profileName, { color: C.text }]}>{userName || "Trader"}</Text>
-            <Text style={[styles.profileSub, { color: C.textSecondary }]}>ICT Trading Mentor</Text>
+            <Text style={[styles.profileSub, { color: C.textSecondary }]}>The Trading Mentor</Text>
           </View>
         </View>
         <View style={[styles.profileDivider, { backgroundColor: C.cardBorder }]} />

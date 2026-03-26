@@ -19,7 +19,7 @@ export default function Login() {
   const { login } = useAuth();
   const { config } = useAppConfig();
   const navigate = useNavigate();
-  const appName = config.app_name || "ICT AI Trading Mentor";
+  const appName = config.app_name || "The Trading Mentor";
   const appTagline = config.app_tagline || "AI-Powered Trading Intelligence";
 
   useEffect(() => {

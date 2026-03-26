@@ -9,7 +9,7 @@ export default function Logo({ size = 32, className = "" }: LogoProps) {
   return (
     <img
       src={logoUrl}
-      alt="ICT AI Trading Mentor"
+      alt="The Trading Mentor"
       width={size}
       height={size}
       className={`shrink-0 object-contain ${className}`}

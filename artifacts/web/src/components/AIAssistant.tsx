@@ -968,7 +968,7 @@ export default function AIAssistant() {
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                         <Sparkles className="h-6 w-6 text-primary" />
                       </div>
-                      <h3 className="text-lg font-bold mb-1">ICT AI Trading Mentor</h3>
+                      <h3 className="text-lg font-bold mb-1">The Trading Mentor</h3>
                       <p className="text-sm text-muted-foreground mb-4">
                         Trade reviews, kill zones, emotional leaks, ICT concepts — ask me anything.
                       </p>

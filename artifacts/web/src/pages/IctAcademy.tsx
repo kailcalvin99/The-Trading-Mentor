@@ -1040,7 +1040,7 @@ function MentorView() {
       if (res.ok) {
         const data: Conversation = await res.json();
         setConversationId(data.id);
-        setMessages([{ role: "assistant", content: "I'm your ICT Trading Mentor. Ask me about FVGs, Liquidity Sweeps, Silver Bullet setups, or NQ Futures strategy." }]);
+        setMessages([{ role: "assistant", content: "I'm your Trading Mentor. Ask me about FVGs, Liquidity Sweeps, Silver Bullet setups, or NQ Futures strategy." }]);
         fetchConversations();
       }
     } catch {}
