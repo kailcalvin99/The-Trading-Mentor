@@ -192,7 +192,7 @@ export default function KillZoneStrip() {
           </div>
         </div>
 
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl text-right rounded-tl-[1px] rounded-tr-[1px] rounded-br-[1px] rounded-bl-[1px]" style={cardStyle}>
+        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl text-right rounded-tl-[18px] rounded-tr-[18px] rounded-br-[18px] rounded-bl-[18px]" style={cardStyle}>
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Win Rate</span>
             <span
