@@ -1629,7 +1629,7 @@ export default function IctAcademy() {
         />
       )}
       <header className="sticky top-0 z-30 bg-background px-6 border-b text-left pl-[555px] pr-[555px] pt-[10px] pb-[10px]">
-        <div className="flex bg-secondary rounded-xl p-1 max-w-lg">
+        <div className="flex bg-secondary rounded-xl p-1 max-w-lg pr-[0px] pl-[0px] pt-[5px] pb-[5px] ml-[0px]">
           {TAB_CONFIG.map((t) => (
             <button
               key={t.key}
