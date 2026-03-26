@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { getSkillLevel, type SkillLevel } from "@/components/OnboardingQuiz";
+import OnboardingQuiz, { getSkillLevel, hasCompletedQuiz, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Video, Zap, Layers, Flame, Star, Menu } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -374,6 +374,7 @@ function resizeImageToBase64(file: File, maxSize = 200): Promise<string> {
 
 export default function Layout() {
   const { user, subscription, tierLevel, isAdmin, logout, appMode, setAppMode, setAvatarUrl } = useAuth();
+  const [quizDone, setQuizDone] = useState(() => hasCompletedQuiz());
   const [showLockToast, setShowLockToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -495,6 +496,9 @@ export default function Layout() {
 
   return (
     <TooltipProvider delayDuration={300}>
+      {!quizDone && (
+        <OnboardingQuiz onComplete={() => setQuizDone(true)} />
+      )}
       <div className="flex h-screen overflow-hidden">
         {/* Dimming backdrop */}
         <div
