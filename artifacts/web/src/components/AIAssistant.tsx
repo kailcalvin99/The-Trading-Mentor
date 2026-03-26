@@ -778,11 +778,7 @@ export default function AIAssistant() {
   return (
     <>
       <div
-        className={`hidden md:flex items-center gap-2 h-9 px-3 border rounded-xl cursor-pointer transition-all duration-300 flex-1 max-w-md relative ${
-          nudgeExpanded && nudge
-            ? "bg-primary/10 border-primary/40 shadow-sm"
-            : "bg-card/30 border-border/50 opacity-60 hover:opacity-100 hover:bg-card"
-        }`}
+        className="hidden md:flex items-center gap-2 h-9 px-3 border rounded-xl cursor-pointer transition-all duration-300 flex-1 max-w-md relative border-border/50 opacity-60 hover:opacity-100 hover:bg-card bg-[#141417]"
         onClick={() => { setIsOpen(true); }}
       >
         <Sparkles className={`h-3.5 w-3.5 shrink-0 transition-colors ${nudgeExpanded && nudge ? "text-primary" : "text-muted-foreground"}`} />
@@ -808,7 +804,6 @@ export default function AIAssistant() {
           </span>
         )}
       </div>
-
       <div className="md:hidden fixed bottom-20 right-3 z-50" style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}>
         {nudge && !isOpen && (
           <div className={`absolute bottom-12 right-0 w-60 bg-card border border-primary/30 rounded-xl shadow-2xl p-3 transition-all duration-300 ${nudgeExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
@@ -854,7 +849,6 @@ export default function AIAssistant() {
           )}
         </button>
       </div>
-
       {nudge && !isOpen && (
         <div className={`hidden md:block fixed bottom-4 right-4 z-40 w-72 bg-card border border-primary/30 rounded-xl shadow-2xl p-4 transition-all duration-300 ${nudgeExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
           <button onClick={dismissNudge} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
@@ -870,7 +864,6 @@ export default function AIAssistant() {
           </button>
         </div>
       )}
-
       {showTip && !isOpen && !nudge && (
         <div className="hidden md:block fixed bottom-4 right-4 z-40 w-72 bg-card border border-border rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <button onClick={dismissTip} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
@@ -893,7 +886,6 @@ export default function AIAssistant() {
           </button>
         </div>
       )}
-
       {isOpen && (
         <div className="fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
