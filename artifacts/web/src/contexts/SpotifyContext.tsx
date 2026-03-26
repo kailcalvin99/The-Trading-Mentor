@@ -39,6 +39,8 @@ interface SpotifyContextType {
   previousTrack: () => void;
   premiumError: string | null;
   completeAuth: (accessToken: string, expiresIn: number, refreshToken: string) => void;
+  showFloat: boolean;
+  setShowFloat: (v: boolean) => void;
 }
 
 const SpotifyContext = createContext<SpotifyContextType>({
@@ -54,6 +56,8 @@ const SpotifyContext = createContext<SpotifyContextType>({
   previousTrack: () => {},
   premiumError: null,
   completeAuth: () => {},
+  showFloat: false,
+  setShowFloat: () => {},
 });
 
 export function useSpotify() {
@@ -127,6 +131,7 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [premiumError, setPremiumError] = useState<string | null>(null);
+  const [showFloat, setShowFloat] = useState(false);
   const playerRef = useRef<Spotify.Player | null>(null);
   const deviceIdRef = useRef<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -418,6 +423,8 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
         previousTrack: previousTrackFn,
         premiumError,
         completeAuth,
+        showFloat,
+        setShowFloat,
       }}
     >
       {children}

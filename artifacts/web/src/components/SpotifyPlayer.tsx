@@ -17,16 +17,17 @@ export default function SpotifyPlayer() {
     isReady,
     isPlaying,
     currentTrack,
-    disconnect,
     togglePlay,
     nextTrack,
     previousTrack,
     premiumError,
+    showFloat,
+    setShowFloat,
   } = useSpotify();
 
   const [minimized, setMinimized] = useState(false);
 
-  if (!isConnected) return null;
+  if (!isConnected || !showFloat) return null;
 
   if (minimized) {
     return (
@@ -62,9 +63,9 @@ export default function SpotifyPlayer() {
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={disconnect}
+              onClick={() => setShowFloat(false)}
               className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              title="Disconnect Spotify"
+              title="Close player"
             >
               <X className="w-3.5 h-3.5" />
             </button>
