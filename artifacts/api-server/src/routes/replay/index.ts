@@ -1,10 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import { authRequired } from "../../middleware/auth";
-import YahooFinance from "yahoo-finance2";
-
-const yahooFinance = new YahooFinance();
 
 const router = Router();
+
+const YAHOO_V8 = "https://query1.finance.yahoo.com/v8/finance/chart";
 
 const SYMBOL_MAP: Record<string, string> = {
   "EUR/USD": "EURUSD=X",
@@ -121,24 +120,63 @@ router.get("/candles", authRequired, async (req: Request, res: Response): Promis
     const toDate = new Date(to);
     toDate.setUTCHours(23, 59, 59, 999);
 
-    const raw = await yahooFinance.chart(yahooSymbol, {
-      period1: fromDate,
-      period2: toDate,
-      interval: yahooInterval,
+    const period1 = Math.floor(fromDate.getTime() / 1000);
+    const period2 = Math.floor(toDate.getTime() / 1000);
+    const url = `${YAHOO_V8}/${encodeURIComponent(yahooSymbol)}?period1=${period1}&period2=${period2}&interval=${yahooInterval}`;
+
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(10000),
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; ICT-Mentor/1.0)",
+        "Accept": "application/json",
+      },
     });
 
-    const baseCandles: OhlcvCandle[] = raw.quotes
-      .filter(
-        (q): q is typeof q & { open: number; high: number; low: number; close: number } =>
-          q.open !== null && q.high !== null && q.low !== null && q.close !== null,
-      )
-      .map((q) => ({
-        time: Math.floor(q.date.getTime() / 1000),
-        open: q.open,
-        high: q.high,
-        low: q.low,
-        close: q.close,
+    if (!response.ok) {
+      throw new Error(`Yahoo Finance returned ${response.status}`);
+    }
+
+    const data = await response.json() as {
+      chart?: {
+        result?: Array<{
+          timestamp?: number[];
+          indicators?: {
+            quote?: Array<{
+              open?: (number | null)[];
+              high?: (number | null)[];
+              low?: (number | null)[];
+              close?: (number | null)[];
+            }>;
+          };
+        }>;
+        error?: unknown;
+      };
+    };
+
+    const result = data?.chart?.result?.[0];
+    if (!result) {
+      throw new Error("No data returned from Yahoo Finance");
+    }
+
+    const timestamps = result.timestamp ?? [];
+    const quote = result.indicators?.quote?.[0] ?? {};
+    const opens = quote.open ?? [];
+    const highs = quote.high ?? [];
+    const lows = quote.low ?? [];
+    const closes = quote.close ?? [];
+
+    const baseCandles: OhlcvCandle[] = timestamps
+      .map((ts, i) => ({
+        time: ts,
+        open: opens[i] ?? null,
+        high: highs[i] ?? null,
+        low: lows[i] ?? null,
+        close: closes[i] ?? null,
       }))
+      .filter(
+        (c): c is OhlcvCandle =>
+          c.open !== null && c.high !== null && c.low !== null && c.close !== null,
+      )
       .sort((a, b) => a.time - b.time);
 
     const candles = interval === "4H" ? aggregateTo4H(baseCandles) : baseCandles;
