@@ -56,7 +56,7 @@ const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 const COMMUNITY_POLL_INTERVAL = 3 * 60 * 1000;
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkillLevel: 0 },
   { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0, minSkillLevel: 0 },
   { to: "/videos", label: "Videos", mobileLabel: "Videos", icon: Video, requiredTier: 0, minSkillLevel: 0 },
   { to: "/planner", label: "Mission Control", mobileLabel: "Mission", icon: Calendar, requiredTier: 0, minSkillLevel: 0 },
@@ -398,7 +398,7 @@ export default function Layout() {
     return level ? SKILL_LEVEL_NUM[level] : SKILL_LEVEL_NUM["none"];
   }, []);
 
-  const LITE_MODE_ALLOWED = ["/dashboard", "/academy", "/journal"];
+  const LITE_MODE_ALLOWED = ["/", "/academy", "/journal"];
 
   const visibleNavItems = useMemo(() => {
     let items = skillLevelNum === SKILL_LEVEL_NUM["none"] ? navItems : navItems.filter((item) => item.minSkillLevel <= skillLevelNum);
