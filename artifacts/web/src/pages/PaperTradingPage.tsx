@@ -149,7 +149,7 @@ export default function PaperTradingPage() {
     } finally {
       setLoading(false);
     }
-  }, [instrument, timeframe, startDate, endDate]);
+  }, [instrument, timeframe, startDate]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
