@@ -529,6 +529,8 @@ function IndicatorLegend({
   indicators: IndicatorToggles;
   killZonesDisabled: boolean;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+
   const activeItems: LegendItem[] = (
     Object.keys(indicators) as Array<keyof IndicatorToggles>
   ).flatMap((key) => {
@@ -541,17 +543,38 @@ function IndicatorLegend({
 
   return (
     <div
-      className="absolute top-2 right-2 z-10 rounded-md px-2 py-1.5 space-y-0.5 pointer-events-none"
+      className="absolute top-2 right-2 z-10 rounded-md pointer-events-none select-none"
       style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
     >
-      {activeItems.map((item, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <Swatch color={item.color} type={item.type} />
-          <span className="text-[10px] leading-none text-white/90 font-medium whitespace-nowrap">
-            {item.label}
-          </span>
+      <button
+        onClick={() => setCollapsed((c) => !c)}
+        className="flex items-center gap-1 px-2 py-1.5 w-full text-white/80 hover:text-white transition-colors pointer-events-auto"
+        aria-label={collapsed ? "Expand legend" : "Collapse legend"}
+        aria-expanded={!collapsed}
+      >
+        <span className="text-[10px] font-semibold leading-none tracking-wide uppercase">
+          Key
+        </span>
+        <svg
+          className={`w-2.5 h-2.5 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
+          viewBox="0 0 10 10"
+          fill="currentColor"
+        >
+          <path d="M5 3L9 7H1L5 3Z" />
+        </svg>
+      </button>
+      {!collapsed && (
+        <div className="px-2 pb-1.5 space-y-0.5">
+          {activeItems.map((item, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <Swatch color={item.color} type={item.type} />
+              <span className="text-[10px] leading-none text-white/90 font-medium whitespace-nowrap">
+                {item.label}
+              </span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
