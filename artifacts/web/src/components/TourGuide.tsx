@@ -146,9 +146,10 @@ function loadPersistedState(stateKey: string): TourState {
   return DEFAULT_TOUR_STATE;
 }
 
+const TOUR_AUTO_SHOWN_KEY = "ict-tour-auto-shown";
+
 export function useTourGuide(userId?: string | number) {
   const stateKey = userId !== undefined ? makeStorageKey(userId, "state") : null;
-  const autoShownKey = userId !== undefined ? makeStorageKey(userId, "auto-shown") : null;
 
   const [state, dispatch] = useReducer(tourReducer, DEFAULT_TOUR_STATE);
 
@@ -169,41 +170,48 @@ export function useTourGuide(userId?: string | number) {
   }, [state, activeKey]);
 
   useEffect(() => {
-    if (autoShownKey === null) return undefined;
-    const seen = localStorage.getItem(autoShownKey);
+    if (userId === undefined) return undefined;
+    const seen = localStorage.getItem(TOUR_AUTO_SHOWN_KEY);
     const neverShow = localStorage.getItem(TOUR_NEVER_SHOW_KEY);
     if (!seen && !neverShow && !state.visible && state.machineState === "IDLE" && state.completedSteps.length === 0) {
       const timer = setTimeout(() => {
         const stillEligible =
-          !localStorage.getItem(autoShownKey) &&
+          !localStorage.getItem(TOUR_AUTO_SHOWN_KEY) &&
           !localStorage.getItem(TOUR_NEVER_SHOW_KEY) &&
           !state.visible &&
           state.machineState === "IDLE";
         if (stillEligible) {
-          localStorage.setItem(autoShownKey, "1");
+          localStorage.setItem(TOUR_AUTO_SHOWN_KEY, "1");
           dispatch({ type: "START_TOUR" });
         }
       }, 2000);
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [autoShownKey, state.visible, state.machineState, state.completedSteps.length]);
+  }, [userId, state.visible, state.machineState, state.completedSteps.length]);
 
   const startTour = useCallback(() => {
     dispatch({ type: "START_TOUR" });
   }, []);
 
   const closeTour = useCallback(() => {
+    try { localStorage.setItem(TOUR_AUTO_SHOWN_KEY, "1"); } catch {}
     dispatch({ type: "CLOSE_TOUR" });
   }, []);
 
   const resetTour = useCallback(() => {
-    try { localStorage.removeItem(TOUR_NEVER_SHOW_KEY); } catch {}
+    try {
+      localStorage.removeItem(TOUR_NEVER_SHOW_KEY);
+      localStorage.removeItem(TOUR_AUTO_SHOWN_KEY);
+    } catch {}
     dispatch({ type: "RESET_TOUR" });
   }, []);
 
   const neverShowTour = useCallback(() => {
-    try { localStorage.setItem(TOUR_NEVER_SHOW_KEY, "1"); } catch {}
+    try {
+      localStorage.setItem(TOUR_NEVER_SHOW_KEY, "1");
+      localStorage.setItem(TOUR_AUTO_SHOWN_KEY, "1");
+    } catch {}
     dispatch({ type: "CLOSE_TOUR" });
   }, []);
 
