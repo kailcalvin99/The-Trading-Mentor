@@ -241,7 +241,7 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="border-b border-border px-6 py-5 shrink-0">
+      <div className="border-b border-border px-6 py-5 shrink-0 pl-[0px] pr-[0px] pt-[0px] pb-[0px]">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-xl font-bold text-foreground">Video Library</h1>
           <span className="text-sm text-muted-foreground">
@@ -252,7 +252,6 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
           {ALL_VIDEOS.length} focused videos across all ICT concepts
         </p>
       </div>
-
       <div className="border-b border-border px-6 py-3 shrink-0 space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -319,7 +318,6 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
           ))}
         </div>
       </div>
-
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {filteredVideos.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-center">
@@ -368,7 +366,6 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
           </div>
         )}
       </div>
-
       {activeVideo && (
         <VideoPlayerModal
           video={activeVideo}
