@@ -611,9 +611,9 @@ export default function SmartJournal() {
         </Card>
       </div>
     )}
-    <div className="flex flex-col lg:flex-row h-full">
+    <div className="flex flex-col md:flex-row h-full">
       {/* Left Panel — Form */}
-      <div className="lg:w-[480px] xl:w-[520px] lg:border-r border-border lg:shrink-0 overflow-auto">
+      <div className="md:w-[480px] xl:w-[520px] md:border-r border-border md:shrink-0 overflow-auto">
         <div className="p-6 space-y-5">
           {/* Header */}
           <div className="flex items-center gap-3">
