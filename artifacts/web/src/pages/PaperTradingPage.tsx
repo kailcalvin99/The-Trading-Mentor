@@ -691,8 +691,9 @@ export default function PaperTradingPage() {
       const data: Candle[] = await res.json();
       setAllCandles(data);
       if (data.length > 0) {
-        setCurrentIndex(1);
-        prevIndexRef.current = 1;
+        const contextStart = Math.min(50, data.length);
+        setCurrentIndex(contextStart);
+        prevIndexRef.current = contextStart;
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load candles";
