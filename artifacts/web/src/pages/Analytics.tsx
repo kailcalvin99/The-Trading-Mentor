@@ -1401,11 +1401,14 @@ interface IctBreakdownData {
   newsDayImpact: NewsDayImpact;
 }
 
+const TOKEN_KEY = "ICT_TRADING_MENTOR_TOKEN";
+
 function IctBreakdownSection() {
   const [open, setOpen] = useState(true);
   const [data, setData] = useState<IctBreakdownData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
   const hasFetched = useRef(false);
 
   useEffect(() => {
@@ -1413,13 +1416,21 @@ function IctBreakdownSection() {
     hasFetched.current = true;
     const apiBase = import.meta.env.VITE_API_URL || "/api";
     setLoading(true);
-    fetch(`${apiBase}/analytics/ict-breakdown`, { credentials: "include" })
+    const token = localStorage.getItem(TOKEN_KEY);
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    fetch(`${apiBase}/analytics/ict-breakdown`, { credentials: "include", headers })
       .then((r) => {
-        if (!r.ok) throw new Error("Failed");
+        if (r.status === 403) { setNeedsUpgrade(true); setLoading(false); return null; }
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => { setError("Unable to load ICT analytics"); setLoading(false); });
+      .then((d) => { if (d) { setData(d); } setLoading(false); })
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : "Unable to load ICT analytics";
+        setError(msg);
+        setLoading(false);
+      });
   }, [open]);
 
   const sessionChartConfig: ChartConfig = {
@@ -1453,6 +1464,14 @@ function IctBreakdownSection() {
       {open && (
         <CardContent className="space-y-6">
           {loading && <p className="text-sm text-muted-foreground text-center py-4">Loading ICT analytics…</p>}
+          {needsUpgrade && (
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <Lock className="h-6 w-6 text-muted-foreground" />
+              <p className="text-sm font-medium">Premium feature</p>
+              <p className="text-xs text-muted-foreground">Upgrade to Premium to unlock ICT session breakdown, FVG hit rate, and news day impact analytics.</p>
+              <Link to="/pricing" className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">View Pricing</Link>
+            </div>
+          )}
           {error && <p className="text-sm text-red-500 text-center py-4">{error}</p>}
 
           {data && (

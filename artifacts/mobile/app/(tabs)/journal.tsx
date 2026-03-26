@@ -19,7 +19,7 @@ import { useListTrades, useCreateTrade, useDeleteTrade } from "@workspace/api-cl
 import type { Trade } from "@workspace/api-client-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import { fireMobileAITrigger } from "@/lib/aiTrigger";
-import { isSessionExpiredError } from "@/lib/api";
+import { isSessionExpiredError, apiGet, apiPost } from "@/lib/api";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
@@ -121,9 +121,6 @@ export default function JournalScreen() {
   const { new: newParam } = useLocalSearchParams<{ new?: string }>(); 
   const { isRoutineComplete, routineCompletedToday, routineItems, plannerLoaded } = usePlanner();
   const qc = useQueryClient();
-  const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-    : "http://localhost:8080/api";
 
   const [showForm, setShowForm] = useState(false);
   const [isMonkMode, setIsMonkMode] = useState(false);
@@ -197,8 +194,7 @@ export default function JournalScreen() {
 
   useEffect(() => {
     if (user) {
-      fetch(`${API_BASE}/user/settings`, { credentials: "include" })
-        .then((r) => r.json())
+      apiGet<{ tradingDefaults?: { defaultPairs?: string; defaultRiskPct?: string } }>("user/settings")
         .then((data) => {
           if (data.tradingDefaults?.defaultPairs) {
             const firstPair = data.tradingDefaults.defaultPairs.split(",")?.[0]?.trim();
@@ -272,26 +268,13 @@ export default function JournalScreen() {
     if (coachFeedback[tradeId] || coachLoading[tradeId]) return;
     setCoachLoading((prev) => ({ ...prev, [tradeId]: true }));
     try {
-      const res = await fetch(`${API_BASE}/trades/${tradeId}/coach`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.feedback) {
-          setCoachFeedback((prev) => ({ ...prev, [tradeId]: data.feedback }));
-        }
-      } else if (res.status === 403) {
-        Alert.alert(
-          "Premium Feature",
-          "AI coaching is a Premium feature. Upgrade your plan to unlock personalized trade analysis."
-        );
-      } else {
-        Alert.alert("Error", "Failed to fetch AI coaching feedback. Please try again.");
+      const data = await apiPost<{ feedback?: string }>(`trades/${tradeId}/coach`, {});
+      if (data.feedback) {
+        setCoachFeedback((prev) => ({ ...prev, [tradeId]: data.feedback as string }));
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg.toLowerCase().includes("upgrade")) {
+      if (errMsg.includes("403") || errMsg.toLowerCase().includes("upgrade") || errMsg.toLowerCase().includes("premium")) {
         Alert.alert(
           "Premium Feature",
           "AI coaching is a Premium feature. Upgrade your plan to unlock personalized trade analysis."
@@ -428,12 +411,7 @@ export default function JournalScreen() {
           AsyncStorage.setItem(TILT_COOLDOWN_KEY, String(endTime));
           setTiltCooldownEnd(endTime);
           setShowTiltCooldown(true);
-          fetch(`${API_BASE}/user/settings/cooldown-event`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ eventType: "tilt_cooldown", triggerTags: form.behaviorTag, durationSeconds: 300 }),
-          }).catch(() => {});
+          apiPost("user/settings/cooldown-event", { eventType: "tilt_cooldown", triggerTags: form.behaviorTag, durationSeconds: 300 }).catch(() => {});
         }
       }
       qc.setQueryData([`/api/trades`], (old: unknown) => {
@@ -450,7 +428,11 @@ export default function JournalScreen() {
       }
     } catch (err: unknown) {
       if (isSessionExpiredError(err)) return;
-      console.error("[handleSubmit] Could not save trade:", err);
+      const status = (err as { status?: number })?.status;
+      if (status === 403) {
+        Alert.alert("Upgrade Required", "Journal writes require a Standard or Premium plan. Visit Subscription to upgrade.");
+        return;
+      }
       let message = "Could not save trade";
       if (err && typeof err === "object") {
         const apiErr = err as { data?: { error?: string }; message?: string };
@@ -460,7 +442,8 @@ export default function JournalScreen() {
           message = apiErr.message;
         }
       }
-      Alert.alert("Error", message);
+      const statusLabel = status ? ` (${status})` : "";
+      Alert.alert("Save Failed", `${message}${statusLabel}`);
     }
   }, [form, editingDraftId, createTradeMut, deleteTradeMut, qc, appMode, liveSetupScore]);
 

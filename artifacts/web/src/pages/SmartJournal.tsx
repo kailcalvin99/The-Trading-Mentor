@@ -247,11 +247,16 @@ export default function SmartJournal() {
   }, [allCompletedTrades]);
 
   const API_BASE = import.meta.env.VITE_API_URL || "/api";
+  const WEB_TOKEN_KEY = "ICT_TRADING_MENTOR_TOKEN";
+  function getAuthHeaders(): Record<string, string> {
+    const t = localStorage.getItem(WEB_TOKEN_KEY);
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  }
 
   const [coachError, setCoachError] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    fetch(`${API_BASE}/user/settings`, { credentials: "include" })
+    fetch(`${API_BASE}/user/settings`, { credentials: "include", headers: getAuthHeaders() })
       .then((r) => r.json())
       .then((data) => {
         if (data.tradingDefaults) {
@@ -311,6 +316,7 @@ export default function SmartJournal() {
       const res = await fetch(`${API_BASE}/trades/${tradeId}/coach`, {
         method: "POST",
         credentials: "include",
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -464,7 +470,7 @@ export default function SmartJournal() {
           setShowTiltCooldown(true);
           fetch(`${API_BASE}/user/settings/cooldown-event`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
             credentials: "include",
             body: JSON.stringify({ eventType: "tilt_cooldown", triggerTags: form.behaviorTag, durationSeconds: 300 }),
           }).catch(() => {});
@@ -488,7 +494,16 @@ export default function SmartJournal() {
           variant: "destructive",
         });
       } else {
-        toast({ title: "Error", description: "Could not save trade.", variant: "destructive" });
+        const apiMsg =
+          (err as { data?: { error?: string } })?.data?.error ||
+          (err as { message?: string })?.message ||
+          "Could not save trade";
+        const statusLabel = status ? ` (${status})` : "";
+        toast({
+          title: "Save failed",
+          description: `${apiMsg}${statusLabel}`,
+          variant: "destructive",
+        });
       }
     }
   }, [form, editingDraftId, createTradeMut, deleteTradeMut, qc, appMode]);
@@ -517,7 +532,7 @@ export default function SmartJournal() {
     const qs = params.toString();
     const url = `${API_BASE}/trades/export/csv${qs ? `?${qs}` : ""}`;
     try {
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch(url, { credentials: "include", headers: getAuthHeaders() });
       if (res.status === 403) {
         toast({ title: "Upgrade required", description: "CSV export requires a Premium plan. Visit the Pricing page to upgrade.", variant: "destructive" });
         return;

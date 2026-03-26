@@ -517,12 +517,22 @@ function IctBreakdownMobileSection() {
   const [data, setData] = useState<MobileIctBreakdownData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setLoading(true);
     apiGet<MobileIctBreakdownData>("analytics/ict-breakdown")
       .then((d) => { setData(d); setLoading(false); })
-      .catch(() => { setError("Unable to load ICT analytics"); setLoading(false); });
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("403")) {
+          setNeedsUpgrade(true);
+        } else {
+          setError("Unable to load ICT analytics");
+        }
+        setLoading(false);
+      });
   }, []);
 
   const newsBarData = data ? [
@@ -547,6 +557,21 @@ function IctBreakdownMobileSection() {
       {!collapsed && (
         <View style={{ gap: 16, paddingTop: 12 }}>
           {loading && <Text style={{ fontSize: 12, color: C.textSecondary, textAlign: "center" }}>Loading…</Text>}
+          {needsUpgrade && (
+            <View style={{ alignItems: "center", gap: 10, paddingVertical: 16 }}>
+              <Ionicons name="lock-closed-outline" size={24} color={C.textSecondary} />
+              <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: C.text }}>Premium Feature</Text>
+              <Text style={{ fontSize: 12, color: C.textSecondary, textAlign: "center", lineHeight: 18 }}>
+                Upgrade to Premium to unlock ICT session breakdown, FVG hit rate, and news day impact analytics.
+              </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: C.accent, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 }}
+                onPress={() => router.push("/(tabs)/subscription")}
+              >
+                <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#000" }}>View Plans</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {error && <Text style={{ fontSize: 12, color: "#EF4444", textAlign: "center" }}>{error}</Text>}
 
           {data && (
