@@ -151,13 +151,19 @@ router.post("/", authRequired, async (req, res) => {
       return;
     }
 
+    const riskPctNum = parseFloat(riskPct);
+    if (isNaN(riskPctNum) || riskPctNum <= 0 || riskPctNum > 100) {
+      res.status(400).json({ error: "Risk % must be between 0 and 100" });
+      return;
+    }
+
     const [trade] = await db
       .insert(tradesTable)
       .values({
         userId,
         pair,
         entryTime,
-        riskPct: riskPct.toString(),
+        riskPct: riskPctNum.toString(),
         liquiditySweep: liquiditySweep ?? false,
         outcome: outcome || null,
         notes: notes || null,

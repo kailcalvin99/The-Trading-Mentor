@@ -127,7 +127,7 @@ router.post("/account/daily-loss", authRequired, tierRequired(1), async (req, re
     }
 
     const currentDailyLoss = parseFloat(existing.dailyLoss) + numericAmount;
-    const newBalance = parseFloat(existing.currentBalance) - numericAmount;
+    const newBalance = Math.max(0, parseFloat(existing.currentBalance) - numericAmount);
     const totalDrawdown = parseFloat(existing.startingBalance) - newBalance;
 
     const [updated] = await db

@@ -168,8 +168,8 @@ router.patch("/", authRequired, async (req, res) => {
       }
 
       if (data.currentPassword && data.newPassword) {
-        if (typeof data.newPassword !== "string" || data.newPassword.length < 6) {
-          res.status(400).json({ error: "New password must be at least 6 characters" });
+        if (typeof data.newPassword !== "string" || data.newPassword.length < 8) {
+          res.status(400).json({ error: "New password must be at least 8 characters" });
           return;
         }
         const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
