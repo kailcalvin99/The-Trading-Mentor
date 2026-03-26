@@ -267,7 +267,7 @@ export default function Settings() {
           twitterHandle: data.profile.twitterHandle || "",
           discordHandle: data.profile.discordHandle || "",
           isPublic: data.profile.isPublic ?? false,
-          avatarUrl: user?.avatarUrl ?? null,
+          avatarUrl: data.profile.avatarUrl ?? user?.avatarUrl ?? null,
         });
         setTradingDefaults({
           defaultSession: data.tradingDefaults.defaultSession || "",
@@ -337,6 +337,7 @@ export default function Settings() {
   }
 
   async function handleSaveSocialProfile() {
+    const avatarToSave = socialProfile.avatarUrl ?? user?.avatarUrl ?? null;
     await saveSection(
       "socialProfile",
       {
@@ -344,7 +345,7 @@ export default function Settings() {
         twitterHandle: socialProfile.twitterHandle,
         discordHandle: socialProfile.discordHandle,
         isPublic: socialProfile.isPublic,
-        avatarUrl: socialProfile.avatarUrl,
+        avatarUrl: avatarToSave,
       },
       setSavingSocialProfile
     );

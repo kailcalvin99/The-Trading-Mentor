@@ -53,6 +53,7 @@ router.get("/", authRequired, async (req, res) => {
         twitterHandle: user.twitterHandle || "",
         discordHandle: user.discordHandle || "",
         isPublic: user.isPublic ?? false,
+        avatarUrl: user.avatarUrl || null,
       },
       tradingDefaults: {
         defaultSession: user.defaultSession || "",

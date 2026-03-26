@@ -225,11 +225,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (res.ok) {
         setUser((prev) => prev ? { ...prev, avatarUrl: url } : null);
+        await refreshUser();
       }
     } catch (error) {
       console.error("Error setting avatar URL:", error);
     }
-  }, []);
+  }, [refreshUser]);
 
   return (
     <AuthContext.Provider value={{ user, subscription, loading, login, register, logout, refreshUser, hasFeature, tierLevel, isAdmin, appMode, setAppMode, setAvatarUrl }}>
