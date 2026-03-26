@@ -415,11 +415,11 @@ export default function Layout() {
   const LITE_MODE_ALLOWED = ["/", "/academy", "/journal"];
 
   const visibleNavItems = useMemo(() => {
-    let items = skillLevelNum === SKILL_LEVEL_NUM["none"] ? navItems : navItems.filter((item) => item.minSkillLevel <= skillLevelNum);
     if (appMode === "lite") {
-      items = items.filter((item) => LITE_MODE_ALLOWED.includes(item.to));
+      const items = skillLevelNum === SKILL_LEVEL_NUM["none"] ? navItems : navItems.filter((item) => item.minSkillLevel <= skillLevelNum);
+      return items.filter((item) => LITE_MODE_ALLOWED.includes(item.to));
     }
-    return items;
+    return navItems;
   }, [skillLevelNum, appMode]);
 
   const isFreeUser = tierLevel === 0;
