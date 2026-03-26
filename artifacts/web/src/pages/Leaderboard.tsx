@@ -46,12 +46,16 @@ function getRankBadgeStyle(rank: number): string {
   return "bg-secondary text-muted-foreground border-border";
 }
 
+const REFRESH_COOLDOWN_MS = 30_000;
+
 export default function Leaderboard() {
   const { tierLevel, user } = useAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"winRate" | "totalTrades" | "disciplinedPct">("winRate");
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(false);
 
   useEffect(() => {
     if (tierLevel < 2) return;
@@ -66,6 +70,7 @@ export default function Leaderboard() {
       if (res.ok) {
         const data = await res.json();
         setEntries(data.entries || []);
+        if (data.cachedAt) setCachedAt(data.cachedAt);
       } else {
         const err = await res.json().catch(() => ({}));
         setError(err.error || "Failed to load leaderboard");
@@ -75,6 +80,24 @@ export default function Leaderboard() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleRefresh() {
+    if (cooldown || loading) return;
+    setCooldown(true);
+    setLoading(true);
+    setError(null);
+    fetch(`${API_BASE}/leaderboard`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        setEntries(data.entries || []);
+        if (data.cachedAt) setCachedAt(data.cachedAt);
+      })
+      .catch(() => setError("Failed to load leaderboard"))
+      .finally(() => {
+        setLoading(false);
+        setTimeout(() => setCooldown(false), REFRESH_COOLDOWN_MS);
+      });
   }
 
   if (tierLevel < 2) {
@@ -99,13 +122,22 @@ export default function Leaderboard() {
             </p>
           </div>
         </div>
-        <button
-          onClick={fetchLeaderboard}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-2 transition-colors"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={handleRefresh}
+            disabled={cooldown || loading}
+            title={cooldown ? "Please wait 30s between refreshes" : "Refresh leaderboard"}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {cooldown ? "Wait 30s…" : "Refresh"}
+          </button>
+          {cachedAt && (
+            <span className="text-[10px] text-muted-foreground/60">
+              Updated {new Date(cachedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 bg-card border border-border rounded-xl p-1">
