@@ -150,9 +150,13 @@ function LearnView({ onAskMentor, pendingLessonId, refreshing, onRefresh }: { on
   const [expandedChapter, setExpandedChapter] = useState<string | null>("ch1");
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
-  const { setAppMode } = useAuth();
+  const { appMode, setAppMode } = useAuth();
+  const hasAutoPromotedRef = useRef(false);
 
   useEffect(() => {
+    AsyncStorage.getItem(ACADEMY_UNLOCKED_KEY)
+      .then((val) => { if (val === "true") hasAutoPromotedRef.current = true; })
+      .catch(() => {});
     loadLocalProgress().then((local) => {
       setCompleted(local);
       syncProgressFromServer(local, (merged) => setCompleted(merged));
@@ -173,18 +177,22 @@ function LearnView({ onAskMentor, pendingLessonId, refreshing, onRefresh }: { on
   }, [pendingLessonId]);
 
   function toggleComplete(lessonId: string) {
+    const allIds = COURSE_CHAPTERS.flatMap((ch) => ch.lessons.map((l) => l.id));
+    const wasAllDone = allIds.every((id) => completed.has(id));
     const next = new Set(completed);
     if (next.has(lessonId)) next.delete(lessonId);
     else next.add(lessonId);
     setCompleted(next);
     AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify([...next]));
     saveProgressToServer(next);
-    const allIds = COURSE_CHAPTERS.flatMap((ch) => ch.lessons.map((l) => l.id));
     const allDone = allIds.every((id) => next.has(id));
     if (allDone) {
       AsyncStorage.setItem(ACADEMY_UNLOCKED_KEY, "true");
+      if (!wasAllDone && !hasAutoPromotedRef.current && appMode === "lite") {
+        hasAutoPromotedRef.current = true;
+        setAppMode("full");
+      }
     }
-    setAppMode(allDone ? "full" : "lite");
   }
 
   const totalLessons = COURSE_CHAPTERS.reduce((sum, ch) => sum + ch.lessons.length, 0);
