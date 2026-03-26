@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
 import { useListTrades } from "@workspace/api-client-react";
 
@@ -42,13 +42,8 @@ function formatESTTime(date: Date): string {
   return `${String(h).padStart(2, "0")}:${m}:${s} ${ampm}`;
 }
 
-const CARD_WIDTH = 200;
-
 export default function KillZoneStrip() {
   const [, setTick] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cardIndexRef = useRef(0);
 
   const { data: apiTrades } = useListTrades();
   const trades = (apiTrades || []) as Array<{
@@ -80,139 +75,158 @@ export default function KillZoneStrip() {
     return () => clearInterval(id);
   }, []);
 
-  function startAutoScroll() {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      const el = scrollRef.current;
-      if (!el) return;
-      const totalCards = SESSIONS.length + 4;
-      cardIndexRef.current = (cardIndexRef.current + 1) % totalCards;
-      const target = cardIndexRef.current * CARD_WIDTH;
-      if (cardIndexRef.current === 0) {
-        el.scrollLeft = 0;
-      } else {
-        el.scrollTo({ left: target, behavior: "smooth" });
-      }
-    }, 2500);
-  }
-
-  useEffect(() => {
-    startAutoScroll();
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, []);
-
-  function handleScroll() {
-    startAutoScroll();
-  }
-
   const est = getESTNow();
   const nowMins = est.getHours() * 60 + est.getMinutes();
 
-  const cardBase = "flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl";
-  const cardStyle: React.CSSProperties = { minWidth: 160, maxWidth: 200 };
+  function renderCards(prefix: string) {
+    const sessionCards = SESSIONS.map((session) => {
+      const startMins = session.startH * 60 + session.startM;
+      const endMins = session.endH * 60 + session.endM;
+      const isLive = endMins > startMins
+        ? nowMins >= startMins && nowMins < endMins
+        : nowMins >= startMins || nowMins < endMins;
+      const isEnded = endMins > startMins
+        ? nowMins >= endMins
+        : nowMins >= endMins && nowMins < startMins;
+
+      const target = new Date(est);
+      target.setHours(session.startH, session.startM, 0, 0);
+      if (!isLive && est >= target) target.setDate(target.getDate() + 1);
+      const msUntil = isLive ? 0 : target.getTime() - est.getTime();
+      const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
+
+      return (
+        <div
+          key={prefix + session.name}
+          className="flex-shrink-0 flex items-center gap-2 px-4 h-[48px] border rounded-xl transition-all border-border bg-[#020203]"
+          style={{
+            minWidth: 180,
+            ...(isLive ? { borderColor: session.color, boxShadow: `0 0 10px ${session.color}30` } : {}),
+          }}
+        >
+          <div
+            className={`w-2 h-2 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
+            style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
+          />
+          <div className="flex flex-col min-w-0">
+            <span className="font-bold text-foreground whitespace-nowrap text-left text-[14px]">{session.emoji} {session.name}</span>
+            <span className="text-muted-foreground whitespace-nowrap text-left text-[11px]">{session.time}</span>
+          </div>
+          {isLive ? (
+            <span
+              className="font-bold px-1.5 py-0.5 rounded-full shrink-0 text-[12px] ml-auto"
+              style={{ backgroundColor: `${session.color}20`, color: session.color }}
+            >
+              LIVE
+            </span>
+          ) : isEnded ? (
+            <span className="text-xs text-muted-foreground font-medium shrink-0 ml-auto">Ended</span>
+          ) : (
+            <span className="font-mono font-medium shrink-0 text-muted-foreground text-[10px] ml-auto">
+              {formatCountdown(msUntil)}
+            </span>
+          )}
+        </div>
+      );
+    });
+
+    const statCards = [
+      <div key={prefix + "pnl"} className="flex-shrink-0 flex items-center gap-2 px-3 h-[48px] bg-card border border-border rounded-xl" style={{ minWidth: 100 }}>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Today's P&L</span>
+          <span className="text-sm font-bold whitespace-nowrap leading-tight" style={{ color: hasTodayTrades ? pnlColor : undefined }}>
+            {hasTodayTrades ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—"}
+          </span>
+        </div>
+      </div>,
+      <div key={prefix + "wr"} className="flex-shrink-0 flex items-center gap-2 px-3 h-[48px] bg-card border border-border rounded-xl" style={{ minWidth: 100 }}>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Win Rate</span>
+          <span className="text-sm font-bold whitespace-nowrap leading-tight" style={{ color: todayWinRate !== null ? (todayWinRate >= 50 ? "#00C896" : "#F59E0B") : undefined }}>
+            {todayWinRate !== null ? `${todayWinRate}%` : "—"}
+          </span>
+        </div>
+      </div>,
+      <div key={prefix + "trades"} className="flex-shrink-0 flex items-center gap-2 px-3 h-[48px] bg-card border border-border rounded-xl" style={{ minWidth: 80 }}>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Trades</span>
+          <span className="text-sm font-bold text-foreground whitespace-nowrap leading-tight">
+            {todayCompleted.length > 0 ? String(todayCompleted.length) : "—"}
+          </span>
+        </div>
+      </div>,
+    ];
+
+    return [...sessionCards, ...statCards];
+  }
+
+  const CLOCK_WIDTH = 178;
 
   return (
     <div
-      className="border-b border-border bg-card/80 shrink-0"
+      className="border-b border-border bg-card/80 shrink-0 relative overflow-hidden"
       style={{ height: 64 }}
     >
+      <style>{`
+        @keyframes kz-ticker {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
+
+      {/* Locked EST clock — sits on top, cards scroll behind it */}
       <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex gap-2 overflow-x-auto h-full items-center px-4 scrollbar-hide"
-        style={{ scrollbarWidth: "none" }}
+        className="absolute left-0 top-0 h-full flex items-center pl-3 pr-2 z-20"
+        style={{ width: CLOCK_WIDTH, background: "hsl(var(--card) / 0.95)" }}
       >
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full border border-border rounded-xl bg-[#02c896] rounded-br-[50px] rounded-tr-[50px] rounded-tl-[50px] rounded-bl-[48px] ml-[0px] mr-[0px] pl-[12px] pr-[12px] pt-[0px] pb-[0px] text-[20px]" style={{ minWidth: 160 }}>
+        <div
+          className="flex items-center gap-2 px-3 h-[48px] border border-border rounded-xl w-full"
+          style={{ background: "#02c896" }}
+        >
           <Clock className="h-4 w-4 text-primary shrink-0" />
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold text-muted-foreground leading-tight">EST</span>
-            <span className="text-sm font-mono font-bold text-foreground leading-tight whitespace-nowrap">
+          <div className="flex flex-row items-center gap-1 min-w-0">
+            <span className="text-xs font-bold text-muted-foreground">EST</span>
+            <span className="text-sm font-mono font-bold text-foreground whitespace-nowrap">
               {formatESTTime(est)}
             </span>
           </div>
         </div>
+      </div>
 
-        {SESSIONS.map((session) => {
-          const startMins = session.startH * 60 + session.startM;
-          const endMins = session.endH * 60 + session.endM;
-          const isLive = endMins > startMins
-            ? nowMins >= startMins && nowMins < endMins
-            : nowMins >= startMins || nowMins < endMins;
-          const isEnded = endMins > startMins
-            ? nowMins >= endMins
-            : nowMins >= endMins && nowMins < startMins;
+      {/* Gradient fade — cards dissolve as they pass behind the clock */}
+      <div
+        className="absolute top-0 h-full w-10 z-10 pointer-events-none"
+        style={{
+          left: CLOCK_WIDTH,
+          background: "linear-gradient(to right, hsl(var(--card) / 0.9), transparent)",
+        }}
+      />
 
-          const target = new Date(est);
-          target.setHours(session.startH, session.startM, 0, 0);
-          if (!isLive && est >= target) target.setDate(target.getDate() + 1);
-          const msUntil = isLive ? 0 : target.getTime() - est.getTime();
-          const isNear = msUntil > 0 && msUntil <= 30 * 60 * 1000;
-
-          return (
-            <div
-              key={session.name}
-              className="flex-shrink-0 flex items-center gap-2 px-4 h-full border rounded-xl transition-all border-border text-[14px] text-center bg-[#020203] pl-[20px] pr-[20px]"
-              style={{ ...cardStyle, ...(isLive ? { borderColor: session.color, boxShadow: `0 0 10px ${session.color}30` } : {}) }}
-            >
-              <div
-                className={`w-2 h-2 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
-                style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
-              />
-              <div className="flex flex-col min-w-0">
-                <span className="font-bold text-foreground whitespace-nowrap text-left text-[15px]">{session.emoji} {session.name}</span>
-                <span className="text-muted-foreground whitespace-nowrap text-left text-[11px]">{session.time}</span>
-              </div>
-              {isLive ? (
-                <span
-                  className="font-bold px-1.5 py-0.5 rounded-full shrink-0 text-[14px] text-right ml-[0px]"
-                  style={{ backgroundColor: `${session.color}20`, color: session.color }}
-                >
-                  LIVE
-                </span>
-              ) : isEnded ? (
-                <span className="text-xs text-muted-foreground font-medium shrink-0 ml-1">Ended</span>
-              ) : (
-                <span className="font-mono font-medium shrink-0 text-muted-foreground text-[8px] text-right ml-[0px]">
-                  {formatCountdown(msUntil)}
-                </span>
-              )}
-            </div>
-          );
-        })}
-
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl text-right rounded-tl-[18px] rounded-tr-[18px] rounded-br-[18px] rounded-bl-[18px]" style={cardStyle}>
-          <div className="flex flex-col min-w-0">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Today's P&L</span>
-            <span
-              className="text-sm font-bold whitespace-nowrap leading-tight"
-              style={{ color: hasTodayTrades ? pnlColor : undefined }}
-            >
-              {hasTodayTrades ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—"}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl text-right rounded-tl-[18px] rounded-tr-[18px] rounded-br-[18px] rounded-bl-[18px]" style={cardStyle}>
-          <div className="flex flex-col min-w-0">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Win Rate</span>
-            <span
-              className="text-sm font-bold whitespace-nowrap leading-tight"
-              style={{ color: todayWinRate !== null ? (todayWinRate >= 50 ? "#00C896" : "#F59E0B") : undefined }}
-            >
-              {todayWinRate !== null ? `${todayWinRate}%` : "—"}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 h-full bg-card border border-border rounded-xl text-right pl-[0px] pr-[0px]" style={cardStyle}>
-          <div className="flex flex-col min-w-0">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Trades</span>
-            <span className="text-sm font-bold text-foreground whitespace-nowrap leading-tight">
-              {todayCompleted.length > 0 ? String(todayCompleted.length) : "—"}
-            </span>
-          </div>
+      {/* Infinite ticker area */}
+      <div
+        className="absolute top-0 h-full overflow-hidden"
+        style={{ left: CLOCK_WIDTH + 8, right: 0 }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            height: "100%",
+            alignItems: "center",
+            width: "max-content",
+            animation: "kz-ticker 32s linear infinite",
+          }}
+        >
+          {renderCards("a")}
+          {renderCards("b")}
         </div>
       </div>
+
+      {/* Right edge fade */}
+      <div
+        className="absolute top-0 right-0 h-full w-10 z-10 pointer-events-none"
+        style={{ background: "linear-gradient(to left, hsl(var(--card) / 0.9), transparent)" }}
+      />
     </div>
   );
 }
