@@ -415,7 +415,7 @@ export default function Layout() {
       "/risk-shield": 1,
       "/prop-tracker": 1,
       "/paper-trading": 1,
-      "/journal": 2,
+      "/journal": 1,
       "/analytics": 2,
       "/leaderboard": 2,
       "/webhooks": 2,
