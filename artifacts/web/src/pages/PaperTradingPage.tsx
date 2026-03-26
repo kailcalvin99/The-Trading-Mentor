@@ -694,6 +694,7 @@ export default function PaperTradingPage() {
     );
     if (chartRef.current && visible.length > 0) {
       chartRef.current.timeScale().fitContent();
+      chartRef.current.timeScale().applyOptions({ barSpacing: 7 });
     }
     seriesRef.current.setMarkers(markersRef.current);
   }, [allCandles, currentIndex]);
