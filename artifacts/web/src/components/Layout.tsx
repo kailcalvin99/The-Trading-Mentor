@@ -727,7 +727,9 @@ export default function Layout() {
             </div>
           </div>
 
-          <KillZoneStrip />
+          {location.pathname !== "/academy" && location.pathname !== "/videos" && (
+            <KillZoneStrip />
+          )}
 
           <main className="flex-1 overflow-auto relative">
             <div className="flex h-full">

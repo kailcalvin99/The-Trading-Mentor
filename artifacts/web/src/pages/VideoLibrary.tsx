@@ -215,6 +215,7 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeVideo, setActiveVideo] = useState<Video | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     if (initialVideoId) {
@@ -238,6 +239,7 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
   const watchedCount = ALL_VIDEOS.filter((v) => watched.has(v.id)).length;
 
   const difficulties: VideoDifficulty[] = ["Beginner", "Intermediate", "Advanced"];
+  const activeFilterCount = (selectedChapter !== "all" ? 1 : 0) + (selectedDifficulty !== "all" ? 1 : 0);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -253,70 +255,92 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
         </p>
       </div>
       <div className="border-b border-border px-6 py-3 shrink-0 space-y-3 pl-[0px] pr-[0px] pt-[5px] pb-[5px]">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search videos..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground"
-          />
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search videos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+          <button
+            onClick={() => setFiltersOpen((prev) => !prev)}
+            className={`relative shrink-0 flex items-center justify-center h-9 w-9 rounded-xl border transition-colors ${
+              filtersOpen || activeFilterCount > 0
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-secondary border-border text-muted-foreground hover:border-primary/50"
+            }`}
+            aria-label="Toggle filters"
+          >
+            <Filter className="h-4 w-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center leading-none border border-background">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            onClick={() => setSelectedChapter("all")}
-            className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors border ${
-              selectedChapter === "all"
-                ? "bg-primary text-primary-foreground border-primary"
-                : "border-border text-muted-foreground hover:border-primary/50"
-            }`}
-          >
-            All Chapters
-          </button>
-          {VIDEO_CHAPTERS.map((ch) => (
-            <button
-              key={ch.id}
-              onClick={() => setSelectedChapter(ch.id)}
-              className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors border ${
-                selectedChapter === ch.id
-                  ? "text-white border-transparent"
-                  : "border-border text-muted-foreground hover:border-primary/50"
-              }`}
-              style={selectedChapter === ch.id ? { backgroundColor: ch.color } : {}}
-            >
-              {ch.icon} {ch.title}
-            </button>
-          ))}
-        </div>
+        {filtersOpen && (
+          <>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => setSelectedChapter("all")}
+                className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors border ${
+                  selectedChapter === "all"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                All Chapters
+              </button>
+              {VIDEO_CHAPTERS.map((ch) => (
+                <button
+                  key={ch.id}
+                  onClick={() => setSelectedChapter(ch.id)}
+                  className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors border ${
+                    selectedChapter === ch.id
+                      ? "text-white border-transparent"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                  style={selectedChapter === ch.id ? { backgroundColor: ch.color } : {}}
+                >
+                  {ch.icon} {ch.title}
+                </button>
+              ))}
+            </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => setSelectedDifficulty("all")}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors border ${
-              selectedDifficulty === "all"
-                ? "bg-primary text-primary-foreground border-primary"
-                : "border-border text-muted-foreground hover:border-primary/50"
-            }`}
-          >
-            All Levels
-          </button>
-          {difficulties.map((d) => (
-            <button
-              key={d}
-              onClick={() => setSelectedDifficulty(d)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors border ${
-                selectedDifficulty === d
-                  ? "text-white border-transparent"
-                  : "border-border text-muted-foreground hover:border-primary/50"
-              }`}
-              style={selectedDifficulty === d ? { backgroundColor: DIFFICULTY_COLORS[d] } : {}}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedDifficulty("all")}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors border ${
+                  selectedDifficulty === "all"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                All Levels
+              </button>
+              {difficulties.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setSelectedDifficulty(d)}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors border ${
+                    selectedDifficulty === d
+                      ? "text-white border-transparent"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                  style={selectedDifficulty === d ? { backgroundColor: DIFFICULTY_COLORS[d] } : {}}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {filteredVideos.length === 0 ? (
