@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   StyleSheet,
   type DimensionValue,
   RefreshControl,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
@@ -43,6 +46,9 @@ import {
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 
 const C = Colors.dark;
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const SWIPE_THRESHOLD = 80;
 
 const GLOSSARY_IMAGES: Record<string, number> = {
   FVG: require("@/assets/images/chart-fvg.png"),
@@ -106,8 +112,6 @@ const CHART_IMAGES: Record<string, number> = {
   "lesson-patience.png": require("@/assets/images/lesson-patience.png"),
   "lesson-discipline-toolkit.png": require("@/assets/images/lesson-discipline-toolkit.png"),
 };
-
-type Tab = "learn" | "glossary" | "quiz" | "plan";
 
 const PROGRESS_KEY = "ict-academy-progress";
 const ACADEMY_UNLOCKED_KEY = "ict-academy-unlocked";
@@ -617,11 +621,318 @@ function PlanView({ refreshing, onRefresh }: { refreshing?: boolean; onRefresh?:
   );
 }
 
+interface FlashcardData {
+  term: string;
+  full: string;
+  color: string;
+  front: string;
+  back: string;
+}
+
+const FLASHCARDS: FlashcardData[] = GLOSSARY_DATA.map((item) => ({
+  term: item.term,
+  full: item.full,
+  color: item.color,
+  front: item.term,
+  back: item.definition,
+}));
+
+function FlipCard({
+  card,
+  index,
+  total,
+  flipped,
+}: {
+  card: FlashcardData;
+  index: number;
+  total: number;
+  flipped: boolean;
+}) {
+  const flipAnim = useRef(new Animated.Value(0)).current;
+  const prevFlipped = useRef(flipped);
+
+  useEffect(() => {
+    flipAnim.setValue(0);
+    prevFlipped.current = false;
+  }, [index]);
+
+  useEffect(() => {
+    if (prevFlipped.current === flipped) return;
+    prevFlipped.current = flipped;
+    const toValue = flipped ? 1 : 0;
+    Animated.spring(flipAnim, {
+      toValue,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 10,
+    }).start();
+  }, [flipped]);
+
+  const frontRotate = flipAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  const backRotate = flipAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["180deg", "360deg"],
+  });
+
+  const frontOpacity = flipAnim.interpolate({
+    inputRange: [0, 0.49, 0.5, 1],
+    outputRange: [1, 1, 0, 0],
+  });
+
+  const backOpacity = flipAnim.interpolate({
+    inputRange: [0, 0.49, 0.5, 1],
+    outputRange: [0, 0, 1, 1],
+  });
+
+  return (
+    <View style={flashStyles.cardWrapper}>
+      <Animated.View
+        style={[
+          flashStyles.card,
+          { borderColor: card.color + "44", opacity: frontOpacity, transform: [{ rotateY: frontRotate }], zIndex: flipped ? 0 : 1 },
+        ]}
+      >
+        <View style={[flashStyles.cardTopRow, { backgroundColor: card.color + "15" }]}>
+          <View style={[flashStyles.termBadge, { backgroundColor: card.color + "25" }]}>
+            <Text style={[flashStyles.termBadgeText, { color: card.color }]}>{card.term}</Text>
+          </View>
+          <Text style={flashStyles.cardCounter}>{index + 1} / {total}</Text>
+        </View>
+        <View style={flashStyles.frontContent}>
+          <Text style={[flashStyles.termText, { color: card.color }]}>{card.term}</Text>
+          <Text style={flashStyles.fullText}>{card.full}</Text>
+          <View style={flashStyles.tapHint}>
+            <Ionicons name="sync-outline" size={14} color={C.textSecondary} />
+            <Text style={flashStyles.tapHintText}>Tap to reveal definition</Text>
+          </View>
+        </View>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          flashStyles.card,
+          flashStyles.cardBack,
+          { borderColor: card.color + "44", opacity: backOpacity, transform: [{ rotateY: backRotate }], zIndex: flipped ? 1 : 0 },
+        ]}
+      >
+        <View style={[flashStyles.cardTopRow, { backgroundColor: card.color + "15" }]}>
+          <View style={[flashStyles.termBadge, { backgroundColor: card.color + "25" }]}>
+            <Text style={[flashStyles.termBadgeText, { color: card.color }]}>{card.term}</Text>
+          </View>
+          <Text style={flashStyles.cardCounter}>{index + 1} / {total}</Text>
+        </View>
+        <View style={flashStyles.backContent}>
+          <Text style={flashStyles.defLabel}>Definition</Text>
+          <Text style={flashStyles.defText}>{card.back}</Text>
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
+
+function FlashcardsView() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [knownCount, setKnownCount] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [done, setDone] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
+  const translateX = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const handleSwipeRef = useRef<(result: "known" | "review") => void>(() => {});
+
+  const handleSwipe = useCallback((result: "known" | "review") => {
+    const direction = result === "known" ? SCREEN_WIDTH * 1.2 : -SCREEN_WIDTH * 1.2;
+    Animated.parallel([
+      Animated.timing(translateX, { toValue: direction, duration: 250, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(() => {
+      if (!isMounted.current) return;
+      if (result === "known") setKnownCount((c) => c + 1);
+      else setReviewCount((c) => c + 1);
+      setFlipped(false);
+      setCurrentIndex((prev) => {
+        const nextIndex = prev + 1;
+        if (nextIndex >= FLASHCARDS.length) {
+          setDone(true);
+          return prev;
+        }
+        translateX.setValue(0);
+        opacity.setValue(1);
+        return nextIndex;
+      });
+    });
+  }, [translateX, opacity]);
+
+  handleSwipeRef.current = handleSwipe;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 8,
+      onPanResponderMove: (_, gs) => {
+        translateX.setValue(gs.dx);
+      },
+      onPanResponderRelease: (_, gs) => {
+        const isTap = Math.abs(gs.dx) < 8 && Math.abs(gs.dy) < 8;
+        if (gs.dx > SWIPE_THRESHOLD) {
+          handleSwipeRef.current("known");
+        } else if (gs.dx < -SWIPE_THRESHOLD) {
+          handleSwipeRef.current("review");
+        } else {
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+          if (isTap) {
+            setFlipped((f) => !f);
+          }
+        }
+      },
+    })
+  ).current;
+
+  function handleReset() {
+    setCurrentIndex(0);
+    setFlipped(false);
+    setKnownCount(0);
+    setReviewCount(0);
+    setDone(false);
+    translateX.setValue(0);
+    opacity.setValue(1);
+  }
+
+  const card = FLASHCARDS[currentIndex];
+  const progress = (currentIndex + 1) / FLASHCARDS.length;
+
+  const rotate = translateX.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+    outputRange: ["-8deg", "0deg", "8deg"],
+    extrapolate: "clamp",
+  });
+
+  const swipeLeftOpacity = translateX.interpolate({
+    inputRange: [-80, 0],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const swipeRightOpacity = translateX.interpolate({
+    inputRange: [0, 80],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
+  if (done) {
+    return (
+      <View style={flashStyles.doneContainer}>
+        <Text style={flashStyles.doneEmoji}>🎓</Text>
+        <Text style={flashStyles.doneTitle}>Session Complete!</Text>
+        <Text style={flashStyles.doneSub}>You've gone through all {FLASHCARDS.length} ICT flashcards</Text>
+
+        <View style={flashStyles.statsRow}>
+          <View style={[flashStyles.statBox, { borderColor: "#00C89644", backgroundColor: "#00C89615" }]}>
+            <Ionicons name="checkmark-circle" size={24} color="#00C896" />
+            <Text style={[flashStyles.statNum, { color: "#00C896" }]}>{knownCount}</Text>
+            <Text style={flashStyles.statLabel}>Got It</Text>
+          </View>
+          <View style={[flashStyles.statBox, { borderColor: "#F59E0B44", backgroundColor: "#F59E0B15" }]}>
+            <Ionicons name="refresh-circle" size={24} color="#F59E0B" />
+            <Text style={[flashStyles.statNum, { color: "#F59E0B" }]}>{reviewCount}</Text>
+            <Text style={flashStyles.statLabel}>Review</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={flashStyles.resetBtn} onPress={handleReset}>
+          <Ionicons name="refresh-outline" size={16} color="#0A0A0F" />
+          <Text style={flashStyles.resetBtnText}>Study Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={flashStyles.progressBarContainer}>
+        <View style={[flashStyles.progressBarFill, { width: `${progress * 100}%` as DimensionValue }]} />
+      </View>
+
+      <View style={flashStyles.statsBar}>
+        <View style={flashStyles.statsBarItem}>
+          <Ionicons name="checkmark-circle" size={14} color="#00C896" />
+          <Text style={[flashStyles.statsBarText, { color: "#00C896" }]}>{knownCount}</Text>
+        </View>
+        <Text style={flashStyles.statsBarLabel}>{currentIndex + 1} of {FLASHCARDS.length}</Text>
+        <View style={flashStyles.statsBarItem}>
+          <Ionicons name="refresh-circle" size={14} color="#F59E0B" />
+          <Text style={[flashStyles.statsBarText, { color: "#F59E0B" }]}>{reviewCount}</Text>
+        </View>
+      </View>
+
+      <View style={flashStyles.swipeLabels}>
+        <Animated.View style={[flashStyles.swipeLabelLeft, { opacity: swipeLeftOpacity }]}>
+          <Ionicons name="refresh-circle" size={18} color="#F59E0B" />
+          <Text style={[flashStyles.swipeLabelText, { color: "#F59E0B" }]}>Review</Text>
+        </Animated.View>
+        <Animated.View style={[flashStyles.swipeLabelRight, { opacity: swipeRightOpacity }]}>
+          <Text style={[flashStyles.swipeLabelText, { color: "#00C896" }]}>Got It</Text>
+          <Ionicons name="checkmark-circle" size={18} color="#00C896" />
+        </Animated.View>
+      </View>
+
+      <Animated.View
+        style={[flashStyles.swipeContainer, { opacity, transform: [{ translateX }, { rotate }] }]}
+        {...panResponder.panHandlers}
+      >
+        {card && (
+          <FlipCard key={currentIndex} card={card} index={currentIndex} total={FLASHCARDS.length} flipped={flipped} />
+        )}
+      </Animated.View>
+
+      <View style={flashStyles.actionRow}>
+        <TouchableOpacity
+          style={[flashStyles.actionBtn, flashStyles.actionBtnReview]}
+          onPress={() => handleSwipe("review")}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="refresh-circle-outline" size={20} color="#F59E0B" />
+          <Text style={[flashStyles.actionBtnText, { color: "#F59E0B" }]}>Review</Text>
+        </TouchableOpacity>
+
+        <View style={flashStyles.actionCenter}>
+          <Ionicons name="swap-horizontal-outline" size={16} color={C.textSecondary} />
+          <Text style={flashStyles.actionCenterText}>swipe or tap buttons</Text>
+        </View>
+
+        <TouchableOpacity
+          style={[flashStyles.actionBtn, flashStyles.actionBtnKnown]}
+          onPress={() => handleSwipe("known")}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="checkmark-circle-outline" size={20} color="#00C896" />
+          <Text style={[flashStyles.actionBtnText, { color: "#00C896" }]}>Got It</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+type Tab = "learn" | "glossary" | "quiz" | "plan" | "flashcards";
+
 const TAB_LABELS: Record<Tab, string> = {
   learn: "Learn",
   glossary: "Glossary",
   quiz: "Quiz",
   plan: "Plan",
+  flashcards: "Flashcards",
 };
 
 export default function AcademyScreen() {
@@ -662,21 +973,22 @@ export default function AcademyScreen() {
       <GraduationCelebration visible={showCelebration} onClose={closeCelebration} />
 
       <View style={styles.header}>
-        <View style={styles.tabBar}>
-          {(["learn", "glossary", "quiz", "plan"] as Tab[]).map((t) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabScrollContent}>
+          {(["learn", "glossary", "quiz", "plan", "flashcards"] as Tab[]).map((t) => (
             <TouchableOpacity key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
               <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
                 {TAB_LABELS[t]}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       </View>
       <View style={{ flex: 1 }}>
         {tab === "learn" && <LearnView onAskMentor={openWithTopic} pendingLessonId={pendingLessonId} refreshing={refreshing} onRefresh={handleRefresh} />}
         {tab === "glossary" && <GlossaryView refreshing={refreshing} onRefresh={handleRefresh} />}
         {tab === "quiz" && <QuizView refreshing={refreshing} onRefresh={handleRefresh} />}
         {tab === "plan" && <PlanView refreshing={refreshing} onRefresh={handleRefresh} />}
+        {tab === "flashcards" && <FlashcardsView />}
       </View>
     </SafeAreaView>
   );
@@ -684,9 +996,10 @@ export default function AcademyScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
-  header: { paddingHorizontal: 16, paddingBottom: 0 },
-  tabBar: { flexDirection: "row", backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.cardBorder, marginBottom: 4 },
-  tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center" },
+  header: { paddingHorizontal: 12, paddingBottom: 0 },
+  tabScroll: { marginBottom: 4 },
+  tabScrollContent: { flexDirection: "row", backgroundColor: C.backgroundSecondary, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.cardBorder, gap: 2 },
+  tabBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 9, alignItems: "center" },
   tabBtnActive: { backgroundColor: C.accent },
   tabBtnText: { fontSize: 12, fontFamily: "Inter_500Medium", color: C.textSecondary },
   tabBtnTextActive: { color: "#0A0A0F", fontFamily: "Inter_700Bold" },
@@ -786,4 +1099,148 @@ const planStyles = StyleSheet.create({
   itemDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
   itemLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 2 },
   itemDesc: { fontSize: 13, color: C.textSecondary, lineHeight: 20 },
+});
+
+const flashStyles = StyleSheet.create({
+  progressBarContainer: {
+    height: 3,
+    backgroundColor: C.cardBorder,
+    marginHorizontal: 20,
+    marginTop: 8,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  progressBarFill: { height: 3, backgroundColor: C.accent, borderRadius: 2 },
+  statsBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  statsBarItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  statsBarText: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  statsBarLabel: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  swipeLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    marginBottom: 4,
+    height: 24,
+  },
+  swipeLabelLeft: { flexDirection: "row", alignItems: "center", gap: 4 },
+  swipeLabelRight: { flexDirection: "row", alignItems: "center", gap: 4 },
+  swipeLabelText: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  swipeContainer: { flex: 1, paddingHorizontal: 20, paddingBottom: 8 },
+  cardTouchable: { flex: 1 },
+  cardWrapper: { flex: 1, position: "relative" },
+  card: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: C.card,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    overflow: "hidden",
+    backfaceVisibility: "hidden",
+  },
+  cardBack: { backfaceVisibility: "hidden" },
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  termBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
+  termBadgeText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  cardCounter: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  frontContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 10,
+  },
+  termText: { fontSize: 36, fontFamily: "Inter_700Bold", textAlign: "center" },
+  fullText: { fontSize: 14, color: C.textSecondary, textAlign: "center", fontFamily: "Inter_500Medium" },
+  tapHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  tapHintText: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  backContent: { flex: 1, paddingHorizontal: 20, paddingVertical: 16 },
+  defLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: C.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  defText: { fontSize: 14, color: C.text, lineHeight: 22, fontFamily: "Inter_400Regular" },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  actionBtnReview: { borderColor: "#F59E0B44", backgroundColor: "#F59E0B15" },
+  actionBtnKnown: { borderColor: "#00C89644", backgroundColor: "#00C89615" },
+  actionBtnText: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  actionCenter: { alignItems: "center", gap: 3 },
+  actionCenterText: { fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular" },
+  doneContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 14,
+  },
+  doneEmoji: { fontSize: 56 },
+  doneTitle: { fontSize: 24, fontFamily: "Inter_700Bold", color: C.text },
+  doneSub: { fontSize: 13, color: C.textSecondary, textAlign: "center", lineHeight: 20 },
+  statsRow: { flexDirection: "row", gap: 16, marginTop: 8 },
+  statBox: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 6,
+  },
+  statNum: { fontSize: 28, fontFamily: "Inter_700Bold" },
+  statLabel: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  resetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: C.accent,
+    borderRadius: 14,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  resetBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 });

@@ -173,10 +173,6 @@ function TabLayoutInner() {
             name="code-editor"
             options={{ title: "Code Editor" }}
           />
-          <Tabs.Screen
-            name="flashcards"
-            options={{ title: "Flashcards" }}
-          />
         </Tabs>
       </Animated.View>
 

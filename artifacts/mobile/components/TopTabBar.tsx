@@ -32,7 +32,6 @@ const TAB_ICONS: Record<string, { default: keyof typeof Ionicons.glyphMap; selec
   dashboard:    { default: "home-outline",          selected: "home" },
   index:        { default: "calendar-outline",      selected: "calendar" },
   academy:      { default: "school-outline",        selected: "school" },
-  flashcards:   { default: "albums-outline",        selected: "albums" },
   videos:       { default: "play-circle-outline",   selected: "play-circle" },
   journal:      { default: "book-outline",          selected: "book" },
   tags:         { default: "pricetag-outline",      selected: "pricetag" },
@@ -45,7 +44,6 @@ const TAB_LABELS: Record<string, string> = {
   dashboard:    "Dashboard",
   index:        "Mission Control",
   academy:      "Academy",
-  flashcards:   "Flashcards",
   videos:       "Videos",
   journal:      "Journal",
   tags:         "Tags",
@@ -54,13 +52,12 @@ const TAB_LABELS: Record<string, string> = {
   tracker:      "Prop Tracker",
 };
 
-type TabRoute = "dashboard" | "index" | "academy" | "flashcards" | "videos" | "journal" | "tags" | "community" | "analytics" | "tracker";
+type TabRoute = "dashboard" | "index" | "academy" | "videos" | "journal" | "tags" | "community" | "analytics" | "tracker";
 
 const TAB_HREFS: Record<TabRoute, Href> = {
   dashboard:    "/dashboard",
   index:        "/",
   academy:      "/academy",
-  flashcards:   "/flashcards",
   videos:       "/videos",
   journal:      "/journal",
   tags:         "/tags",
@@ -69,8 +66,8 @@ const TAB_HREFS: Record<TabRoute, Href> = {
   tracker:      "/tracker",
 };
 
-const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "flashcards", "videos", "journal", "tags", "community", "analytics", "tracker"];
-const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy", "flashcards"];
+const BASE_TAB_ROUTES: TabRoute[] = ["dashboard", "index", "academy", "videos", "journal", "tags", "community", "analytics", "tracker"];
+const LITE_TAB_ROUTES: TabRoute[] = ["dashboard", "academy"];
 
 interface TopTabBarProps {
   pathname: string;
