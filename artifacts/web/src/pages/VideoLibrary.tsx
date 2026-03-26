@@ -244,7 +244,7 @@ export default function VideoLibrary({ initialVideoId }: { initialVideoId?: stri
       <div className="border-b border-border px-6 py-5 shrink-0 pl-[0px] pr-[0px] pt-[0px] pb-[0px]">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-xl font-bold text-foreground">Video Library</h1>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-muted-foreground text-justify text-[14px]">
             {loading ? "..." : `${watchedCount} / ${ALL_VIDEOS.length} watched`}
           </span>
         </div>
