@@ -139,11 +139,30 @@ const fi = StyleSheet.create({
 
 interface MonteCarloResult {
   buckets: number[];
+  bucketMin: number;
+  bucketRange: number;
   median: number;
   p10: number;
   p90: number;
   ruinPct: number;
   maxGain: number;
+  expectancy: number;
+  breakevenWR: number;
+  avgMaxDrawdown: number;
+  consecLosses: number;
+  winRate: number;
+  rr: number;
+}
+
+function computeMobileMaxDrawdown(equity: number[]): number {
+  let peak = equity[0];
+  let maxDD = 0;
+  for (const v of equity) {
+    if (v > peak) peak = v;
+    const dd = (peak - v) / peak;
+    if (dd > maxDD) maxDD = dd;
+  }
+  return maxDD;
 }
 
 function runMonteCarlo(
@@ -154,18 +173,22 @@ function runMonteCarlo(
   numSims: number
 ): MonteCarloResult {
   const finalEquities: number[] = [];
+  const maxDrawdowns: number[] = [];
   let ruinCount = 0;
 
   for (let s = 0; s < numSims; s++) {
     let equity = 100;
     let ruined = false;
+    const path: number[] = [100];
     for (let t = 0; t < numTrades; t++) {
       const win = Math.random() < winRate;
       const change = win ? equity * (riskPct / 100) * rr : -equity * (riskPct / 100);
       equity += change;
-      if (equity <= 10) { ruined = true; break; }
+      if (equity <= 10) { ruined = true; path.push(equity); break; }
+      path.push(equity);
     }
     finalEquities.push(ruined ? 0 : equity);
+    maxDrawdowns.push(computeMobileMaxDrawdown(path));
     if (ruined) ruinCount++;
   }
 
@@ -185,7 +208,24 @@ function runMonteCarlo(
     buckets[bi]++;
   }
 
-  return { buckets, median, p10, p90, ruinPct: (ruinCount / numSims) * 100, maxGain };
+  const avgMaxDrawdown = maxDrawdowns.reduce((a, b) => a + b, 0) / maxDrawdowns.length;
+  const expectancy = winRate * rr - (1 - winRate);
+  const breakevenWR = 1 / (1 + rr);
+  const lossRate = 1 - winRate;
+  const consecLosses = lossRate > 0 ? Math.log(numTrades) / Math.log(1 / lossRate) : 0;
+
+  return {
+    buckets, bucketMin: min, bucketRange: range,
+    median, p10, p90,
+    ruinPct: (ruinCount / numSims) * 100,
+    maxGain,
+    expectancy,
+    breakevenWR,
+    avgMaxDrawdown,
+    consecLosses,
+    winRate,
+    rr,
+  };
 }
 
 function MonteCarloSimulator() {
@@ -195,6 +235,7 @@ function MonteCarloSimulator() {
   const [numTrades, setNumTrades] = useState("1000");
   const [result, setResult] = useState<MonteCarloResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [chartWidth, setChartWidth] = useState(0);
 
   const run = useCallback(() => {
     setRunning(true);
@@ -210,6 +251,14 @@ function MonteCarloSimulator() {
 
   const maxBucket = result ? Math.max(...result.buckets, 1) : 1;
   const chartH = 80;
+
+  const breakevenBucketIdx = result
+    ? Math.max(0, Math.min(result.buckets.length - 1, Math.floor(((100 - result.bucketMin) / result.bucketRange) * result.buckets.length)))
+    : -1;
+
+  const breakevenMarkerLeft = result && chartWidth > 0
+    ? Math.max(0, Math.min(chartWidth - 2, (breakevenBucketIdx / result.buckets.length) * chartWidth))
+    : -1;
 
   return (
     <View style={mc.container}>
@@ -242,14 +291,37 @@ function MonteCarloSimulator() {
       {result && (
         <View style={mc.results}>
           <Text style={mc.chartTitle}>Final Equity Distribution (1000 runs)</Text>
-          <View style={[mc.chartArea, { height: chartH + 16 }]}>
-            {result.buckets.map((count, i) => {
-              const h = Math.max(2, (count / maxBucket) * chartH);
-              const isRuin = i === 0 && result.ruinPct > 5;
-              return (
-                <View key={i} style={[mc.bar, { height: h, backgroundColor: isRuin ? "#FF4444" : C.accent + "CC" }]} />
-              );
-            })}
+          <View
+            style={{ position: "relative" }}
+            onLayout={(e) => setChartWidth(e.nativeEvent.layout.width)}
+          >
+            <View style={[mc.chartArea, { height: chartH + 16 }]}>
+              {result.buckets.map((count, i) => {
+                const h = Math.max(2, (count / maxBucket) * chartH);
+                const isRuin = i === 0 && result.ruinPct > 5;
+                return (
+                  <View key={i} style={[mc.bar, { height: h, backgroundColor: isRuin ? "#FF4444" : C.accent + "CC" }]} />
+                );
+              })}
+            </View>
+            {breakevenMarkerLeft >= 0 && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  bottom: 8,
+                  left: breakevenMarkerLeft,
+                  width: 2,
+                  backgroundColor: "#F59E0B",
+                  opacity: 0.85,
+                }}
+              />
+            )}
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+            <View style={{ width: 10, height: 2, backgroundColor: "#F59E0B" }} />
+            <Text style={{ fontSize: 9, color: C.textSecondary }}>Breakeven line (100% equity)</Text>
           </View>
 
           <View style={mc.statsRow}>
@@ -270,8 +342,36 @@ function MonteCarloSimulator() {
               <Text style={[mc.statVal, { color: result.ruinPct > 20 ? "#FF4444" : result.ruinPct > 5 ? "#F59E0B" : C.accent }]}>{result.ruinPct.toFixed(1)}%</Text>
             </View>
           </View>
+
+          <View style={mc.statsRow}>
+            <View style={mc.statBox}>
+              <Text style={mc.statLabel}>Expectancy</Text>
+              <Text style={[mc.statVal, { fontSize: 15, color: result.expectancy >= 0 ? C.accent : "#FF4444" }]}>
+                {result.expectancy >= 0 ? "+" : ""}{result.expectancy.toFixed(2)}R
+              </Text>
+            </View>
+            <View style={mc.statBox}>
+              <Text style={mc.statLabel}>Breakeven WR</Text>
+              <Text style={[mc.statVal, { fontSize: 15, color: result.winRate >= result.breakevenWR ? C.accent : "#FF4444" }]}>
+                {(result.breakevenWR * 100).toFixed(1)}%
+              </Text>
+            </View>
+            <View style={mc.statBox}>
+              <Text style={mc.statLabel}>Avg Max DD</Text>
+              <Text style={[mc.statVal, { fontSize: 15, color: "#F59E0B" }]}>
+                {(result.avgMaxDrawdown * 100).toFixed(1)}%
+              </Text>
+            </View>
+            <View style={mc.statBox}>
+              <Text style={mc.statLabel}>Max Loss Run</Text>
+              <Text style={[mc.statVal, { fontSize: 15, color: C.text }]}>
+                {result.consecLosses.toFixed(1)}
+              </Text>
+            </View>
+          </View>
+
           <Text style={mc.note}>
-            Starting equity = 100. Values show final equity as % of start. Ruin = below 10%.
+            Starting equity = 100. Values show final equity as % of start. Ruin = below 10%. Breakeven WR = 1/(1+RR).
           </Text>
         </View>
       )}
@@ -293,7 +393,7 @@ const mc = StyleSheet.create({
   bar: { flex: 1, borderRadius: 2 },
   statsRow: { flexDirection: "row", gap: 8 },
   statBox: { flex: 1, backgroundColor: C.backgroundSecondary, borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: C.cardBorder },
-  statLabel: { fontSize: 10, color: C.textSecondary, fontWeight: "600", textTransform: "uppercase" },
+  statLabel: { fontSize: 9, color: C.textSecondary, fontWeight: "600", textTransform: "uppercase" },
   statVal: { fontSize: 18, fontWeight: "800", marginTop: 2 },
   note: { fontSize: 10, color: C.textSecondary, lineHeight: 14 },
 });

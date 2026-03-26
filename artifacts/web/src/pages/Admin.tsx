@@ -19,18 +19,41 @@ const MC_PROFILES = {
 type MCProfile = keyof typeof MC_PROFILES;
 
 const MC_START = 10_000;
-// With proportional risk, balance asymptotically approaches 0 and never reaches it exactly.
-// $1 is used as a practical ruin threshold — below this the account is unrecoverable.
 const MC_RUIN = 1;
 
-function runMonteCarlo(profile: MCProfile): number[][] {
-  const { winRate, risk, rewardRatio } = MC_PROFILES[profile];
+interface MCCustomInputs {
+  winRate: number;
+  risk: number;
+  rewardRatio: number;
+  startBalance: number;
+}
+
+function computeMaxDrawdown(history: number[]): number {
+  let peak = history[0];
+  let maxDD = 0;
+  for (const v of history) {
+    if (v > peak) peak = v;
+    const dd = (peak - v) / peak;
+    if (dd > maxDD) maxDD = dd;
+  }
+  return maxDD;
+}
+
+function expectedMaxConsecLosses(winRate: number, trades: number): number {
+  const lossRate = 1 - winRate;
+  if (lossRate <= 0) return 0;
+  return Math.log(trades) / Math.log(1 / lossRate);
+}
+
+function runMonteCarloCustom(inputs: MCCustomInputs): { paths: number[][], maxDrawdowns: number[] } {
+  const { winRate, risk, rewardRatio, startBalance } = inputs;
   const TRADES = 1000;
   const PATHS = 100;
   const paths: number[][] = [];
+  const maxDrawdowns: number[] = [];
   for (let p = 0; p < PATHS; p++) {
-    const history: number[] = [MC_START];
-    let balance = MC_START;
+    const history: number[] = [startBalance];
+    let balance = startBalance;
     for (let t = 0; t < TRADES; t++) {
       const riskAmt = balance * risk;
       if (Math.random() < winRate) {
@@ -39,14 +62,20 @@ function runMonteCarlo(profile: MCProfile): number[][] {
         balance -= riskAmt;
       }
       if (balance <= MC_RUIN) {
-        history.push(balance); // record actual sub-ruin balance, no artificial sentinel
+        history.push(balance);
         break;
       }
       history.push(balance);
     }
     paths.push(history);
+    maxDrawdowns.push(computeMaxDrawdown(history));
   }
-  return paths;
+  return { paths, maxDrawdowns };
+}
+
+function runMonteCarlo(profile: MCProfile): { paths: number[][], maxDrawdowns: number[] } {
+  const { winRate, risk, rewardRatio } = MC_PROFILES[profile];
+  return runMonteCarloCustom({ winRate, risk, rewardRatio, startBalance: MC_START });
 }
 
 function fmt(n: number): string {
@@ -55,39 +84,74 @@ function fmt(n: number): string {
   return `$${n.toFixed(0)}`;
 }
 
-function MonteCarloChart({ paths, width = 780, height = 320 }: { paths: number[][], width?: number, height?: number }) {
+function getPercentileAtIndex(sorted: number[], frac: number): number {
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * frac))];
+}
+
+
+function MonteCarloChart({ paths: pathsRaw, width = 780, height = 320, startBalance = MC_START, goalTarget }: {
+  paths: number[][], width?: number, height?: number, startBalance?: number, goalTarget?: number
+}) {
   const W = Math.max(width, 200);
   const H = height;
   const PAD = { left: 56, right: 16, top: 16, bottom: 32 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
-  const allFinals = paths.map((p) => p[p.length - 1]);
-  const p95 = [...allFinals].sort((a, b) => a - b)[Math.floor(allFinals.length * 0.95)];
-  const rawMax = Math.max(p95 * 1.2, 12_000);
+  const allFinals = pathsRaw.map((p) => p[p.length - 1]);
+  const sorted95 = [...allFinals].sort((a, b) => a - b);
+  const p95val = sorted95[Math.floor(sorted95.length * 0.95)];
+  const rawMax = Math.max(p95val * 1.2, startBalance * 1.2);
 
-  const logMin = Math.log10(1);
+  const logMin = Math.log10(Math.max(MC_RUIN, 1));
   const logMax = Math.log10(rawMax + 1);
   const toY = (v: number) =>
-    PAD.top + chartH - ((Math.log10(Math.max(v, 1)) - logMin) / (logMax - logMin)) * chartH;
+    PAD.top + chartH - ((Math.log10(Math.max(v, MC_RUIN)) - logMin) / (logMax - logMin)) * chartH;
 
-  const SAMPLE = 10;
-  function pathToPoints(history: number[]): string {
-    const pts: string[] = [];
-    for (let i = 0; i < history.length; i += SAMPLE) {
-      const x = PAD.left + (i / 1000) * chartW;
-      const y = toY(history[i]);
-      pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-    }
-    const last = history.length - 1;
-    const x = PAD.left + (last / 1000) * chartW;
-    const y = toY(history[last]);
-    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-    return pts.join(" ");
+  const STEP = 20;
+  const numSteps = Math.ceil(1000 / STEP);
+  const bandPaths: { p10: number[], p25: number[], p50: number[], p75: number[], p90: number[] } = {
+    p10: [], p25: [], p50: [], p75: [], p90: []
+  };
+  for (let ti = 0; ti <= numSteps; ti++) {
+    const t = Math.min(ti * STEP, 1000);
+    const vals: number[] = pathsRaw.map((path) => path[Math.min(t, path.length - 1)]);
+    vals.sort((a, b) => a - b);
+    bandPaths.p10.push(getPercentileAtIndex(vals, 0.10));
+    bandPaths.p25.push(getPercentileAtIndex(vals, 0.25));
+    bandPaths.p50.push(getPercentileAtIndex(vals, 0.50));
+    bandPaths.p75.push(getPercentileAtIndex(vals, 0.75));
+    bandPaths.p90.push(getPercentileAtIndex(vals, 0.90));
   }
 
-  const startY = toY(10_000);
+  function toSvgPoints(arr: number[]): string {
+    return arr.map((v, ti) => {
+      const t = Math.min(ti * STEP, 1000);
+      const x = PAD.left + (t / 1000) * chartW;
+      const y = toY(v);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+  }
+
+  function toAreaPath(topArr: number[], botArr: number[]): string {
+    const topPts = topArr.map((v, ti) => {
+      const t = Math.min(ti * STEP, 1000);
+      const x = PAD.left + (t / 1000) * chartW;
+      return `${x.toFixed(1)},${toY(v).toFixed(1)}`;
+    });
+    const botPts = [...botArr].reverse().map((v, ri) => {
+      const ti = botArr.length - 1 - ri;
+      const t = Math.min(ti * STEP, 1000);
+      const x = PAD.left + (t / 1000) * chartW;
+      return `${x.toFixed(1)},${toY(v).toFixed(1)}`;
+    });
+    return `M ${topPts[0]} L ${topPts.join(" L ")} L ${botPts.join(" L ")} Z`;
+  }
+
+  const startY = toY(startBalance);
   const yLabels = [1_000, 10_000, 100_000, 1_000_000].filter((v) => v <= rawMax * 1.1);
+
+  const goalY = goalTarget && goalTarget > 0 ? toY(goalTarget) : null;
 
   return (
     <svg width={W} height={H}>
@@ -103,24 +167,26 @@ function MonteCarloChart({ paths, width = 780, height = 320 }: { paths: number[]
       {[0, 250, 500, 750, 1000].map((t) => (
         <text key={t} x={PAD.left + (t / 1000) * chartW} y={H - 4} textAnchor="middle" fontSize={10} fill="currentColor" fillOpacity={0.4}>{t}</text>
       ))}
-      {paths.map((history, i) => {
-        const final = history[history.length - 1];
-        const blown = final <= MC_RUIN;
-        const won = final > MC_START;
-        const stroke = blown ? "#ef4444" : won ? "#22c55e" : "#6b7280";
-        return (
-          <polyline
-            key={i}
-            points={pathToPoints(history)}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={blown ? 1 : 0.8}
-            strokeOpacity={blown ? 0.5 : won ? 0.35 : 0.25}
-          />
-        );
-      })}
+
+      <path d={toAreaPath(bandPaths.p90, bandPaths.p75)} fill="rgba(34,197,94,0.08)" />
+      <path d={toAreaPath(bandPaths.p75, bandPaths.p25)} fill="rgba(34,197,94,0.15)" />
+      <path d={toAreaPath(bandPaths.p25, bandPaths.p10)} fill="rgba(34,197,94,0.08)" />
+
+      <polyline points={toSvgPoints(bandPaths.p90)} fill="none" stroke="rgba(34,197,94,0.25)" strokeWidth={1} />
+      <polyline points={toSvgPoints(bandPaths.p10)} fill="none" stroke="rgba(34,197,94,0.25)" strokeWidth={1} />
+      <polyline points={toSvgPoints(bandPaths.p75)} fill="none" stroke="rgba(34,197,94,0.3)" strokeWidth={1} strokeDasharray="3 3" />
+      <polyline points={toSvgPoints(bandPaths.p25)} fill="none" stroke="rgba(34,197,94,0.3)" strokeWidth={1} strokeDasharray="3 3" />
+      <polyline points={toSvgPoints(bandPaths.p50)} fill="none" stroke="#22c55e" strokeWidth={2} />
+
       <line x1={PAD.left} y1={startY} x2={W - PAD.right} y2={startY} stroke="#ef4444" strokeWidth={1.5} strokeDasharray="6 4" />
-      <text x={W - PAD.right + 2} y={startY + 4} fontSize={9} fill="#ef4444" fillOpacity={0.8}>$10k</text>
+      <text x={PAD.left + 4} y={startY - 4} fontSize={9} fill="#ef4444" fillOpacity={0.8}>{fmt(startBalance)} start</text>
+
+      {goalY !== null && goalTarget! > 0 && (
+        <>
+          <line x1={PAD.left} y1={goalY} x2={W - PAD.right} y2={goalY} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="8 4" />
+          <text x={W - PAD.right - 4} y={goalY - 4} textAnchor="end" fontSize={9} fill="#f59e0b" fillOpacity={0.9}>Goal {fmt(goalTarget!)}</text>
+        </>
+      )}
     </svg>
   );
 }
@@ -244,20 +310,72 @@ export default function Admin() {
   const { user, logout } = useAuth();
   const { reload: reloadConfig } = useAppConfig();
   const [tab, setTab] = useState<"users" | "tiers" | "settings" | "ai" | "code-editor">("users");
-  const [mcProfile, setMcProfile] = useState<MCProfile>("Median");
+  const [mcProfile, setMcProfile] = useState<MCProfile | "Custom">("Median");
   const [mcRerunKey, setMcRerunKey] = useState(0);
-  const mcPaths = useMemo(() => runMonteCarlo(mcProfile), [mcProfile, mcRerunKey]);
+  const [mcCustomWinRate, setMcCustomWinRate] = useState("50");
+  const [mcCustomRisk, setMcCustomRisk] = useState("2");
+  const [mcCustomRR, setMcCustomRR] = useState("1.5");
+  const [mcCustomBalance, setMcCustomBalance] = useState("10000");
+  const [mcGoalTarget, setMcGoalTarget] = useState("");
+  const [mcInputsDirty, setMcInputsDirty] = useState(false);
+
+  function setMcCustomWinRateDirty(v: string) { setMcCustomWinRate(v); if (mcProfile === "Custom") setMcInputsDirty(true); }
+  function setMcCustomRiskDirty(v: string) { setMcCustomRisk(v); if (mcProfile === "Custom") setMcInputsDirty(true); }
+  function setMcCustomRRDirty(v: string) { setMcCustomRR(v); if (mcProfile === "Custom") setMcInputsDirty(true); }
+  function setMcCustomBalanceDirty(v: string) { setMcCustomBalance(v); if (mcProfile === "Custom") setMcInputsDirty(true); }
+
+  const mcSimResult = useMemo(() => {
+    if (mcProfile === "Custom") {
+      const wr = Math.min(0.99, Math.max(0.01, parseFloat(mcCustomWinRate) / 100 || 0.5));
+      const risk = Math.min(0.5, Math.max(0.001, parseFloat(mcCustomRisk) / 100 || 0.02));
+      const rr = Math.max(0.1, parseFloat(mcCustomRR) || 1.5);
+      const bal = Math.max(100, parseFloat(mcCustomBalance) || MC_START);
+      return runMonteCarloCustom({ winRate: wr, risk, rewardRatio: rr, startBalance: bal });
+    }
+    return runMonteCarlo(mcProfile as MCProfile);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mcProfile, mcRerunKey]);
+
+  const mcPaths = mcSimResult.paths;
+  const mcMaxDrawdowns = mcSimResult.maxDrawdowns;
+
+  const mcStartBalance = useMemo(() => {
+    if (mcProfile === "Custom") return Math.max(100, parseFloat(mcCustomBalance) || MC_START);
+    return MC_START;
+  }, [mcProfile, mcCustomBalance, mcRerunKey]);
+
+  const mcInputs = useMemo((): MCCustomInputs => {
+    if (mcProfile !== "Custom") {
+      const p = MC_PROFILES[mcProfile as MCProfile];
+      return { winRate: p.winRate, risk: p.risk, rewardRatio: p.rewardRatio, startBalance: MC_START };
+    }
+    return {
+      winRate: Math.min(0.99, Math.max(0.01, parseFloat(mcCustomWinRate) / 100 || 0.5)),
+      risk: Math.min(0.5, Math.max(0.001, parseFloat(mcCustomRisk) / 100 || 0.02)),
+      rewardRatio: Math.max(0.1, parseFloat(mcCustomRR) || 1.5),
+      startBalance: Math.max(100, parseFloat(mcCustomBalance) || MC_START),
+    };
+  }, [mcProfile, mcCustomWinRate, mcCustomRisk, mcCustomRR, mcCustomBalance, mcRerunKey]);
+
   const mcStats = useMemo(() => {
     const finals = mcPaths.map((p) => p[p.length - 1]);
     const total = finals.length;
     const blown = Math.round((finals.filter((f) => f <= MC_RUIN).length / total) * 100);
-    const profitable = Math.round((finals.filter((f) => f > MC_START).length / total) * 100);
+    const profitable = Math.round((finals.filter((f) => f > mcStartBalance).length / total) * 100);
     const sorted = [...finals].sort((a, b) => a - b);
     const median = sorted[Math.floor(sorted.length / 2)];
     const best = Math.max(...finals);
     const worst = Math.min(...finals);
-    return { blown, profitable, median, best, worst };
-  }, [mcPaths]);
+    const avgMaxDD = mcMaxDrawdowns.reduce((a, b) => a + b, 0) / mcMaxDrawdowns.length;
+    const expectancy = mcInputs.winRate * mcInputs.rewardRatio - (1 - mcInputs.winRate);
+    const breakevenWR = 1 / (1 + mcInputs.rewardRatio);
+    const consecLosses = expectedMaxConsecLosses(mcInputs.winRate, 1000);
+    const goalVal = parseFloat(mcGoalTarget);
+    const goalReached = goalVal > 0
+      ? Math.round((mcPaths.filter((path) => path.some((v) => v >= goalVal)).length / total) * 100)
+      : null;
+    return { blown, profitable, median, best, worst, avgMaxDD, expectancy, breakevenWR, consecLosses, goalReached };
+  }, [mcPaths, mcMaxDrawdowns, mcInputs, mcStartBalance, mcGoalTarget]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState<string | null>(null);
@@ -496,15 +614,15 @@ export default function Admin() {
         <SettingsSection title="Monte Carlo Simulator" icon={TrendingUp}>
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              100 random life paths · 1000 trades each · $10,000 starting balance · log scale
+              100 random paths · 1000 trades each · percentile fan chart (P10/P25/median/P75/P90) · log scale
             </p>
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex gap-2 flex-wrap">
                 {(["Perfect", "Median", "Lousy"] as MCProfile[]).map((p) => (
                   <button
                     key={p}
-                    onClick={() => setMcProfile(p)}
+                    onClick={() => { setMcProfile(p); setMcInputsDirty(false); }}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
                       mcProfile === p
                         ? "bg-primary/10 border-primary/40 text-primary"
@@ -517,35 +635,138 @@ export default function Admin() {
                     </span>
                   </button>
                 ))}
+                <button
+                  onClick={() => { setMcProfile("Custom"); setMcInputsDirty(false); }}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                    mcProfile === "Custom"
+                      ? "bg-primary/10 border-primary/40 text-primary"
+                      : "bg-card border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Custom
+                </button>
               </div>
-              <button
-                onClick={() => setMcRerunKey((k) => k + 1)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Re-run
-              </button>
+              <div className="flex items-center gap-2">
+                {mcInputsDirty && (
+                  <span className="text-xs text-amber-500 font-medium">inputs changed</span>
+                )}
+                <button
+                  onClick={() => { setMcRerunKey((k) => k + 1); setMcInputsDirty(false); }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    mcInputsDirty
+                      ? "bg-amber-500/20 border border-amber-500/40 text-amber-500 hover:bg-amber-500/30"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Re-run
+                </button>
+              </div>
+            </div>
+
+            <div className={`grid gap-3 p-4 bg-muted/30 border border-border rounded-xl ${mcProfile === "Custom" ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-3"}`}>
+              {mcProfile === "Custom" && (
+                <>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">Win Rate (%)</label>
+                    <input
+                      type="number" min="1" max="99" step="1"
+                      value={mcCustomWinRate}
+                      onChange={(e) => setMcCustomWinRateDirty(e.target.value)}
+                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm"
+                      placeholder="50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">Risk/Trade (%)</label>
+                    <input
+                      type="number" min="0.1" max="50" step="0.1"
+                      value={mcCustomRisk}
+                      onChange={(e) => setMcCustomRiskDirty(e.target.value)}
+                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm"
+                      placeholder="2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">Risk:Reward</label>
+                    <input
+                      type="number" min="0.1" max="20" step="0.1"
+                      value={mcCustomRR}
+                      onChange={(e) => setMcCustomRRDirty(e.target.value)}
+                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm"
+                      placeholder="1.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground mb-1 block">Starting Balance ($)</label>
+                    <input
+                      type="number" min="100" step="100"
+                      value={mcCustomBalance}
+                      onChange={(e) => setMcCustomBalanceDirty(e.target.value)}
+                      className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm"
+                      placeholder="10000"
+                    />
+                  </div>
+                </>
+              )}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Goal Target ($)</label>
+                <input
+                  type="number" min="0" step="1000"
+                  value={mcGoalTarget}
+                  onChange={(e) => setMcGoalTarget(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-sm"
+                  placeholder="optional"
+                />
+              </div>
+              {mcProfile !== "Custom" && <div />}
+              {mcProfile !== "Custom" && <div />}
             </div>
 
             <div className="bg-background border border-border rounded-lg overflow-hidden">
               <ResponsiveContainer width="100%" height={320}>
-                <MonteCarloChart paths={mcPaths} />
+                <MonteCarloChart
+                  paths={mcPaths}
+                  startBalance={mcStartBalance}
+                  goalTarget={parseFloat(mcGoalTarget) || undefined}
+                />
               </ResponsiveContainer>
               <div className="flex flex-wrap gap-4 px-4 pb-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-green-500 inline-block rounded" />Profitable path</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-red-500 inline-block rounded" />Blown account</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-gray-500 inline-block rounded" />Flat/slight loss</span>
-                <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-red-500 border-dashed" />$10k start</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-8 h-3 inline-block rounded" style={{ background: "rgba(34,197,94,0.15)" }} />
+                  P25–P75 (middle half)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-8 h-3 inline-block rounded" style={{ background: "rgba(34,197,94,0.08)" }} />
+                  P10–P90 (outer range)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-5 h-0.5 bg-green-500 inline-block rounded" />
+                  Median (P50)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-5 border-t-2 border-red-500 border-dashed" />
+                  Start balance
+                </span>
+                {mcGoalTarget && parseFloat(mcGoalTarget) > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-5 border-t-2 border-amber-500 border-dashed" />
+                    Goal target
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {mcInputsDirty && (
+              <p className="text-xs text-amber-500/80 italic">Chart and path stats below reflect the last run — click Re-run to update with new inputs.</p>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: "Profitable", value: `${mcStats.profitable}%`, sub: "of paths above $10k", color: "text-green-500" },
+                { label: "Profitable", value: `${mcStats.profitable}%`, sub: `above ${fmt(mcStartBalance)}`, color: "text-green-500" },
                 { label: "Blown", value: `${mcStats.blown}%`, sub: "of paths ruined", color: "text-red-500" },
                 { label: "Median Outcome", value: fmt(mcStats.median), sub: "middle path final", color: "text-foreground" },
                 { label: "Best Path", value: fmt(mcStats.best), sub: "top outcome", color: "text-primary" },
-                { label: "Worst Path", value: fmt(mcStats.worst), sub: "bottom outcome", color: "text-muted-foreground" },
               ].map(({ label, value, sub, color }) => (
                 <div key={label} className="bg-card border border-border rounded-xl p-4">
                   <p className="text-xs text-muted-foreground">{label}</p>
@@ -553,6 +774,49 @@ export default function Admin() {
                   <p className="text-xs text-muted-foreground">{sub}</p>
                 </div>
               ))}
+            </div>
+
+            <div className={`grid gap-3 ${mcStats.goalReached !== null ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"}`}>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <p className="text-xs text-muted-foreground">Expectancy/Trade</p>
+                <p className={`text-xl font-bold ${mcStats.expectancy >= 0 ? "text-green-500" : "text-red-500"}`}>
+                  {mcStats.expectancy >= 0 ? "+" : ""}{mcStats.expectancy.toFixed(2)}R
+                </p>
+                <p className="text-xs text-muted-foreground">expected R per trade</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <p className="text-xs text-muted-foreground">Avg Max Drawdown</p>
+                <p className="text-xl font-bold text-amber-500">
+                  {(mcStats.avgMaxDD * 100).toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground">avg worst dip per path</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <p className="text-xs text-muted-foreground">Breakeven WR</p>
+                <p className={`text-xl font-bold ${mcInputs.winRate >= mcStats.breakevenWR ? "text-green-500" : "text-red-500"}`}>
+                  {(mcStats.breakevenWR * 100).toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  min WR at {mcInputs.rewardRatio}× RR · yours is {(mcInputs.winRate * 100).toFixed(0)}%
+                </p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <p className="text-xs text-muted-foreground">Exp. Max Losing Streak</p>
+                <p className="text-xl font-bold text-foreground">
+                  {mcStats.consecLosses.toFixed(1)}
+                </p>
+                <p className="text-xs text-muted-foreground">expected worst streak in 1000 trades</p>
+              </div>
+              {mcStats.goalReached !== null && (
+                <div className="bg-card border border-amber-500/30 rounded-xl p-4">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Target className="h-3 w-3 text-amber-500" />
+                    Goal Touched
+                  </p>
+                  <p className="text-xl font-bold text-amber-500">{mcStats.goalReached}%</p>
+                  <p className="text-xs text-muted-foreground">paths touched {fmt(parseFloat(mcGoalTarget))}</p>
+                </div>
+              )}
             </div>
 
             <div className="bg-card border border-border rounded-xl p-5 space-y-3">
