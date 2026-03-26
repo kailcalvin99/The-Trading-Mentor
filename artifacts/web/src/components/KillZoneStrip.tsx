@@ -172,7 +172,7 @@ export default function KillZoneStrip() {
               ) : isEnded ? (
                 <span className="text-xs text-muted-foreground font-medium shrink-0 ml-1">Ended</span>
               ) : (
-                <span className={`text-xs font-mono font-medium shrink-0 ml-1 ${isNear ? "text-amber-400" : "text-muted-foreground"}`}>
+                <span className="font-mono font-medium shrink-0 text-muted-foreground text-[8px] text-right ml-[0px]">
                   {formatCountdown(msUntil)}
                 </span>
               )}

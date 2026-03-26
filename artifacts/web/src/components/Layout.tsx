@@ -500,288 +500,288 @@ export default function Layout() {
 
   return (
     <TooltipProvider delayDuration={300}>
-    <div className="flex h-screen overflow-hidden">
-      {/* Dimming backdrop */}
-      <div
-        className={`fixed inset-0 z-40 transition-opacity duration-300 bg-black/60 backdrop-blur-[2px] ${drawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-        onClick={closeDrawer}
-      />
-
-      {/* Top-drop drawer — clips and falls from below the header */}
-      <div className="fixed top-12 left-0 right-0 z-50 overflow-hidden pointer-events-none">
+      <div className="flex h-screen overflow-hidden">
+        {/* Dimming backdrop */}
         <div
-          className={`bg-sidebar border-b border-sidebar-border shadow-2xl transition-transform duration-300 ease-out pointer-events-auto ${
-            drawerOpen ? "translate-y-0" : "-translate-y-full"
-          }`}
-        >
-          {/* Nav grid */}
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-3">
-            {visibleNavItems.map((item) => {
-              const isActive = location.pathname === item.to;
-              const isLocked = !isAdmin && tierLevel < (item.requiredTier ?? 0);
-              const hasBadge = (item.to === "/community" && communityHasNew) || (item.to === "/journal" && journalDraftCount > 0);
-              return (
-                <button
-                  key={item.to}
-                  onClick={() => {
-                    if (isLocked) { handleLockedClick(); }
-                    else { navigate(item.to); closeDrawer(); }
-                  }}
-                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all relative ${
-                    isActive
-                      ? "bg-primary/15 text-primary"
-                      : isLocked
-                      ? "text-muted-foreground/40"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                  }`}
-                >
-                  <item.icon className="h-5 w-5 shrink-0" />
-                  <span className="text-[10px] font-semibold leading-none text-center">{item.label}</span>
-                  {isLocked && <span className="absolute top-1.5 right-1.5 text-[8px]">🔒</span>}
-                  {hasBadge && !isLocked && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          className={`fixed inset-0 z-40 transition-opacity duration-300 bg-black/60 backdrop-blur-[2px] ${drawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          onClick={closeDrawer}
+        />
 
-          {/* Utility strip */}
-          <div className="flex items-center gap-1 px-3 py-2 border-t border-sidebar-border flex-wrap">
-            <ModeSwitcher collapsed={true} appMode={appMode} setAppMode={setAppMode} />
-            <Link
-              to="/pricing"
-              onClick={closeDrawer}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              <CreditCard className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Subscription</span>
-            </Link>
-            <Link
-              to="/settings"
-              onClick={closeDrawer}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              <Settings className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Settings</span>
-            </Link>
-            {isAdmin && (
+        {/* Top-drop drawer — clips and falls from below the header */}
+        <div className="fixed top-12 left-0 right-0 z-50 overflow-hidden pointer-events-none">
+          <div
+            className={`bg-sidebar border-b border-sidebar-border shadow-2xl transition-transform duration-300 ease-out pointer-events-auto ${
+              drawerOpen ? "translate-y-0" : "-translate-y-full"
+            }`}
+          >
+            {/* Nav grid */}
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-3">
+              {visibleNavItems.map((item) => {
+                const isActive = location.pathname === item.to;
+                const isLocked = !isAdmin && tierLevel < (item.requiredTier ?? 0);
+                const hasBadge = (item.to === "/community" && communityHasNew) || (item.to === "/journal" && journalDraftCount > 0);
+                return (
+                  <button
+                    key={item.to}
+                    onClick={() => {
+                      if (isLocked) { handleLockedClick(); }
+                      else { navigate(item.to); closeDrawer(); }
+                    }}
+                    className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all relative ${
+                      isActive
+                        ? "bg-primary/15 text-primary"
+                        : isLocked
+                        ? "text-muted-foreground/40"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5 shrink-0" />
+                    <span className="text-[10px] font-semibold leading-none text-center">{item.label}</span>
+                    {isLocked && <span className="absolute top-1.5 right-1.5 text-[8px]">🔒</span>}
+                    {hasBadge && !isLocked && (
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Utility strip */}
+            <div className="flex items-center gap-1 px-3 py-2 border-t border-sidebar-border flex-wrap">
+              <ModeSwitcher collapsed={true} appMode={appMode} setAppMode={setAppMode} />
               <Link
-                to="/admin"
+                to="/pricing"
                 onClick={closeDrawer}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
-                <Lock className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Admin</span>
+                <CreditCard className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Subscription</span>
               </Link>
-            )}
-            <Link
-              to="/welcome"
-              onClick={closeDrawer}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              <HelpCircle className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Help</span>
-            </Link>
-            <button
-              onClick={() => { handleOpenShare(); closeDrawer(); }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Invite</span>
-            </button>
-
-            {/* User pill — right side */}
-            <div className="relative ml-auto">
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              <Link
+                to="/settings"
+                onClick={closeDrawer}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
-                <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden border border-border">
-                  {user?.avatarUrl ? (
-                    user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
-                      <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-sm leading-none">{user.avatarUrl}</span>
-                    )
-                  ) : (
-                    <span className="text-[10px] font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "?"}</span>
-                  )}
-                </div>
-                <span className="hidden sm:inline truncate max-w-[100px]">{user?.name}</span>
-                {user?.isFounder && <Crown className="h-3 w-3 text-red-500 shrink-0" />}
-                <ChevronDown className="h-3 w-3 shrink-0" />
+                <Settings className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Settings</span>
+              </Link>
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  onClick={closeDrawer}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Admin</span>
+                </Link>
+              )}
+              <Link
+                to="/welcome"
+                onClick={closeDrawer}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Help</span>
+              </Link>
+              <button
+                onClick={() => { handleOpenShare(); closeDrawer(); }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Invite</span>
               </button>
 
-              {showUserMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowAvatarPicker(false); }} />
-                  <div className="absolute bottom-full right-0 mb-1 w-52 bg-card border border-border rounded-lg shadow-xl z-50 py-1">
-                    <div className="px-3 py-2 border-b border-border">
-                      <p className="text-xs font-medium text-foreground">{user?.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{user?.email}</p>
-                      {user?.isFounder && (
-                        <span className="inline-flex items-center gap-1 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5 mt-1">
-                          <Crown className="h-2.5 w-2.5 text-red-500" />
-                          <span className="text-[9px] font-bold text-red-500">FOUNDER #{user.founderNumber}</span>
-                        </span>
-                      )}
-                      <p className="text-[10px] text-primary mt-1 font-medium">
-                        {subscription?.tierName || "Free"} Plan
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => { setAppMode(appMode === "lite" ? "full" : "lite"); setShowUserMenu(false); }}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
-                    >
-                      {appMode === "lite" ? <Zap className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
-                      {appMode === "lite" ? "Full Mode" : "Learning Mode"}
-                    </button>
-                    <button
-                      onClick={() => { setShowAvatarPicker((v) => !v); }}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
-                    >
-                      <User className="h-4 w-4" />
-                      Change Avatar
-                    </button>
-                    {showAvatarPicker && (
-                      <div className="px-3 pb-2 border-t border-border">
-                        <p className="text-[10px] text-muted-foreground pt-2 mb-2">Pick a trading avatar:</p>
-                        <div className="grid grid-cols-4 gap-1 mb-2">
-                          {STOCK_AVATARS.map((av) => (
-                            <button
-                              key={av.id}
-                              onClick={async () => {
-                                await setAvatarUrl(av.emoji);
-                                setShowAvatarPicker(false);
-                                setShowUserMenu(false);
-                              }}
-                              className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-all hover:bg-secondary text-center ${user?.avatarUrl === av.emoji ? "border-primary bg-primary/10" : "border-border"}`}
-                            >
-                              <span className="text-xl">{av.emoji}</span>
-                              <span className="text-[9px] text-muted-foreground">{av.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                        <label className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer p-1.5 rounded-lg hover:bg-secondary transition-colors">
-                          <User className="h-3.5 w-3.5 shrink-0" />
-                          Upload Photo
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              try {
-                                const dataUrl = await resizeImageToBase64(file);
-                                await setAvatarUrl(dataUrl);
-                                setShowAvatarPicker(false);
-                                setShowUserMenu(false);
-                              } catch {}
-                            }}
-                          />
-                        </label>
-                      </div>
+              {/* User pill — right side */}
+              <div className="relative ml-auto">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden border border-border">
+                    {user?.avatarUrl ? (
+                      user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
+                        <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-sm leading-none">{user.avatarUrl}</span>
+                      )
+                    ) : (
+                      <span className="text-[10px] font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "?"}</span>
                     )}
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 w-full text-left border-t border-border"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Sign Out
-                    </button>
                   </div>
-                </>
+                  <span className="hidden sm:inline truncate max-w-[100px]">{user?.name}</span>
+                  {user?.isFounder && <Crown className="h-3 w-3 text-red-500 shrink-0" />}
+                  <ChevronDown className="h-3 w-3 shrink-0" />
+                </button>
+
+                {showUserMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowAvatarPicker(false); }} />
+                    <div className="absolute bottom-full right-0 mb-1 w-52 bg-card border border-border rounded-lg shadow-xl z-50 py-1">
+                      <div className="px-3 py-2 border-b border-border">
+                        <p className="text-xs font-medium text-foreground">{user?.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{user?.email}</p>
+                        {user?.isFounder && (
+                          <span className="inline-flex items-center gap-1 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5 mt-1">
+                            <Crown className="h-2.5 w-2.5 text-red-500" />
+                            <span className="text-[9px] font-bold text-red-500">FOUNDER #{user.founderNumber}</span>
+                          </span>
+                        )}
+                        <p className="text-[10px] text-primary mt-1 font-medium">
+                          {subscription?.tierName || "Free"} Plan
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => { setAppMode(appMode === "lite" ? "full" : "lite"); setShowUserMenu(false); }}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
+                      >
+                        {appMode === "lite" ? <Zap className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+                        {appMode === "lite" ? "Full Mode" : "Learning Mode"}
+                      </button>
+                      <button
+                        onClick={() => { setShowAvatarPicker((v) => !v); }}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
+                      >
+                        <User className="h-4 w-4" />
+                        Change Avatar
+                      </button>
+                      {showAvatarPicker && (
+                        <div className="px-3 pb-2 border-t border-border">
+                          <p className="text-[10px] text-muted-foreground pt-2 mb-2">Pick a trading avatar:</p>
+                          <div className="grid grid-cols-4 gap-1 mb-2">
+                            {STOCK_AVATARS.map((av) => (
+                              <button
+                                key={av.id}
+                                onClick={async () => {
+                                  await setAvatarUrl(av.emoji);
+                                  setShowAvatarPicker(false);
+                                  setShowUserMenu(false);
+                                }}
+                                className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-all hover:bg-secondary text-center ${user?.avatarUrl === av.emoji ? "border-primary bg-primary/10" : "border-border"}`}
+                              >
+                                <span className="text-xl">{av.emoji}</span>
+                                <span className="text-[9px] text-muted-foreground">{av.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <label className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                            <User className="h-3.5 w-3.5 shrink-0" />
+                            Upload Photo
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const dataUrl = await resizeImageToBase64(file);
+                                  await setAvatarUrl(dataUrl);
+                                  setShowAvatarPicker(false);
+                                  setShowUserMenu(false);
+                                } catch {}
+                              }}
+                            />
+                          </label>
+                        </div>
+                      )}
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 w-full text-left border-t border-border"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0 h-12 border-t-[#020203] border-r-[#020203] border-b-[#020203] border-l-[#020203] bg-[#242438]">
+            <button
+              onClick={() => setDrawerOpen((prev) => !prev)}
+              className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+              aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
+              aria-expanded={drawerOpen}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <AIAssistant />
+              <HeaderGamificationBadges />
+            </div>
+          </div>
+
+          <KillZoneStrip />
+
+          <main className="flex-1 overflow-auto relative">
+            <div className="flex h-full">
+              <div className="flex-1 overflow-auto">
+                <Outlet />
+              </div>
+
+              {isFreeUser && (
+                <div className="hidden xl:block w-72 border-l border-border bg-sidebar overflow-auto shrink-0">
+                  <FreeSidebar />
+                </div>
               )}
             </div>
-          </div>
-        </div>
-      </div>
+          </main>
 
-      <div className="flex flex-col flex-1 min-w-0">
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-sidebar shrink-0 h-12">
-          <button
-            onClick={() => setDrawerOpen((prev) => !prev)}
-            className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-            aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
-            aria-expanded={drawerOpen}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="ml-auto flex items-center gap-2">
-            <AIAssistant />
-            <HeaderGamificationBadges />
-          </div>
+          <nav className="md:hidden flex items-center border-t border-border bg-sidebar shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+            {visibleNavItems.map((item) => (
+              <MobileNavItem
+                key={item.to}
+                {...item}
+                userTier={tierLevel}
+                onLockedClick={handleLockedClick}
+                badge={item.to === "/community" ? communityHasNew : item.to === "/journal" ? journalDraftCount : undefined}
+              />
+            ))}
+          </nav>
         </div>
 
-        <KillZoneStrip />
+        {showShare && (
+          <ShareModal
+            founderSpotsLeft={founderSpotsLeft}
+            shareCopied={shareCopied}
+            setShareCopied={setShareCopied}
+            onClose={() => { setShowShare(false); setShareCopied(false); setFounderSpotsLeft(null); }}
+          />
+        )}
 
-        <main className="flex-1 overflow-auto relative">
-          <div className="flex h-full">
-            <div className="flex-1 overflow-auto">
-              <Outlet />
-            </div>
-
-            {isFreeUser && (
-              <div className="hidden xl:block w-72 border-l border-border bg-sidebar overflow-auto shrink-0">
-                <FreeSidebar />
+        {showLockToast && (
+          <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="bg-card border border-border rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
+              <Crown className="h-5 w-5 text-red-500 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Premium Feature</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Upgrade your plan to unlock this feature.
+                </p>
               </div>
-            )}
-          </div>
-        </main>
-
-        <nav className="md:hidden flex items-center border-t border-border bg-sidebar shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-          {visibleNavItems.map((item) => (
-            <MobileNavItem
-              key={item.to}
-              {...item}
-              userTier={tierLevel}
-              onLockedClick={handleLockedClick}
-              badge={item.to === "/community" ? communityHasNew : item.to === "/journal" ? journalDraftCount : undefined}
-            />
-          ))}
-        </nav>
-      </div>
-
-      {showShare && (
-        <ShareModal
-          founderSpotsLeft={founderSpotsLeft}
-          shareCopied={shareCopied}
-          setShareCopied={setShareCopied}
-          onClose={() => { setShowShare(false); setShareCopied(false); setFounderSpotsLeft(null); }}
-        />
-      )}
-
-      {showLockToast && (
-        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-card border border-border rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
-            <Crown className="h-5 w-5 text-red-500 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Premium Feature</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Upgrade your plan to unlock this feature.
-              </p>
+              <button
+                onClick={() => navigate("/pricing")}
+                className="text-xs text-primary font-bold shrink-0 hover:underline"
+              >
+                Upgrade
+              </button>
             </div>
-            <button
-              onClick={() => navigate("/pricing")}
-              className="text-xs text-primary font-bold shrink-0 hover:underline"
-            >
-              Upgrade
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {tourState.visible && (
-        <TourGuide
-          onClose={closeTour}
-          onNeverShow={neverShowTour}
-          state={tourState}
-          dispatch={tourDispatch}
-        />
-      )}
-    </div>
+        {tourState.visible && (
+          <TourGuide
+            onClose={closeTour}
+            onNeverShow={neverShowTour}
+            state={tourState}
+            dispatch={tourDispatch}
+          />
+        )}
+      </div>
     </TooltipProvider>
   );
 }
