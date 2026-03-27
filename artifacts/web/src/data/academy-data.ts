@@ -261,6 +261,18 @@ export const COURSE_CHAPTERS: Chapter[] = [
         takeaway: "IDM = Inducement — a fake mini-swing that tricks retail traders into the wrong side. The real move comes AFTER the IDM is swept. Always wait for IDM + MSS confirmation before entering."
       },
       {
+        id: "ch3-4c",
+        title: "Fibonacci Retracement — The Pullback Ruler",
+        paragraphs: [
+          "Before we get into the OTE, you need to understand one tool: the Fibonacci retracement. Don't let the name scare you — it's just a ruler that measures HOW FAR price has pulled back after a move.",
+          "Here's what 'retracement' means in plain English: price makes a big move up (or down), then pulls back a bit before continuing. That pull-back is the retracement. Fibonacci retracement puts percentage labels on that pull-back so you know exactly how deep it went.",
+          "The key levels are: 23.6%, 38.2%, 50%, 61.8%, and 78.6%. These are just percentages of the original move. If price moved 100 points up and then pulled back 61.8 points, that's a 61.8% retracement. The levels that matter most in ICT are the 61.8% and 78.6% — together they form the 62–79% zone that we call the OTE zone.",
+          "Why do traders care about these specific numbers? They come from the Fibonacci sequence — a pattern that appears repeatedly in nature and markets. The exact math isn't important. What IS important is that Smart Money watches these levels, which means price tends to react there.",
+          "How to draw it on a chart: for a bullish setup (price moved UP, now pulling back), anchor the tool at the swing LOW and drag it to the swing HIGH. The 0% level sits at the top (the high) and 100% sits at the bottom (the low). The zone between 61.8% and 78.6% is where you watch for a reaction. For a bearish setup (price moved DOWN, now pulling back upward), flip it — anchor at the swing HIGH and drag to the swing LOW."
+        ],
+        takeaway: "Fibonacci retracement is a tool that measures how far price has pulled back after a move. The key zone is 61.8%–78.6% (the 62–79% OTE zone). For bullish setups, draw from swing low to swing high. For bearish, draw from swing high to swing low."
+      },
+      {
         id: "ch3-5",
         title: "Optimal Trade Entry (OTE)",
         chartImage: "chart-ote.png",

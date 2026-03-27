@@ -107,6 +107,7 @@ const LESSON_VIDEO_MAP: Record<string, string[]> = {
   "ch3-2": ["v-ch3-4"],
   "ch3-3": ["v-ch3-1", "v-ch3-2", "v-ch3-3"],
   "ch3-4": ["v-ch3-5"],
+  "ch3-4c": [],
   "ch3-5": ["v-ch3-6"],
   "ch4-1": ["v-ch4-1"],
   "ch4-2": ["v-ch4-2"],
