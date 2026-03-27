@@ -10,19 +10,17 @@ import { TradingCalendarModal, TradingCalendarIconButton } from "./dashboard/Tra
 import { CumulativePnLChart } from "./dashboard/CumulativePnLChart";
 import { LastTradeGradeCard } from "./dashboard/LastTradeGradeCard";
 import { FvgAlertPopup, CommunityBanner, FvgSignalCard, ConfidenceScoreCard } from "./dashboard/LiveSignalWidgets";
-import { DashboardBanner, useScrollDirection } from "./dashboard/DashboardBanner";
+import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { LiveMarketPopover } from "./dashboard/LiveMarketPopover";
 import { QuickNoteFAB, QuickNoteModal } from "./dashboard/QuickNoteModal";
 import { AskAIFloater } from "./dashboard/AskAIFloater";
-import { DashAvatarPickerModal } from "./dashboard/DashAvatarPickerModal";
 import { SpotifyDashCard } from "./dashboard/SpotifyDashCard";
 import { RoutineWidgetConditional } from "./dashboard/RoutineWidgetConditional";
 
 export default function Dashboard() {
-  const { user, tierLevel, setAvatarUrl } = useAuth();
+  const { tierLevel } = useAuth();
   const isFreeUser = tierLevel === 0;
   const navigate = useNavigate();
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showQuickNote, setShowQuickNote] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const scrollDir = useScrollDirection();
@@ -41,18 +39,9 @@ export default function Dashboard() {
 
   return (
     <>
-      <DashboardBanner user={user} onAvatarClick={() => setShowAvatarPicker(true)} />
       <LiveMarketPopover />
 
       <AskAIFloater visible={scrollDir === "up"} onOpen={handleAIClick} />
-
-      {showAvatarPicker && (
-        <DashAvatarPickerModal
-          user={user}
-          onClose={() => setShowAvatarPicker(false)}
-          onSelect={async (val) => { await setAvatarUrl(val); setShowAvatarPicker(false); }}
-        />
-      )}
 
       {showQuickNote && <QuickNoteModal onClose={() => setShowQuickNote(false)} />}
       <QuickNoteFAB onOpen={() => setShowQuickNote(true)} />
