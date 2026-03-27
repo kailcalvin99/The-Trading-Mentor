@@ -7,7 +7,6 @@ import { FvgAlertPopup, CommunityBanner } from "./dashboard/LiveSignalWidgets";
 import { RoutineWidgetConditional } from "./dashboard/RoutineWidgetConditional";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import UpNextWidget from "@/components/UpNextWidget";
-import { LearningProgressWidget } from "./dashboard/LearningWidgets";
 
 export default function Dashboard() {
   const { tierLevel } = useAuth();
@@ -36,7 +35,6 @@ export default function Dashboard() {
             <MorningBriefingWidget />
             <UpNextWidget />
           </div>
-          <LearningProgressWidget />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <CumulativePnLChart />
