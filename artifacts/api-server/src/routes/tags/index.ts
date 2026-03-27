@@ -62,8 +62,8 @@ router.post("/", authRequired, async (req, res) => {
         category: tag.category,
       },
     });
-  } catch (err: any) {
-    if (err?.code === "23505") {
+  } catch (err: unknown) {
+    if (typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === "23505") {
       res.status(409).json({ error: "Tag with this name already exists" });
       return;
     }

@@ -31,9 +31,9 @@ async function initStripe() {
 
     stripeSync.syncBackfill()
       .then(() => console.log("Stripe data synced"))
-      .catch((err: any) => console.error("Error syncing Stripe data:", err.message));
-  } catch (error: any) {
-    console.error("Failed to initialize Stripe:", error.message);
+      .catch((err: unknown) => console.error("Error syncing Stripe data:", err instanceof Error ? err.message : String(err)));
+  } catch (error: unknown) {
+    console.error("Failed to initialize Stripe:", error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -253,8 +253,8 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 
 try {
   await initStripe();
-} catch (err: any) {
-  console.error("Stripe initialization failed, continuing without Stripe:", err?.message || err);
+} catch (err: unknown) {
+  console.error("Stripe initialization failed, continuing without Stripe:", err instanceof Error ? err.message : String(err));
 }
 
 await startServer(port);

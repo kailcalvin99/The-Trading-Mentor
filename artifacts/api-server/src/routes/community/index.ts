@@ -365,7 +365,8 @@ router.get("/new-count", async (req, res) => {
       );
 
     res.json({ count: total });
-  } catch {
+  } catch (err) {
+    console.error("[GET /community/new-count] Failed to get new-count:", err);
     res.json({ count: 0 });
   }
 });

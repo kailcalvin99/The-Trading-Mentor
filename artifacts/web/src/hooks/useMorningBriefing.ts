@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getESTNow, getNextKillZone } from "@/lib/timeUtils";
 
 const BRIEFING_KEY_PREFIX = "ict-morning-briefing-";
 
@@ -32,40 +33,6 @@ export interface MorningBriefingData {
   nextKillZone: string;
   briefingMessage: string;
   actionItems: string[];
-}
-
-function getESTNow(): Date {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit",
-    hour12: false,
-  });
-  const parts = Object.fromEntries(fmt.formatToParts(new Date()).map((p) => [p.type, p.value]));
-  return new Date(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute));
-}
-
-const SESSIONS = [
-  { name: "London Open", startH: 2, startM: 0 },
-  { name: "NY Open", startH: 9, startM: 30 },
-  { name: "Silver Bullet", startH: 10, startM: 0 },
-  { name: "London Close", startH: 11, startM: 0 },
-];
-
-function getNextKillZone(): string {
-  const est = getESTNow();
-  const nowMins = est.getHours() * 60 + est.getMinutes();
-  for (const session of SESSIONS) {
-    const sessionMins = session.startH * 60 + session.startM;
-    if (sessionMins > nowMins) {
-      const diff = sessionMins - nowMins;
-      const h = Math.floor(diff / 60);
-      const m = diff % 60;
-      if (h > 0) return `${session.name} in ${h}h ${m}m`;
-      return `${session.name} in ${m}m`;
-    }
-  }
-  return "London Open at 2:00 AM EST (tomorrow)";
 }
 
 function computeWinStreak(trades: Array<{ outcome?: string | null; createdAt?: string | null; isDraft?: boolean | null }>): number {

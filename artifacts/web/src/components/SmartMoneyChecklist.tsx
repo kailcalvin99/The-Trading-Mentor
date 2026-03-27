@@ -14,36 +14,10 @@ import {
 } from "lucide-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import { SMART_MONEY_SECTIONS } from "@/hooks/useTodaySchedule";
-
-function getESTNow(): Date {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-    hour12: false,
-  });
-  const parts = Object.fromEntries(
-    fmt.formatToParts(new Date()).map((p) => [p.type, p.value])
-  );
-  return new Date(
-    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-    Number(parts.hour), Number(parts.minute), Number(parts.second)
-  );
-}
-
-const KILL_ZONES = [
-  { id: "london", label: "London Open", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B" },
-  { id: "ny_open", label: "NY Open / AM", startH: 7, startM: 0, endH: 10, endM: 0, color: "#00C896" },
-  { id: "silver_bullet", label: "Silver Bullet", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444" },
-  { id: "london_close", label: "London Close", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8" },
-];
+import { getActiveKillZone, KILL_ZONES } from "@/lib/timeUtils";
 
 function detectKillZone(): string {
-  const est = getESTNow();
-  const totalMin = est.getHours() * 60 + est.getMinutes();
-  const kz = KILL_ZONES.find(
-    (k) => totalMin >= k.startH * 60 + k.startM && totalMin < k.endH * 60 + k.endM
-  );
+  const kz = getActiveKillZone();
   return kz ? kz.label : "";
 }
 

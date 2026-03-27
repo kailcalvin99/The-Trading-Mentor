@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { TrendingUp, TrendingDown, AlertTriangle, Radio, Clock, Activity, Shield } from "lucide-react";
 import { usePrices, useCalendarEvents, useOpenTrades, type PriceItem } from "@/hooks/useLiveMarket";
 import { useGetPropAccount } from "@workspace/api-client-react";
+import { getESTNow, SESSIONS } from "@/lib/timeUtils";
 
 function LiveBadge({ delayed }: { delayed: boolean }) {
   return (
@@ -369,28 +370,6 @@ export function EconomicCalendarWidget() {
   );
 }
 
-const SESSIONS_LIVE = [
-  { name: "London", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B" },
-  { name: "NY Open", startH: 9, startM: 30, endH: 10, endM: 0, color: "#00C896" },
-  { name: "Silver Bullet", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444" },
-  { name: "London Close", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8" },
-];
-
-function getESTNow(): Date {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-    hour12: false,
-  });
-  const parts = Object.fromEntries(
-    fmt.formatToParts(new Date()).map((p) => [p.type, p.value])
-  );
-  return new Date(
-    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-    Number(parts.hour), Number(parts.minute), Number(parts.second)
-  );
-}
 
 function formatCountdown(ms: number): string {
   if (ms <= 0) return "ending";
@@ -411,12 +390,12 @@ export function KillZoneCountdownWidget() {
 
   const totalMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
 
-  const activeSession = SESSIONS_LIVE.find(
+  const activeSession = SESSIONS.find(
     (s) => totalMin >= s.startH * 60 + s.startM && totalMin < s.endH * 60 + s.endM
   );
 
   const nextSession = !activeSession
-    ? SESSIONS_LIVE.find((s) => {
+    ? SESSIONS.find((s) => {
         const sessionStart = s.startH * 60 + s.startM;
         return sessionStart > totalMin;
       })

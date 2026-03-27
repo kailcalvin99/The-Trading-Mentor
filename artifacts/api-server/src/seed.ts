@@ -1,6 +1,6 @@
 import { db, subscriptionTiersTable, adminSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { DEFAULT_ICT_SYSTEM_PROMPT } from "./routes/gemini/index";
+import { DEFAULT_ICT_SYSTEM_PROMPT } from "./routes/gemini/systemPrompts";
 import { getStripeClient } from "./stripe/stripeClient";
 
 const STANDARD_MONTHLY_PRICE = "24.99";

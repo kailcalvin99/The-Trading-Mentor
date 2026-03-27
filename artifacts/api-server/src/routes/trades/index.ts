@@ -21,7 +21,8 @@ router.get("/", authRequired, async (req, res) => {
         riskPct: parseFloat(t.riskPct),
       }))
     );
-  } catch {
+  } catch (err) {
+    console.error("[GET /trades] Failed to list trades:", err);
     res.status(500).json({ error: "Failed to list trades" });
   }
 });
@@ -280,7 +281,8 @@ router.get("/open", authRequired, async (req, res) => {
         riskPct: parseFloat(t.riskPct),
       }))
     );
-  } catch {
+  } catch (err) {
+    console.error("[GET /trades/open] Failed to fetch open trades:", err);
     res.status(500).json({ error: "Failed to fetch open trades" });
   }
 });
@@ -291,7 +293,8 @@ router.delete("/all", authRequired, async (req, res) => {
     const userId = req.user!.userId;
     await db.delete(tradesTable).where(eq(tradesTable.userId, userId));
     res.json({ message: "All your trades deleted" });
-  } catch {
+  } catch (err) {
+    console.error("[DELETE /trades/all] Failed to delete trades:", err);
     res.status(500).json({ error: "Failed to delete trades" });
   }
 });
@@ -314,7 +317,8 @@ router.delete("/:id", authRequired, async (req, res) => {
       return;
     }
     res.status(204).end();
-  } catch {
+  } catch (err) {
+    console.error("[DELETE /trades/:id] Failed to delete trade:", err);
     res.status(500).json({ error: "Failed to delete trade" });
   }
 });
