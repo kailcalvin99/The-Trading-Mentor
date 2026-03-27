@@ -77,6 +77,7 @@ const CHART_IMAGES: Record<string, number> = {
   "chart-conservative-entry.png": require("@/assets/images/chart-conservative-entry.png"),
   "chart-silver-bullet.png": require("@/assets/images/chart-silver-bullet.png"),
   "chart-exit-criteria.png": require("@/assets/images/chart-exit-criteria.png"),
+  "chart-fibonacci.png": require("@/assets/images/chart-fibonacci.png"),
   "lesson-what-is-trading.png": require("@/assets/images/lesson-what-is-trading.png"),
   "lesson-futures-nq.png": require("@/assets/images/lesson-futures-nq.png"),
   "lesson-candlestick.png": require("@/assets/images/lesson-candlestick.png"),
