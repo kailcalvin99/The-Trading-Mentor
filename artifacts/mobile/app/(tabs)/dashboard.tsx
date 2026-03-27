@@ -45,6 +45,7 @@ import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
 import NewsModal from "@/components/NewsModal";
+import PnLCalendarBottomSheet from "@/components/PnLCalendarBottomSheet";
 
 const ROUTINE_DISPLAY: Array<{ key: "water" | "breathing" | "news" | "bias"; label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; why: string }> = [
   { key: "water", label: "Drink water", icon: "water-outline", why: "Dehydration reduces focus and decision-making quality." },
@@ -324,136 +325,6 @@ function MobileLastTradeGradeCard() {
         </View>
       </View>
     </View>
-  );
-}
-
-function PnLCalendarBottomSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const router = useRouter();
-  const { data: apiTrades } = useListTrades();
-  const [viewMonth, setViewMonth] = useState(() => {
-    const now = new Date();
-    return { year: now.getFullYear(), month: now.getMonth() };
-  });
-
-  const trades = (apiTrades || []) as Array<{
-    pnl?: string | number | null;
-    createdAt?: string | null;
-    isDraft?: boolean | null;
-  }>;
-
-  const dailyPnl: Record<string, number> = {};
-  trades.forEach((t) => {
-    if (t.isDraft || !t.createdAt) return;
-    const dateStr = new Date(t.createdAt).toISOString().split("T")[0];
-    const pnl = parseFloat(String(t.pnl ?? "0"));
-    if (!isNaN(pnl)) dailyPnl[dateStr] = (dailyPnl[dateStr] ?? 0) + pnl;
-  });
-
-  const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
-  const { year, month } = viewMonth;
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const daysInMonth = lastDay.getDate();
-  const startDow = firstDay.getDay();
-  const monthName = firstDay.toLocaleString("en-US", { month: "long" });
-
-  const prevMonth = () => setViewMonth(({ year: y, month: m }) =>
-    m === 0 ? { year: y - 1, month: 11 } : { year: y, month: m - 1 }
-  );
-  const nextMonth = () => setViewMonth(({ year: y, month: m }) =>
-    m === 11 ? { year: y + 1, month: 0 } : { year: y, month: m + 1 }
-  );
-
-  const monFirstOffset = (startDow + 6) % 7;
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < monFirstOffset; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  const cellSize = Math.floor((SCREEN_WIDTH - 16) / 7);
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose} />
-      <View style={[styles.modalSheet, { maxHeight: "80%" }]}>
-        <View style={styles.modalHandle} />
-        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}>
-          <Ionicons name="calendar-outline" size={16} color={C.accent} />
-          <Text style={styles.modalTitle}>P&L Calendar</Text>
-          <TouchableOpacity onPress={onClose} style={{ marginLeft: "auto" }} activeOpacity={0.7}>
-            <Ionicons name="close" size={20} color={C.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, marginBottom: 10 }}>
-          <TouchableOpacity onPress={prevMonth} style={calStyles.navBtn} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={16} color={C.textSecondary} />
-          </TouchableOpacity>
-          <Text style={calStyles.monthLabel}>{monthName} {year}</Text>
-          <TouchableOpacity onPress={nextMonth} style={calStyles.navBtn} activeOpacity={0.7}>
-            <Ionicons name="chevron-forward" size={16} color={C.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={calStyles.grid}>
-          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-            <Text key={i} style={[calStyles.dayHeader, { width: cellSize }]}>{d}</Text>
-          ))}
-        </View>
-
-        <ScrollView style={{ paddingHorizontal: 8, marginBottom: 16 }}>
-          <View style={calStyles.grid}>
-            {cells.map((day, i) => {
-              if (!day) return <View key={i} style={{ width: cellSize, height: cellSize }} />;
-              const mm = String(month + 1).padStart(2, "0");
-              const dd = String(day).padStart(2, "0");
-              const dateStr = `${year}-${mm}-${dd}`;
-              const pnl = dailyPnl[dateStr];
-              const hasTrades = pnl !== undefined;
-              const isProfit = hasTrades && pnl > 0;
-              const isLoss = hasTrades && pnl < 0;
-              const isToday = dateStr === todayStr;
-
-              return (
-                <TouchableOpacity
-                  key={i}
-                  style={[
-                    calStyles.cell,
-                    { width: cellSize, height: cellSize },
-                    isProfit && calStyles.cellProfit,
-                    isLoss && calStyles.cellLoss,
-                    isToday && calStyles.cellToday,
-                  ]}
-                  onPress={() => hasTrades ? router.navigate({ pathname: "/(tabs)/journal" }) : undefined}
-                  activeOpacity={hasTrades ? 0.75 : 1}
-                >
-                  <Text style={[
-                    calStyles.cellText,
-                    isProfit && calStyles.cellTextProfit,
-                    isLoss && calStyles.cellTextLoss,
-                    isToday && calStyles.cellTextToday,
-                  ]}>
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 16, marginTop: 12, paddingHorizontal: 8 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: "#00C89675" }} />
-              <Text style={{ fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>Profit</Text>
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: "#EF444475" }} />
-              <Text style={{ fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>Loss</Text>
-            </View>
-          </View>
-        </ScrollView>
-      </View>
-    </Modal>
   );
 }
 
@@ -2366,18 +2237,6 @@ export default function DashboardScreen() {
 
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
       </ScrollView>
-
-      {/* Log Trade FAB */}
-      <TouchableOpacity
-        style={[styles.logTradeFab, { backgroundColor: C.accent }]}
-        onPress={() => router.navigate({ pathname: "/(tabs)/journal", params: { new: "1" } } as never)}
-        activeOpacity={0.85}
-        accessibilityLabel="Log a trade"
-        accessibilityRole="button"
-      >
-        <Ionicons name="add" size={20} color="#0A0A0F" />
-        <Text style={styles.logTradeFabText}>Log Trade</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -2386,29 +2245,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
   scroll: { flex: 1 },
   content: { padding: 16 },
-
-  logTradeFab: {
-    position: "absolute",
-    bottom: Platform.OS === "ios" ? 28 : 16,
-    right: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 28,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-    zIndex: 50,
-  },
-  logTradeFabText: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-    color: "#0A0A0F",
-  },
 
   statsStrip: {
     marginHorizontal: -16,
@@ -3476,53 +3312,3 @@ const mobileChartStyles = StyleSheet.create({
   },
 });
 
-const calStyles = StyleSheet.create({
-  navBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: C.backgroundTertiary,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-  },
-  monthLabel: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-    color: C.text,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 8,
-  },
-  dayHeader: {
-    textAlign: "center",
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-    color: C.textSecondary,
-    paddingVertical: 4,
-  },
-  cell: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 6,
-    margin: 1,
-  },
-  cellText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    color: C.textSecondary,
-  },
-  cellProfit: {
-    backgroundColor: "#00C89625",
-  },
-  cellLoss: {
-    backgroundColor: "#EF444425",
-  },
-  cellToday: {
-    borderWidth: 1.5,
-    borderColor: C.accent,
-  },
-  cellTextProfit: { color: "#00C896", fontFamily: "Inter_700Bold" },
-  cellTextLoss: { color: "#EF4444", fontFamily: "Inter_700Bold" },
-  cellTextToday: { color: C.accent, fontFamily: "Inter_700Bold" },
-});
