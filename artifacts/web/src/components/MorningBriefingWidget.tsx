@@ -85,12 +85,12 @@ export default function MorningBriefingWidget() {
         onClick={handleDismiss}
         role="button"
         tabIndex={0}
-        aria-label="Dismiss morning briefing"
+        aria-label="Dismiss daily briefing"
         onKeyDown={(e) => e.key === "Enter" && handleDismiss()}
       >
         <div className="flex items-center gap-2 px-4 py-2.5 bg-red-600/10 border-b border-red-500/20">
           <Sparkles className="h-3.5 w-3.5 text-red-500 shrink-0" />
-          <span className="text-xs font-semibold text-red-500 uppercase tracking-wider flex-1">AI Morning Briefing</span>
+          <span className="text-xs font-semibold text-red-500 uppercase tracking-wider flex-1">Daily Briefing</span>
           <span className="text-xs text-muted-foreground">Tap to dismiss</span>
           <X className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         </div>
