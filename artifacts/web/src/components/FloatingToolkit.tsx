@@ -167,7 +167,7 @@ const TOOLS = [
   },
   {
     id: "tv-tools" as const,
-    label: "TV Indicators",
+    label: "TV Tools",
     Icon: BarChart2,
     color: "bg-rose-600 hover:bg-rose-500 text-white",
   },
