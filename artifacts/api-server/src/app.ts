@@ -64,7 +64,7 @@ const generalApiLimiter = rateLimit({
   message: { error: "Too many requests. Please slow down." },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path.startsWith("/auth") || req.path.startsWith("/analytics"),
+  skip: (req) => req.path.startsWith("/auth") || req.path.startsWith("/analytics") || req.path.startsWith("/admin"),
 });
 
 const webhookLimiter = rateLimit({

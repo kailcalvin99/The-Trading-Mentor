@@ -88,44 +88,88 @@ export function useAdminData(
 
   async function saveUserSub(userId: number) {
     setSaving(true);
-    await fetch(`${API_BASE}/admin/users/${userId}/subscription`, {
+    const tierId = editValues.tierId ? parseInt(editValues.tierId) : undefined;
+    const customMonthlyPrice = editValues.customMonthlyPrice || undefined;
+    const customAnnualPrice = editValues.customAnnualPrice || undefined;
+    const status = editValues.status || undefined;
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/subscription`, {
       method: "PUT", ...fetchOpts, headers,
-      body: JSON.stringify({
-        tierId: editValues.tierId ? parseInt(editValues.tierId) : undefined,
-        customMonthlyPrice: editValues.customMonthlyPrice || undefined,
-        customAnnualPrice: editValues.customAnnualPrice || undefined,
-        status: editValues.status || undefined,
-      }),
+      body: JSON.stringify({ tierId, customMonthlyPrice, customAnnualPrice, status }),
     });
-    setEditingUser(null);
+    if (res.ok) {
+      const matchedTier = tierId ? tiers.find((t) => t.id === tierId) : undefined;
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                tierId: tierId ?? u.tierId,
+                tierName: matchedTier ? matchedTier.name : u.tierName,
+                customMonthlyPrice: customMonthlyPrice ?? u.customMonthlyPrice,
+                customAnnualPrice: customAnnualPrice ?? u.customAnnualPrice,
+                subStatus: status ?? u.subStatus,
+              }
+            : u
+        )
+      );
+      setEditingUser(null);
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      setSaveMsg((errData as Record<string, string>).error || "Failed to save subscription.");
+      setTimeout(() => setSaveMsg(""), 3000);
+    }
     setSaving(false);
-    loadData();
   }
 
   async function saveTier(tierId: number) {
     setSaving(true);
-    await fetch(`${API_BASE}/admin/tiers/${tierId}`, {
+    const monthlyPrice = editValues.monthlyPrice;
+    const annualPrice = editValues.annualPrice;
+    const annualDiscountPct = editValues.annualDiscountPct ? parseInt(editValues.annualDiscountPct) : undefined;
+    const description = editValues.description;
+    const res = await fetch(`${API_BASE}/admin/tiers/${tierId}`, {
       method: "PUT", ...fetchOpts, headers,
-      body: JSON.stringify({
-        monthlyPrice: editValues.monthlyPrice,
-        annualPrice: editValues.annualPrice,
-        annualDiscountPct: editValues.annualDiscountPct ? parseInt(editValues.annualDiscountPct) : undefined,
-        description: editValues.description,
-      }),
+      body: JSON.stringify({ monthlyPrice, annualPrice, annualDiscountPct, description }),
     });
-    setEditingTier(null);
+    if (res.ok) {
+      setTiers((prev) =>
+        prev.map((t) =>
+          t.id === tierId
+            ? {
+                ...t,
+                monthlyPrice: monthlyPrice ?? t.monthlyPrice,
+                annualPrice: annualPrice ?? t.annualPrice,
+                annualDiscountPct: annualDiscountPct !== undefined ? String(annualDiscountPct) : t.annualDiscountPct,
+                description: description ?? t.description,
+              }
+            : t
+        )
+      );
+      setEditingTier(null);
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      setSaveMsg((errData as Record<string, string>).error || "Failed to save tier.");
+      setTimeout(() => setSaveMsg(""), 3000);
+    }
     setSaving(false);
-    loadData();
   }
 
   async function saveTierFeatures(tierId: number, features: string[]) {
     setSaving(true);
-    await fetch(`${API_BASE}/admin/tiers/${tierId}`, {
+    const res = await fetch(`${API_BASE}/admin/tiers/${tierId}`, {
       method: "PUT", ...fetchOpts, headers,
       body: JSON.stringify({ features }),
     });
+    if (res.ok) {
+      setTiers((prev) =>
+        prev.map((t) => (t.id === tierId ? { ...t, features } : t))
+      );
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      setSaveMsg((errData as Record<string, string>).error || "Failed to save tier features.");
+      setTimeout(() => setSaveMsg(""), 3000);
+    }
     setSaving(false);
-    loadData();
   }
 
   function updateSetting(key: string, value: string) {
