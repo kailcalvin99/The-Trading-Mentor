@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import Logo from "@/components/Logo";
 import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle, Shield } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -132,10 +131,15 @@ export default function Pricing() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+          <button onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate(user ? "/" : "/login");
+            }
+          }} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <Logo size={32} />
           <span className="text-lg font-bold text-foreground">Choose Your Plan</span>
         </div>
 
