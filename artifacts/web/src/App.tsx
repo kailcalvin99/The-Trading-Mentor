@@ -20,6 +20,7 @@ import { AuthGuard, AdminGuard, TierGuard } from "./components/AuthGuard";
 import { TourGuideProvider } from "./contexts/TourGuideContext";
 import { PlannerProvider } from "./contexts/PlannerContext";
 import { ThemeProvider } from "./components/ThemeProvider";
+import PageSkeleton from "./components/PageSkeleton";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const SmartJournal = lazy(() => import("./pages/SmartJournal"));
@@ -69,7 +70,7 @@ function App() {
                 <PlannerProvider>
                   <Router basename={basename}>
                   <ScrollToTop />
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<PageSkeleton />}>
                   <Routes>
                     {/* Public routes */}
                     <Route path="/login" element={<Login />} />
