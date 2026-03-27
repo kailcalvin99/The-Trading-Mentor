@@ -1449,6 +1449,7 @@ function MissionModal({ visible, onClose }: { visible: boolean; onClose: () => v
 }
 
 const ICT_ACADEMY_PROGRESS_KEY = "ict-academy-progress";
+const ACADEMY_PENDING_LESSON_KEY = "ict-academy-pending-lesson";
 
 function SwipeLessonCard({
   lesson,
@@ -1533,9 +1534,13 @@ function LessonCarousel() {
   const router = useRouter();
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [totalLessons, setTotalLessons] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
+      let total = 0;
+      for (const ch of COURSE_CHAPTERS) total += ch.lessons.length;
+      setTotalLessons(total);
       AsyncStorage.getItem(ICT_ACADEMY_PROGRESS_KEY).then((raw) => {
         try { setCompleted(new Set(raw ? JSON.parse(raw) : [])); } catch { setCompleted(new Set()); }
       });
@@ -1556,6 +1561,12 @@ function LessonCarousel() {
 
   if (lessonCards.length === 0) return null;
 
+  const pct = totalLessons > 0 ? Math.round((completed.size / totalLessons) * 100) : 0;
+  const firstUnwatched = allLessons.find((l) => !completed.has(l.id)) ?? lessonCards[0];
+  const nextLesson = firstUnwatched;
+  const lessonIndex = allLessons.findIndex((l) => l.id === nextLesson.id);
+  const estMins = 8 + (lessonIndex % 7) * 2;
+
   return (
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
@@ -1565,6 +1576,47 @@ function LessonCarousel() {
           <Text style={styles.editLink}>View all ↗</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={styles.lcProgressRow}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <Text style={styles.lcProgressText}>{completed.size} / {totalLessons} lessons</Text>
+          <View style={styles.lcProgressDot} />
+          <Text style={[styles.lcProgressText, { color: C.accent }]}>{pct}%</Text>
+        </View>
+        <View style={styles.lcProgressBar}>
+          <View style={[styles.lcProgressFill, { width: `${pct}%` }]} />
+        </View>
+      </View>
+
+      <View style={styles.lcNextCard}>
+        <View style={[styles.lcNextThumb, { backgroundColor: nextLesson.chapterColor + "25" }]}>
+          <Ionicons name="play-circle" size={30} color={nextLesson.chapterColor} />
+          <View style={styles.lcNextDurationBadge}>
+            <Ionicons name="time-outline" size={9} color="#fff" />
+            <Text style={styles.lcNextDurationText}>{estMins} min</Text>
+          </View>
+        </View>
+        <View style={styles.lcNextBody}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 2 }}>
+            <View style={[styles.lcNextDot, { backgroundColor: nextLesson.chapterColor }]} />
+            <Text style={styles.lcNextUpNextLabel}>UP NEXT</Text>
+          </View>
+          <Text style={styles.lcNextChapter} numberOfLines={1}>{nextLesson.chapterTitle}</Text>
+          <Text style={styles.lcNextTitle} numberOfLines={2}>{nextLesson.title}</Text>
+          <TouchableOpacity
+            style={styles.lcWatchBtn}
+            onPress={async () => {
+              await AsyncStorage.setItem(ACADEMY_PENDING_LESSON_KEY, JSON.stringify({ lessonId: nextLesson.id }));
+              router.navigate({ pathname: "/(tabs)/academy" });
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="play-circle" size={13} color="#0A0A0F" />
+            <Text style={styles.lcWatchBtnText}>Watch Now</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={styles.swipeLessonStack}>
         {[...lessonCards].reverse().map((lesson, reversedIdx) => {
           const stackIndex = lessonCards.length - 1 - reversedIdx;
@@ -2999,6 +3051,79 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+
+  lcProgressRow: {
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  lcProgressText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: C.textSecondary,
+  },
+  lcProgressDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: C.textSecondary,
+  },
+  lcProgressBar: {
+    height: 4,
+    backgroundColor: C.backgroundTertiary,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  lcProgressFill: {
+    height: 4,
+    backgroundColor: C.accent,
+    borderRadius: 2,
+  },
+  lcNextCard: {
+    flexDirection: "row",
+    marginHorizontal: 14,
+    marginBottom: 14,
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+    overflow: "hidden",
+  },
+  lcNextThumb: {
+    width: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  lcNextDurationBadge: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  lcNextDurationText: { fontSize: 10, color: "#fff", fontFamily: "Inter_600SemiBold" },
+  lcNextBody: { flex: 1, padding: 10, justifyContent: "center" },
+  lcNextDot: { width: 6, height: 6, borderRadius: 3 },
+  lcNextUpNextLabel: { fontSize: 10, fontFamily: "Inter_700Bold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1 },
+  lcNextChapter: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular", marginBottom: 1 },
+  lcNextTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.text, lineHeight: 18, marginBottom: 8 },
+  lcWatchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    backgroundColor: C.accent,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignSelf: "flex-start",
+  },
+  lcWatchBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 
   nextWatchCard: {
     backgroundColor: C.backgroundSecondary,
