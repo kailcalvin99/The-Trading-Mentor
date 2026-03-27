@@ -43,6 +43,7 @@ const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
 const SpotifyCallback = lazy(() => import("./pages/SpotifyCallback"));
 const PaperTradingPage = lazy(() => import("./pages/PaperTradingPage"));
+const OpenPositionsPage = lazy(() => import("./pages/OpenPositionsPage"));
 const NotFound = lazy(() => import("./pages/not-found"));
 
 function ScrollToTop() {
@@ -96,6 +97,7 @@ function App() {
                         <Route path="risk-shield" element={<Navigate to="/planner" replace />} />
                         <Route path="dashboard" element={<Navigate to="/" replace />} />
                         <Route path="prop-tracker" element={<TierGuard requiredTier={1}><PropTracker /></TierGuard>} />
+                        <Route path="open-positions" element={<OpenPositionsPage />} />
                         <Route path="journal" element={<SmartJournal />} />
                         <Route path="analytics" element={<TierGuard requiredTier={2}><Analytics /></TierGuard>} />
                         <Route path="leaderboard" element={<TierGuard requiredTier={2}><Leaderboard /></TierGuard>} />

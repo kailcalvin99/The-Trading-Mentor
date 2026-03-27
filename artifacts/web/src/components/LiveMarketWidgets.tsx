@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TrendingUp, TrendingDown, AlertTriangle, Radio, Clock, Activity, Shield } from "lucide-react";
-import { usePrices, useCalendarEvents, useOpenTrades, type PriceItem } from "@/hooks/useLiveMarket";
+import { usePrices, useCalendarEvents, useOpenTrades, type PriceItem, type OpenTrade } from "@/hooks/useLiveMarket";
 import { useGetPropAccount } from "@workspace/api-client-react";
 import { getESTNow, SESSIONS } from "@/lib/timeUtils";
 
@@ -106,37 +106,25 @@ export function LivePriceStrip() {
   );
 }
 
-export function OpenTradeCard() {
-  const { trades, loading } = useOpenTrades();
-  const { prices } = usePrices();
-  const { data: account } = useGetPropAccount();
+export interface SingleOpenTradeCardProps {
+  trade: OpenTrade;
+  prices: PriceItem[];
+  accountBalance: number;
+  dailyLoss: number;
+  maxDailyLossPct: number | null | undefined;
+  compact?: boolean;
+}
+
+export function SingleOpenTradeCard({
+  trade,
+  prices,
+  accountBalance,
+  dailyLoss,
+  maxDailyLossPct,
+  compact = false,
+}: SingleOpenTradeCardProps) {
   const navigate = useNavigate();
 
-  if (loading) {
-    return (
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Activity className="h-4 w-4 text-primary shrink-0" />
-          <h3 className="text-sm font-semibold text-foreground flex-1">Open Position</h3>
-        </div>
-        <div className="h-8 rounded-lg bg-secondary/40 animate-pulse" />
-      </div>
-    );
-  }
-
-  if (trades.length === 0) {
-    return (
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Activity className="h-4 w-4 text-primary shrink-0" />
-          <h3 className="text-sm font-semibold text-foreground flex-1">Open Position</h3>
-        </div>
-        <p className="text-xs text-muted-foreground">No open positions.</p>
-      </div>
-    );
-  }
-
-  const trade = trades[0];
   const matchedPrice = trade.entryPrice
     ? prices.find((p) => {
         const sym = trade.instrument?.toUpperCase() ?? "";
@@ -156,7 +144,6 @@ export function OpenTradeCard() {
     pnlDir = pnlPoints > 0 ? 1 : pnlPoints < 0 ? -1 : 0;
   }
 
-  const accountBalance = account?.startingBalance ?? 0;
   const riskDollars = accountBalance > 0 && trade.riskPct > 0
     ? (accountBalance * trade.riskPct) / 100
     : null;
@@ -177,43 +164,50 @@ export function OpenTradeCard() {
   const pnlColor = pnlDir > 0 ? "text-emerald-400" : pnlDir < 0 ? "text-red-400" : "text-muted-foreground";
   const pnlBg = pnlDir > 0 ? "border-emerald-500/30 bg-emerald-500/5" : pnlDir < 0 ? "border-red-500/30 bg-red-500/5" : "border-border";
 
-  // Pulse when losing trade would push total drawdown to danger zone (>= 80% of max allowed)
-  const currentBalance = account?.currentBalance ?? 0;
-  const maxDrawdownAmt = accountBalance > 0 && account?.maxTotalDrawdownPct
-    ? (accountBalance * account.maxTotalDrawdownPct) / 100
+  const maxDailyLossAmt = accountBalance > 0 && maxDailyLossPct
+    ? (accountBalance * maxDailyLossPct) / 100
     : null;
-  const existingDrawdown = accountBalance > 0 && currentBalance > 0
-    ? accountBalance - currentBalance
-    : 0;
   const projectedLoss = pnlDollars !== null && pnlDollars < 0 ? Math.abs(pnlDollars) : 0;
-  const drawdownDanger = maxDrawdownAmt && maxDrawdownAmt > 0
-    ? (existingDrawdown + projectedLoss) / maxDrawdownAmt >= 0.8
+  const drawdownDanger = maxDailyLossAmt && maxDailyLossAmt > 0
+    ? (dailyLoss + projectedLoss) / maxDailyLossAmt >= 0.8
     : false;
 
+  const gap = compact ? "gap-2" : "gap-3";
+  const padding = compact ? "p-4" : "p-5";
+
   return (
-    <div className={`bg-card border rounded-2xl p-4 ${pnlBg} transition-colors ${drawdownDanger ? "animate-pulse" : ""}`}>
-      <div className="flex items-center gap-2 mb-3">
+    <div className={`bg-card border rounded-2xl ${padding} ${pnlBg} transition-colors ${drawdownDanger ? "animate-pulse" : ""}`}>
+      <div className={`flex items-center ${gap} mb-3`}>
         <Activity className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground flex-1">Open Position</h3>
+        <h3 className={`${compact ? "text-sm" : "text-sm"} font-semibold text-foreground flex-1 truncate`}>
+          {compact ? "Open Position" : trade.instrument}
+        </h3>
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
           trade.side === "BUY" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
         }`}>
           {trade.side}
         </span>
         <LiveBadge delayed={matchedPrice?.delayed ?? true} />
+        {drawdownDanger && (
+          <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/30 px-1.5 py-0.5 rounded-full">
+            <AlertTriangle className="h-2.5 w-2.5" />
+          </span>
+        )}
         <button
-          onClick={() => navigate("/journal")}
-          className="text-xs text-primary hover:text-primary/80 font-medium"
+          onClick={() => navigate(`/journal?tradeId=${trade.id}`)}
+          className="text-xs text-primary hover:text-primary/80 font-medium shrink-0"
         >
           Complete ↗
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Instrument</p>
-          <p className="text-sm font-bold text-foreground">{trade.instrument}</p>
-        </div>
+      <div className={`grid grid-cols-2 ${gap}`}>
+        {compact && (
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Instrument</p>
+            <p className="text-sm font-bold text-foreground">{trade.instrument}</p>
+          </div>
+        )}
         <div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Entry</p>
           <p className="text-sm font-bold font-mono text-foreground">
@@ -269,11 +263,59 @@ export function OpenTradeCard() {
           </div>
         )}
       </div>
-
-      {trades.length > 1 && (
-        <p className="text-[10px] text-muted-foreground mt-2">+{trades.length - 1} more open trade{trades.length > 2 ? "s" : ""}</p>
-      )}
     </div>
+  );
+}
+
+export function OpenTradeCard() {
+  const { trades, loading } = useOpenTrades();
+  const { prices } = usePrices();
+  const { data: account } = useGetPropAccount();
+
+  if (loading) {
+    return (
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Activity className="h-4 w-4 text-primary shrink-0" />
+          <h3 className="text-sm font-semibold text-foreground flex-1">Open Position</h3>
+        </div>
+        <div className="h-8 rounded-lg bg-secondary/40 animate-pulse" />
+      </div>
+    );
+  }
+
+  if (trades.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Activity className="h-4 w-4 text-primary shrink-0" />
+          <h3 className="text-sm font-semibold text-foreground flex-1">Open Position</h3>
+        </div>
+        <p className="text-xs text-muted-foreground">No open positions.</p>
+      </div>
+    );
+  }
+
+  const accountBalance = account?.startingBalance ?? 0;
+  const dailyLoss = Math.abs(account?.dailyLoss ?? 0);
+  const trade = trades[0];
+
+  return (
+    <>
+      <SingleOpenTradeCard
+        trade={trade}
+        prices={prices}
+        accountBalance={accountBalance}
+        dailyLoss={dailyLoss}
+        maxDailyLossPct={account?.maxDailyLossPct}
+        compact={true}
+      />
+      {trades.length > 1 && (
+        <p className="text-[10px] text-muted-foreground mt-1 px-1">
+          +{trades.length - 1} more open trade{trades.length > 2 ? "s" : ""}
+        </p>
+      )}
+    </>
   );
 }
 

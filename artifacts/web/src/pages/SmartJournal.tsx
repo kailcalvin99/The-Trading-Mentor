@@ -305,6 +305,19 @@ export default function SmartJournal() {
       setShowForm(true);
     }
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const tradeIdParam = searchParams.get("tradeId");
+    if (!tradeIdParam) return;
+    const id = parseInt(tradeIdParam, 10);
+    if (isNaN(id)) return;
+    setSearchParams({}, { replace: true });
+    setExpandedTradeId(id);
+    setTimeout(() => {
+      const el = document.getElementById(`trade-card-${id}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 500);
+  }, [searchParams, setSearchParams]);
   const [coachUpgrade, setCoachUpgrade] = useState<Record<number, boolean>>({});
 
   async function fetchCoachFeedback(tradeId: number) {
@@ -1001,6 +1014,7 @@ export default function SmartJournal() {
                 return (
                   <Card
                     key={trade.id}
+                    id={`trade-card-${trade.id}`}
                     className={`transition-colors ${isWin ? "border-emerald-500/10" : isLoss ? "border-red-500/10" : ""}`}
                   >
                     <CardContent className="p-4">

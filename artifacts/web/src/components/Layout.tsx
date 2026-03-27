@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import OnboardingQuiz, { getSkillLevel, hasCompletedQuiz, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Video, Zap, Layers, Flame, Star, Menu, CandlestickChart } from "lucide-react";
+import { Calendar, GraduationCap, Shield, BookOpen, BarChart3, HelpCircle, Lock, Crown, Settings, LogOut, CreditCard, User, ChevronDown, LayoutDashboard, Users, Share2, X, Trophy, Copy, Check, Video, Zap, Layers, Flame, Star, Menu, CandlestickChart, Activity } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { FreeSidebar, useDailyStreak } from "@/components/CasinoElements";
 import AIAssistant from "@/components/AIAssistant";
@@ -62,6 +62,7 @@ const COMMUNITY_POLL_INTERVAL = 3 * 60 * 1000;
 
 const navItems = [
   { to: "/", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/open-positions", label: "Open Positions", mobileLabel: "Positions", icon: Activity, requiredTier: 0, minSkillLevel: 0 },
   { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0, minSkillLevel: 0 },
   { to: "/videos", label: "Videos", mobileLabel: "Videos", icon: Video, requiredTier: 0, minSkillLevel: 0 },
   { to: "/planner", label: "Mission Control", mobileLabel: "Mission", icon: Calendar, requiredTier: 0, minSkillLevel: 0 },
