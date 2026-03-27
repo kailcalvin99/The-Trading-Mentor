@@ -118,9 +118,9 @@ export function FairValueGapDiagram() {
       <Wick left={40} bottom={110} height={16} color={bull} />
       <Bar left={54} bottom={100} height={22} color={bull} />
       <Wick left={60} bottom={122} height={12} color={bull} />
-      <Zone left={34} bottom={70} height={14} color={bull} />
-      <View style={{ position: "absolute", left: 34, bottom: 70, right: 110, height: 14, borderWidth: 1, borderColor: bull, borderRadius: 3 }} />
-      <Label left={76} bottom={70} text="FVG" color={bull} size={10} />
+      <Zone left={14} bottom={84} height={38} color={bull} />
+      <View style={{ position: "absolute", left: 14, bottom: 84, right: 110, height: 38, borderWidth: 1, borderColor: bull, borderRadius: 3 }} />
+      <Label left={76} bottom={100} text="FVG" color={bull} size={10} />
       <Bar left={88} bottom={64} height={20} color={bear} />
       <Bar left={108} bottom={58} height={18} color={bear} />
       <Label left={4} bottom={4} text="Price returns to fill the FVG = entry zone" color="rgba(255,255,255,0.35)" />

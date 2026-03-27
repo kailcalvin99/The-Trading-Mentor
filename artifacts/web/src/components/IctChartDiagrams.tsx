@@ -36,15 +36,15 @@ export function FVGDiagram({ className = "" }: { className?: string }) {
         );
       })}
 
-      <rect x="120" y="100" width="80" height="55" fill="#818cf8" fillOpacity="0.15" stroke="#818cf8" strokeWidth="1.5" strokeDasharray="4,2" rx="3" />
-      <text x="160" y="128" textAnchor="middle" fill="#818cf8" fontSize="11" fontFamily="sans-serif" fontWeight="700">FVG</text>
-      <text x="160" y="143" textAnchor="middle" fill="#818cf8" fontSize="9" fontFamily="sans-serif">Imbalance Zone</text>
+      <rect x="80" y="120" width="80" height="45" fill="#818cf8" fillOpacity="0.15" stroke="#818cf8" strokeWidth="1.5" strokeDasharray="4,2" rx="3" />
+      <text x="120" y="140" textAnchor="middle" fill="#818cf8" fontSize="11" fontFamily="sans-serif" fontWeight="700">FVG</text>
+      <text x="120" y="155" textAnchor="middle" fill="#818cf8" fontSize="9" fontFamily="sans-serif">Imbalance Zone</text>
 
-      <line x1="120" y1="100" x2="85" y2="90" stroke="#818cf8" strokeWidth="1" strokeDasharray="2,2" />
-      <text x="80" y="85" textAnchor="middle" fill="#818cf8" fontSize="9" fontFamily="sans-serif">High of C3</text>
+      <line x1="80" y1="120" x2="55" y2="108" stroke="#818cf8" strokeWidth="1" strokeDasharray="2,2" />
+      <text x="48" y="103" textAnchor="middle" fill="#818cf8" fontSize="9" fontFamily="sans-serif">Low of C3</text>
 
-      <line x1="120" y1="155" x2="85" y2="165" stroke="#818cf8" strokeWidth="1" strokeDasharray="2,2" />
-      <text x="80" y="175" textAnchor="middle" fill="#818cf8" fontSize="9" fontFamily="sans-serif">Low of C1</text>
+      <line x1="80" y1="165" x2="55" y2="177" stroke="#818cf8" strokeWidth="1" strokeDasharray="2,2" />
+      <text x="48" y="187" textAnchor="middle" fill="#818cf8" fontSize="9" fontFamily="sans-serif">High of C1</text>
 
       <line x1="280" y1="86" x2="260" y2="70" stroke="#00C896" strokeWidth="1.5" strokeDasharray="3,2" />
       <text x="248" y="65" textAnchor="middle" fill="#00C896" fontSize="9" fontFamily="sans-serif">Price mitigates FVG</text>
