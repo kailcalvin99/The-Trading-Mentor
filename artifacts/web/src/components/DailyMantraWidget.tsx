@@ -11,13 +11,13 @@ import {
 import { useListTrades } from "@workspace/api-client-react";
 
 const STORAGE_KEY = "ict-daily-mantra";
-const DEFAULT_MANTRA = "You got this";
+const DEFAULT_MANTRA = "Welcome to the Inner Circle";
 const FLIP_DELAY_MS = 20_000;
 
 const GLOW =
   "0 0 40px rgba(255,255,255,0.65), 0 0 16px rgba(255,255,255,0.4), 0 0 6px rgba(255,255,255,0.25)";
 
-const shimmerKeyframes = `
+const arcKeyframes = `
 @keyframes mantraWave {
   0%,100% { transform: translateY(0px); }
   50%      { transform: translateY(-6px); }
@@ -71,6 +71,79 @@ function usePnLChartData() {
   const hasData = chartData.length > 0;
 
   return { chartData, cumulative, isPositive, chartColor, hasData };
+}
+
+function RainbowArcText({ text }: { text: string }) {
+  const svgWidth = 520;
+  const svgHeight = 120;
+  const cx = svgWidth / 2;
+  const cy = svgHeight + 60;
+  const r = 170;
+
+  const startAngle = -155;
+  const endAngle = -25;
+
+  function polarToCartesian(angle: number) {
+    const rad = (angle * Math.PI) / 180;
+    return {
+      x: cx + r * Math.cos(rad),
+      y: cy + r * Math.sin(rad),
+    };
+  }
+
+  const start = polarToCartesian(startAngle);
+  const end = polarToCartesian(endAngle);
+
+  const arcPath = `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`;
+
+  const chars = text.split("");
+
+  return (
+    <svg
+      viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+      width="100%"
+      style={{ maxWidth: svgWidth, overflow: "visible" }}
+      aria-label={text}
+    >
+      <defs>
+        <filter id="mantraGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur2" />
+          <feMerge>
+            <feMergeNode in="blur2" />
+            <feMergeNode in="blur1" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <path id="mantraArcPath" d={arcPath} />
+      </defs>
+
+      <text
+        filter="url(#mantraGlow)"
+        fill="white"
+        fontFamily="inherit"
+        fontWeight="bold"
+        fontSize="28"
+        letterSpacing="1"
+        textAnchor="middle"
+        dominantBaseline="auto"
+      >
+        <textPath href="#mantraArcPath" startOffset="50%">
+          {chars.map((char, i) => (
+            <tspan
+              key={i}
+              style={{
+                animation: `mantraWave 1.5s ease-in-out ${(i * 80) % 1200}ms infinite`,
+                display: "inline",
+              }}
+            >
+              {char === " " ? "\u00A0" : char}
+            </tspan>
+          ))}
+        </textPath>
+      </text>
+    </svg>
+  );
 }
 
 export default function DailyMantraWidget() {
@@ -138,10 +211,10 @@ export default function DailyMantraWidget() {
 
   return (
     <>
-      <style>{shimmerKeyframes}</style>
+      <style>{arcKeyframes}</style>
       <div
-        className="relative flex items-center justify-center py-8 select-none overflow-hidden"
-        style={{ minHeight: 120 }}
+        className="relative flex items-center justify-center py-4 select-none overflow-hidden"
+        style={{ minHeight: 130 }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
@@ -274,15 +347,14 @@ export default function DailyMantraWidget() {
               onBlur={(e) => commit(e.target.value)}
               onKeyDown={handleKeyDown}
               onClick={(e) => e.stopPropagation()}
-              className="relative z-10 w-full max-w-2xl bg-transparent border-none outline-none text-center text-3xl md:text-4xl font-bold text-white caret-white tracking-tight"
+              className="relative z-10 w-full max-w-2xl bg-transparent border-none outline-none text-center text-2xl md:text-3xl font-bold text-white caret-white tracking-tight"
               style={{ textShadow: GLOW }}
               spellCheck={false}
               autoComplete="off"
             />
           ) : (
-            <span
-              className="relative z-10 text-3xl md:text-4xl font-bold text-white text-center leading-tight tracking-tight cursor-pointer"
-              style={{ display: "inline-flex", gap: 0 }}
+            <div
+              className="relative z-10 w-full flex items-center justify-center cursor-pointer"
               onClick={() => startEdit()}
               role="button"
               tabIndex={0}
@@ -291,20 +363,8 @@ export default function DailyMantraWidget() {
                 e.key === "Enter" && !editing && startEdit()
               }
             >
-              {text.split("").map((char, i) => (
-                <span
-                  key={i}
-                  style={{
-                    display: "inline-block",
-                    textShadow: GLOW,
-                    animation: `mantraWave 1.5s ease-in-out ${(i * 80) % 1200}ms infinite`,
-                    whiteSpace: "pre",
-                  }}
-                >
-                  {char}
-                </span>
-              ))}
-            </span>
+              <RainbowArcText text={text} />
+            </div>
           )}
 
           {!editing && hovered && (
