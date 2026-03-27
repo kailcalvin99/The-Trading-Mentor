@@ -530,9 +530,16 @@ export default function Admin() {
       const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
         method: "DELETE", ...fetchOpts, headers,
       });
-      const data = await res.json();
+      let data: unknown;
+      try {
+        data = await res.json();
+      } catch {
+        alert("Delete request failed — server may be unreachable");
+        return;
+      }
+      const parsed = typeof data === "object" && data !== null ? data as Record<string, unknown> : {};
       if (res.ok) {
-        if (data.selfDeleted) {
+        if (parsed.selfDeleted) {
           await logout();
           localStorage.clear();
           sessionStorage.clear();
@@ -542,12 +549,14 @@ export default function Admin() {
           loadData();
         }
       } else {
-        alert(data.error || "Failed to delete user");
+        const errMsg = typeof parsed.error === "string" ? parsed.error : "Failed to delete user";
+        alert(errMsg);
       }
     } catch {
-      alert("Failed to delete user");
+      alert("Delete request failed — server may be unreachable");
+    } finally {
+      setDeleting(false);
     }
-    setDeleting(false);
   }
 
   const filteredUsers = showInactiveOnly

@@ -198,30 +198,83 @@ router.delete("/users/:id", async (req, res) => {
       try {
         const stripe = await getStripeClient();
         await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
-      } catch (stripeErr) {
-        console.error("Failed to cancel Stripe subscription during user delete:", stripeErr);
-        res.status(502).json({ error: "Could not cancel the user's Stripe subscription. Please cancel it manually in the Stripe dashboard first, then try again." });
-        return;
+      } catch (stripeErr: unknown) {
+        const isAlreadyCancelledOrMissing =
+          (typeof stripeErr === "object" && stripeErr !== null && (
+            ("statusCode" in stripeErr && (stripeErr as { statusCode: unknown }).statusCode === 404) ||
+            ("code" in stripeErr && (stripeErr as { code: unknown }).code === "resource_missing") ||
+            ("raw" in stripeErr &&
+              typeof (stripeErr as { raw: unknown }).raw === "object" &&
+              (stripeErr as { raw: unknown }).raw !== null &&
+              "code" in ((stripeErr as { raw: object }).raw as object) &&
+              ((stripeErr as { raw: { code: unknown } }).raw).code === "resource_missing")
+          ));
+        if (isAlreadyCancelledOrMissing) {
+          console.warn(`Stripe subscription ${sub.stripeSubscriptionId} not found or already cancelled — skipping cancellation for user ${userId}`);
+        } else {
+          console.error("Unexpected Stripe error during user delete:", stripeErr);
+          const msg = stripeErr instanceof Error ? stripeErr.message : String(stripeErr);
+          res.status(502).json({ error: `Failed at step: Stripe cancellation — ${msg}` });
+          return;
+        }
       }
     }
 
-    const userPosts = await db.select({ id: communityPostsTable.id }).from(communityPostsTable).where(eq(communityPostsTable.userId, userId));
-    if (userPosts.length > 0) {
-      const postIds = userPosts.map(p => p.id);
-      await db.delete(postLikesTable).where(inArray(postLikesTable.postId, postIds));
-      await db.delete(communityRepliesTable).where(inArray(communityRepliesTable.postId, postIds));
+    try {
+      const userPosts = await db.select({ id: communityPostsTable.id }).from(communityPostsTable).where(eq(communityPostsTable.userId, userId));
+      if (userPosts.length > 0) {
+        const postIds = userPosts.map(p => p.id);
+        await db.delete(postLikesTable).where(inArray(postLikesTable.postId, postIds));
+        await db.delete(communityRepliesTable).where(inArray(communityRepliesTable.postId, postIds));
+      }
+      await db.delete(postLikesTable).where(eq(postLikesTable.userId, userId));
+      await db.delete(communityRepliesTable).where(eq(communityRepliesTable.userId, userId));
+      await db.delete(communityPostsTable).where(eq(communityPostsTable.userId, userId));
+    } catch (err: unknown) {
+      console.error("Delete user error at step community data:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed at step: community data — ${msg}` });
+      return;
     }
-    await db.delete(postLikesTable).where(eq(postLikesTable.userId, userId));
-    await db.delete(communityRepliesTable).where(eq(communityRepliesTable.userId, userId));
-    await db.delete(communityPostsTable).where(eq(communityPostsTable.userId, userId));
 
-    await db.delete(messages).where(
-      sql`conversation_id IN (SELECT id FROM conversations WHERE user_id = ${userId})`
-    );
-    await db.delete(conversations).where(eq(conversations.userId, userId));
-    await db.delete(propAccountTable).where(eq(propAccountTable.userId, userId));
-    await db.delete(userSubscriptionsTable).where(eq(userSubscriptionsTable.userId, userId));
-    await db.delete(usersTable).where(eq(usersTable.id, userId));
+    try {
+      await db.delete(messages).where(
+        sql`conversation_id IN (SELECT id FROM conversations WHERE user_id = ${userId})`
+      );
+      await db.delete(conversations).where(eq(conversations.userId, userId));
+    } catch (err: unknown) {
+      console.error("Delete user error at step messages/conversations:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed at step: messages/conversations — ${msg}` });
+      return;
+    }
+
+    try {
+      await db.delete(propAccountTable).where(eq(propAccountTable.userId, userId));
+    } catch (err: unknown) {
+      console.error("Delete user error at step prop account:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed at step: prop account — ${msg}` });
+      return;
+    }
+
+    try {
+      await db.delete(userSubscriptionsTable).where(eq(userSubscriptionsTable.userId, userId));
+    } catch (err: unknown) {
+      console.error("Delete user error at step subscriptions:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed at step: subscriptions — ${msg}` });
+      return;
+    }
+
+    try {
+      await db.delete(usersTable).where(eq(usersTable.id, userId));
+    } catch (err: unknown) {
+      console.error("Delete user error at step user record:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: `Failed at step: user record — ${msg}` });
+      return;
+    }
 
     if (isSelfDelete) {
       clearAuthCookie(res);
