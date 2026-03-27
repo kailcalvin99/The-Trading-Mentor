@@ -4,7 +4,6 @@ import { PremiumTeaser } from "@/components/CasinoElements";
 import { CumulativePnLChart } from "./dashboard/CumulativePnLChart";
 import { LastTradeGradeCard } from "./dashboard/LastTradeGradeCard";
 import { FvgAlertPopup, CommunityBanner } from "./dashboard/LiveSignalWidgets";
-import { LiveMarketPopover } from "./dashboard/LiveMarketPopover";
 import { RoutineWidgetConditional } from "./dashboard/RoutineWidgetConditional";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import UpNextWidget from "@/components/UpNextWidget";
@@ -21,8 +20,6 @@ export default function Dashboard() {
 
   return (
     <>
-      <LiveMarketPopover />
-
       <FvgAlertPopup />
       <CommunityBanner tierLevel={tierLevel} />
 
