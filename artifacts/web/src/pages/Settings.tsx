@@ -29,7 +29,7 @@ import {
   Music,
   Zap,
 } from "lucide-react";
-import { useSpotify } from "@/contexts/SpotifyContext";
+import { useSpotify, REDIRECT_URI } from "@/contexts/SpotifyContext";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -942,6 +942,24 @@ function SpotifySection() {
             <p className="text-xs text-muted-foreground/70">
               Spotify Premium is required for in-browser playback.
             </p>
+            <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-1">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Spotify Developer Dashboard</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Add this URI to your app's Redirect URIs at{" "}
+                <a
+                  href="https://developer.spotify.com/dashboard"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#1DB954] underline underline-offset-2 hover:text-[#1ed760]"
+                >
+                  developer.spotify.com/dashboard
+                </a>
+                :
+              </p>
+              <p className="text-xs font-mono text-foreground break-all select-all bg-background/60 rounded px-2 py-1 border border-border">
+                {REDIRECT_URI}
+              </p>
+            </div>
             <button
               onClick={connect}
               className="flex items-center gap-2 px-4 py-2 bg-[#1DB954] hover:bg-[#1ed760] text-white rounded-lg text-sm font-medium transition-colors"
