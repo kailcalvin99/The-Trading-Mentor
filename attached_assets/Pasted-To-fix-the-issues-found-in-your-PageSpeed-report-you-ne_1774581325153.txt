@@ -1,0 +1,23 @@
+To fix the issues found in your PageSpeed report, you need to tell Replit to focus on Performance and Asset Optimization. Since you are using a React/Next.js dashboard, the "weight" of the site usually comes from unoptimized images or large code files.
+Confidence: 9/10
+The Replit AI Prompt
+Copy and paste this into the Replit AI chat (or the "Edit Code" feature):
+> "Act as a Senior Web Performance Engineer. I need to optimize my Smart Money AI Mentor dashboard for Google PageSpeed Insights. Please perform the following technical fixes:
+>  * Optimize Images: Convert all images to WebP format and add 'lazy loading' so they only load when visible.
+>  * Reduce Blocking Time: Identify and split large JavaScript bundles to reduce Total Blocking Time (TBT).
+>  * Fix Layout Shifts: Ensure all images and containers have defined 'width' and 'height' attributes to prevent Cumulative Layout Shift (CLS).
+>  * Minify Code: Compress all CSS and JS files.
+>  * Prioritize LCP: Ensure the 'Largest Contentful Paint' element (like the main hero section) loads immediately without being blocked by other scripts."
+> 
+Step-by-Step Reason for This Prompt
+ * WebP Images: These are much smaller than PNG or JPG files, making the "engine" of your site lighter.
+ * Lazy Loading: This tells the site, "Don't load the bottom of the page until the user scrolls there."
+ * Width/Height: If a box doesn't have a size set, the page "jumps" when the image finally appears. This fixes that.
+ * Minifying: This removes all the extra spaces and comments in your code that humans need but computers don't.
+Pros and Cons of Automated Fixing
+ * Pros: It is much faster than writing the code yourself; it helps you hit that 90+ score quickly.
+ * Cons: Sometimes the AI might accidentally hide a feature you like (like a smooth animation) to make it faster. Always check your dashboard after it finishes!
+Key Takeaway: High performance scores mean a better experience for your users. Think of it like tuning up an airplane—you want it to be as light and efficient as possible for the best flight.
+ * Would you like me to explain how to check if the AI actually made those changes?
+ * Do you want a specific code snippet for the "Lazy Loading" part?
+ * Should we look at your SEO meta tags next to help with the SEO score?
