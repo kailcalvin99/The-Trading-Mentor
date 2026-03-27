@@ -30,6 +30,8 @@ export const usersTable = pgTable("users", {
   discordHandle: varchar("discord_handle", { length: 64 }),
   isPublic: boolean("is_public").notNull().default(false),
   tradingRules: text("trading_rules"),
+  quizDone: boolean("quiz_done").notNull().default(false),
+  tourShown: boolean("tour_shown").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

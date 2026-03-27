@@ -148,7 +148,24 @@ function loadPersistedState(stateKey: string): TourState {
 
 const TOUR_AUTO_SHOWN_KEY = "ict-tour-auto-shown";
 
-export function useTourGuide(userId?: string | number) {
+const TOUR_API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+function persistTourShown() {
+  try {
+    const token = localStorage.getItem("ICT_TRADING_MENTOR_TOKEN");
+    fetch(`${TOUR_API_BASE}/auth/user-flags`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      credentials: "include",
+      body: JSON.stringify({ tourShown: true }),
+    }).catch(() => {});
+  } catch {}
+}
+
+export function useTourGuide(userId?: string | number, userTourShown?: boolean) {
   const stateKey = userId !== undefined ? makeStorageKey(userId, "state") : null;
 
   const [state, dispatch] = useReducer(tourReducer, DEFAULT_TOUR_STATE);
@@ -177,6 +194,7 @@ export function useTourGuide(userId?: string | number) {
   useEffect(() => {
     if (userId === undefined) return undefined;
     if (!activeKey) return undefined;
+    if (userTourShown === true) return undefined;
     const seen = localStorage.getItem(TOUR_AUTO_SHOWN_KEY);
     const neverShow = localStorage.getItem(TOUR_NEVER_SHOW_KEY);
     const currentState = stateRef.current;
@@ -184,6 +202,7 @@ export function useTourGuide(userId?: string | number) {
       const timer = setTimeout(() => {
         const latest = stateRef.current;
         const stillEligible =
+          userTourShown !== true &&
           !localStorage.getItem(TOUR_AUTO_SHOWN_KEY) &&
           !localStorage.getItem(TOUR_NEVER_SHOW_KEY) &&
           !latest.visible &&
@@ -191,13 +210,14 @@ export function useTourGuide(userId?: string | number) {
           latest.completedSteps.length === 0;
         if (stillEligible) {
           localStorage.setItem(TOUR_AUTO_SHOWN_KEY, "1");
+          persistTourShown();
           dispatch({ type: "START_TOUR" });
         }
       }, 2000);
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [userId, activeKey]);
+  }, [userId, activeKey, userTourShown]);
 
   const startTour = useCallback(() => {
     dispatch({ type: "START_TOUR" });

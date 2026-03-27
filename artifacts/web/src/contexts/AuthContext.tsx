@@ -12,6 +12,8 @@ interface UserData {
   founderNumber: number | null;
   appMode: "full" | "lite";
   avatarUrl: string | null;
+  quizDone: boolean;
+  tourShown: boolean;
 }
 
 interface SubscriptionData {

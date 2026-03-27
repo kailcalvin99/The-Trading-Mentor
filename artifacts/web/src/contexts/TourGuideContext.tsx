@@ -8,7 +8,7 @@ const TourGuideContext = createContext<TourGuideContextValue | null>(null);
 
 export function TourGuideProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const tourGuide = useTourGuide(user?.id);
+  const tourGuide = useTourGuide(user?.id, user?.tourShown ?? undefined);
   return (
     <TourGuideContext.Provider value={tourGuide}>
       {children}

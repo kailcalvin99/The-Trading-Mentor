@@ -415,8 +415,22 @@ export default function Settings() {
     }
   }
 
-  function handleRetakeQuiz() {
+  async function handleRetakeQuiz() {
     clearQuizData();
+    try {
+      const token = localStorage.getItem("ICT_TRADING_MENTOR_TOKEN");
+      await fetch(`${API_BASE}/auth/user-flags`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ quizDone: false }),
+      });
+    } catch {
+      // ignore
+    }
     navigate("/");
     window.location.reload();
   }

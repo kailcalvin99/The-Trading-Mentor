@@ -278,12 +278,32 @@ router.get("/me", authRequired, async (req, res) => {
         founderNumber: user.founderNumber,
         appMode: user.appMode || "full",
         avatarUrl: user.avatarUrl || null,
+        quizDone: user.quizDone ?? false,
+        tourShown: user.tourShown ?? false,
       },
       subscription: subscription[0] || null,
     });
   } catch (err) {
     console.error("Get me error:", err);
     res.status(500).json({ error: "Failed to get user info" });
+  }
+});
+
+router.post("/user-flags", authRequired, async (req, res) => {
+  try {
+    const { quizDone, tourShown } = req.body as { quizDone?: boolean; tourShown?: boolean };
+    const updates: Partial<{ quizDone: boolean; tourShown: boolean }> = {};
+    if (typeof quizDone === "boolean") updates.quizDone = quizDone;
+    if (typeof tourShown === "boolean") updates.tourShown = tourShown;
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "No valid flags provided" });
+      return;
+    }
+    await db.update(usersTable).set(updates).where(eq(usersTable.id, req.user!.userId));
+    res.json({ success: true });
+  } catch (err) {
+    console.error("User flags error:", err);
+    res.status(500).json({ error: "Failed to update flags" });
   }
 });
 

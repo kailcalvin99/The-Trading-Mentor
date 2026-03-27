@@ -374,9 +374,23 @@ function resizeImageToBase64(file: File, maxSize = 200): Promise<string> {
   });
 }
 
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const token = localStorage.getItem("ICT_TRADING_MENTOR_TOKEN");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 export default function Layout() {
-  const { user, subscription, tierLevel, isAdmin, logout, appMode, setAppMode, setAvatarUrl } = useAuth();
+  const { user, loading: authLoading, subscription, tierLevel, isAdmin, logout, appMode, setAppMode, setAvatarUrl } = useAuth();
   const [quizDone, setQuizDone] = useState(() => hasCompletedQuiz());
+  useEffect(() => {
+    if (!authLoading) {
+      setQuizDone(user !== null ? Boolean(user.quizDone) : hasCompletedQuiz());
+    }
+  }, [authLoading, user]);
   const [showLockToast, setShowLockToast] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -515,8 +529,16 @@ export default function Layout() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      {!quizDone && (
-        <OnboardingQuiz onComplete={() => setQuizDone(true)} />
+      {!authLoading && !quizDone && (
+        <OnboardingQuiz onComplete={() => {
+          setQuizDone(true);
+          fetch(`${API_BASE}/auth/user-flags`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            credentials: "include",
+            body: JSON.stringify({ quizDone: true }),
+          }).catch(() => {});
+        }} />
       )}
       <div className="flex h-screen overflow-hidden">
         {/* Dimming backdrop */}
