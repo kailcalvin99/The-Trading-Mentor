@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, CheckCircle2, GraduationCap } from "lucide-react";
+import { ChevronRight, CheckCircle2, GraduationCap, AlertCircle } from "lucide-react";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -164,8 +164,9 @@ export default function OnboardingQuiz({ onComplete }: Props) {
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [skillLevel, setSkillLevel] = useState<SkillLevel | null>(null);
+  const [modeError, setModeError] = useState<string | null>(null);
 
-  function handleAnswer(value: number) {
+  async function handleAnswer(value: number) {
     const newAnswers = [...answers, value];
     setAnswers(newAnswers);
 
@@ -178,7 +179,10 @@ export default function OnboardingQuiz({ onComplete }: Props) {
       localStorage.setItem(QUIZ_DONE_KEY, "true");
       applyLevelToAcademy(level);
       if (level === "beginner" && !isAdmin) {
-        setAppMode("lite");
+        const result = await setAppMode("lite");
+        if (!result.success) {
+          setModeError(result.error || "Could not activate Learning Mode. You can switch modes manually from the menu.");
+        }
       }
       setStep("result");
     }
@@ -331,6 +335,12 @@ export default function OnboardingQuiz({ onComplete }: Props) {
                 </ul>
               )}
             </div>
+            {modeError && (
+              <div className="flex items-start gap-2 bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 text-left">
+                <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                <p className="text-xs text-destructive leading-relaxed">{modeError}</p>
+              </div>
+            )}
             <button
               onClick={handleDone}
               className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold py-3 rounded-xl hover:bg-primary/90 transition-colors text-sm"

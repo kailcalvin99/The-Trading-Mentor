@@ -243,6 +243,10 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { logout, appMode, setAppMode, user, setAvatarUrl, tierLevel, isAdmin } = useAuth();
   const [currentAppMode, setCurrentAppMode] = useState<"full" | "lite">(appMode);
+
+  useEffect(() => {
+    setCurrentAppMode(appMode);
+  }, [appMode]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);

@@ -154,12 +154,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setAppMode = useCallback((mode: "full" | "lite") => {
+    const prev = appMode;
     setAppModeState(mode);
+    setUser((u) => u ? { ...u, appMode: mode } : null);
     AsyncStorage.setItem(APP_MODE_KEY, mode).catch(() => {});
     apiPatch("user/settings", { section: "appMode", data: { mode } }).catch((err) => {
       console.warn("Failed to sync app mode to server:", err);
+      setAppModeState(prev);
+      setUser((u) => u ? { ...u, appMode: prev } : null);
+      AsyncStorage.setItem(APP_MODE_KEY, prev).catch(() => {});
+      Alert.alert(
+        "Could not switch mode",
+        "Your mode preference could not be saved. Please check your connection and try again.",
+        [{ text: "OK" }]
+      );
     });
-  }, []);
+  }, [appMode]);
 
   const setAvatarUrl = useCallback(async (url: string | null) => {
     setUser((prev) => prev ? { ...prev, avatarUrl: url } : null);

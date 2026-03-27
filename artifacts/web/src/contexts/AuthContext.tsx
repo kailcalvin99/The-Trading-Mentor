@@ -44,7 +44,7 @@ interface AuthContextType {
   tierLevel: number;
   isAdmin: boolean;
   appMode: "full" | "lite";
-  setAppMode: (mode: "full" | "lite") => Promise<void>;
+  setAppMode: (mode: "full" | "lite") => Promise<{ success: boolean; error?: string }>;
   setAvatarUrl: (url: string | null) => Promise<void>;
 }
 
@@ -108,10 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.user?.role === "admin") {
           setIsPersistentAdmin(true);
           localStorage.setItem("ICT_TRADING_MENTOR_ADMIN", "true");
+        } else if (data.user) {
+          setIsPersistentAdmin(false);
+          try { localStorage.removeItem("ICT_TRADING_MENTOR_ADMIN"); } catch {}
         }
       } else {
         setUser(null);
         setSubscription(null);
+        setIsPersistentAdmin(false);
+        try { localStorage.removeItem("ICT_TRADING_MENTOR_ADMIN"); } catch {}
       }
     } catch (error) {
       console.error("Error refreshing user:", error);
@@ -142,6 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.user?.role === "admin") {
           setIsPersistentAdmin(true);
           localStorage.setItem("ICT_TRADING_MENTOR_ADMIN", "true");
+        } else {
+          setIsPersistentAdmin(false);
+          try { localStorage.removeItem("ICT_TRADING_MENTOR_ADMIN"); } catch {}
         }
         return { success: true, role: data.user?.role as string | undefined };
       }
@@ -165,6 +173,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.token) storeToken(data.token);
         setUser(data.user);
         await refreshUser();
+        setIsPersistentAdmin(false);
+        try { localStorage.removeItem("ICT_TRADING_MENTOR_ADMIN"); } catch {}
         return { success: true, isFounder: data.isFounder, founderNumber: data.founderNumber };
       }
       return { success: false, error: data.error };
@@ -185,6 +195,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Error during logout API call:", error);
     }
     clearStoredToken();
+    try { localStorage.removeItem("ICT_TRADING_MENTOR_ADMIN"); } catch {}
+    setIsPersistentAdmin(false);
     setUser(null);
     setSubscription(null);
   };
@@ -203,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const tierLevel = isAdmin ? MAX_TIER_LEVEL : (subscription?.tierLevel ?? 0);
   const appMode: "full" | "lite" = user?.appMode ?? "full";
 
-  const setAppMode = useCallback(async (mode: "full" | "lite") => {
+  const setAppMode = useCallback(async (mode: "full" | "lite"): Promise<{ success: boolean; error?: string }> => {
     setUser((prev) => {
       prevModeRef.current = prev?.appMode ?? "full";
       return prev ? { ...prev, appMode: mode } : null;
@@ -216,11 +228,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ section: "appMode", data: { mode } }),
       });
       if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = (errData as { error?: string }).error || `Server error (${res.status})`;
+        console.error("Failed to update app mode:", errMsg);
         setUser((prev) => prev ? { ...prev, appMode: prevModeRef.current } : null);
+        return { success: false, error: errMsg };
       }
+      return { success: true };
     } catch (error) {
       console.error("Error setting app mode:", error);
       setUser((prev) => prev ? { ...prev, appMode: prevModeRef.current } : null);
+      return { success: false, error: "Network error — could not save your mode preference." };
     }
   }, []);
 

@@ -12,6 +12,7 @@ import KillZoneStrip from "@/components/KillZoneStrip";
 import SpotifyPlayer from "@/components/SpotifyPlayer";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { useToast } from "@/hooks/use-toast";
 
 const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
@@ -326,11 +327,24 @@ function ShareModal({
 }
 
 
-function ModeSwitcher({ appMode, setAppMode }: { appMode: "full" | "lite"; setAppMode: (m: "full" | "lite") => Promise<void> }) {
+function ModeSwitcher({ appMode, setAppMode }: { appMode: "full" | "lite"; setAppMode: (m: "full" | "lite") => Promise<{ success: boolean; error?: string }> }) {
+  const { toast } = useToast();
   const isLite = appMode === "lite";
+
+  async function handleToggle() {
+    const result = await setAppMode(isLite ? "full" : "lite");
+    if (!result.success) {
+      toast({
+        title: "Could not switch mode",
+        description: result.error || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  }
+
   return (
     <button
-      onClick={() => setAppMode(isLite ? "full" : "lite")}
+      onClick={handleToggle}
       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
         isLite
           ? "text-red-500 hover:bg-red-500/10"
@@ -385,6 +399,7 @@ function getAuthHeaders(): Record<string, string> {
 
 export default function Layout() {
   const { user, loading: authLoading, subscription, tierLevel, isAdmin, logout, appMode, setAppMode, setAvatarUrl } = useAuth();
+  const { toast } = useToast();
   const [quizDone, setQuizDone] = useState(() => hasCompletedQuiz());
   useEffect(() => {
     if (!authLoading) {
@@ -680,7 +695,17 @@ export default function Layout() {
                         </p>
                       </div>
                       <button
-                        onClick={() => { setAppMode(appMode === "lite" ? "full" : "lite"); setShowUserMenu(false); }}
+                        onClick={async () => {
+                          setShowUserMenu(false);
+                          const result = await setAppMode(appMode === "lite" ? "full" : "lite");
+                          if (!result.success) {
+                            toast({
+                              title: "Could not switch mode",
+                              description: result.error || "Please try again.",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
                         className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
                       >
                         {appMode === "lite" ? <Zap className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
