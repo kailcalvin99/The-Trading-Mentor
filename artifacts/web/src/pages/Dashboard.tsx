@@ -17,6 +17,7 @@ import { AskAIFloater } from "./dashboard/AskAIFloater";
 import { SpotifyDashCard } from "./dashboard/SpotifyDashCard";
 import { RoutineWidgetConditional } from "./dashboard/RoutineWidgetConditional";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
+import UpNextWidget from "@/components/UpNextWidget";
 
 export default function Dashboard() {
   const { tierLevel } = useAuth();
@@ -70,7 +71,10 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4">
-          <MorningBriefingWidget />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <MorningBriefingWidget />
+            <UpNextWidget />
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <CumulativePnLChart />
