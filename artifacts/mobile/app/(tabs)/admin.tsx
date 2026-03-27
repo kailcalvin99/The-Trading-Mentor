@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Href, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { apiGet, apiPut, isSessionExpiredError } from "@/lib/api";
 import Colors from "@/constants/colors";
 
@@ -20,16 +20,11 @@ const C = Colors.dark;
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
-const TOGGLE_KEYS: { key: string; label: string; desc: string }[] = [
+const FEATURE_TOGGLE_KEYS: { key: string; label: string; desc: string }[] = [
   {
-    key: "founder_program_enabled",
-    label: "Founder Program",
-    desc: "Show founder pricing and status badges",
-  },
-  {
-    key: "community_enabled",
-    label: "Community Hub",
-    desc: "Enable the community forum tab",
+    key: "academy_enabled",
+    label: "ICT Academy",
+    desc: "Enable the academy lessons tab",
   },
   {
     key: "journal_enabled",
@@ -37,14 +32,9 @@ const TOGGLE_KEYS: { key: string; label: string; desc: string }[] = [
     desc: "Enable trade journaling features",
   },
   {
-    key: "academy_enabled",
-    label: "ICT Academy",
-    desc: "Enable the academy lessons tab",
-  },
-  {
-    key: "analytics_enabled",
-    label: "Analytics Dashboard",
-    desc: "Enable analytics for all users",
+    key: "community_enabled",
+    label: "Community Hub",
+    desc: "Enable the community forum tab",
   },
   {
     key: "spin_wheel_enabled",
@@ -135,6 +125,205 @@ const fi = StyleSheet.create({
     fontSize: 14,
     color: C.text,
   },
+});
+
+interface AdminUser {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  tierName: string | null;
+  tierLevel: number | null;
+  tierId: number | null;
+  subStatus: string | null;
+}
+
+interface AdminTier {
+  id: number;
+  name: string;
+  level: number;
+}
+
+function UserSearchSection() {
+  const [query, setQuery] = useState("");
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [tiers, setTiers] = useState<AdminTier[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [grantingId, setGrantingId] = useState<number | null>(null);
+  const [selectedTierId, setSelectedTierId] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    loadTiers();
+    loadUsers();
+  }, []);
+
+  async function loadTiers() {
+    try {
+      const data = await apiGet<{ tiers: AdminTier[] }>("admin/tiers");
+      setTiers(data.tiers || []);
+    } catch {}
+  }
+
+  async function loadUsers(q?: string) {
+    setLoading(true);
+    try {
+      const data = await apiGet<{ users: AdminUser[] }>("admin/users");
+      let all = data.users || [];
+      if (q && q.trim()) {
+        const lower = q.toLowerCase();
+        all = all.filter(
+          (u) =>
+            u.name?.toLowerCase().includes(lower) ||
+            u.email?.toLowerCase().includes(lower)
+        );
+      }
+      setUsers(all.slice(0, 20));
+    } catch {}
+    setLoading(false);
+  }
+
+  function handleSearch(text: string) {
+    setQuery(text);
+    loadUsers(text);
+  }
+
+  async function grantTier(userId: number) {
+    const tierIdStr = selectedTierId[userId];
+    const tierId = tierIdStr ? parseInt(tierIdStr) : undefined;
+    setGrantingId(userId);
+    try {
+      await apiPut(`admin/users/${userId}/subscription`, {
+        tierId: tierId ?? null,
+        status: tierId ? "active" : "inactive",
+      });
+      Alert.alert("Done", "Subscription updated");
+      await loadUsers(query);
+    } catch (err: unknown) {
+      if (isSessionExpiredError(err)) return;
+      Alert.alert("Error", "Failed to update subscription");
+    }
+    setGrantingId(null);
+  }
+
+  const tierOptions = [
+    { label: "Free (none)", value: "" },
+    ...tiers.map((t) => ({ label: t.name, value: String(t.id) })),
+  ];
+
+  return (
+    <View style={{ gap: 10 }}>
+      <View style={us.searchRow}>
+        <Ionicons name="search-outline" size={16} color={C.textSecondary} style={{ marginLeft: 10 }} />
+        <TextInput
+          style={us.searchInput}
+          placeholder="Search by name or email…"
+          placeholderTextColor={C.textSecondary}
+          value={query}
+          onChangeText={handleSearch}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {loading && <ActivityIndicator size="small" color={C.accent} style={{ marginRight: 10 }} />}
+      </View>
+      {users.map((u) => {
+        const curTierId = selectedTierId[u.id] !== undefined ? selectedTierId[u.id] : String(u.tierId ?? "");
+        return (
+          <View key={u.id} style={us.userRow}>
+            <View style={us.userInfo}>
+              <Text style={us.userName}>{u.name || "—"}</Text>
+              <Text style={us.userEmail}>{u.email}</Text>
+              <Text style={us.userTier}>{u.tierName || "Free"} · {u.subStatus || "none"}</Text>
+            </View>
+            <View style={us.tierSelector}>
+              {tierOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[us.tierBtn, curTierId === opt.value && us.tierBtnActive]}
+                  onPress={() => setSelectedTierId((prev) => ({ ...prev, [u.id]: opt.value }))}
+                >
+                  <Text style={[us.tierBtnText, curTierId === opt.value && us.tierBtnTextActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[us.grantBtn, grantingId === u.id && { opacity: 0.6 }]}
+                onPress={() => grantTier(u.id)}
+                disabled={grantingId === u.id}
+              >
+                {grantingId === u.id ? (
+                  <ActivityIndicator size="small" color="#0A0A0F" />
+                ) : (
+                  <Text style={us.grantBtnText}>Apply</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      })}
+      {!loading && users.length === 0 && (
+        <Text style={{ fontSize: 12, color: C.textSecondary, textAlign: "center", paddingVertical: 8 }}>
+          No users found
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const us = StyleSheet.create({
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 10,
+    gap: 6,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingRight: 12,
+    fontSize: 14,
+    color: C.text,
+  },
+  userRow: {
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 10,
+    padding: 12,
+    gap: 8,
+  },
+  userInfo: { gap: 2 },
+  userName: { fontSize: 14, fontWeight: "600", color: C.text },
+  userEmail: { fontSize: 12, color: C.textSecondary },
+  userTier: { fontSize: 11, color: C.accent },
+  tierSelector: { flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" },
+  tierBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    backgroundColor: "transparent",
+  },
+  tierBtnActive: {
+    borderColor: C.accent,
+    backgroundColor: C.accent + "20",
+  },
+  tierBtnText: { fontSize: 11, color: C.textSecondary, fontWeight: "600" },
+  tierBtnTextActive: { color: C.accent },
+  grantBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: C.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 54,
+  },
+  grantBtnText: { fontSize: 12, fontWeight: "700", color: "#0A0A0F" },
 });
 
 interface MonteCarloResult {
@@ -481,51 +670,39 @@ export default function AdminScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Branding */}
-        <SectionCard icon="color-palette-outline" title="App Branding">
-          <FieldInput
-            label="App Name"
-            value={settings["app_name"] || ""}
-            onChange={(v) => set("app_name", v)}
-            placeholder="The Trading Mentor"
-          />
-          <View style={{ height: 6 }} />
-          <FieldInput
-            label="Support Email"
-            value={settings["support_email"] || ""}
-            onChange={(v) => set("support_email", v)}
-            placeholder="support@ictmentor.com"
-            keyboardType="email-address"
-          />
-          <View style={{ height: 6 }} />
-          <FieldInput
-            label="App Tagline"
-            value={settings["app_tagline"] || ""}
-            onChange={(v) => set("app_tagline", v)}
-            placeholder="Master ICT methodology with AI coaching"
-          />
+        {/* Users */}
+        <SectionCard icon="people-outline" title="Users">
+          <UserSearchSection />
         </SectionCard>
 
-        {/* Founder Program */}
-        <SectionCard icon="diamond-outline" title="Founder Program">
-          <FieldInput
-            label="Max Founder Spots"
-            value={settings["founder_max_spots"] || "20"}
-            onChange={(v) => set("founder_max_spots", v)}
-            placeholder="20"
-            keyboardType="number-pad"
-          />
-          <View style={{ height: 6 }} />
-          <FieldInput
-            label="Founder Discount (%)"
-            value={settings["founder_discount_pct"] || "30"}
-            onChange={(v) => set("founder_discount_pct", v)}
-            placeholder="30"
-            keyboardType="decimal-pad"
-          />
+        {/* Platform Controls */}
+        <SectionCard icon="toggle-outline" title="Feature Toggles">
+          {FEATURE_TOGGLE_KEYS.map((item, idx) => {
+            const isOn = settings[item.key] !== "false";
+            return (
+              <View
+                key={item.key}
+                style={[
+                  s.toggleRow,
+                  idx < FEATURE_TOGGLE_KEYS.length - 1 && s.toggleBorder,
+                ]}
+              >
+                <View style={s.toggleInfo}>
+                  <Text style={s.toggleLabel}>{item.label}</Text>
+                  <Text style={s.toggleDesc}>{item.desc}</Text>
+                </View>
+                <Switch
+                  value={isOn}
+                  onValueChange={() => toggle(item.key)}
+                  trackColor={{ false: C.cardBorder, true: C.accent + "70" }}
+                  thumbColor={isOn ? C.accent : C.textSecondary}
+                  ios_backgroundColor={C.cardBorder}
+                />
+              </View>
+            );
+          })}
         </SectionCard>
 
-        {/* Discipline Rules */}
         <SectionCard icon="shield-outline" title="Discipline Rules">
           <FieldInput
             label="Cooldown After Losses (minutes)"
@@ -552,53 +729,7 @@ export default function AdminScreen() {
           />
         </SectionCard>
 
-        {/* Feature Toggles */}
-        <SectionCard icon="toggle-outline" title="Feature Toggles">
-          {TOGGLE_KEYS.map((item, idx) => {
-            const isOn = settings[item.key] !== "false";
-            return (
-              <View
-                key={item.key}
-                style={[
-                  s.toggleRow,
-                  idx < TOGGLE_KEYS.length - 1 && s.toggleBorder,
-                ]}
-              >
-                <View style={s.toggleInfo}>
-                  <Text style={s.toggleLabel}>{item.label}</Text>
-                  <Text style={s.toggleDesc}>{item.desc}</Text>
-                </View>
-                <Switch
-                  value={isOn}
-                  onValueChange={() => toggle(item.key)}
-                  trackColor={{ false: C.cardBorder, true: C.accent + "70" }}
-                  thumbColor={isOn ? C.accent : C.textSecondary}
-                  ios_backgroundColor={C.cardBorder}
-                />
-              </View>
-            );
-          })}
-        </SectionCard>
-
-        {/* AI Code Editor */}
-        <SectionCard icon="code-slash-outline" title="AI Code Editor">
-          <TouchableOpacity
-            style={ce.row}
-            onPress={() => router.navigate("/code-editor" as Href)}
-            activeOpacity={0.8}
-          >
-            <View style={ce.iconBox}>
-              <Ionicons name="code-slash-outline" size={20} color={C.accent} />
-            </View>
-            <View style={ce.info}>
-              <Text style={ce.label}>Open Code Editor</Text>
-              <Text style={ce.desc}>Browse source files and ask the AI to make changes</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={C.textTertiary} />
-          </TouchableOpacity>
-        </SectionCard>
-
-        {/* Monte Carlo Simulator */}
+        {/* Tools */}
         <SectionCard icon="stats-chart-outline" title="Monte Carlo Simulator">
           <MonteCarloSimulator />
         </SectionCard>
@@ -610,21 +741,6 @@ export default function AdminScreen() {
     </SafeAreaView>
   );
 }
-
-const ce = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: C.accent + "15",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  info: { flex: 1 },
-  label: { fontSize: 14, fontWeight: "600", color: C.text },
-  desc: { fontSize: 11, color: C.textSecondary, marginTop: 2 },
-});
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },

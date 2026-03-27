@@ -1147,23 +1147,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Admin Panel */}
-        {profile.role === "admin" && (
-          <TouchableOpacity
-            style={s.adminCard}
-            onPress={() => router.push("/admin")}
-          >
-            <View style={s.adminLeft}>
-              <Ionicons name="settings" size={18} color={C.accent} />
-              <View>
-                <Text style={s.adminTitle}>Admin Panel</Text>
-                <Text style={s.adminSub}>Manage app settings, users & features</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={C.textSecondary} />
-          </TouchableOpacity>
-        )}
-
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={18} color="#EF4444" />
@@ -1246,20 +1229,6 @@ const s = StyleSheet.create({
   pwRow: { flexDirection: "row", alignItems: "center" },
   pwInput: { flex: 1 },
   eyeBtn: { padding: 10 },
-  adminCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.accent + "35",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  adminLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  adminTitle: { fontSize: 15, fontWeight: "700", color: C.text },
-  adminSub: { fontSize: 11, color: C.textSecondary, marginTop: 1 },
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",

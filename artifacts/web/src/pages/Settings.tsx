@@ -16,19 +16,18 @@ import {
   Copy,
   Check,
   Lock,
-  Zap,
   Trash2,
   AlertTriangle,
   Map,
   Brain,
   RotateCcw,
-  Layers,
   LayoutDashboard,
   Tag,
   Plus,
   X,
   Camera,
   Music,
+  Zap,
 } from "lucide-react";
 import { useSpotify } from "@/contexts/SpotifyContext";
 
@@ -188,7 +187,7 @@ interface RiskRulesData {
 }
 
 export default function Settings() {
-  const { user, refreshUser, tierLevel, appMode, setAppMode, setAvatarUrl } = useAuth();
+  const { user, refreshUser, tierLevel, setAvatarUrl } = useAuth();
   const { resetTour } = useTourGuideContext();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -815,65 +814,6 @@ export default function Settings() {
               >
                 <Map className="h-4 w-4" />
                 Start Tour
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-            {appMode === "lite" ? <Zap className="h-5 w-5 text-amber-500" /> : <Layers className="h-5 w-5 text-primary" />}
-            <h2 className="text-sm font-bold text-foreground">App Mode</h2>
-            <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${appMode === "lite" ? "text-amber-500 bg-amber-500/10 border-amber-500/30" : "text-primary bg-primary/10 border-primary/30"}`}>
-              {appMode === "lite" ? "LEARNING" : "FULL"}
-            </span>
-          </div>
-          <div className="px-5 py-5">
-            <p className="text-sm text-muted-foreground mb-4">
-              {appMode === "lite"
-                ? "You are in Learning Mode — showing only the essentials. Switch to Full Mode to unlock Tilt Detection, Pre-Trade Checklist, advanced analytics, and all extra features."
-                : "You are in Full Mode — all features are active. Switch to Learning Mode for a simpler experience with just the core tools."}
-            </p>
-            {appMode === "lite" && (
-              <button
-                onClick={() => {
-                  setAppMode("full");
-                  toast({ title: "Full Mode activated", description: "All features are now unlocked." });
-                }}
-                className="w-full mb-4 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors"
-              >
-                <Layers className="h-4 w-4" />
-                Switch to Full Mode
-              </button>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setAppMode("lite")}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-sm font-medium transition-colors ${
-                  appMode === "lite"
-                    ? "bg-amber-500/10 border-amber-500/40 text-amber-500"
-                    : "border-border text-muted-foreground hover:border-border hover:bg-secondary"
-                }`}
-              >
-                <Zap className="h-5 w-5" />
-                <div className="text-center">
-                  <div className="font-bold">Learning Mode</div>
-                  <div className="text-xs opacity-70 mt-0.5">Dashboard, Academy, Risk, Journal</div>
-                </div>
-              </button>
-              <button
-                onClick={() => setAppMode("full")}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-sm font-medium transition-colors ${
-                  appMode === "full"
-                    ? "bg-primary/10 border-primary/40 text-primary"
-                    : "border-border text-muted-foreground hover:border-border hover:bg-secondary"
-                }`}
-              >
-                <Layers className="h-5 w-5" />
-                <div className="text-center">
-                  <div className="font-bold">Full Mode</div>
-                  <div className="text-xs opacity-70 mt-0.5">All features unlocked</div>
-                </div>
               </button>
             </div>
           </div>
