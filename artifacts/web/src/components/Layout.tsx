@@ -10,6 +10,7 @@ import { TourGuide } from "@/components/TourGuide";
 import { useTourGuideContext } from "@/contexts/TourGuideContext";
 import KillZoneStrip from "@/components/KillZoneStrip";
 import SpotifyPlayer from "@/components/SpotifyPlayer";
+import FloatingToolkit from "@/components/FloatingToolkit";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useToast } from "@/hooks/use-toast";
@@ -873,6 +874,7 @@ export default function Layout() {
         )}
       </div>
       <SpotifyPlayer />
+      <FloatingToolkit />
     </TooltipProvider>
   );
 }

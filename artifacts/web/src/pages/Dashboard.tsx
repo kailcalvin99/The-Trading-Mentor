@@ -1,20 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
-import {
-  EconomicCalendarWidget,
-} from "@/components/LiveMarketWidgets";
 import { useAuth } from "@/contexts/AuthContext";
 import { PremiumTeaser } from "@/components/CasinoElements";
 import { TradingCalendarModal, TradingCalendarIconButton } from "./dashboard/TradingCalendarModal";
 import { CumulativePnLChart } from "./dashboard/CumulativePnLChart";
 import { LastTradeGradeCard } from "./dashboard/LastTradeGradeCard";
-import { FvgAlertPopup, CommunityBanner, FvgSignalCard, ConfidenceScoreCard } from "./dashboard/LiveSignalWidgets";
-import { useScrollDirection } from "@/hooks/useScrollDirection";
+import { FvgAlertPopup, CommunityBanner, FvgSignalCard } from "./dashboard/LiveSignalWidgets";
 import { LiveMarketPopover } from "./dashboard/LiveMarketPopover";
-import { QuickNoteFAB, QuickNoteModal } from "./dashboard/QuickNoteModal";
-import { AskAIFloater } from "./dashboard/AskAIFloater";
-import { SpotifyDashCard } from "./dashboard/SpotifyDashCard";
 import { RoutineWidgetConditional } from "./dashboard/RoutineWidgetConditional";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import UpNextWidget from "@/components/UpNextWidget";
@@ -23,15 +16,7 @@ export default function Dashboard() {
   const { tierLevel } = useAuth();
   const isFreeUser = tierLevel === 0;
   const navigate = useNavigate();
-  const [showQuickNote, setShowQuickNote] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const scrollDir = useScrollDirection();
-
-  function handleAIClick() {
-    const btn = document.querySelector<HTMLButtonElement>("[data-ai-trigger]");
-    if (btn) btn.click();
-    else navigate("/");
-  }
 
   useEffect(() => {
     if (!localStorage.getItem("dashboard-visited")) {
@@ -42,11 +27,6 @@ export default function Dashboard() {
   return (
     <>
       <LiveMarketPopover />
-
-      <AskAIFloater visible={scrollDir === "up"} onOpen={handleAIClick} />
-
-      {showQuickNote && <QuickNoteModal onClose={() => setShowQuickNote(false)} />}
-      <QuickNoteFAB onOpen={() => setShowQuickNote(true)} />
 
       {showCalendar && <TradingCalendarModal onClose={() => setShowCalendar(false)} />}
 
@@ -83,14 +63,7 @@ export default function Dashboard() {
 
           <RoutineWidgetConditional />
 
-          <SpotifyDashCard />
-
-          <EconomicCalendarWidget />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <FvgSignalCard />
-            <ConfidenceScoreCard />
-          </div>
+          <FvgSignalCard />
         </div>
 
         {isFreeUser && (

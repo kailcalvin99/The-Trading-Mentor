@@ -389,6 +389,14 @@ export default function AIAssistant() {
   }, [isOpen, fetchConversations]);
 
   useEffect(() => {
+    function handleOpenAI() {
+      setIsOpen(true);
+    }
+    window.addEventListener("ict-open-ai", handleOpenAI);
+    return () => window.removeEventListener("ict-open-ai", handleOpenAI);
+  }, []);
+
+  useEffect(() => {
     if (isNewUser) return;
     function checkTip() {
       setShowTip(prev => {
