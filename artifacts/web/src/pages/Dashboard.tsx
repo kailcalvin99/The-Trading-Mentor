@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PremiumTeaser } from "@/components/CasinoElements";
 import { TradingCalendarModal, TradingCalendarIconButton } from "./dashboard/TradingCalendarModal";
@@ -15,7 +13,6 @@ import UpNextWidget from "@/components/UpNextWidget";
 export default function Dashboard() {
   const { tierLevel } = useAuth();
   const isFreeUser = tierLevel === 0;
-  const navigate = useNavigate();
   const [showCalendar, setShowCalendar] = useState(false);
 
   useEffect(() => {
@@ -40,13 +37,6 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <TradingCalendarIconButton onClick={() => setShowCalendar(true)} />
-            <button
-              onClick={() => navigate("/journal?new=1")}
-              className="flex items-center gap-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-xl px-3 py-2 transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Log Trade
-            </button>
           </div>
         </div>
 

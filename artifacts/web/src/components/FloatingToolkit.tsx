@@ -1,10 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, Wrench, StickyNote, Bot, Gift, Newspaper, Shield } from "lucide-react";
+import { X, Wrench, StickyNote, Bot, Gift, Newspaper, Shield, PenLine, CalendarDays } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useSpotify } from "@/contexts/SpotifyContext";
 import { SpinWheel } from "@/components/CasinoElements";
 import { EconomicCalendarWidget } from "@/components/LiveMarketWidgets";
 import { ConfidenceScoreCard } from "@/pages/dashboard/LiveSignalWidgets";
 import { QuickNoteModalInner } from "@/pages/dashboard/QuickNoteModal";
+import PnLCalendarPanel from "@/components/PnLCalendarPanel";
 
 function SpotifyIcon({ className }: { className?: string }) {
   return (
@@ -97,7 +99,7 @@ function FloatingPanel({ title, onClose, children, initialPos, width = "w-80" }:
   );
 }
 
-type OpenPanel = "spotify" | "note" | "ai" | "spin" | "news" | "confidence" | null;
+type OpenPanel = "spotify" | "note" | "ai" | "spin" | "news" | "confidence" | "pnl-calendar" | null;
 
 const TOOLS = [
   {
@@ -136,16 +138,29 @@ const TOOLS = [
     Icon: Shield,
     color: "bg-emerald-600 hover:bg-emerald-500 text-white",
   },
+  {
+    id: "log-trade" as const,
+    label: "Log Trade",
+    Icon: PenLine,
+    color: "bg-violet-600 hover:bg-violet-500 text-white",
+  },
+  {
+    id: "pnl-calendar" as const,
+    label: "P&L Calendar",
+    Icon: CalendarDays,
+    color: "bg-sky-600 hover:bg-sky-500 text-white",
+  },
 ] as const;
 
-const ARC_RADIUS = 90;
-const ARC_START_DEG = 180;
-const ARC_END_DEG = 270;
+const ARC_RADIUS = 135;
+const ARC_START_DEG = 150;
+const ARC_END_DEG = 280;
 
 export default function FloatingToolkit() {
   const [fanOpen, setFanOpen] = useState(false);
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
   const { setShowFloat } = useSpotify();
+  const navigate = useNavigate();
 
   const hubInitial = useRef({ x: window.innerWidth - 72, y: window.innerHeight - 180 });
   const { pos: hubPos, onMouseDown: hubMouseDown, moved } = useDraggable(hubInitial.current);
@@ -168,7 +183,7 @@ export default function FloatingToolkit() {
     setFanOpen((v) => !v);
   }
 
-  function openTool(id: OpenPanel) {
+  function openTool(id: (typeof TOOLS)[number]["id"]) {
     if (id === "spotify") {
       setShowFloat(true);
       setFanOpen(false);
@@ -179,7 +194,12 @@ export default function FloatingToolkit() {
       setFanOpen(false);
       return;
     }
-    setOpenPanel((prev) => (prev === id ? null : id));
+    if (id === "log-trade") {
+      navigate("/journal?new=1");
+      setFanOpen(false);
+      return;
+    }
+    setOpenPanel((prev) => (prev === id ? null : id as OpenPanel));
     setFanOpen(false);
   }
 
@@ -235,6 +255,18 @@ export default function FloatingToolkit() {
         </FloatingPanel>
       )}
 
+      {/* P&L Calendar */}
+      {openPanel === "pnl-calendar" && (
+        <FloatingPanel
+          title="P&L Calendar"
+          onClose={() => setOpenPanel(null)}
+          width="w-80"
+          initialPos={{ x: Math.max(0, window.innerWidth - 360), y: 80 }}
+        >
+          <PnLCalendarPanel />
+        </FloatingPanel>
+      )}
+
       {/* Hub + Fan */}
       <div
         className="fixed z-40 select-none"
@@ -268,7 +300,7 @@ export default function FloatingToolkit() {
               <div className="relative group">
                 <button
                   onClick={() => openTool(tool.id)}
-                  className={`w-10 h-10 rounded-full ${tool.color} shadow-lg flex items-center justify-center transition-transform hover:scale-110`}
+                  className={`w-9 h-9 rounded-full ${tool.color} shadow-lg flex items-center justify-center transition-transform hover:scale-110`}
                   title={tool.label}
                 >
                   <Icon className="w-4 h-4" />
