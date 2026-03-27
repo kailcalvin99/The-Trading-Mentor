@@ -177,6 +177,38 @@ function getImageUrl(filename: string): string {
   return `${base}images/${filename}`;
 }
 
+function VideoPlayer({ src }: { src: string }) {
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setError(false);
+  }, [src]);
+
+  if (error) {
+    return (
+      <div className="w-full rounded-lg border bg-muted flex items-center justify-center" style={{ minHeight: "120px" }}>
+        <p className="text-sm text-muted-foreground text-center px-4">Video unavailable — check back soon</p>
+      </div>
+    );
+  }
+
+  return (
+    <video
+      key={src}
+      className="w-full rounded-lg border"
+      style={{ maxHeight: "360px", objectFit: "contain" }}
+      controls
+      muted
+      playsInline
+      preload="metadata"
+      onError={() => setError(true)}
+    >
+      <source src={src} type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+  );
+}
+
 function getApiUrl(): string {
   return "/api/";
 }
@@ -535,14 +567,7 @@ function ChapterAccordion({
                           <Play className="h-3.5 w-3.5" />
                           Watch it in action
                         </p>
-                        <video
-                          src={getImageUrl(lesson.videoFile)}
-                          className="w-full rounded-lg border"
-                          style={{ maxHeight: "360px", objectFit: "contain" }}
-                          controls
-                          muted
-                          playsInline
-                        />
+                        <VideoPlayer src={getImageUrl(lesson.videoFile)} />
                       </div>
                     )}
 
