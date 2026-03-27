@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, Wrench, StickyNote, Bot, Gift, Newspaper, Shield, PenLine, CalendarDays, TrendingUp } from "lucide-react";
+import { X, Wrench, StickyNote, Bot, Gift, Newspaper, Shield, PenLine, CalendarDays, TrendingUp, ClipboardList, BarChart2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSpotify } from "@/contexts/SpotifyContext";
 import { SpinWheel } from "@/components/CasinoElements";
@@ -8,6 +8,8 @@ import { ConfidenceScoreCard } from "@/pages/dashboard/LiveSignalWidgets";
 import { QuickNoteModalInner } from "@/pages/dashboard/QuickNoteModal";
 import PnLCalendarPanel from "@/components/PnLCalendarPanel";
 import { FuturesDataPanel } from "@/components/FuturesDataPanel";
+import { PlanView } from "@/pages/academy/PlanView";
+import { ToolsView } from "@/pages/academy/ToolsView";
 
 function SpotifyIcon({ className }: { className?: string }) {
   return (
@@ -100,7 +102,7 @@ function FloatingPanel({ title, onClose, children, initialPos, width = "w-80" }:
   );
 }
 
-type OpenPanel = "spotify" | "note" | "ai" | "spin" | "news" | "confidence" | "pnl-calendar" | "futures" | null;
+type OpenPanel = "spotify" | "note" | "ai" | "spin" | "news" | "confidence" | "pnl-calendar" | "futures" | "trading-plan" | "tv-tools" | null;
 
 const TOOLS = [
   {
@@ -157,11 +159,23 @@ const TOOLS = [
     Icon: TrendingUp,
     color: "bg-teal-600 hover:bg-teal-500 text-white",
   },
+  {
+    id: "trading-plan" as const,
+    label: "Trading Plan",
+    Icon: ClipboardList,
+    color: "bg-orange-600 hover:bg-orange-500 text-white",
+  },
+  {
+    id: "tv-tools" as const,
+    label: "TV Indicators",
+    Icon: BarChart2,
+    color: "bg-rose-600 hover:bg-rose-500 text-white",
+  },
 ] as const;
 
-const ARC_RADIUS = 135;
-const ARC_START_DEG = 150;
-const ARC_END_DEG = 280;
+const ARC_RADIUS = 155;
+const ARC_START_DEG = 140;
+const ARC_END_DEG = 300;
 
 export default function FloatingToolkit() {
   const [fanOpen, setFanOpen] = useState(false);
@@ -283,6 +297,30 @@ export default function FloatingToolkit() {
           initialPos={{ x: Math.max(0, window.innerWidth - 420), y: 80 }}
         >
           <FuturesDataPanel />
+        </FloatingPanel>
+      )}
+
+      {/* Trading Plan */}
+      {openPanel === "trading-plan" && (
+        <FloatingPanel
+          title="ICT Trading Plan"
+          onClose={() => setOpenPanel(null)}
+          width="w-[480px]"
+          initialPos={{ x: Math.max(0, window.innerWidth - 520), y: 80 }}
+        >
+          <PlanView />
+        </FloatingPanel>
+      )}
+
+      {/* TV Indicators */}
+      {openPanel === "tv-tools" && (
+        <FloatingPanel
+          title="TradingView Indicators"
+          onClose={() => setOpenPanel(null)}
+          width="w-[480px]"
+          initialPos={{ x: Math.max(0, window.innerWidth - 520), y: 80 }}
+        >
+          <ToolsView />
         </FloatingPanel>
       )}
 

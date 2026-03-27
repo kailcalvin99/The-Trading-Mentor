@@ -6,8 +6,6 @@ import { GlossaryView } from "./academy/GlossaryView";
 import { QuizView } from "./academy/QuizView";
 import { FlashcardsView } from "./academy/FlashcardsView";
 import { LearnView } from "./academy/LearnView";
-import { PlanView } from "./academy/PlanView";
-import { ToolsView } from "./academy/ToolsView";
 import {
   getProgress,
   setProgress,
@@ -19,14 +17,12 @@ import { useAcademyWatchedVideos, ADVANCED_LESSON_IDS } from "./academy/academyH
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
-type Tab = "learn" | "glossary" | "quiz" | "plan" | "tools" | "flashcards";
+type Tab = "learn" | "glossary" | "quiz" | "flashcards";
 
 const TAB_CONFIG: { key: Tab; label: string }[] = [
   { key: "learn", label: "Learn" },
   { key: "glossary", label: "Glossary" },
   { key: "quiz", label: "Quiz" },
-  { key: "plan", label: "Plan" },
-  { key: "tools", label: "Tools" },
   { key: "flashcards", label: "Flashcards" },
 ];
 
@@ -117,8 +113,6 @@ export default function IctAcademy() {
         {tab === "learn" && <LearnView />}
         {tab === "glossary" && <GlossaryView />}
         {tab === "quiz" && <QuizView />}
-        {tab === "plan" && <PlanView />}
-        {tab === "tools" && <ToolsView />}
         {tab === "flashcards" && <FlashcardsView />}
       </main>
     </div>
