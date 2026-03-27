@@ -194,6 +194,18 @@ const FREE_LESSON_CAP = 5;
 
 const ADVANCED_CHAPTER_IDS = ["ch3", "ch5", "ch7"];
 
+const BEGINNER_PREREQUISITES: Record<string, string[]> = {
+  ch3: ["ch1", "ch2"],
+  ch5: ["ch4"],
+  ch7: ["ch6"],
+};
+
+function isChapterFullyComplete(chapterId: string, completed: Set<string>): boolean {
+  const chapter = COURSE_CHAPTERS.find((c) => c.id === chapterId);
+  if (!chapter || chapter.lessons.length === 0) return false;
+  return chapter.lessons.every((l) => completed.has(l.id));
+}
+
 function LearnView() {
   const { tierLevel } = useAuth();
   const isFree = tierLevel === 0;
@@ -317,7 +329,12 @@ function LearnView() {
             const hasTargetLesson = pendingLessonId
               ? chapter.lessons.some((l) => l.id === pendingLessonId)
               : false;
-            const isBeginnerLocked = isBeginner && ADVANCED_CHAPTER_IDS.includes(chapter.id);
+            const isBeginnerLocked =
+              isBeginner &&
+              ADVANCED_CHAPTER_IDS.includes(chapter.id) &&
+              !(BEGINNER_PREREQUISITES[chapter.id] ?? []).every((prereqId) =>
+                isChapterFullyComplete(prereqId, completed)
+              );
             return (
               <ChapterAccordion
                 key={chapter.id}
