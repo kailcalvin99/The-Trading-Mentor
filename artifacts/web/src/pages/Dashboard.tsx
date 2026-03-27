@@ -34,8 +34,13 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <MorningBriefingWidget />
+            <div className="lg:col-span-2">
+              <DailyMantraWidget />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <UpNextWidget />
-            <DailyMantraWidget />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

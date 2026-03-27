@@ -140,8 +140,8 @@ export default function DailyMantraWidget() {
     <>
       <style>{shimmerKeyframes}</style>
       <div
-        className="relative flex items-center justify-center py-6 select-none overflow-hidden"
-        style={{ minHeight: 96 }}
+        className="relative flex items-center justify-center py-8 select-none overflow-hidden"
+        style={{ minHeight: 120 }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
@@ -188,7 +188,7 @@ export default function DailyMantraWidget() {
                     {cumulative.toFixed(1)}R
                   </span>
                 </div>
-                <div className="h-16">
+                <div className="h-24">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
                       data={chartData}
