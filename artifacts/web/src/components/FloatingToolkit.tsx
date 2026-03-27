@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, Wrench, StickyNote, Bot, Gift, Newspaper, Shield, PenLine, CalendarDays } from "lucide-react";
+import { X, Wrench, StickyNote, Bot, Gift, Newspaper, Shield, PenLine, CalendarDays, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSpotify } from "@/contexts/SpotifyContext";
 import { SpinWheel } from "@/components/CasinoElements";
@@ -7,6 +7,7 @@ import { EconomicCalendarWidget } from "@/components/LiveMarketWidgets";
 import { ConfidenceScoreCard } from "@/pages/dashboard/LiveSignalWidgets";
 import { QuickNoteModalInner } from "@/pages/dashboard/QuickNoteModal";
 import PnLCalendarPanel from "@/components/PnLCalendarPanel";
+import { FuturesDataPanel } from "@/components/FuturesDataPanel";
 
 function SpotifyIcon({ className }: { className?: string }) {
   return (
@@ -99,7 +100,7 @@ function FloatingPanel({ title, onClose, children, initialPos, width = "w-80" }:
   );
 }
 
-type OpenPanel = "spotify" | "note" | "ai" | "spin" | "news" | "confidence" | "pnl-calendar" | null;
+type OpenPanel = "spotify" | "note" | "ai" | "spin" | "news" | "confidence" | "pnl-calendar" | "futures" | null;
 
 const TOOLS = [
   {
@@ -149,6 +150,12 @@ const TOOLS = [
     label: "P&L Calendar",
     Icon: CalendarDays,
     color: "bg-sky-600 hover:bg-sky-500 text-white",
+  },
+  {
+    id: "futures" as const,
+    label: "Futures Data",
+    Icon: TrendingUp,
+    color: "bg-teal-600 hover:bg-teal-500 text-white",
   },
 ] as const;
 
@@ -267,6 +274,18 @@ export default function FloatingToolkit() {
         </FloatingPanel>
       )}
 
+      {/* Futures Data */}
+      {openPanel === "futures" && (
+        <FloatingPanel
+          title="Futures Data"
+          onClose={() => setOpenPanel(null)}
+          width="w-96"
+          initialPos={{ x: Math.max(0, window.innerWidth - 420), y: 80 }}
+        >
+          <FuturesDataPanel />
+        </FloatingPanel>
+      )}
+
       {/* Hub + Fan */}
       <div
         className="fixed z-40 select-none"
@@ -300,7 +319,7 @@ export default function FloatingToolkit() {
               <div className="relative group">
                 <button
                   onClick={() => openTool(tool.id)}
-                  className={`w-9 h-9 rounded-full ${tool.color} shadow-lg flex items-center justify-center transition-transform hover:scale-110`}
+                  className={`w-10 h-10 rounded-full ${tool.color} shadow-lg flex items-center justify-center transition-transform hover:scale-110`}
                   title={tool.label}
                 >
                   <Icon className="w-4 h-4" />
