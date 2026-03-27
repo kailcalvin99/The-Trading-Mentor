@@ -6,7 +6,7 @@ import { PremiumTeaser } from "@/components/CasinoElements";
 import { TradingCalendarModal, TradingCalendarIconButton } from "./dashboard/TradingCalendarModal";
 import { CumulativePnLChart } from "./dashboard/CumulativePnLChart";
 import { LastTradeGradeCard } from "./dashboard/LastTradeGradeCard";
-import { FvgAlertPopup, CommunityBanner, FvgSignalCard } from "./dashboard/LiveSignalWidgets";
+import { FvgAlertPopup, CommunityBanner } from "./dashboard/LiveSignalWidgets";
 import { LiveMarketPopover } from "./dashboard/LiveMarketPopover";
 import { RoutineWidgetConditional } from "./dashboard/RoutineWidgetConditional";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
@@ -62,8 +62,6 @@ export default function Dashboard() {
           </div>
 
           <RoutineWidgetConditional />
-
-          <FvgSignalCard />
         </div>
 
         {isFreeUser && (

@@ -17,7 +17,6 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   { id: "economiccalendar", label: "Today's Economic Events", defaultOn: true },
   { id: "killzonetimer", label: "Kill Zone Countdown", defaultOn: true },
   { id: "riskgauge", label: "Daily Risk Gauge", defaultOn: true },
-  { id: "fvgsignal", label: "FVG Signal", defaultOn: true },
   { id: "confidencescore", label: "ICT Confidence Score", defaultOn: true },
 ];
 
