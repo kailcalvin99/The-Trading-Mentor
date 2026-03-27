@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PremiumTeaser } from "@/components/CasinoElements";
-import { TradingCalendarModal, TradingCalendarIconButton } from "./dashboard/TradingCalendarModal";
 import { CumulativePnLChart } from "./dashboard/CumulativePnLChart";
 import { LastTradeGradeCard } from "./dashboard/LastTradeGradeCard";
 import { FvgAlertPopup, CommunityBanner } from "./dashboard/LiveSignalWidgets";
@@ -13,7 +12,6 @@ import UpNextWidget from "@/components/UpNextWidget";
 export default function Dashboard() {
   const { tierLevel } = useAuth();
   const isFreeUser = tierLevel === 0;
-  const [showCalendar, setShowCalendar] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("dashboard-visited")) {
@@ -25,8 +23,6 @@ export default function Dashboard() {
     <>
       <LiveMarketPopover />
 
-      {showCalendar && <TradingCalendarModal onClose={() => setShowCalendar(false)} />}
-
       <FvgAlertPopup />
       <CommunityBanner tierLevel={tierLevel} />
 
@@ -34,9 +30,6 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <TradingCalendarIconButton onClick={() => setShowCalendar(true)} />
           </div>
         </div>
 
