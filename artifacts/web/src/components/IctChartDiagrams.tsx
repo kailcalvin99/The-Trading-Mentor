@@ -436,17 +436,18 @@ const DIAGRAM_MAP: Record<string, React.FC<{ className?: string }>> = {
 };
 
 export function chartImageToConceptKey(chartImage: string): string | null {
+  const normalized = chartImage.replace(/\.(png|webp)$/, "");
   const map: Record<string, string> = {
-    "chart-fvg.png": "fvg",
-    "chart-ote.png": "ote",
-    "chart-mss.png": "mss",
-    "chart-liquidity-sweep.png": "liquidity-sweep",
-    "chart-killzone.png": "kill-zone",
-    "chart-silver-bullet.png": "silver-bullet",
-    "chart-conservative-entry.png": "conservative-entry",
-    "chart-exit-criteria.png": "exit-criteria",
+    "chart-fvg": "fvg",
+    "chart-ote": "ote",
+    "chart-mss": "mss",
+    "chart-liquidity-sweep": "liquidity-sweep",
+    "chart-killzone": "kill-zone",
+    "chart-silver-bullet": "silver-bullet",
+    "chart-conservative-entry": "conservative-entry",
+    "chart-exit-criteria": "exit-criteria",
   };
-  return map[chartImage] ?? null;
+  return map[normalized] ?? null;
 }
 
 export function ChartLightbox({

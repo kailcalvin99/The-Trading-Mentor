@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import {
   Navigate,
   Route,
@@ -11,37 +11,38 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AppConfigProvider } from "./contexts/AppConfigContext";
 import Layout from "./components/Layout";
-import Dashboard from "./pages/Dashboard";
-import SmartJournal from "./pages/SmartJournal";
-import DailyPlanner from "./pages/DailyPlanner";
-import IctAcademy from "./pages/IctAcademy";
-import Analytics from "./pages/Analytics";
-import PropTracker from "./pages/PropTracker";
-import Community from "./pages/Community";
-import Leaderboard from "./pages/Leaderboard";
-import Admin from "./pages/Admin";
-import Pricing from "./pages/Pricing";
-import VideoLibrary from "./pages/VideoLibrary";
-import TradingViewWebhooks from "./pages/TradingViewWebhooks";
-import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import Welcome from "./pages/Welcome";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import VideoTourPage from "./pages/VideoTourPage";
-import RefundPolicy from "./pages/RefundPolicy";
-import TermsOfService from "./pages/TermsOfService";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import RiskDisclosure from "./pages/RiskDisclosure";
-import SpotifyCallback from "./pages/SpotifyCallback";
-import PaperTradingPage from "./pages/PaperTradingPage";
-import NotFound from "./pages/not-found";
 import { SpotifyProvider } from "./contexts/SpotifyContext";
 import { AuthGuard, AdminGuard, TierGuard } from "./components/AuthGuard";
 import { TourGuideProvider } from "./contexts/TourGuideContext";
 import { PlannerProvider } from "./contexts/PlannerContext";
 import { ThemeProvider } from "./components/ThemeProvider";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const SmartJournal = lazy(() => import("./pages/SmartJournal"));
+const DailyPlanner = lazy(() => import("./pages/DailyPlanner"));
+const IctAcademy = lazy(() => import("./pages/IctAcademy"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const PropTracker = lazy(() => import("./pages/PropTracker"));
+const Community = lazy(() => import("./pages/Community"));
+const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const VideoLibrary = lazy(() => import("./pages/VideoLibrary"));
+const TradingViewWebhooks = lazy(() => import("./pages/TradingViewWebhooks"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Welcome = lazy(() => import("./pages/Welcome"));
+const VideoTourPage = lazy(() => import("./pages/VideoTourPage"));
+const RefundPolicy = lazy(() => import("./pages/RefundPolicy"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
+const SpotifyCallback = lazy(() => import("./pages/SpotifyCallback"));
+const PaperTradingPage = lazy(() => import("./pages/PaperTradingPage"));
+const NotFound = lazy(() => import("./pages/not-found"));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -68,6 +69,7 @@ function App() {
                 <PlannerProvider>
                   <Router basename={basename}>
                   <ScrollToTop />
+                  <Suspense fallback={null}>
                   <Routes>
                     {/* Public routes */}
                     <Route path="/login" element={<Login />} />
@@ -106,6 +108,7 @@ function App() {
 
                     <Route path="*" element={<NotFound />} />
                   </Routes>
+                  </Suspense>
                   <Toaster richColors position="top-right" />
                 </Router>
                 </PlannerProvider>

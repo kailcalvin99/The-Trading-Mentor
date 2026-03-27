@@ -177,6 +177,15 @@ function getImageUrl(filename: string): string {
   return `${base}images/${filename}`;
 }
 
+const IMAGE_DIMENSIONS: Record<string, { width: number; height: number }> = {
+  "chart-idm-inducement.webp": { width: 1408, height: 768 },
+  "lesson-why-lose.webp": { width: 1408, height: 768 },
+};
+
+function getImageDimensions(filename: string): { width: number; height: number } {
+  return IMAGE_DIMENSIONS[filename] ?? { width: 1280, height: 896 };
+}
+
 function VideoPlayer({ src }: { src: string }) {
   const [error, setError] = useState(false);
 
@@ -554,6 +563,9 @@ function ChapterAccordion({
                               alt={`${lesson.title} chart example`}
                               className="w-full rounded-lg border cursor-zoom-in"
                               style={{ maxHeight: "360px", objectFit: "contain" }}
+                              loading="lazy"
+                              width={getImageDimensions(lesson.chartImage).width}
+                              height={getImageDimensions(lesson.chartImage).height}
                             />
                           )}
                           <p className="text-[10px] text-muted-foreground/50 text-center mt-1">Tap to enlarge</p>
@@ -711,6 +723,9 @@ function GlossaryView() {
                         alt={`${item.term} chart`}
                         className="w-full rounded-lg"
                         style={{ maxHeight: "320px", objectFit: "contain" }}
+                        loading="lazy"
+                        width={getImageDimensions(item.image).width}
+                        height={getImageDimensions(item.image).height}
                       />
                     );
                   })()}
@@ -1299,6 +1314,9 @@ function PlanView() {
                 alt={`${section.title} chart`}
                 className="w-full"
                 style={{ maxHeight: "320px", objectFit: "contain" }}
+                loading="lazy"
+                width={getImageDimensions(section.image).width}
+                height={getImageDimensions(section.image).height}
               />
             )}
           </div>
