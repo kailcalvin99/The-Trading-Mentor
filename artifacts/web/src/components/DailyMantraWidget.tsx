@@ -4,6 +4,8 @@ import { Pencil } from "lucide-react";
 const STORAGE_KEY = "ict-daily-mantra";
 const DEFAULT_MANTRA = "You got this";
 
+const GLOW = "0 0 40px rgba(255,255,255,0.65), 0 0 16px rgba(255,255,255,0.4), 0 0 6px rgba(255,255,255,0.25)";
+
 function loadMantra(): string {
   try {
     return localStorage.getItem(STORAGE_KEY) || DEFAULT_MANTRA;
@@ -47,7 +49,7 @@ export default function DailyMantraWidget() {
 
   return (
     <div
-      className="bg-card border border-border rounded-2xl px-6 py-5 flex items-center justify-center relative group cursor-pointer select-none"
+      className="relative flex items-center justify-center py-6 cursor-pointer select-none"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => !editing && startEdit()}
@@ -56,6 +58,13 @@ export default function DailyMantraWidget() {
       aria-label="Edit daily mantra"
       onKeyDown={(e) => e.key === "Enter" && !editing && startEdit()}
     >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "radial-gradient(ellipse 70% 80% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 70%)",
+        }}
+      />
+
       {editing ? (
         <input
           ref={inputRef}
@@ -63,29 +72,22 @@ export default function DailyMantraWidget() {
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={handleKeyDown}
           onClick={(e) => e.stopPropagation()}
-          maxLength={80}
-          className="w-full bg-transparent border-none outline-none text-center text-2xl md:text-3xl font-bold text-white caret-white"
-          style={{
-            textShadow: "0 0 20px rgba(255,255,255,0.55), 0 0 8px rgba(255,255,255,0.3)",
-            letterSpacing: "0.01em",
-          }}
+          className="relative z-10 w-full max-w-2xl bg-transparent border-none outline-none text-center text-4xl md:text-5xl font-bold text-white caret-white tracking-tight"
+          style={{ textShadow: GLOW }}
           spellCheck={false}
           autoComplete="off"
         />
       ) : (
         <span
-          className="text-2xl md:text-3xl font-bold text-white text-center leading-tight"
-          style={{
-            textShadow: "0 0 20px rgba(255,255,255,0.55), 0 0 8px rgba(255,255,255,0.3)",
-            letterSpacing: "0.01em",
-          }}
+          className="relative z-10 text-4xl md:text-5xl font-bold text-white text-center leading-tight tracking-tight"
+          style={{ textShadow: GLOW }}
         >
           {text}
         </span>
       )}
 
       {!editing && hovered && (
-        <span className="absolute top-3 right-4 text-muted-foreground/50 pointer-events-none">
+        <span className="absolute top-2 right-2 text-white/20 pointer-events-none z-10">
           <Pencil className="h-3.5 w-3.5" />
         </span>
       )}
