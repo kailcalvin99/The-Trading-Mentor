@@ -478,6 +478,7 @@ export default function TopTabBar({
           </View>
           <View style={[styles.pillTrack, { backgroundColor: C.backgroundSecondary, borderColor: C.cardBorder }]}>
             <Animated.View
+              pointerEvents="none"
               style={[
                 styles.pillIndicator,
                 {
@@ -488,14 +489,25 @@ export default function TopTabBar({
             />
             <TouchableOpacity
               style={styles.pillSide}
-              onPress={() => setAppMode("full")}
+              onPress={() => {
+                setAppMode("full");
+              }}
               activeOpacity={0.7}
             >
               <Text style={[styles.pillLabel, { color: appMode === "full" ? "#fff" : C.textSecondary }]}>Full</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.pillSide}
-              onPress={() => setAppMode("lite")}
+              onPress={() => {
+                const norm = pathname.replace(/^\/\(tabs\)\/?/, "/");
+                const currentTabRoute = (BASE_TAB_ROUTES as string[]).find(
+                  (r) => norm === TAB_HREFS[r as TabRoute]
+                ) as TabRoute | undefined;
+                if (currentTabRoute && !(LITE_TAB_ROUTES as string[]).includes(currentTabRoute)) {
+                  onNavigate("/(tabs)/dashboard");
+                }
+                setAppMode("lite");
+              }}
               activeOpacity={0.7}
             >
               <Text style={[styles.pillLabel, { color: appMode === "lite" ? "#fff" : C.textSecondary }]}>Learning</Text>

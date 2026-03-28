@@ -340,6 +340,9 @@ export default function SettingsScreen() {
 
   function handleAppModeChange(mode: "full" | "lite") {
     setCurrentAppMode(mode);
+    if (mode === "lite") {
+      router.replace("/(tabs)/dashboard");
+    }
     setAppMode(mode);
   }
 
