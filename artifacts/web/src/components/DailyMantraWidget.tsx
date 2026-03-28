@@ -69,7 +69,7 @@ function usePnLChartData() {
 function StraightMantraText({ text }: { text: string }) {
   return (
     <p
-      className="text-center text-2xl md:text-3xl font-bold text-white tracking-tight leading-snug px-2 break-words"
+      className="text-center text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-snug px-2 break-words"
       style={{ textShadow: GLOW }}
       aria-label={text}
     >
@@ -144,7 +144,7 @@ export default function DailyMantraWidget() {
   return (
     <div
       className="relative flex items-center justify-center py-4 select-none overflow-hidden"
-      style={{ minHeight: 90 }}
+      style={{ minHeight: 110 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -277,7 +277,7 @@ export default function DailyMantraWidget() {
             onBlur={(e) => commit(e.target.value)}
             onKeyDown={handleKeyDown}
             onClick={(e) => e.stopPropagation()}
-            className="relative z-10 w-full max-w-2xl bg-transparent border-none outline-none text-center text-2xl md:text-3xl font-bold text-white caret-white tracking-tight"
+            className="relative z-10 w-full max-w-2xl bg-transparent border-none outline-none text-center text-3xl md:text-4xl lg:text-5xl font-bold text-white caret-white tracking-tight"
             style={{ textShadow: GLOW }}
             spellCheck={false}
             autoComplete="off"
