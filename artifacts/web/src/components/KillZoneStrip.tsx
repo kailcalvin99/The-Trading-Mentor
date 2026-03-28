@@ -86,31 +86,28 @@ export default function KillZoneStrip() {
       return (
         <div
           key={prefix + session.name}
-          className="flex-shrink-0 flex items-center gap-2 px-4 h-[48px] border rounded-xl transition-all border-border bg-[#020203] opacity-[0.5]"
+          className="flex-shrink-0 flex items-center gap-1.5 px-2.5 h-[28px] border rounded-lg transition-all border-border bg-[#020203] opacity-[0.5]"
           style={{
-            minWidth: 180,
-            ...(isLive ? { borderColor: session.color, boxShadow: `0 0 10px ${session.color}30` } : {}),
+            minWidth: 140,
+            ...(isLive ? { borderColor: session.color, boxShadow: `0 0 6px ${session.color}30` } : {}),
           }}
         >
           <div
-            className={`w-2 h-2 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
+            className={`w-1.5 h-1.5 rounded-full shrink-0 ${isLive ? "animate-pulse" : ""}`}
             style={{ backgroundColor: isLive ? session.color : isNear ? "#F59E0B" : "#555" }}
           />
-          <div className="flex flex-col min-w-0">
-            <span className="font-bold text-foreground whitespace-nowrap text-left text-[14px]">{session.emoji} {session.name}</span>
-            <span className="text-muted-foreground whitespace-nowrap text-left text-[11px] bg-[#0b0a0f]">{session.time}</span>
-          </div>
+          <span className="font-bold text-foreground whitespace-nowrap text-[11px]">{session.emoji} {session.name}</span>
           {isLive ? (
             <span
-              className="font-bold px-1.5 py-0.5 rounded-full shrink-0 text-[12px] ml-auto"
+              className="font-bold px-1 rounded-full shrink-0 text-[9px] ml-auto"
               style={{ backgroundColor: `${session.color}20`, color: session.color }}
             >
               LIVE
             </span>
           ) : isEnded ? (
-            <span className="text-xs text-muted-foreground font-medium shrink-0 ml-auto">Ended</span>
+            <span className="text-[9px] text-muted-foreground font-medium shrink-0 ml-auto">Ended</span>
           ) : (
-            <span className="font-mono font-medium shrink-0 text-muted-foreground text-[10px] ml-auto">
+            <span className="font-mono font-medium shrink-0 text-muted-foreground text-[9px] ml-auto">
               {formatCountdown(msUntil)}
             </span>
           )}
@@ -119,43 +116,37 @@ export default function KillZoneStrip() {
     });
 
     const statCards = [
-      <div key={prefix + "pnl"} className="flex-shrink-0 flex items-center gap-2 px-3 h-[48px] bg-card border border-border rounded-xl" style={{ minWidth: 100 }}>
-        <div className="flex flex-col min-w-0">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Today's P&L</span>
-          <span className="text-sm font-bold whitespace-nowrap leading-tight" style={{ color: hasTodayTrades ? pnlColor : undefined }}>
-            {hasTodayTrades ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—"}
-          </span>
-        </div>
+      <div key={prefix + "pnl"} className="flex-shrink-0 flex items-center gap-1.5 px-2.5 h-[28px] bg-card border border-border rounded-lg" style={{ minWidth: 80 }}>
+        <span className="text-[9px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">P&L:</span>
+        <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: hasTodayTrades ? pnlColor : undefined }}>
+          {hasTodayTrades ? `${todayPnL >= 0 ? "+" : ""}${todayPnL.toFixed(1)}R` : "—"}
+        </span>
       </div>,
-      <div key={prefix + "wr"} className="flex-shrink-0 flex items-center gap-2 px-3 h-[48px] bg-card border border-border rounded-xl" style={{ minWidth: 100 }}>
-        <div className="flex flex-col min-w-0">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Win Rate</span>
-          <span className="text-sm font-bold whitespace-nowrap leading-tight" style={{ color: todayWinRate !== null ? (todayWinRate >= 50 ? "#00C896" : "#F59E0B") : undefined }}>
-            {todayWinRate !== null ? `${todayWinRate}%` : "—"}
-          </span>
-        </div>
+      <div key={prefix + "wr"} className="flex-shrink-0 flex items-center gap-1.5 px-2.5 h-[28px] bg-card border border-border rounded-lg" style={{ minWidth: 70 }}>
+        <span className="text-[9px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">WR:</span>
+        <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: todayWinRate !== null ? (todayWinRate >= 50 ? "#00C896" : "#F59E0B") : undefined }}>
+          {todayWinRate !== null ? `${todayWinRate}%` : "—"}
+        </span>
       </div>,
-      <div key={prefix + "trades"} className="flex-shrink-0 flex items-center gap-2 px-3 h-[48px] bg-card border border-border rounded-xl" style={{ minWidth: 80 }}>
-        <div className="flex flex-col min-w-0">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap leading-tight">Trades</span>
-          <span className="text-sm font-bold text-foreground whitespace-nowrap leading-tight">
-            {todayCompleted.length > 0 ? String(todayCompleted.length) : "—"}
-          </span>
-        </div>
+      <div key={prefix + "trades"} className="flex-shrink-0 flex items-center gap-1.5 px-2.5 h-[28px] bg-card border border-border rounded-lg" style={{ minWidth: 60 }}>
+        <span className="text-[9px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">Trades:</span>
+        <span className="text-[11px] font-bold text-foreground whitespace-nowrap">
+          {todayCompleted.length > 0 ? String(todayCompleted.length) : "—"}
+        </span>
       </div>,
     ];
 
     return [...sessionCards, ...statCards];
   }
 
-  const CLOCK_WIDTH = 260;
+  const CLOCK_WIDTH = 200;
   const dateStr = formatDate(new Date());
   const timeStr = formatESTTime(est);
 
   return (
     <div
-      className="border-b border-border bg-card/80 shrink-0 relative overflow-hidden"
-      style={{ height: 64 }}
+      className="border-t border-border bg-card/90 shrink-0 relative overflow-hidden"
+      style={{ height: 38 }}
     >
       <style>{`
         @keyframes kz-ticker {
@@ -166,41 +157,41 @@ export default function KillZoneStrip() {
 
       {/* Avatar + greeting — sits on top, cards scroll behind it */}
       <div
-        className="absolute left-0 top-0 h-full flex items-center pl-3 pr-2 z-20"
+        className="absolute left-0 top-0 h-full flex items-center pl-2 pr-1.5 z-20"
         style={{ width: CLOCK_WIDTH, background: "hsl(var(--card) / 0.95)" }}
       >
-        <div className="flex items-center gap-2.5 px-3 h-[48px] border border-border rounded-xl w-full bg-card">
+        <div className="flex items-center gap-1.5 px-2 h-[26px] border border-border rounded-lg w-full bg-card">
           {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:")) ? (
             <img
               src={avatarUrl}
               alt={firstName}
-              className="w-8 h-8 rounded-full object-cover shrink-0 border border-border"
+              className="w-5 h-5 rounded-full object-cover shrink-0 border border-border"
             />
           ) : avatarUrl && avatarUrl.length <= 4 ? (
             <div
-              className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center border border-border text-lg leading-none"
+              className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center border border-border text-sm leading-none"
               style={{ background: "#00C896" }}
             >
               {avatarUrl}
             </div>
           ) : (
             <div
-              className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold border border-border"
+              className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold border border-border"
               style={{ background: "#00C896", color: "#020203" }}
             >
               {initials}
             </div>
           )}
           <div className="flex flex-col min-w-0">
-            <span className="text-xs font-semibold text-foreground whitespace-nowrap leading-tight">{firstName}</span>
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap leading-tight">{dateStr} · {timeStr} EST</span>
+            <span className="text-[10px] font-semibold text-foreground whitespace-nowrap leading-none">{firstName} · {timeStr} EST</span>
+            <span className="text-[9px] text-muted-foreground whitespace-nowrap leading-none">{dateStr}</span>
           </div>
         </div>
       </div>
 
       {/* Gradient fade — cards dissolve as they pass behind the clock */}
       <div
-        className="absolute top-0 h-full w-10 z-10 pointer-events-none"
+        className="absolute top-0 h-full w-8 z-10 pointer-events-none"
         style={{
           left: CLOCK_WIDTH,
           background: "linear-gradient(to right, hsl(var(--card) / 0.9), transparent)",
@@ -210,12 +201,12 @@ export default function KillZoneStrip() {
       {/* Infinite ticker area */}
       <div
         className="absolute top-0 h-full overflow-hidden"
-        style={{ left: CLOCK_WIDTH + 8, right: 0 }}
+        style={{ left: CLOCK_WIDTH + 6, right: 0 }}
       >
         <div
           style={{
             display: "flex",
-            gap: 8,
+            gap: 6,
             height: "100%",
             alignItems: "center",
             width: "max-content",
@@ -229,7 +220,7 @@ export default function KillZoneStrip() {
 
       {/* Right edge fade */}
       <div
-        className="absolute top-0 right-0 h-full w-10 z-10 pointer-events-none"
+        className="absolute top-0 right-0 h-full w-8 z-10 pointer-events-none"
         style={{ background: "linear-gradient(to left, hsl(var(--card) / 0.9), transparent)" }}
       />
     </div>

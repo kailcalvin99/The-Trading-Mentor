@@ -788,14 +788,11 @@ export default function Layout() {
           <main className="flex-1 overflow-hidden relative">
             <div className="flex h-full">
               <div ref={mainScrollRef} className="flex-1 overflow-auto">
-                {location.pathname === "/" && (
-                  <div className="sticky top-0 z-20">
-                    <KillZoneStrip />
-                  </div>
-                )}
-                <ErrorBoundary>
-                  <Outlet />
-                </ErrorBoundary>
+                <div className={location.pathname === "/" ? "pb-10" : ""}>
+                  <ErrorBoundary>
+                    <Outlet />
+                  </ErrorBoundary>
+                </div>
               </div>
 
               {isFreeUser && (
@@ -808,6 +805,12 @@ export default function Layout() {
 
 
         </div>
+
+        {location.pathname === "/" && (
+          <div className="fixed bottom-0 left-0 right-0 z-30">
+            <KillZoneStrip />
+          </div>
+        )}
 
         {showShare && (
           <ShareModal
