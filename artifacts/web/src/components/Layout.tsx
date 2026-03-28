@@ -579,67 +579,37 @@ export default function Layout() {
           />
 
 
-          {/* AI glow line + glowing hamburger pill for non-dashboard pages */}
+          {/* AIAssistant mounted globally so ict-open-ai works on all routes */}
+          <AIAssistant />
+
+          {/* Hamburger + AI FAB for non-dashboard pages */}
           {!isDashboard && (
             <>
-              <div
-                className="fixed top-0 left-0 right-0 cursor-pointer"
-                style={{ height: 3, zIndex: 60 }}
-                onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
-                title="Open AI Assistant"
-                role="button"
-                aria-label="Open AI Assistant"
-              >
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
-                    animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
-                    boxShadow: "0 0 5px 1px #00C89660",
-                  }}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    left: "50%",
-                    top: "50%",
-                    transform: "translateX(-50%) translateY(-50%)",
-                    background: "#00C896",
-                    borderRadius: 999,
-                    padding: "3px 10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 30,
-                    animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <span style={{ color: "#020203", fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", lineHeight: 1 }}>AI</span>
-                </div>
-              </div>
+              {/* Hamburger — top-right */}
               <button
                 style={{
                   position: "fixed",
-                  top: 3,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  zIndex: 59,
-                  background: "#00C896",
-                  borderRadius: 6,
-                  padding: "4px 6px",
+                  top: 12,
+                  right: 12,
+                  zIndex: 61,
+                  background: "rgba(26,28,38,0.92)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 10,
+                  padding: "8px 10px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
-                  border: "none",
                   cursor: "pointer",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
                 }}
                 onClick={() => setDrawerOpen((prev) => !prev)}
-                aria-label="Open navigation"
+                aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
+                aria-expanded={drawerOpen}
               >
-                <Menu className="h-3 w-3" style={{ color: "#020203" }} />
+                <Menu className="h-5 w-5" style={{ color: "#e2e8f0" }} />
               </button>
+
             </>
           )}
 
@@ -878,14 +848,6 @@ export default function Layout() {
                   marginBottom: headerVisible ? 0 : "-3rem",
                 }}
               >
-                <button
-                  onClick={() => setDrawerOpen((prev) => !prev)}
-                  className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-                  aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
-                  aria-expanded={drawerOpen}
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
                 <div className="flex-1 flex items-center justify-center relative overflow-hidden min-w-0">
                   {/* Mantra text (visible for first 20 s) */}
                   <div
@@ -946,17 +908,20 @@ export default function Layout() {
                 </div>
                 <div className="ml-auto flex items-center gap-2 pr-1">
                   <HeaderGamificationBadges />
-                  <AIAssistant />
+                  <button
+                    onClick={() => setDrawerOpen((prev) => !prev)}
+                    className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+                    aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
+                    aria-expanded={drawerOpen}
+                  >
+                    <Menu className="h-5 w-5" />
+                  </button>
                 </div>
 
-                {/* AI glow line — bottom edge of header */}
+                {/* Decorative glow line — bottom edge of header (visual only) */}
                 <div
-                  className="absolute bottom-0 left-0 right-0 cursor-pointer"
-                  style={{ height: 3, zIndex: 20 }}
-                  onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
-                  title="Open AI Assistant"
-                  role="button"
-                  aria-label="Open AI Assistant"
+                  className="absolute bottom-0 left-0 right-0 pointer-events-none"
+                  style={{ height: 2, zIndex: 20 }}
                 >
                   <div
                     className="absolute inset-0"
@@ -966,25 +931,6 @@ export default function Layout() {
                       boxShadow: "0 0 5px 1px #00C89660",
                     }}
                   />
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: "50%",
-                      top: "50%",
-                      transform: "translateX(-50%) translateY(-50%)",
-                      background: "#00C896",
-                      borderRadius: 999,
-                      padding: "3px 10px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      zIndex: 30,
-                      animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <span style={{ color: "#020203", fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", lineHeight: 1 }}>AI</span>
-                  </div>
                 </div>
               </div>
             )}
