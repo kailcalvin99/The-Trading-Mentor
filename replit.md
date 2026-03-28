@@ -52,6 +52,17 @@ The application is built as a pnpm monorepo, leveraging Node.js 24 and TypeScrip
 
 - **Cross-Platform Data Sync:** All user data (planner, academy progress, XP/streak, tags, routine times, widget preferences) is synced via API-backed storage, enabling seamless switching between web and mobile. Local storage (localStorage on web, AsyncStorage on mobile) serves as offline fallback. New DB tables: `planner_entries` (daily planner data per date), `user_tags` (custom trade tags). New columns on `users` table: `total_xp`, `login_streak`, `last_login_date`, `routine_times`, `widget_prefs`. New API routes: `/api/planner` (CRUD for daily planner entries), `/api/tags` (CRUD for user tags). Extended `/api/user-settings` with sections: `gamification`, `progress`, `routineTimes`, `widgetPrefs`. Tag management UI added to web Settings page.
 
+## GitHub Repository
+
+The project is connected to GitHub at:
+**https://github.com/kailcalvin99/The-Trading-Mentor**
+
+- Remote: `origin` → `https://github.com/kailcalvin99/The-Trading-Mentor.git`
+- Default branch on GitHub: `main`
+- The GitHub repo was bootstrapped with a clean orphan commit (single initial commit) from the current HEAD. This was done to avoid carrying historical commits that had a Stripe test key in an old `.replit` file.
+- To push future changes: set `GITHUB_TOKEN` env var and run `git push origin master:main` (or use the Replit Git panel).
+- Note: the Replit local branch is `master`; GitHub branch is `main`.
+
 ## External Dependencies
 
 - **Database:** PostgreSQL
