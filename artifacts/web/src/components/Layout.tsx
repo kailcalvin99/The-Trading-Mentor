@@ -646,12 +646,13 @@ export default function Layout() {
             <button
               style={{
                 position: "fixed",
-                top: 1,
-                left: 12,
+                top: 3,
+                left: "50%",
+                transform: "translateX(-50%)",
                 zIndex: 59,
                 background: "#00C896",
-                borderRadius: 999,
-                padding: "3px 10px",
+                borderRadius: 6,
+                padding: "4px 6px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
