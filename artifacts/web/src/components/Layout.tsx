@@ -788,7 +788,7 @@ export default function Layout() {
           <main className="flex-1 overflow-hidden relative">
             <div className="flex h-full">
               <div ref={mainScrollRef} className="flex-1 overflow-auto">
-                {location.pathname !== "/academy" && location.pathname !== "/videos" && (
+                {location.pathname === "/" && (
                   <div className="sticky top-0 z-20">
                     <KillZoneStrip />
                   </div>
