@@ -419,6 +419,8 @@ export default function Layout() {
   const userPillRef = useRef<HTMLButtonElement>(null);
   const [userMenuPos, setUserMenuPos] = useState<{ top: number; right: number } | null>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
   const recalcUserMenuPos = useCallback(() => {
     if (userPillRef.current) {
@@ -532,7 +534,30 @@ export default function Layout() {
     if (mainScrollRef.current) {
       mainScrollRef.current.scrollTop = 0;
     }
+    setHeaderVisible(true);
+    lastScrollY.current = 0;
   }, [location.pathname]);
+
+  const isDashboard = location.pathname === "/";
+
+  useEffect(() => {
+    if (!isDashboard) return;
+    const el = mainScrollRef.current;
+    if (!el) return;
+    function handleScroll() {
+      const current = el!.scrollTop;
+      if (current <= 0) {
+        setHeaderVisible(true);
+      } else if (current > lastScrollY.current) {
+        setHeaderVisible(false);
+      } else {
+        setHeaderVisible(true);
+      }
+      lastScrollY.current = current;
+    }
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [isDashboard]);
 
   const handleOpenShare = useCallback(() => {
     setShowShare(true);
@@ -578,8 +603,69 @@ export default function Layout() {
           onClick={closeDrawer}
         />
 
-        {/* Top-drop drawer — clips and falls from below the header */}
-        <div className="fixed top-0 left-0 right-0 z-50 overflow-hidden pointer-events-none">
+        {/* Fixed AI glow line — always visible at top of screen for authenticated users */}
+        <style>{`
+          @keyframes ai-header-line-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+          }
+          @keyframes ai-header-dot-glow {
+            0%, 100% { box-shadow: 0 0 5px 2px #00C896, 0 0 12px 3px #00C89650; }
+            50% { box-shadow: 0 0 10px 4px #00C896, 0 0 24px 6px #00C89670; }
+          }
+        `}</style>
+        <div
+          className="fixed top-0 left-0 right-0 cursor-pointer"
+          style={{ height: 6, zIndex: 60 }}
+          onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
+          title="Open AI Assistant"
+          role="button"
+          aria-label="Open AI Assistant"
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
+              animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
+              boxShadow: "0 0 5px 1px #00C89660",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translateX(-50%) translateY(-50%)",
+              background: "#00C896",
+              borderRadius: 999,
+              padding: "3px 10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 61,
+              animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span style={{ color: "#020203", fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", lineHeight: 1 }}>AI</span>
+          </div>
+        </div>
+
+        {/* Fixed hamburger for mobile on non-dashboard pages */}
+        {!isDashboard && (
+          <button
+            className="md:hidden fixed left-2 z-[49] p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            style={{ top: 7 }}
+            onClick={() => setDrawerOpen((prev) => !prev)}
+            aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={drawerOpen}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
+
+        {/* Top-drop drawer — clips and falls from below the AI line (6px) on non-dashboard, or top-0 on dashboard */}
+        <div className="fixed left-0 right-0 z-50 overflow-hidden pointer-events-none" style={{ top: isDashboard ? 0 : 6 }}>
           <div
             className={`bg-sidebar border-b border-sidebar-border shadow-2xl transition-transform duration-300 ease-out pointer-events-auto ${
               drawerOpen ? "translate-y-0" : "-translate-y-full"
@@ -791,89 +877,51 @@ export default function Layout() {
         </div>
 
         <div className="flex flex-col flex-1 min-w-0">
-          <div
-            className="relative flex items-center gap-2 px-3 py-1.5 shrink-0 h-12 bg-[#242438]"
-            style={{ borderBottom: "none" }}
-          >
-            <button
-              onClick={() => setDrawerOpen((prev) => !prev)}
-              className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-              aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
-              aria-expanded={drawerOpen}
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <div className="flex-1 flex items-center justify-center pointer-events-none select-none">
-              <span
-                className="text-2xl font-extrabold tracking-[0.18em] uppercase text-white"
-                style={{
-                  textShadow: "0 0 8px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 40px rgba(255,255,255,0.3)",
-                  fontFamily: "inherit",
-                }}
-              >
-                The Trading Mentor
-              </span>
-            </div>
-            <div className="ml-auto flex items-center gap-2 pr-1">
-              <HeaderGamificationBadges />
-              <AIAssistant />
-              <HeaderUserInfo />
-            </div>
-
-            {/* Full-width AI glow line — bottom edge of header, acts as the AI trigger */}
-            <style>{`
-              @keyframes ai-header-line-pulse {
-                0%, 100% { opacity: 0.5; }
-                50% { opacity: 1; }
-              }
-              @keyframes ai-header-dot-glow {
-                0%, 100% { box-shadow: 0 0 5px 2px #00C896, 0 0 12px 3px #00C89650; }
-                50% { box-shadow: 0 0 10px 4px #00C896, 0 0 24px 6px #00C89670; }
-              }
-            `}</style>
+          {/* Header bar: Dashboard only, with scroll-hide */}
+          {isDashboard && (
             <div
-              className="absolute bottom-0 left-0 right-0 cursor-pointer"
-              style={{ height: 3, zIndex: 20 }}
-              onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
-              title="Open AI Assistant"
-              role="button"
-              aria-label="Open AI Assistant"
+              className="relative flex items-center gap-2 px-3 py-1.5 shrink-0 h-12 bg-[#242438]"
+              style={{
+                borderBottom: "none",
+                transition: "transform 475ms cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 475ms cubic-bezier(0.4, 0, 0.2, 1)",
+                transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
+                marginBottom: headerVisible ? 0 : "-3rem",
+              }}
             >
-              {/* The glowing line itself */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
-                  animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
-                  boxShadow: "0 0 5px 1px #00C89660",
-                }}
-              />
-              {/* Centered pulsing AI dot — sits on top of the line */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  transform: "translateX(-50%) translateY(-50%)",
-                  background: "#00C896",
-                  borderRadius: 999,
-                  padding: "3px 10px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 30,
-                  animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
-                  whiteSpace: "nowrap",
-                }}
+              <button
+                onClick={() => setDrawerOpen((prev) => !prev)}
+                className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+                aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
+                aria-expanded={drawerOpen}
               >
-                <span style={{ color: "#020203", fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", lineHeight: 1 }}>AI</span>
+                <Menu className="h-5 w-5" />
+              </button>
+              <div className="flex-1 flex items-center justify-center pointer-events-none select-none">
+                <div style={{
+                  background: "rgba(36, 36, 56, 0.55)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 999,
+                  padding: "4px 18px",
+                  boxShadow: "0 2px 16px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.05)"
+                }}>
+                  <span className="text-xl font-extrabold tracking-[0.18em] uppercase text-white" style={{ textShadow: "0 0 8px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.5)" }}>
+                    The Trading Mentor
+                  </span>
+                </div>
+              </div>
+              <div className="ml-auto flex items-center gap-2 pr-1">
+                <HeaderGamificationBadges />
+                <AIAssistant />
+                <HeaderUserInfo />
               </div>
             </div>
-          </div>
+          )}
 
           <main className="flex-1 overflow-hidden relative">
             <div className="flex h-full">
-              <div ref={mainScrollRef} className="flex-1 overflow-auto">
+              <div ref={mainScrollRef} className="flex-1 overflow-auto" style={{ paddingTop: 6 }}>
                 <div className={location.pathname === "/" ? "pb-10" : ""}>
                   <ErrorBoundary>
                     <Outlet />
