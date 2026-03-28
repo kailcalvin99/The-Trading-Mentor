@@ -365,6 +365,7 @@ function PlannerScreen() {
   const [showPreTradeChecklist, setShowPreTradeChecklist] = useState(false);
   const [showNewsModal, setShowNewsModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [showFvgModal, setShowFvgModal] = useState(false);
   const [positionCalcPoints, setPositionCalcPoints] = useState("");
   const [positionCalcBalance, setPositionCalcBalance] = useState("");
   const [riskChecklistChecked, setRiskChecklistChecked] = useState<Record<string, boolean>>({});
@@ -674,10 +675,27 @@ function PlannerScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>Mission Control</Text>
             <Text style={styles.dateText}>{dateStr}</Text>
           </View>
+          <TouchableOpacity
+            style={[
+              styles.fvgIconBtn,
+              fvg && fvg.direction !== "none" && {
+                borderColor: (fvg.direction === "bullish" ? "#00C896" : "#EF4444") + "70",
+                backgroundColor: (fvg.direction === "bullish" ? "#00C896" : "#EF4444") + "12",
+              },
+            ]}
+            onPress={() => setShowFvgModal(true)}
+            accessibilityLabel="View FVG Signal"
+          >
+            <Ionicons
+              name="flash-outline"
+              size={18}
+              color={fvg && fvg.direction !== "none" ? (fvg.direction === "bullish" ? "#00C896" : "#EF4444") : C.accent}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Risk Tool Buttons */}
@@ -855,6 +873,22 @@ function PlannerScreen() {
           }}
           requireConfirmToClose
         />
+
+        {/* FVG Signal Modal */}
+        <Modal visible={showFvgModal} animationType="slide" transparent onRequestClose={() => setShowFvgModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Fair Value Gap (FVG)</Text>
+                <TouchableOpacity onPress={() => setShowFvgModal(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close" size={22} color={C.textTertiary} />
+                </TouchableOpacity>
+              </View>
+              <FvgSignalMobileCard fvg={fvg} />
+            </View>
+          </View>
+        </Modal>
 
         {/* Daily Halt Banner */}
         {showHaltBanner && (
@@ -1175,12 +1209,9 @@ function PlannerScreen() {
           </>
         )}
 
-        {/* FVG Signal + ICT Confidence Score — shown when bias is selected */}
+        {/* ICT Confidence Score — shown when bias is selected */}
         {biasSelected && (
-          <>
-            <FvgSignalMobileCard fvg={fvg} />
-            <ConfidenceScoreMobileCard confidence={confidence} />
-          </>
+          <ConfidenceScoreMobileCard confidence={confidence} />
         )}
 
         {/* Entry Criteria - Bias Gated */}
@@ -1488,6 +1519,7 @@ const styles = StyleSheet.create({
   riskToolBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderRadius: 12, backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder },
   riskToolBtnDone: { borderColor: "#00C896" + "66", backgroundColor: "#00C896" + "10" },
   riskToolBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.accent },
+  fvgIconBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
   gaugeContainer: { backgroundColor: C.backgroundTertiary, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.cardBorder },
   gaugeHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   gaugeLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.text },

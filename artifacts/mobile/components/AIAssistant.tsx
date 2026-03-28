@@ -12,6 +12,7 @@ import {
   Platform,
   Alert,
   Animated,
+  Dimensions,
   type DimensionValue,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -105,7 +106,7 @@ export default function AIAssistant() {
   const [pendingToolCalls, setPendingToolCalls] = useState<ToolCallInfo[]>([]);
   const [nudge, setNudge] = useState<AITrigger | null>(null);
   const [nudgeExpanded, setNudgeExpanded] = useState(false);
-  const nudgeAnim = useRef(new Animated.Value(0)).current;
+  const nudgeAnim = useRef(new Animated.Value(-1)).current;
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const killZoneCheckedRef = useRef(false);
@@ -209,10 +210,10 @@ export default function AIAssistant() {
     if (visible) return;
     setNudge(trigger);
     setNudgeExpanded(true);
-    Animated.spring(nudgeAnim, { toValue: 1, useNativeDriver: true }).start();
+    Animated.spring(nudgeAnim, { toValue: 0, useNativeDriver: true }).start();
     if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
     nudgeTimerRef.current = setTimeout(() => {
-      Animated.timing(nudgeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+      Animated.timing(nudgeAnim, { toValue: -1, duration: 300, useNativeDriver: true }).start(() => {
         setNudgeExpanded(false);
         setNudge(null);
       });
@@ -244,7 +245,7 @@ export default function AIAssistant() {
   function dismissNudge() {
     if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
     if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
-    Animated.timing(nudgeAnim, { toValue: 0, duration: 250, useNativeDriver: true }).start(() => {
+    Animated.timing(nudgeAnim, { toValue: -1, duration: 250, useNativeDriver: true }).start(() => {
       setNudgeExpanded(false);
       setNudge(null);
     });
@@ -516,39 +517,44 @@ export default function AIAssistant() {
 
   return (
     <>
+      {nudgeExpanded && nudge && (
+        <Animated.View
+          style={[
+            s.nudgeCardLeft,
+            {
+              transform: [
+                {
+                  translateX: nudgeAnim.interpolate({
+                    inputRange: [-1, 0],
+                    outputRange: [-Dimensions.get("window").width * 0.72, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <TouchableOpacity style={s.nudgeDismiss} onPress={dismissNudge}>
+            <Ionicons name="close" size={14} color={C.textSecondary} />
+          </TouchableOpacity>
+          <View style={s.nudgeHeader}>
+            <Ionicons name="sparkles" size={12} color={C.accent} />
+            <Text style={s.nudgeLabel}>AI Coach</Text>
+          </View>
+          <Text style={s.nudgeMessage}>{nudge.message}</Text>
+          <TouchableOpacity onPress={openFromNudge} style={s.nudgeAction}>
+            <Text style={s.nudgeActionText}>Open AI</Text>
+            <Ionicons name="arrow-forward" size={12} color={C.accent} />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
       <Animated.View style={[s.fabFloating, { transform: [{ translateY: footerTranslateY }] }]}>
         <View style={s.fabContainer}>
-          {nudgeExpanded && nudge && (
-            <Animated.View
-              style={[
-                s.nudgeCard,
-                {
-                  opacity: nudgeAnim,
-                  transform: [{ translateY: nudgeAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
-                },
-              ]}
-            >
-              <TouchableOpacity style={s.nudgeDismiss} onPress={dismissNudge}>
-                <Ionicons name="close" size={14} color={C.textSecondary} />
-              </TouchableOpacity>
-              <View style={s.nudgeHeader}>
-                <Ionicons name="sparkles" size={12} color={C.accent} />
-                <Text style={s.nudgeLabel}>AI Coach</Text>
-              </View>
-              <Text style={s.nudgeMessage}>{nudge.message}</Text>
-              <TouchableOpacity onPress={openFromNudge} style={s.nudgeAction}>
-                <Text style={s.nudgeActionText}>Open AI</Text>
-                <Ionicons name="arrow-forward" size={12} color={C.accent} />
-              </TouchableOpacity>
-            </Animated.View>
-          )}
           <TouchableOpacity
-            style={nudgeExpanded ? s.fabExpanded : s.fabMini}
+            style={s.fabMini}
             onPress={openDrawer}
             activeOpacity={0.8}
           >
-            <Ionicons name="sparkles" size={nudgeExpanded ? 16 : 14} color="#0A0A0F" />
-            {nudgeExpanded && <Text style={s.fabLabel}>AI</Text>}
+            <Ionicons name="sparkles" size={14} color="#0A0A0F" />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -835,33 +841,17 @@ const s = StyleSheet.create({
     shadowRadius: 4,
     opacity: 0.85,
   },
-  fabExpanded: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: C.accent,
-    elevation: 6,
-    shadowColor: C.accent,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-  },
-  fabLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-    color: "#0A0A0F",
-  },
-  nudgeCard: {
+  nudgeCardLeft: {
+    position: "absolute",
+    left: 14,
+    bottom: 90,
+    zIndex: 99,
     backgroundColor: C.backgroundSecondary,
     borderWidth: 1,
     borderColor: C.accent + "55",
     borderRadius: 14,
     padding: 12,
-    marginBottom: 10,
-    maxWidth: 220,
+    width: "65%",
     elevation: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
