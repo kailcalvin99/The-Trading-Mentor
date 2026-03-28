@@ -2222,6 +2222,8 @@ export default function DashboardScreen() {
       />
 
 
+      <AIGreetingCard />
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -2240,9 +2242,6 @@ export default function DashboardScreen() {
           drawdownPct={briefingDrawdownPct}
           userId={user?.id}
         />
-
-            {/* Full Mode Dashboard */}
-            <AIGreetingCard />
 
             {/* Cumulative P&L Chart */}
             <MobileCumulativePnLChart />
@@ -2965,7 +2964,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.accent + "25",
     padding: 16,
-    marginBottom: 14,
+    marginHorizontal: 16,
+    marginBottom: 8,
   },
   aiSubtitle: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
   aiTipBox: {
