@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext } from "react";
 import { createPortal } from "react-dom";
 import OnboardingQuiz, { getSkillLevel, hasCompletedQuiz, type SkillLevel } from "@/components/OnboardingQuiz";
 import { NavLink, Outlet, Link, useNavigate, useLocation } from "react-router-dom";
@@ -14,6 +14,12 @@ import FloatingToolkit from "@/components/FloatingToolkit";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useToast } from "@/hooks/use-toast";
+
+interface DrawerContextValue {
+  openDrawer: () => void;
+}
+export const DrawerContext = createContext<DrawerContextValue>({ openDrawer: () => {} });
+export function useDrawer() { return useContext(DrawerContext); }
 
 const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
@@ -519,7 +525,10 @@ export default function Layout() {
     navigate("/login");
   }
 
+  const isChartLab = location.pathname === "/paper-trading";
+
   return (
+    <DrawerContext.Provider value={{ openDrawer: () => setDrawerOpen(true) }}>
     <TooltipProvider delayDuration={300}>
       {!authLoading && !quizDone && (
         <OnboardingQuiz onComplete={() => {
@@ -752,7 +761,7 @@ export default function Layout() {
         </div>
 
         <div className="flex flex-col flex-1 min-w-0">
-          <div
+          {!isChartLab && <div
             className="relative flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0 h-12 border-t-[#020203] border-r-[#020203] border-b-[#020203] border-l-[#020203] bg-[#242438]"
             style={{
               transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
@@ -783,7 +792,7 @@ export default function Layout() {
               <AIAssistant />
               <HeaderGamificationBadges />
             </div>
-          </div>
+          </div>}
 
           <main className="flex-1 overflow-hidden relative">
             <div className="flex h-full">
@@ -853,5 +862,6 @@ export default function Layout() {
       <SpotifyPlayer />
       <FloatingToolkit />
     </TooltipProvider>
+    </DrawerContext.Provider>
   );
 }

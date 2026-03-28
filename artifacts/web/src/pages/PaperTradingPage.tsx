@@ -17,11 +17,15 @@ import {
   Clock,
   Minus,
   Eraser,
-  Hand,
   RotateCcw,
   Eye,
   EyeOff,
+  Menu,
+  ArrowUpDown,
+  GitFork,
+  TrendingDown,
 } from "lucide-react";
+import { useDrawer } from "@/components/Layout";
 import { toast } from "sonner";
 import {
   detectFVGs,
@@ -52,11 +56,11 @@ interface Candle {
   close: number;
 }
 
-type DrawingTool = "cursor" | "fvg" | "ob" | "structure" | "killzone" | "pdhl" | "eraser";
+type DrawingTool = "cursor" | "fvg" | "ob" | "bos" | "choch" | "sh" | "sl" | "killzone" | "pdhl" | "eraser";
 
 interface UserAnnotation {
   id: string;
-  type: "fvg" | "ob" | "structure" | "hline";
+  type: "fvg" | "ob" | "hline";
   startTime: number;
   endTime: number;
   top: number;
@@ -390,7 +394,10 @@ class KillZonePrimitive implements ISeriesPrimitive<Time> {
 const TOOL_COLORS: Record<string, string> = {
   fvg: "#3b82f6",
   ob: "#f97316",
-  structure: "#a855f7",
+  bos: "#10b981",
+  choch: "#f59e0b",
+  sh: "#3b82f6",
+  sl: "#a855f7",
   hline: "#f59e0b",
 };
 
@@ -398,7 +405,10 @@ const DRAWING_TOOLS: { id: DrawingTool; label: string; icon: React.ComponentType
   { id: "cursor", label: "Select", icon: MousePointer2 },
   { id: "fvg", label: "FVG", icon: Square },
   { id: "ob", label: "Order Block", icon: Square },
-  { id: "structure", label: "Structure", icon: TrendingUp },
+  { id: "bos", label: "BOS", icon: TrendingUp },
+  { id: "choch", label: "CHoCH", icon: GitFork },
+  { id: "sh", label: "Swing H", icon: ArrowUpDown },
+  { id: "sl", label: "Swing L", icon: TrendingDown },
   { id: "killzone", label: "Kill Zones", icon: Clock },
   { id: "pdhl", label: "PDH/PDL", icon: Minus },
   { id: "eraser", label: "Eraser", icon: Eraser },
@@ -434,6 +444,7 @@ function getScoreLabel(score: number): string {
 }
 
 export default function PaperTradingPage() {
+  const { openDrawer } = useDrawer();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -446,6 +457,7 @@ export default function PaperTradingPage() {
   const pdhlPrimitiveRef = useRef<HLinePrimitive | null>(null);
   const userAnnotationRectPrimitiveRef = useRef<RectanglePrimitive | null>(null);
   const userAnnotationLabelPrimitiveRef = useRef<LabelPrimitive | null>(null);
+  const userHLinePrimitiveRef = useRef<HLinePrimitive | null>(null);
   const highlightPrimitiveRef = useRef<RectanglePrimitive | null>(null);
 
   const [instrument, setInstrument] = useState("EUR/USD");
@@ -474,10 +486,19 @@ export default function PaperTradingPage() {
   const conversationIdRef = useRef<string | null>(null);
 
   const startDate = useMemo(() => {
+    const lookbackDays: Record<string, number> = {
+      Daily: 730,
+      "4H": 180,
+      "1H": 60,
+      "15m": 21,
+      "5m": 7,
+      "1m": 2,
+    };
+    const days = lookbackDays[timeframe] ?? 21;
     const d = new Date();
-    d.setDate(d.getDate() - 8);
+    d.setDate(d.getDate() - days);
     return d.toISOString().split("T")[0];
-  }, []);
+  }, [timeframe]);
 
   const endDate = useMemo(() => {
     const d = new Date();
@@ -561,6 +582,7 @@ export default function PaperTradingPage() {
     const pdhlPrim = new HLinePrimitive();
     const userRectPrim = new RectanglePrimitive();
     const userLabelPrim = new LabelPrimitive();
+    const userHLinePrim = new HLinePrimitive();
     const highlightPrim = new RectanglePrimitive();
 
     series.attachPrimitive(fvgPrim);
@@ -571,6 +593,7 @@ export default function PaperTradingPage() {
     series.attachPrimitive(pdhlPrim);
     series.attachPrimitive(userRectPrim);
     series.attachPrimitive(userLabelPrim);
+    series.attachPrimitive(userHLinePrim);
     series.attachPrimitive(highlightPrim);
 
     fvgPrimitiveRef.current = fvgPrim;
@@ -581,6 +604,7 @@ export default function PaperTradingPage() {
     pdhlPrimitiveRef.current = pdhlPrim;
     userAnnotationRectPrimitiveRef.current = userRectPrim;
     userAnnotationLabelPrimitiveRef.current = userLabelPrim;
+    userHLinePrimitiveRef.current = userHLinePrim;
     highlightPrimitiveRef.current = highlightPrim;
 
     const observer = new ResizeObserver(() => {
@@ -750,7 +774,7 @@ export default function PaperTradingPage() {
   useEffect(() => {
     if (!userAnnotationRectPrimitiveRef.current || !userAnnotationLabelPrimitiveRef.current) return;
     const rects = userAnnotations
-      .filter((a) => a.type !== "structure" && a.type !== "hline")
+      .filter((a) => a.type !== "hline")
       .map((a) => ({
         startTime: a.startTime,
         endTime: a.endTime,
@@ -760,16 +784,23 @@ export default function PaperTradingPage() {
         borderColor: a.color,
         opacity: 0.2,
       }));
-    const labels = userAnnotations
-      .filter((a) => a.label)
-      .map((a) => ({
-        time: a.startTime,
-        price: (a.top + a.bottom) / 2,
-        text: a.label!,
-        color: a.color,
-      }));
     userAnnotationRectPrimitiveRef.current.setRects(rects);
-    userAnnotationLabelPrimitiveRef.current.setLabels(labels);
+    userAnnotationLabelPrimitiveRef.current.setLabels([]);
+
+    if (userHLinePrimitiveRef.current) {
+      const hlines = userAnnotations
+        .filter((a) => a.type === "hline")
+        .map((a) => ({
+          price: a.top,
+          color: a.color,
+          dash: a.label === "SH" || a.label === "SL" ? [6, 4] : [],
+          label: a.label,
+          labelSide: "right" as const,
+          lineWidth: 1.5,
+          opacity: 1,
+        }));
+      userHLinePrimitiveRef.current.setLines(hlines);
+    }
     invalidateChart();
   }, [userAnnotations]);
 
@@ -801,7 +832,7 @@ export default function PaperTradingPage() {
       const coords = getChartCoords(e);
       if (!coords) return;
 
-      if (activeTool === "structure") {
+      if (activeTool === "bos" || activeTool === "choch" || activeTool === "sh" || activeTool === "sl") {
         const nearestIdx = allCandles.reduce(
           (bestIdx, c, i) => {
             const diff = Math.abs(c.time - coords.time);
@@ -813,44 +844,35 @@ export default function PaperTradingPage() {
         const candle = allCandles[nearestIdx];
         if (!candle) return;
 
-        const swingHigh = candle.high;
-        const swingLow = candle.low;
-        const isHigh = Math.abs(coords.price - swingHigh) < Math.abs(coords.price - swingLow);
-        const swingPrice = isHigh ? swingHigh : swingLow;
-
-        const lookback = 5;
-        const prevCandles = allCandles.slice(Math.max(0, nearestIdx - lookback), nearestIdx);
-        const postCandles = allCandles.slice(nearestIdx + 1, Math.min(allCandles.length, nearestIdx + lookback + 1));
-
+        let price: number;
         let label: string;
-        if (isHigh) {
-          const breaksAbove = postCandles.some((c) => c.close > swingPrice);
-          const prevHigh = prevCandles.length > 0 ? Math.max(...prevCandles.map((c) => c.high)) : 0;
-          const isSwingHigh = swingPrice > prevHigh;
-          label = breaksAbove ? "BOS" : isSwingHigh ? "CHoCH" : "Swing High";
-        } else {
-          const breaksBelow = postCandles.some((c) => c.close < swingPrice);
-          const prevLow = prevCandles.length > 0 ? Math.min(...prevCandles.map((c) => c.low)) : Infinity;
-          const isSwingLow = swingPrice < prevLow;
-          label = breaksBelow ? "BOS" : isSwingLow ? "CHoCH" : "Swing Low";
-        }
+        let color: string;
 
-        const labelColor =
-          label === "BOS"
-            ? isHigh ? "#22c55e" : "#ef4444"
-            : label === "CHoCH"
-            ? "#f59e0b"
-            : TOOL_COLORS.structure;
+        if (activeTool === "sh") {
+          price = candle.high;
+          label = "SH";
+          color = TOOL_COLORS.sh;
+        } else if (activeTool === "sl") {
+          price = candle.low;
+          label = "SL";
+          color = TOOL_COLORS.sl;
+        } else {
+          const isHigh = Math.abs(coords.price - candle.high) < Math.abs(coords.price - candle.low);
+          price = isHigh ? candle.high : candle.low;
+          const direction = isHigh ? "↑" : "↓";
+          label = activeTool === "bos" ? `BOS ${direction}` : `CHoCH ${direction}`;
+          color = TOOL_COLORS[activeTool];
+        }
 
         const annotation: UserAnnotation = {
           id: crypto.randomUUID(),
-          type: "structure",
+          type: "hline",
           startTime: candle.time,
           endTime: candle.time + 3600,
-          top: swingPrice,
-          bottom: swingPrice,
+          top: price,
+          bottom: price,
           label,
-          color: labelColor,
+          color,
         };
         setUserAnnotations((prev) => [...prev, annotation]);
         return;
@@ -888,7 +910,7 @@ export default function PaperTradingPage() {
       currentDrawRef.current = draft;
 
       if (userAnnotationRectPrimitiveRef.current) {
-        const existing = userAnnotations.filter((a) => a.id !== "__draft__" && a.type !== "structure" && a.type !== "hline");
+        const existing = userAnnotations.filter((a) => a.id !== "__draft__" && a.type !== "hline");
         userAnnotationRectPrimitiveRef.current.setRects([
           ...existing.map((a) => ({
             startTime: a.startTime,
@@ -1284,6 +1306,13 @@ Rules:
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden" style={{ height: "100dvh" }}>
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card shrink-0">
+        <button
+          onClick={openDrawer}
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+          aria-label="Open navigation"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
         <span className="text-sm font-bold text-foreground mr-1">Chart Lab</span>
         <div className="flex items-center gap-1.5">
           <select
@@ -1328,7 +1357,7 @@ Rules:
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-col items-center gap-1 px-1 py-2 border-r border-border bg-card w-12 shrink-0">
+        <div className="flex flex-col items-center gap-1 px-1 py-2 border-r border-border bg-card w-16 shrink-0">
           {DRAWING_TOOLS.map((tool) => {
             const Icon = tool.icon;
             const isActive = activeTool === tool.id;
@@ -1353,23 +1382,25 @@ Rules:
                   }
                 }}
                 title={tool.label}
-                className={`w-9 h-9 flex items-center justify-center rounded transition-all ${
+                className={`w-14 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded transition-all ${
                   isActive || isToggleOn
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="text-[9px] leading-none truncate max-w-full px-0.5">{tool.label}</span>
               </button>
             );
           })}
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div className="flex-1 relative overflow-hidden">
           <div
             ref={chartContainerRef}
-            className="flex-1"
-            style={{ cursor: analysisMode ? (isPaused ? "grab" : "default") : cursorStyle, position: "relative" }}
+            className="absolute inset-0"
+            style={{ cursor: analysisMode ? (isPaused ? "grab" : "default") : cursorStyle }}
             onMouseDown={analysisMode ? undefined : handleChartMouseDown}
             onMouseMove={analysisMode ? undefined : handleChartMouseMove}
             onMouseUp={analysisMode ? undefined : handleChartMouseUp}
@@ -1515,6 +1546,35 @@ Rules:
                 </div>
               </div>
             )}
+
+            {!analysisMode && (
+              <div
+                className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30"
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseMove={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={runAnalysis}
+                  disabled={analysisLoading || allCandles.length === 0}
+                  className="flex items-center gap-2 h-12 px-7 bg-primary text-primary-foreground font-bold rounded-full shadow-xl hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {analysisLoading ? (
+                    <>
+                      <div className="h-4 w-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
+                      Analyzing…
+                    </>
+                  ) : (
+                    <>
+                      🤚 Ask Mentor
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
           </div>
 
           <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-card shrink-0">
@@ -1524,24 +1584,6 @@ Rules:
                 <span className="ml-1.5">{formatDateRange(allCandles)}</span>
               )}
             </div>
-
-            <button
-              onClick={runAnalysis}
-              disabled={analysisLoading || analysisMode || allCandles.length === 0}
-              className="flex items-center gap-2 bg-primary text-primary-foreground font-bold rounded-full px-6 h-11 text-sm shadow-lg hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {analysisLoading ? (
-                <>
-                  <div className="h-4 w-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
-                  Analyzing…
-                </>
-              ) : (
-                <>
-                  <Hand className="h-4 w-4" />
-                  Ask Mentor
-                </>
-              )}
-            </button>
 
             <button
               onClick={resetDrawings}
