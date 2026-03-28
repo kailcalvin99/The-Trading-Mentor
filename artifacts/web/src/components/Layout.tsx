@@ -14,7 +14,6 @@ import FloatingToolkit from "@/components/FloatingToolkit";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useToast } from "@/hooks/use-toast";
-import { getESTNow } from "@/lib/timeUtils";
 
 interface DrawerContextValue {
   openDrawer: () => void;
@@ -62,60 +61,10 @@ function HeaderGamificationBadges() {
   );
 }
 
-function useESTClock() {
-  const [now, setNow] = useState(() => getESTNow());
-  useEffect(() => {
-    const id = setInterval(() => setNow(getESTNow()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
-function formatESTTime(date: Date): string {
-  let h = date.getHours();
-  const m = String(date.getMinutes()).padStart(2, "0");
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${h}:${m} ${ampm}`;
-}
-
-function formatHeaderDate(): string {
-  return new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" });
-}
-
-function HeaderUserInfo() {
-  const { user } = useAuth();
-  const now = useESTClock();
-  const firstName = user?.name ? user.name.split(" ")[0] : "Trader";
-  const avatarUrl = user?.avatarUrl ?? null;
-  const initials = user?.name
-    ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
-    : "T";
-  const timeStr = formatESTTime(now);
-  const dateStr = formatHeaderDate();
-
-  return (
-    <div className="flex items-center gap-2 shrink-0">
-      {/* Date/time block — left of avatar */}
-      <div className="flex flex-col min-w-0 leading-none items-end">
-        <span className="text-sm font-semibold text-foreground whitespace-nowrap font-mono">{timeStr}</span>
-        <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
-      </div>
-      {/* Avatar — rightmost (corner) */}
-      {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:")) ? (
-        <img src={avatarUrl} alt={firstName} className="w-9 h-9 rounded-full object-cover shrink-0 border-2 border-border" />
-      ) : avatarUrl && avatarUrl.length <= 4 ? (
-        <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center border-2 border-border text-xl leading-none" style={{ background: "#00C896" }}>
-          {avatarUrl}
-        </div>
-      ) : (
-        <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-sm font-bold border-2 border-border" style={{ background: "#00C896", color: "#020203" }}>
-          {initials}
-        </div>
-      )}
-    </div>
-  );
-}
+const MANTRA_STORAGE_KEY = "ict-daily-mantra";
+const DEFAULT_MANTRA = "Welcome to the Inner Circle";
+const MANTRA_GLOW = "0 0 40px rgba(255,255,255,0.65), 0 0 16px rgba(255,255,255,0.4), 0 0 6px rgba(255,255,255,0.25)";
+const MANTRA_FLIP_MS = 20_000;
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -540,6 +489,32 @@ export default function Layout() {
 
   const isDashboard = location.pathname === "/";
 
+  const [mantraText, setMantraText] = useState<string>(() => {
+    try { return localStorage.getItem(MANTRA_STORAGE_KEY) || DEFAULT_MANTRA; } catch { return DEFAULT_MANTRA; }
+  });
+  const [mantraEditing, setMantraEditing] = useState(false);
+  const [mantraVisible, setMantraVisible] = useState(true);
+  const mantraInputRef = useRef<HTMLInputElement>(null);
+  const mantraTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!isDashboard || mantraEditing) {
+      if (mantraTimerRef.current) clearTimeout(mantraTimerRef.current);
+      setMantraVisible(true);
+      return;
+    }
+    setMantraVisible(true);
+    mantraTimerRef.current = setTimeout(() => setMantraVisible(false), MANTRA_FLIP_MS);
+    return () => { if (mantraTimerRef.current) clearTimeout(mantraTimerRef.current); };
+  }, [isDashboard, mantraEditing]);
+
+  function commitMantra(value: string) {
+    const trimmed = value.trim() || DEFAULT_MANTRA;
+    setMantraText(trimmed);
+    try { localStorage.setItem(MANTRA_STORAGE_KEY, trimmed); } catch {}
+    setMantraEditing(false);
+  }
+
   useEffect(() => {
     if (!isDashboard) return;
     const el = mainScrollRef.current;
@@ -911,25 +886,67 @@ export default function Layout() {
                 >
                   <Menu className="h-5 w-5" />
                 </button>
-                <div className="flex-1 flex items-center justify-center pointer-events-none select-none">
-                  <div style={{
-                    background: "rgba(36, 36, 56, 0.55)",
-                    backdropFilter: "blur(12px)",
-                    WebkitBackdropFilter: "blur(12px)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 999,
-                    padding: "4px 18px",
-                    boxShadow: "0 2px 16px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.05)"
-                  }}>
-                    <span className="text-xl font-extrabold tracking-[0.18em] uppercase text-white" style={{ textShadow: "0 0 8px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.5)" }}>
-                      The Trading Mentor
-                    </span>
+                <div className="flex-1 flex items-center justify-center relative overflow-hidden min-w-0">
+                  {/* Mantra text (visible for first 20 s) */}
+                  <div
+                    className="absolute inset-0 flex items-center justify-center transition-opacity duration-700"
+                    style={{ opacity: mantraVisible ? 1 : 0, pointerEvents: mantraVisible ? "auto" : "none" }}
+                  >
+                    {mantraEditing ? (
+                      <input
+                        ref={mantraInputRef}
+                        defaultValue={mantraText}
+                        onBlur={(e) => commitMantra(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); commitMantra(e.currentTarget.value); }
+                          if (e.key === "Escape") setMantraEditing(false);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full max-w-xs bg-transparent border-none outline-none text-center text-lg font-bold text-white caret-white tracking-tight"
+                        style={{ textShadow: MANTRA_GLOW }}
+                        spellCheck={false}
+                        autoComplete="off"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setMantraEditing(true);
+                          if (mantraTimerRef.current) clearTimeout(mantraTimerRef.current);
+                          setMantraVisible(true);
+                          setTimeout(() => mantraInputRef.current?.focus(), 0);
+                        }}
+                        className="text-center text-lg font-bold text-white tracking-tight leading-snug px-2 truncate max-w-xs cursor-pointer hover:opacity-80 transition-opacity"
+                        style={{ textShadow: MANTRA_GLOW, background: "none", border: "none" }}
+                        aria-label="Edit daily mantra"
+                      >
+                        {mantraText}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Static title (appears after mantra fades) */}
+                  <div
+                    className="absolute inset-0 flex items-center justify-center transition-opacity duration-700 pointer-events-none select-none"
+                    style={{ opacity: mantraVisible ? 0 : 1 }}
+                  >
+                    <div style={{
+                      background: "rgba(36, 36, 56, 0.55)",
+                      backdropFilter: "blur(12px)",
+                      WebkitBackdropFilter: "blur(12px)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 999,
+                      padding: "4px 18px",
+                      boxShadow: "0 2px 16px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.05)"
+                    }}>
+                      <span className="text-xl font-extrabold tracking-[0.18em] uppercase text-white" style={{ textShadow: "0 0 8px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.5)" }}>
+                        The Trading Mentor
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="ml-auto flex items-center gap-2 pr-1">
                   <HeaderGamificationBadges />
                   <AIAssistant />
-                  <HeaderUserInfo />
                 </div>
 
                 {/* AI glow line — bottom edge of header */}
