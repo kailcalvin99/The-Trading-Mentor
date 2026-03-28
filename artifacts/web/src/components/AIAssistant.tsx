@@ -874,7 +874,7 @@ export default function AIAssistant() {
         <div className="fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
 
-          <div className="relative ml-auto w-full max-w-md bg-background border-l border-border flex flex-col h-full animate-in slide-in-from-right duration-200">
+          <div className="absolute top-12 right-0 bottom-0 w-full max-w-md bg-background border-l border-border flex flex-col animate-in slide-in-from-right duration-200">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
