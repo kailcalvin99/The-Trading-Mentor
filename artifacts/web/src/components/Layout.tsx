@@ -834,6 +834,16 @@ export default function Layout() {
               0%, 100% { box-shadow: 0 0 5px 2px #00C896, 0 0 12px 3px #00C89650; }
               50% { box-shadow: 0 0 10px 4px #00C896, 0 0 24px 6px #00C89670; }
             }
+            @keyframes ai-orb-pulse {
+              0%, 100% {
+                transform: translateY(-50%) scale(1);
+                box-shadow: 0 0 6px 2px #00C896, 0 0 14px 4px #00C89660, 0 0 0 0 #00C89640;
+              }
+              50% {
+                transform: translateY(-50%) scale(1.18);
+                box-shadow: 0 0 10px 4px #00C896, 0 0 24px 8px #00C89680, 0 0 32px 10px #00C89630;
+              }
+            }
           `}</style>
 
           <div className="flex flex-col flex-1 min-w-0">
@@ -910,15 +920,34 @@ export default function Layout() {
 
                 {/* Decorative glow line — bottom edge of header (visual only) */}
                 <div
-                  className="absolute bottom-0 left-0 right-0 pointer-events-none"
+                  className="absolute bottom-0 left-0 right-0"
                   style={{ height: 2, zIndex: 20 }}
                 >
                   <div
-                    className="absolute inset-0"
+                    className="absolute inset-0 pointer-events-none"
                     style={{
                       background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
                       animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
                       boxShadow: "0 0 5px 1px #00C89660",
+                    }}
+                  />
+                  {/* AI pulsing orb — right end of the green line */}
+                  <button
+                    onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
+                    aria-label="Open AI assistant"
+                    style={{
+                      position: "absolute",
+                      right: 12,
+                      top: "50%",
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      background: "radial-gradient(circle, #7FFFD4 0%, #00C896 55%, #009970 100%)",
+                      animation: "ai-orb-pulse 2.5s ease-in-out infinite",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      zIndex: 21,
                     }}
                   />
                 </div>
