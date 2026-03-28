@@ -323,68 +323,6 @@ declare global {
   }
 }
 
-function ConfidenceGauge({ score }: { score: number }) {
-  const radius = 54;
-  const stroke = 10;
-  const normalizedRadius = radius - stroke / 2;
-  const circumference = normalizedRadius * 2 * Math.PI;
-  const arc = circumference * 0.75;
-  const offset = arc - (score / 100) * arc;
-  const color = score >= 75 ? "#10b981" : score >= 50 ? "#f59e0b" : "#ef4444";
-  const startAngle = 135;
-  const cx = radius;
-  const cy = radius;
-  const r = normalizedRadius;
-
-  return (
-    <svg width={radius * 2} height={radius * 2} viewBox={`0 0 ${radius * 2} ${radius * 2}`} className="block">
-      <circle
-        cx={cx} cy={cy} r={r}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={stroke}
-        strokeDasharray={`${arc} ${circumference}`}
-        strokeLinecap="round"
-        className="text-muted/30"
-        style={{ transform: `rotate(${startAngle}deg)`, transformOrigin: "center" }}
-      />
-      <circle
-        cx={cx} cy={cy} r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth={stroke}
-        strokeDasharray={`${arc - offset} ${circumference}`}
-        strokeLinecap="round"
-        style={{
-          transform: `rotate(${startAngle}deg)`,
-          transformOrigin: "center",
-          transition: "stroke-dasharray 0.6s ease",
-        }}
-      />
-      <text
-        x={cx} y={cy - 4}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize="20"
-        fontWeight="bold"
-        fill={color}
-        fontFamily="monospace"
-      >
-        {score}
-      </text>
-      <text
-        x={cx} y={cy + 16}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize="9"
-        fill="#6b7280"
-        fontFamily="sans-serif"
-      >
-        / 100
-      </text>
-    </svg>
-  );
-}
 
 function PlannerConfidenceScorePanel() {
   const [confidence, setConfidence] = useState<{ score: number; factors: Array<{ label: string; met: boolean }> } | null>(null);
@@ -407,27 +345,32 @@ function PlannerConfidenceScorePanel() {
   if (!confidence) return null;
 
   const score = confidence.score;
+  const color = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
+  const colorClass = score >= 80 ? "text-emerald-400" : score >= 60 ? "text-amber-400" : "text-red-400";
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 mb-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Shield className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground">Smart Money Movement Score</h3>
+    <div className="sticky top-[48px] z-10 bg-card/95 backdrop-blur-md border-b border-border px-4 py-2.5 flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Shield className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">Smart Money</span>
       </div>
-      <div className="flex items-center gap-5">
-        <div className="shrink-0">
-          <ConfidenceGauge score={score} />
+      <div className="flex items-center gap-2 shrink-0">
+        <span className={`text-lg font-bold font-mono leading-none ${colorClass}`}>{score}</span>
+        <div className="w-20 h-1.5 bg-muted/40 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${score}%`, backgroundColor: color }} />
         </div>
-        <div className="flex-1 space-y-1.5">
-          {confidence.factors.map((f, i) => (
-            <div key={i} className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg border ${
-              f.met ? "bg-emerald-500/10 border-emerald-500/25" : "bg-secondary/30 border-border"
-            }`}>
-              <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.met ? "✓" : "○"}</span>
-              <span className={f.met ? "text-emerald-400" : "text-muted-foreground"}>{f.label}</span>
-            </div>
-          ))}
-        </div>
+      </div>
+      <div className="flex items-center gap-1 flex-wrap">
+        {confidence.factors.map((f, i) => (
+          <span
+            key={i}
+            className={`text-[10px] px-1.5 py-0.5 rounded font-semibold whitespace-nowrap ${
+              f.met ? "bg-emerald-500/15 text-emerald-400" : "bg-secondary/60 text-muted-foreground"
+            }`}
+          >
+            {f.met ? "✓" : "○"} {f.label}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -726,6 +669,8 @@ export default function DailyPlanner() {
       </div>
     )}
 
+    <PlannerConfidenceScorePanel />
+
     <div className="p-6 max-w-3xl mx-auto pb-24">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -765,8 +710,6 @@ export default function DailyPlanner() {
           Position Calc
         </button>
       </div>
-
-      <PlannerConfidenceScorePanel />
 
       <p className="text-muted-foreground mb-6 text-sm">
         Plan your trading day. Complete your routine, set your goals, and stay disciplined.
