@@ -1549,7 +1549,7 @@ Rules:
 
             {!analysisMode && (
               <div
-                className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30"
+                className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30"
                 onMouseDown={(e) => e.stopPropagation()}
                 onMouseMove={(e) => e.stopPropagation()}
                 onMouseUp={(e) => e.stopPropagation()}
@@ -1559,11 +1559,11 @@ Rules:
                 <button
                   onClick={runAnalysis}
                   disabled={analysisLoading || allCandles.length === 0}
-                  className="flex items-center gap-2 h-12 px-7 bg-primary text-primary-foreground font-bold rounded-full shadow-xl hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1 h-6 px-3.5 text-xs bg-primary text-primary-foreground font-bold rounded-full shadow-xl hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {analysisLoading ? (
                     <>
-                      <div className="h-4 w-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
+                      <div className="h-3 w-3 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
                       Analyzing…
                     </>
                   ) : (
