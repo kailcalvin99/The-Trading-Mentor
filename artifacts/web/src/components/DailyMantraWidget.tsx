@@ -17,13 +17,6 @@ const FLIP_DELAY_MS = 20_000;
 const GLOW =
   "0 0 40px rgba(255,255,255,0.65), 0 0 16px rgba(255,255,255,0.4), 0 0 6px rgba(255,255,255,0.25)";
 
-const arcKeyframes = `
-@keyframes mantraWave {
-  0%,100% { transform: translateY(0px); }
-  50%      { transform: translateY(-6px); }
-}
-`;
-
 function loadMantra(): string {
   try {
     return localStorage.getItem(STORAGE_KEY) || DEFAULT_MANTRA;
@@ -73,76 +66,15 @@ function usePnLChartData() {
   return { chartData, cumulative, isPositive, chartColor, hasData };
 }
 
-function RainbowArcText({ text }: { text: string }) {
-  const svgWidth = 520;
-  const svgHeight = 120;
-  const cx = svgWidth / 2;
-  const cy = svgHeight + 60;
-  const r = 170;
-
-  const startAngle = -155;
-  const endAngle = -25;
-
-  function polarToCartesian(angle: number) {
-    const rad = (angle * Math.PI) / 180;
-    return {
-      x: cx + r * Math.cos(rad),
-      y: cy + r * Math.sin(rad),
-    };
-  }
-
-  const start = polarToCartesian(startAngle);
-  const end = polarToCartesian(endAngle);
-
-  const arcPath = `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`;
-
-  const chars = text.split("");
-
+function StraightMantraText({ text }: { text: string }) {
   return (
-    <svg
-      viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-      width="100%"
-      style={{ maxWidth: svgWidth, overflow: "visible" }}
+    <p
+      className="text-center text-2xl md:text-3xl font-bold text-white tracking-tight leading-snug px-2 break-words"
+      style={{ textShadow: GLOW }}
       aria-label={text}
     >
-      <defs>
-        <filter id="mantraGlow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1" />
-          <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur2" />
-          <feMerge>
-            <feMergeNode in="blur2" />
-            <feMergeNode in="blur1" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <path id="mantraArcPath" d={arcPath} />
-      </defs>
-
-      <text
-        filter="url(#mantraGlow)"
-        fill="white"
-        fontFamily="inherit"
-        fontWeight="bold"
-        fontSize="28"
-        letterSpacing="1"
-        textAnchor="middle"
-        dominantBaseline="auto"
-      >
-        <textPath href="#mantraArcPath" startOffset="50%">
-          {chars.map((char, i) => (
-            <tspan
-              key={i}
-              style={{
-                animation: `mantraWave 1.5s ease-in-out ${(i * 80) % 1200}ms infinite`,
-                display: "inline",
-              }}
-            >
-              {char === " " ? "\u00A0" : char}
-            </tspan>
-          ))}
-        </textPath>
-      </text>
-    </svg>
+      {text}
+    </p>
   );
 }
 
@@ -210,170 +142,167 @@ export default function DailyMantraWidget() {
   }
 
   return (
-    <>
-      <style>{arcKeyframes}</style>
+    <div
+      className="relative flex items-center justify-center py-4 select-none overflow-hidden"
+      style={{ minHeight: 90 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <div
-        className="relative flex items-center justify-center py-4 select-none overflow-hidden"
-        style={{ minHeight: 130 }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 80% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 70%)",
+        }}
+      />
+
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        style={{
+          opacity: showChart ? 1 : 0,
+          transition: "opacity 0.6s ease",
+          pointerEvents: showChart ? "auto" : "none",
+        }}
+        onClick={handleChartClick}
+        role="button"
+        tabIndex={showChart ? 0 : -1}
+        aria-label="Click to return to mantra"
+        onKeyDown={(e) => e.key === "Enter" && showChart && resetTimer()}
       >
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 80% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 70%)",
-          }}
-        />
-
-        <div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{
-            opacity: showChart ? 1 : 0,
-            transition: "opacity 0.6s ease",
-            pointerEvents: showChart ? "auto" : "none",
-          }}
-          onClick={handleChartClick}
-          role="button"
-          tabIndex={showChart ? 0 : -1}
-          aria-label="Click to return to mantra"
-          onKeyDown={(e) => e.key === "Enter" && showChart && resetTimer()}
-        >
-          <div className="w-full px-2">
-            {!hasData ? (
-              <div className="h-20 flex items-center justify-center">
-                <p className="text-xs text-white/40">
-                  Log trades to see your equity curve
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-1 px-1">
-                  <span className="text-xs text-white/50">Cumulative P&L</span>
-                  <span
-                    className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                      isPositive
-                        ? "text-emerald-400"
-                        : "text-red-400"
-                    }`}
-                  >
-                    {isPositive ? "+" : ""}
-                    {cumulative.toFixed(1)}R
-                  </span>
-                </div>
-                <div className="h-24">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={chartData}
-                      margin={{ top: 2, right: 2, left: -32, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient
-                          id="mantraChartGrad"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor={chartColor}
-                            stopOpacity={0.3}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor={chartColor}
-                            stopOpacity={0.02}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <XAxis
-                        dataKey="label"
-                        tick={{
-                          fill: "rgba(255,255,255,0.3)",
-                          fontSize: 8,
-                        }}
-                        tickLine={false}
-                        axisLine={false}
-                        interval="preserveStartEnd"
-                      />
-                      <YAxis hide />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: 8,
-                          fontSize: 11,
-                          color: "hsl(var(--foreground))",
-                        }}
-                        formatter={(v: number) => [
-                          `${v > 0 ? "+" : ""}${v.toFixed(2)}R`,
-                          "Cumul. P&L",
-                        ]}
-                        labelFormatter={(label) => label}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="cumPnL"
-                        stroke={chartColor}
-                        strokeWidth={1.5}
-                        fill="url(#mantraChartGrad)"
-                        dot={false}
-                        activeDot={{ r: 3, fill: chartColor }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="text-center text-xs text-white/25 mt-1">
-                  Click to return
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div
-          className="w-full flex items-center justify-center"
-          style={{
-            opacity: showChart ? 0 : 1,
-            transition: "opacity 0.6s ease",
-            pointerEvents: showChart ? "none" : "auto",
-          }}
-        >
-          {editing ? (
-            <input
-              ref={inputRef}
-              defaultValue={text}
-              onBlur={(e) => commit(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onClick={(e) => e.stopPropagation()}
-              className="relative z-10 w-full max-w-2xl bg-transparent border-none outline-none text-center text-2xl md:text-3xl font-bold text-white caret-white tracking-tight"
-              style={{ textShadow: GLOW }}
-              spellCheck={false}
-              autoComplete="off"
-            />
-          ) : (
-            <div
-              className="relative z-10 w-full flex items-center justify-center cursor-pointer"
-              onClick={() => startEdit()}
-              role="button"
-              tabIndex={0}
-              aria-label="Edit daily mantra"
-              onKeyDown={(e) =>
-                e.key === "Enter" && !editing && startEdit()
-              }
-            >
-              <RainbowArcText text={text} />
+        <div className="w-full px-2">
+          {!hasData ? (
+            <div className="h-20 flex items-center justify-center">
+              <p className="text-xs text-white/40">
+                Log trades to see your equity curve
+              </p>
             </div>
-          )}
-
-          {!editing && hovered && (
-            <span className="absolute top-2 right-2 text-white/20 pointer-events-none z-10">
-              <Pencil className="h-3.5 w-3.5" />
-            </span>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-1 px-1">
+                <span className="text-xs text-white/50">Cumulative P&L</span>
+                <span
+                  className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                    isPositive
+                      ? "text-emerald-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {isPositive ? "+" : ""}
+                  {cumulative.toFixed(1)}R
+                </span>
+              </div>
+              <div className="h-24">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={chartData}
+                    margin={{ top: 2, right: 2, left: -32, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="mantraChartGrad"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor={chartColor}
+                          stopOpacity={0.3}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor={chartColor}
+                          stopOpacity={0.02}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="label"
+                      tick={{
+                        fill: "rgba(255,255,255,0.3)",
+                        fontSize: 8,
+                      }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis hide />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                        fontSize: 11,
+                        color: "hsl(var(--foreground))",
+                      }}
+                      formatter={(v: number) => [
+                        `${v > 0 ? "+" : ""}${v.toFixed(2)}R`,
+                        "Cumul. P&L",
+                      ]}
+                      labelFormatter={(label) => label}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="cumPnL"
+                      stroke={chartColor}
+                      strokeWidth={1.5}
+                      fill="url(#mantraChartGrad)"
+                      dot={false}
+                      activeDot={{ r: 3, fill: chartColor }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-center text-xs text-white/25 mt-1">
+                Click to return
+              </p>
+            </>
           )}
         </div>
       </div>
-    </>
+
+      <div
+        className="w-full flex items-center justify-center"
+        style={{
+          opacity: showChart ? 0 : 1,
+          transition: "opacity 0.6s ease",
+          pointerEvents: showChart ? "none" : "auto",
+        }}
+      >
+        {editing ? (
+          <input
+            ref={inputRef}
+            defaultValue={text}
+            onBlur={(e) => commit(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            className="relative z-10 w-full max-w-2xl bg-transparent border-none outline-none text-center text-2xl md:text-3xl font-bold text-white caret-white tracking-tight"
+            style={{ textShadow: GLOW }}
+            spellCheck={false}
+            autoComplete="off"
+          />
+        ) : (
+          <div
+            className="relative z-10 w-full flex items-center justify-center cursor-pointer"
+            onClick={() => startEdit()}
+            role="button"
+            tabIndex={0}
+            aria-label="Edit daily mantra"
+            onKeyDown={(e) =>
+              e.key === "Enter" && !editing && startEdit()
+            }
+          >
+            <StraightMantraText text={text} />
+          </div>
+        )}
+
+        {!editing && hovered && (
+          <span className="absolute top-2 right-2 text-white/20 pointer-events-none z-10">
+            <Pencil className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </div>
+    </div>
   );
 }

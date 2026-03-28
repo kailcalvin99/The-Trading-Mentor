@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PremiumTeaser } from "@/components/CasinoElements";
 import { CumulativePnLChart } from "./dashboard/CumulativePnLChart";
@@ -13,10 +13,28 @@ export default function Dashboard() {
   const { tierLevel } = useAuth();
   const isFreeUser = tierLevel === 0;
 
+  const mantraSlotRef = useRef<HTMLDivElement>(null);
+  const [isFloating, setIsFloating] = useState(false);
+
   useEffect(() => {
     if (!localStorage.getItem("dashboard-visited")) {
       localStorage.setItem("dashboard-visited", "true");
     }
+  }, []);
+
+  useEffect(() => {
+    const el = mantraSlotRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsFloating(!entry.isIntersecting);
+      },
+      { threshold: 0, rootMargin: "-60px 0px 0px 0px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -33,10 +51,10 @@ export default function Dashboard() {
 
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <MorningBriefingWidget />
-            <div className="lg:col-span-2">
-              <DailyMantraWidget />
+            <div ref={mantraSlotRef} className="lg:col-span-3">
+              {!isFloating && <DailyMantraWidget />}
             </div>
+            <MorningBriefingWidget />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -61,6 +79,30 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {isFloating && (
+        <div
+          className="hidden lg:block fixed z-40"
+          style={{
+            right: "max(1.5rem, calc(50% - 48rem + 1.5rem))",
+            top: 80,
+            width: 300,
+          }}
+        >
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: "rgba(10, 10, 15, 0.82)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            }}
+          >
+            <DailyMantraWidget />
+          </div>
+        </div>
+      )}
     </>
   );
 }
