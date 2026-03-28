@@ -44,7 +44,6 @@ import {
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
-import { useChromeCollapse } from "@/contexts/ChromeCollapseContext";
 import NewsModal from "@/components/NewsModal";
 import PnLCalendarBottomSheet from "@/components/PnLCalendarBottomSheet";
 
@@ -2113,7 +2112,6 @@ function CustomizeModal({
 
 export default function DashboardScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
-  const { headerLayoutAnim, mantraCardHeight } = useChromeCollapse();
   const { user } = useAuth();
   const router = useRouter();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
@@ -2212,8 +2210,6 @@ export default function DashboardScreen() {
         }
         {...scrollCollapseProps}
       >
-        {/* Animated spacer that collapses in sync with the header to avoid blank space */}
-        <Animated.View style={{ height: headerLayoutAnim.interpolate({ inputRange: [0, 1], outputRange: [mantraCardHeight, 0] }) }} />
         {/* Stats strip — always visible, sits above all other content */}
         <StatsStripWidget onCalendarPress={() => setShowPnLCalendar(true)} />
 

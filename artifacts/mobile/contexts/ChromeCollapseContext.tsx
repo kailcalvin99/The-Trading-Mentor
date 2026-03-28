@@ -10,15 +10,12 @@ interface ChromeCollapseContextValue {
   headerAnim: Animated.Value;
   headerLayoutAnim: Animated.Value;
   footerAnim: Animated.Value;
-  mantraCardHeight: number;
-  setMantraCardHeight: (h: number) => void;
 }
 
 const ChromeCollapseContext = createContext<ChromeCollapseContextValue | null>(null);
 
 export function ChromeCollapseProvider({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [mantraCardHeight, setMantraCardHeight] = useState(0);
   const headerAnim = useRef(new Animated.Value(0)).current;
   const headerLayoutAnim = useRef(new Animated.Value(0)).current;
   const footerAnim = useRef(new Animated.Value(0)).current;
@@ -75,7 +72,7 @@ export function ChromeCollapseProvider({ children }: { children: React.ReactNode
   }, [isCollapsed, restore, resetTimer]);
 
   return (
-    <ChromeCollapseContext.Provider value={{ isCollapsed, collapse, restore, resetIdleTimer, headerAnim, headerLayoutAnim, footerAnim, mantraCardHeight, setMantraCardHeight }}>
+    <ChromeCollapseContext.Provider value={{ isCollapsed, collapse, restore, resetIdleTimer, headerAnim, headerLayoutAnim, footerAnim }}>
       {children}
     </ChromeCollapseContext.Provider>
   );

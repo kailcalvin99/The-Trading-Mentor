@@ -1,9 +1,8 @@
 import { Href, Tabs, usePathname, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 
 import FloatingToolkit from "@/components/FloatingToolkit";
 import RiskFloatingWidget from "@/components/RiskFloatingWidget";
@@ -13,7 +12,6 @@ import { apiGet } from "@/lib/api";
 import { ChromeCollapseProvider, useChromeCollapse } from "@/contexts/ChromeCollapseContext";
 import { ScrollDirectionProvider } from "@/contexts/ScrollDirectionContext";
 import { PropAccountProvider } from "@/contexts/PropAccountContext";
-import Colors from "@/constants/colors";
 
 const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 
@@ -21,76 +19,6 @@ const TOP_TAB_BAR_HEIGHT = 42;
 
 const TAP_MOVE_THRESHOLD = 10;
 
-const C = Colors.dark;
-
-const TIPS = [
-  "Always wait for the liquidity sweep before entering!",
-  "The best setups happen at session opens — be ready!",
-  "Patience is the most profitable trading skill.",
-  "Silver Bullet window (10-11 AM) has the highest probability.",
-  "Your journal is your most powerful trading tool.",
-];
-
-function DashboardMantraPin({ headerAnim, headerHeight, onHeightMeasured }: { headerAnim: Animated.Value; headerHeight: number; onHeightMeasured: (h: number) => void }) {
-  const tip = TIPS[new Date().getDate() % TIPS.length];
-
-  const translateY = headerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -headerHeight],
-  });
-
-  return (
-    <Animated.View
-      style={[
-        pinStyles.wrapper,
-        { top: headerHeight, transform: [{ translateY }] },
-      ]}
-      onLayout={(e) => onHeightMeasured(e.nativeEvent.layout.height)}
-      pointerEvents="none"
-    >
-      <View style={pinStyles.card}>
-        <View style={pinStyles.tipBox}>
-          <Ionicons name="sparkles" size={13} color={C.accent} />
-          <Text style={pinStyles.tipText}>{tip}</Text>
-        </View>
-      </View>
-    </Animated.View>
-  );
-}
-
-const pinStyles = StyleSheet.create({
-  wrapper: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 5,
-  },
-  card: {
-    backgroundColor: C.backgroundSecondary,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: C.accent + "25",
-    padding: 16,
-    marginHorizontal: 16,
-  },
-  tipBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    backgroundColor: C.accent + "10",
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: C.accent + "20",
-  },
-  tipText: {
-    flex: 1,
-    fontSize: 13,
-    color: C.text,
-    lineHeight: 19,
-    fontFamily: "Inter_400Regular",
-  },
-});
 
 function TabLayoutInner() {
   const pathname = usePathname();
@@ -100,13 +28,11 @@ function TabLayoutInner() {
   const [journalDraftBadge, setJournalDraftBadge] = useState(0);
   const insets = useSafeAreaInsets();
 
-  const { resetIdleTimer, headerAnim, headerLayoutAnim, isCollapsed, setMantraCardHeight } = useChromeCollapse();
+  const { resetIdleTimer, headerAnim, headerLayoutAnim, isCollapsed } = useChromeCollapse();
 
   const headerHeight = insets.top + TOP_TAB_BAR_HEIGHT;
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-
-  const isDashboard = pathname === "/dashboard" || pathname === "/(tabs)/dashboard";
 
   useEffect(() => {
     async function checkNewPosts() {
@@ -252,10 +178,6 @@ function TabLayoutInner() {
           />
         </Tabs>
       </Animated.View>
-
-      {isDashboard && (
-        <DashboardMantraPin headerAnim={headerAnim} headerHeight={headerHeight} onHeightMeasured={setMantraCardHeight} />
-      )}
 
       <Animated.View
         style={[
