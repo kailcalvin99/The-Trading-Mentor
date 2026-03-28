@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Polyline, Defs, LinearGradient, Stop, Polygon } from "react-native-svg";
+import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, useFocusEffect } from "expo-router";
 import Colors from "@/constants/colors";
@@ -1480,29 +1481,36 @@ function SwipeLessonCard({
       ]}
       {...(stackIndex === 0 ? panResponder.panHandlers : {})}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-        <View style={[styles.lessonCardDot, { backgroundColor: lesson.chapterColor, marginTop: 0 }]} />
-        <Text style={styles.lessonCardChapter} numberOfLines={1}>{lesson.chapterTitle}</Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+        <View style={[styles.swipeLessonPlayCircle, { backgroundColor: lesson.chapterColor + "20", borderColor: lesson.chapterColor + "60" }]}>
+          <Ionicons name="play" size={40} color={lesson.chapterColor} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <View style={[styles.lessonCardDot, { backgroundColor: lesson.chapterColor, marginTop: 0, width: 8, height: 8, borderRadius: 4 }]} />
+            <Text style={[styles.lessonCardChapter, { fontSize: 11 }]} numberOfLines={1}>{lesson.chapterTitle}</Text>
+          </View>
+          <Text style={[styles.swipeLessonTitle, { fontSize: 16 }]} numberOfLines={2}>{lesson.title}</Text>
+          <Text style={[styles.swipeLessonTeaser, { fontSize: 12 }]} numberOfLines={2}>{lesson.takeaway}</Text>
+        </View>
       </View>
-      <Text style={styles.swipeLessonTitle} numberOfLines={2}>{lesson.title}</Text>
-      <Text style={styles.swipeLessonTeaser} numberOfLines={2}>{lesson.takeaway}</Text>
       {stackIndex === 0 && (
-        <View style={styles.swipeLessonActions}>
+        <View style={[styles.swipeLessonActions, { marginTop: 12 }]}>
           <TouchableOpacity
             style={styles.swipeLessonSkip}
             onPress={onDismiss}
             activeOpacity={0.7}
           >
-            <Ionicons name="close" size={13} color={C.textSecondary} />
-            <Text style={styles.swipeLessonSkipText}>Skip</Text>
+            <Ionicons name="close" size={15} color={C.textSecondary} />
+            <Text style={[styles.swipeLessonSkipText, { fontSize: 13 }]}>Skip</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.swipeLessonWatch, { backgroundColor: lesson.chapterColor }]}
             onPress={onWatch}
             activeOpacity={0.85}
           >
-            <Ionicons name="play-circle" size={13} color="#0A0A0F" />
-            <Text style={styles.swipeLessonWatchText}>Watch Now</Text>
+            <Ionicons name="play-circle" size={22} color="#0A0A0F" />
+            <Text style={[styles.swipeLessonWatchText, { fontSize: 14 }]}>Watch Now</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1773,64 +1781,319 @@ function TodayRoutineWidget() {
   );
 }
 
-function NextWatchCard() {
+function getActiveKillzone(): { name: string; color: string } | null {
+  const est = getESTNow();
+  const h = est.getHours();
+  const m = est.getMinutes();
+  const totalMin = h * 60 + m;
+  const zones = [
+    { name: "London", startH: 2, startM: 0, endH: 5, endM: 0, color: "#F59E0B" },
+    { name: "NY Open", startH: 8, startM: 0, endH: 11, endM: 0, color: "#00C896" },
+    { name: "Asia", startH: 20, startM: 0, endH: 23, endM: 0, color: "#818CF8" },
+  ];
+  for (const z of zones) {
+    const start = z.startH * 60 + z.startM;
+    const end = z.endH * 60 + z.endM;
+    if (totalMin >= start && totalMin < end) return { name: z.name, color: z.color };
+  }
+  return null;
+}
+
+function getLessonTeaser(title: string): string {
+  const t = title.toLowerCase();
+  if (t.includes("liquidity")) return "Discover how smart money hunts stop-losses to fuel their real moves.";
+  if (t.includes("fvg") || t.includes("fair value")) return "Learn to spot price gaps that act as high-probability entry zones.";
+  if (t.includes("structure") || t.includes("mss")) return "Master the art of reading trend shifts before they happen.";
+  if (t.includes("fibonacci") || t.includes("ote")) return "Use the 62–79% pullback zone to nail precision entries.";
+  if (t.includes("killzone") || t.includes("kill zone") || t.includes("session")) return "Trade during the highest-volume windows when banks are active.";
+  if (t.includes("sweep") || t.includes("fake")) return "Recognize the fake-out before the real move every time.";
+  if (t.includes("candlestick") || t.includes("candle")) return "Read the story each candle tells in a fraction of a second.";
+  if (t.includes("risk") || t.includes("loss")) return "Protect your account and survive to trade another day.";
+  if (t.includes("entry") || t.includes("trade")) return "Dial in your entry with institutional precision.";
+  if (t.includes("timeframe")) return "See the market from every zoom level like a pro.";
+  return "Unlock an edge that most traders never discover.";
+}
+
+function HeroNextWatchCard() {
   const router = useRouter();
-  const [nextLesson, setNextLesson] = useState<{ id: string; title: string; chapterTitle: string; chapterColor: string; estMins: number } | null>(null);
+  const [nextLesson, setNextLesson] = useState<{
+    id: string; title: string; chapterTitle: string; chapterColor: string; estMins: number;
+    lessonIndex: number; totalLessons: number; allDone: boolean;
+  } | null>(null);
+
+  const shimmerAnim = useRef(new Animated.Value(-1)).current;
+  const playPulse = useRef(new Animated.Value(1)).current;
+  const playRing = useRef(new Animated.Value(0)).current;
+  const btnPulse = useRef(new Animated.Value(0)).current;
+  const killzoneBlink = useRef(new Animated.Value(1)).current;
+  const trophyBounce = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const shimmerLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1, duration: 1800, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: -1, duration: 0, useNativeDriver: true }),
+      ])
+    );
+    shimmerLoop.start();
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(playPulse, { toValue: 1.18, duration: 800, useNativeDriver: true }),
+        Animated.timing(playPulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    pulseLoop.start();
+
+    const ringLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(playRing, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(playRing, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay(600),
+      ])
+    );
+    ringLoop.start();
+
+    const killzoneLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(killzoneBlink, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+        Animated.timing(killzoneBlink, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    );
+    killzoneLoop.start();
+
+    const btnSeq = Animated.sequence([
+      Animated.delay(300),
+      Animated.sequence([
+        Animated.timing(btnPulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(btnPulse, { toValue: 0, duration: 700, useNativeDriver: true }),
+      ]),
+    ]);
+    btnSeq.start();
+
+    const trophyLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(trophyBounce, { toValue: -12, duration: 400, useNativeDriver: true }),
+        Animated.timing(trophyBounce, { toValue: 0, duration: 400, useNativeDriver: true }),
+        Animated.delay(800),
+      ])
+    );
+    trophyLoop.start();
+
+    return () => {
+      shimmerLoop.stop();
+      pulseLoop.stop();
+      ringLoop.stop();
+      killzoneLoop.stop();
+      btnSeq.stop();
+      trophyLoop.stop();
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       AsyncStorage.getItem(ICT_ACADEMY_PROGRESS_KEY).then((raw) => {
         let completed: Set<string>;
-        try {
-          completed = new Set(raw ? JSON.parse(raw) : []);
-        } catch {
-          completed = new Set();
-        }
+        try { completed = new Set(raw ? JSON.parse(raw) : []); } catch { completed = new Set(); }
+
         let lessonIndex = 0;
+        let totalLessons = 0;
+        for (const ch of COURSE_CHAPTERS) totalLessons += ch.lessons.length;
+
         for (const chapter of COURSE_CHAPTERS) {
           for (const lesson of chapter.lessons) {
             if (!completed.has(lesson.id)) {
               const estMins = 8 + (lessonIndex % 7) * 2;
-              setNextLesson({ id: lesson.id, title: lesson.title, chapterTitle: chapter.title, chapterColor: chapter.color, estMins });
+              setNextLesson({ id: lesson.id, title: lesson.title, chapterTitle: chapter.title, chapterColor: chapter.color, estMins, lessonIndex, totalLessons, allDone: false });
               return;
             }
             lessonIndex++;
           }
         }
-        setNextLesson(null);
+        let totalL = 0;
+        for (const ch of COURSE_CHAPTERS) totalL += ch.lessons.length;
+        setNextLesson({ id: "", title: "", chapterTitle: "", chapterColor: C.accent, estMins: 0, lessonIndex: totalL, totalLessons: totalL, allDone: true });
       });
     }, [])
   );
 
+  const killzone = getActiveKillzone();
+  const shimmerTranslate = shimmerAnim.interpolate({ inputRange: [-1, 1], outputRange: [-300, 300] });
+  const ringScale = playRing.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] });
+  const ringOpacity = playRing.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.6, 0.3, 0] });
+  const btnRingScale = btnPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] });
+  const btnRingOpacity = btnPulse.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.5, 0] });
+
   if (!nextLesson) return null;
 
+  if (nextLesson.allDone) {
+    return (
+      <View style={styles.heroCard}>
+        <View style={styles.heroThumb}>
+          <ExpoLinearGradient
+            colors={["#F59E0B40", "#F59E0B10", "#0A0A0F"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+          />
+          <Animated.View style={{ transform: [{ translateY: trophyBounce }] }}>
+            <Text style={{ fontSize: 72 }}>🏆</Text>
+          </Animated.View>
+          <View style={[styles.heroDurationBadge, { backgroundColor: "#F59E0B", bottom: 10, right: 12 }]}>
+            <Ionicons name="checkmark-circle" size={10} color="#0A0A0F" />
+            <Text style={[styles.heroDurationText, { color: "#0A0A0F" }]}>All Done!</Text>
+          </View>
+        </View>
+        <View style={styles.heroBody}>
+          <Text style={[styles.heroTitle, { fontSize: 22, color: "#F59E0B" }]}>Course Complete! 🎉</Text>
+          <Text style={[styles.heroTeaser, { color: C.textSecondary }]}>You've finished all ICT lessons. Review them anytime to sharpen your edge.</Text>
+          <View style={styles.heroBtnWrapper}>
+            <TouchableOpacity
+              style={[styles.heroWatchBtn, { backgroundColor: "#F59E0B" }]}
+              onPress={() => router.navigate({ pathname: "/(tabs)/academy" })}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="library-outline" size={16} color="#0A0A0F" />
+              <Text style={styles.heroWatchBtnText}>Review Lessons</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  const teaser = getLessonTeaser(nextLesson.title);
+
   return (
-    <View style={styles.nextWatchCard}>
-      <View style={[styles.nextWatchThumb, { backgroundColor: nextLesson.chapterColor + "30" }]}>
-        <Ionicons name="play-circle" size={32} color={nextLesson.chapterColor} />
-        <View style={styles.nextWatchDurationBadge}>
-          <Ionicons name="time-outline" size={9} color="#fff" />
-          <Text style={styles.nextWatchDurationText}>{nextLesson.estMins} min</Text>
-        </View>
-      </View>
-      <View style={styles.nextWatchBody}>
-        <View style={styles.nextWatchHeader}>
-          <View style={[styles.nextWatchDot, { backgroundColor: nextLesson.chapterColor }]} />
-          <Text style={styles.nextWatchLabel}>UP NEXT</Text>
-        </View>
-        <Text style={styles.nextWatchChapter} numberOfLines={1}>{nextLesson.chapterTitle}</Text>
-        <Text style={styles.nextWatchTitle} numberOfLines={2}>{nextLesson.title}</Text>
-        <TouchableOpacity
-          style={styles.nextWatchBtn}
-          onPress={() => {
-            router.navigate({ pathname: "/(tabs)/academy" });
+    <View style={styles.heroCard}>
+      <View style={styles.heroThumb}>
+        <ExpoLinearGradient
+          colors={[nextLesson.chapterColor + "40", nextLesson.chapterColor + "10", "#0A0A0F"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+        />
+        <Animated.View
+          style={{
+            position: "absolute", left: 0, right: 0, top: 0, bottom: 0,
+            transform: [{ translateX: shimmerTranslate }],
+            pointerEvents: "none",
           }}
-          activeOpacity={0.85}
         >
-          <Ionicons name="play-circle" size={16} color="#0A0A0F" />
-          <Text style={styles.nextWatchBtnText}>Watch Now</Text>
-        </TouchableOpacity>
+          <View style={styles.heroShimmer} />
+        </Animated.View>
+
+        <View style={styles.heroLessonBadge}>
+          <Text style={styles.heroLessonBadgeText}>LESSON {nextLesson.lessonIndex + 1}</Text>
+        </View>
+
+        <Animated.View style={[styles.heroRing, {
+          borderColor: nextLesson.chapterColor + "55",
+          transform: [{ scale: ringScale }],
+          opacity: ringOpacity,
+        }]} />
+        <Animated.View style={{ transform: [{ scale: playPulse }] }}>
+          <View style={[styles.heroPlayCircle, { backgroundColor: nextLesson.chapterColor + "25", borderColor: nextLesson.chapterColor + "80" }]}>
+            <Ionicons name="play" size={30} color={nextLesson.chapterColor} />
+          </View>
+        </Animated.View>
+
+        {killzone && (
+          <Animated.View style={[styles.heroKillzonePill, { opacity: killzoneBlink }]}>
+            <View style={[styles.heroKillzoneDot, { backgroundColor: killzone.color }]} />
+            <Text style={styles.heroKillzoneText}>🔴 KILLZONE ACTIVE · {killzone.name}</Text>
+          </Animated.View>
+        )}
+
+        <View style={styles.heroDurationBadge}>
+          <Ionicons name="time-outline" size={10} color="#fff" />
+          <Text style={styles.heroDurationText}>{nextLesson.estMins} min</Text>
+        </View>
       </View>
+
+      <View style={styles.heroBody}>
+        {killzone && (
+          <Text style={[styles.heroKillzoneSubline, { color: killzone.color }]}>
+            Markets are moving — great time to study this pattern.
+          </Text>
+        )}
+        <View style={styles.heroUpNextRow}>
+          <View style={[styles.heroUpNextDot, { backgroundColor: nextLesson.chapterColor }]} />
+          <Text style={styles.heroUpNextLabel}>UP NEXT</Text>
+        </View>
+        <Text style={styles.heroChapter} numberOfLines={1}>{nextLesson.chapterTitle}</Text>
+        <Text style={styles.heroTitle} numberOfLines={2}>{nextLesson.title}</Text>
+        <Text style={styles.heroTeaser} numberOfLines={2}>{teaser}</Text>
+        <View style={styles.heroStreakRow}>
+          <Text style={styles.heroStreakIcon}>🔥</Text>
+          <Text style={styles.heroStreakText}>Lesson {nextLesson.lessonIndex + 1} of {nextLesson.totalLessons} — keep the streak!</Text>
+        </View>
+        <View style={styles.heroBtnWrapper}>
+          <Animated.View style={[styles.heroBtnRing, {
+            transform: [{ scale: btnRingScale }],
+            opacity: btnRingOpacity,
+            backgroundColor: nextLesson.chapterColor,
+          }]} />
+          <TouchableOpacity
+            style={[styles.heroWatchBtn, { backgroundColor: nextLesson.chapterColor }]}
+            onPress={async () => {
+              await AsyncStorage.setItem(ACADEMY_PENDING_LESSON_KEY, JSON.stringify({ lessonId: nextLesson.id }));
+              router.navigate({ pathname: "/(tabs)/academy" });
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="play-circle" size={18} color="#0A0A0F" />
+            <Text style={styles.heroWatchBtnText}>Watch Now</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function HeroSwipeStack() {
+  const router = useRouter();
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(ICT_ACADEMY_PROGRESS_KEY).then((raw) => {
+        try { setCompleted(new Set(raw ? JSON.parse(raw) : [])); } catch { setCompleted(new Set()); }
+      });
+    }, [])
+  );
+
+  const allLessons = COURSE_CHAPTERS.flatMap((ch) =>
+    ch.lessons.map((l) => ({ ...l, chapterTitle: ch.title, chapterColor: ch.color, chapterId: ch.id }))
+  );
+
+  const lessonCards = allLessons
+    .filter((l) => !completed.has(l.id) && !dismissed.has(l.id))
+    .slice(0, 3);
+
+  function dismissCard(id: string) {
+    setDismissed((prev) => new Set([...prev, id]));
+  }
+
+  if (lessonCards.length === 0) return null;
+
+  return (
+    <View style={styles.swipeLessonStack}>
+      {[...lessonCards].reverse().map((lesson, reversedIdx) => {
+        const stackIndex = lessonCards.length - 1 - reversedIdx;
+        return (
+          <SwipeLessonCard
+            key={lesson.id}
+            lesson={lesson}
+            stackIndex={stackIndex}
+            onDismiss={() => dismissCard(lesson.id)}
+            onWatch={() => {
+              router.navigate({ pathname: "/(tabs)/academy" });
+            }}
+          />
+        );
+      })}
     </View>
   );
 }
@@ -2256,7 +2519,8 @@ export default function DashboardScreen() {
             )}
 
 
-            <NextWatchCard />
+            <HeroNextWatchCard />
+            <HeroSwipeStack />
 
             {/* Quick Journal */}
             {prefs.quickJournal && <QuickJournalWidget />}
@@ -3129,6 +3393,114 @@ const styles = StyleSheet.create({
   },
   nextWatchBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 
+  heroCard: {
+    backgroundColor: C.backgroundSecondary,
+    borderRadius: 0,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: C.cardBorder,
+    marginHorizontal: -16,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  heroThumb: {
+    height: 190,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+  },
+  heroShimmer: {
+    width: 80,
+    height: "100%",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    transform: [{ skewX: "-20deg" }],
+  },
+  heroLessonBadge: {
+    position: "absolute",
+    top: 12,
+    left: 14,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  heroLessonBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1.2 },
+  heroRing: {
+    position: "absolute",
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 2,
+  },
+  heroPlayCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroKillzonePill: {
+    position: "absolute",
+    bottom: 12,
+    left: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,80,80,0.4)",
+  },
+  heroKillzoneDot: { width: 7, height: 7, borderRadius: 4 },
+  heroKillzoneText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.5 },
+  heroDurationBadge: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 7,
+  },
+  heroDurationText: { fontSize: 11, color: "#fff", fontFamily: "Inter_600SemiBold" },
+  heroBody: { padding: 16 },
+  heroKillzoneSubline: { fontSize: 12, fontFamily: "Inter_600SemiBold", marginBottom: 8 },
+  heroUpNextRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
+  heroUpNextDot: { width: 8, height: 8, borderRadius: 4 },
+  heroUpNextLabel: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.textSecondary, textTransform: "uppercase", letterSpacing: 1.2 },
+  heroChapter: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_500Medium", marginBottom: 4 },
+  heroTitle: { fontSize: 21, fontFamily: "Inter_700Bold", color: C.text, lineHeight: 28, marginBottom: 6 },
+  heroTeaser: { fontSize: 13, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 19, marginBottom: 10 },
+  heroStreakRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 },
+  heroStreakIcon: { fontSize: 15 },
+  heroStreakText: { fontSize: 12, color: C.textSecondary, fontFamily: "Inter_500Medium" },
+  heroBtnWrapper: { position: "relative", alignItems: "center" },
+  heroBtnRing: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 12,
+  },
+  heroWatchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignSelf: "stretch",
+  },
+  heroWatchBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
+
   lpStatRow: { flexDirection: "row", gap: 0 },
   lpStat: { flex: 1, alignItems: "center" },
   lpStatValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: C.text },
@@ -3222,8 +3594,8 @@ const styles = StyleSheet.create({
   lessonCardPlayText: { fontSize: 11, color: C.accent, fontFamily: "Inter_600SemiBold" },
 
   swipeLessonStack: {
-    height: 170,
-    marginHorizontal: 14,
+    height: 210,
+    marginHorizontal: -16,
     marginBottom: 14,
     position: "relative",
   },
@@ -3233,21 +3605,30 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     backgroundColor: C.backgroundSecondary,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 14,
-    gap: 4,
+    padding: 16,
+    gap: 0,
+  },
+  swipeLessonPlayCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
   swipeLessonTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: C.text, lineHeight: 20 },
-  swipeLessonTeaser: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 2 },
+  swipeLessonTeaser: { fontSize: 11, color: C.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 4 },
   swipeLessonActions: { flexDirection: "row", gap: 8, marginTop: 10 },
   swipeLessonSkip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 10,
     backgroundColor: C.backgroundTertiary,
   },
   swipeLessonSkipText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.textSecondary },
@@ -3256,9 +3637,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    paddingVertical: 7,
-    borderRadius: 8,
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 10,
   },
   swipeLessonWatchText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#0A0A0F" },
 
