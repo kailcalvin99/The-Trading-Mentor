@@ -204,7 +204,7 @@ export default function SpotifyPlayer() {
         className="rounded-xl shadow-2xl overflow-hidden"
       >
         <div
-          className="flex items-center justify-between px-2.5 py-1.5"
+          className="flex items-center justify-between px-2.5 py-1.5 pl-[0px] pr-[0px] pt-[0px] pb-[0px] opacity-[1]"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div className="flex items-center gap-1">
