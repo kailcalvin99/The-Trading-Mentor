@@ -276,7 +276,7 @@ export default function FloatingToolkit() {
       {/* FVG Confidence Score */}
       {openPanel === "confidence" && (
         <FloatingPanel
-          title="FVG Confidence Score"
+          title="Smart Money Movement Score"
           onClose={() => setOpenPanel(null)}
           initialPos={{ x: Math.max(0, window.innerWidth - 380), y: 80 }}
         >

@@ -249,7 +249,7 @@ export function ConfidenceScoreCard() {
 
   return (
     <div className="bg-card border border-border rounded-2xl p-4">
-      <WidgetHeader icon={Shield} title="ICT Confidence Score" />
+      <WidgetHeader icon={Shield} title="Smart Money Movement Score" />
       {!confidence ? (
         <div className="text-xs text-muted-foreground animate-pulse">Computing…</div>
       ) : (

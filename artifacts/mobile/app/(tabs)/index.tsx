@@ -291,7 +291,7 @@ function ConfidenceScoreMobileCard({ confidence }: { confidence: MobileConfidenc
     <View style={{ marginHorizontal: 14, marginBottom: 12, backgroundColor: C.backgroundSecondary, borderRadius: 16, borderWidth: 1, borderColor: C.cardBorder }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 }}>
         <Ionicons name="shield-checkmark-outline" size={14} color={C.accent} />
-        <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: C.textSecondary, letterSpacing: 0.8, textTransform: "uppercase" }}>ICT Confidence Score</Text>
+        <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: C.textSecondary, letterSpacing: 0.8, textTransform: "uppercase" }}>Smart Money Movement Score</Text>
       </View>
       {!confidence ? (
         <Text style={{ fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", paddingHorizontal: 14, paddingBottom: 12 }}>Computing…</Text>

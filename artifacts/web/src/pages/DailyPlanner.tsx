@@ -412,7 +412,7 @@ function PlannerConfidenceScorePanel() {
     <div className="bg-card border border-border rounded-2xl p-4 mb-6">
       <div className="flex items-center gap-2 mb-4">
         <Shield className="h-4 w-4 text-primary shrink-0" />
-        <h3 className="text-sm font-semibold text-foreground">ICT Confidence Score</h3>
+        <h3 className="text-sm font-semibold text-foreground">Smart Money Movement Score</h3>
       </div>
       <div className="flex items-center gap-5">
         <div className="shrink-0">

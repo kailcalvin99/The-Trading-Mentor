@@ -999,7 +999,7 @@ function ConfidenceScoreMobileCard({ confidence }: { confidence: MobileConfidenc
     <View style={styles.card}>
       <View style={styles.cardHeaderRow}>
         <Ionicons name="shield-checkmark-outline" size={14} color={C.accent} />
-        <Text style={styles.cardLabel}>ICT Confidence Score</Text>
+        <Text style={styles.cardLabel}>Smart Money Movement Score</Text>
       </View>
       {!confidence ? (
         <Text style={{ fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", paddingHorizontal: 14, paddingBottom: 12 }}>Computing…</Text>
