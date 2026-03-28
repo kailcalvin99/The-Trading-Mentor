@@ -98,7 +98,7 @@ export default function KillZoneStrip() {
           />
           <div className="flex flex-col min-w-0">
             <span className="font-bold text-foreground whitespace-nowrap text-left text-[14px]">{session.emoji} {session.name}</span>
-            <span className="text-muted-foreground whitespace-nowrap text-left text-[11px]">{session.time}</span>
+            <span className="text-muted-foreground whitespace-nowrap text-left text-[11px] bg-[#0b0a0f]">{session.time}</span>
           </div>
           {isLive ? (
             <span
