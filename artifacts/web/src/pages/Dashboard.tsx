@@ -23,7 +23,6 @@ export default function Dashboard() {
   return (
     <>
       <CommunityBanner tierLevel={tierLevel} />
-
       {/* ── Hero Banner ── */}
       <section
         className="relative overflow-hidden flex flex-col items-center justify-center text-center hidden md:flex"
@@ -36,10 +35,10 @@ export default function Dashboard() {
         <div className="glowing-3d-title-radial" />
         <div className="relative z-10 flex flex-col items-center gap-3">
           <h1
-            className="glowing-3d-title"
+            className="font-extrabold tracking-[0.18em] uppercase text-white"
             style={{ fontSize: "clamp(1.8rem, 4vw, 3.5rem)", lineHeight: 1.05 }}
           >
-            {config.app_name}
+            the Trading Mentor
           </h1>
           <p
             className="text-sm sm:text-base font-medium tracking-widest uppercase"
@@ -54,7 +53,6 @@ export default function Dashboard() {
           </p>
         </div>
       </section>
-
       <div className="max-w-6xl mx-auto p-4 md:p-6 pb-28">
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
