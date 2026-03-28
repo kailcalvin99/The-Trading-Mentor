@@ -205,6 +205,58 @@ export default function Welcome() {
 
       <main className="flex-1">
 
+        {/* ── Hero Banner ── */}
+        <section
+          className="relative overflow-hidden flex flex-col items-center justify-center text-center"
+          style={{
+            background: "linear-gradient(180deg, hsl(240 20% 3%) 0%, hsl(240 20% 5%) 60%, hsl(240 20% 5%) 100%)",
+            minHeight: "clamp(260px, 36vw, 440px)",
+            padding: "clamp(2.5rem, 6vw, 5rem) 1.5rem",
+          }}
+        >
+          <div className="glowing-3d-title-radial" />
+          <div
+            className="relative z-10 flex flex-col items-center gap-5"
+          >
+            <h1
+              className="glowing-3d-title"
+              style={{ fontSize: "clamp(2.2rem, 7vw, 6rem)", lineHeight: 1.05 }}
+            >
+              The Trading Mentor
+            </h1>
+            <p
+              className="text-base sm:text-lg font-medium tracking-widest uppercase"
+              style={{
+                color: "rgba(200,245,232,0.75)",
+                letterSpacing: "0.3em",
+                textShadow: "0 0 12px rgba(0,200,150,0.4)",
+                maxWidth: "38ch",
+              }}
+            >
+              Master ICT concepts. Trade with precision.
+            </p>
+            <div className="flex items-center gap-3 mt-2">
+              <a
+                href="#pricing"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-opacity hover:opacity-90"
+                style={{
+                  background: "linear-gradient(135deg, #00C896 0%, #00a070 100%)",
+                  boxShadow: "0 0 16px rgba(0,200,150,0.45), 0 2px 8px rgba(0,0,0,0.5)",
+                }}
+              >
+                Get Started Free
+              </a>
+              <a
+                href="#how-it-works"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold text-white/80 border border-white/10 hover:border-white/20 hover:text-white transition-colors"
+                style={{ background: "rgba(255,255,255,0.04)" }}
+              >
+                See How It Works
+              </a>
+            </div>
+          </div>
+        </section>
+
         {/* ── Stat strip ── */}
         <section className="border-y border-border bg-card/40 px-6 py-8">
           <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6">

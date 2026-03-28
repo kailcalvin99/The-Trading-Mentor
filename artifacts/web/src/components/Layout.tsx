@@ -891,19 +891,9 @@ export default function Layout() {
                     className="absolute inset-0 flex items-center justify-center transition-opacity duration-700 pointer-events-none select-none"
                     style={{ opacity: mantraVisible ? 0 : 1 }}
                   >
-                    <div style={{
-                      background: "rgba(36, 36, 56, 0.55)",
-                      backdropFilter: "blur(12px)",
-                      WebkitBackdropFilter: "blur(12px)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: 999,
-                      padding: "4px 18px",
-                      boxShadow: "0 2px 16px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.05)"
-                    }}>
-                      <span className="text-xl font-extrabold tracking-[0.18em] uppercase text-white" style={{ textShadow: "0 0 8px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.5)" }}>
-                        The Trading Mentor
-                      </span>
-                    </div>
+                    <span className="glowing-3d-title-header text-xl">
+                      The Trading Mentor
+                    </span>
                   </div>
                 </div>
                 <div className="ml-auto flex items-center gap-2 pr-1">
