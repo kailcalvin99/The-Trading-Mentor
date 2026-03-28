@@ -44,6 +44,7 @@ import {
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 import { apiGet } from "@/lib/api";
 import { useScrollCollapseProps } from "@/contexts/ScrollDirectionContext";
+import { useChromeCollapse } from "@/contexts/ChromeCollapseContext";
 import NewsModal from "@/components/NewsModal";
 import PnLCalendarBottomSheet from "@/components/PnLCalendarBottomSheet";
 
@@ -111,26 +112,6 @@ const SESSIONS: Session[] = [
   { name: "Silver Bullet", subtitle: "10:00–11:00 AM EST", startH: 10, startM: 0, endH: 11, endM: 0, color: "#EF4444", icon: "flash" },
   { name: "London Close", subtitle: "11 AM–12 PM EST", startH: 11, startM: 0, endH: 12, endM: 0, color: "#818CF8", icon: "time" },
 ];
-
-function AIGreetingCard() {
-  const tips = [
-    "Always wait for the liquidity sweep before entering!",
-    "The best setups happen at session opens — be ready!",
-    "Patience is the most profitable trading skill.",
-    "Silver Bullet window (10-11 AM) has the highest probability.",
-    "Your journal is your most powerful trading tool.",
-  ];
-  const tip = tips[new Date().getDate() % tips.length];
-
-  return (
-    <View style={styles.aiCard}>
-      <View style={styles.aiTipBox}>
-        <Ionicons name="sparkles" size={13} color={C.accent} />
-        <Text style={styles.aiTip}>{tip}</Text>
-      </View>
-    </View>
-  );
-}
 
 
 const SCREEN_WIDTH = Dimensions.get("window").width - 32;
@@ -2132,6 +2113,7 @@ function CustomizeModal({
 
 export default function DashboardScreen() {
   const scrollCollapseProps = useScrollCollapseProps();
+  const { headerLayoutAnim, mantraCardHeight } = useChromeCollapse();
   const { user } = useAuth();
   const router = useRouter();
   const firstName = user?.name?.split(" ")?.[0] || "Trader";
@@ -2222,8 +2204,6 @@ export default function DashboardScreen() {
       />
 
 
-      <AIGreetingCard />
-
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -2232,6 +2212,8 @@ export default function DashboardScreen() {
         }
         {...scrollCollapseProps}
       >
+        {/* Animated spacer that collapses in sync with the header to avoid blank space */}
+        <Animated.View style={{ height: headerLayoutAnim.interpolate({ inputRange: [0, 1], outputRange: [mantraCardHeight, 0] }) }} />
         {/* Stats strip — always visible, sits above all other content */}
         <StatsStripWidget onCalendarPress={() => setShowPnLCalendar(true)} />
 
@@ -2296,7 +2278,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.background },
   scroll: { flex: 1 },
   content: { padding: 16 },
-
   statsStrip: {
     marginHorizontal: -16,
     marginTop: -16,
@@ -2957,23 +2938,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: C.textSecondary,
   },
-
-  aiCard: {
-    backgroundColor: C.backgroundSecondary,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: C.accent + "25",
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  aiSubtitle: { fontSize: 12, color: C.textSecondary, marginTop: 2 },
-  aiTipBox: {
-    flexDirection: "row", alignItems: "flex-start", gap: 8,
-    backgroundColor: C.accent + "10", borderRadius: 10, padding: 10,
-    borderWidth: 1, borderColor: C.accent + "20",
-  },
-  aiTip: { flex: 1, fontSize: 13, color: C.text, lineHeight: 19 },
 
   achievementRow: {
     flexDirection: "row",
