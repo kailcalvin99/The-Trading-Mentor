@@ -787,33 +787,7 @@ export default function AIAssistant() {
 
   return (
     <>
-      <div
-        className="hidden md:flex items-center gap-2 h-9 px-3 border rounded-xl cursor-pointer transition-all duration-300 flex-1 max-w-md relative border-border/50 opacity-60 hover:opacity-100 hover:bg-card bg-[#141417]"
-        onClick={() => { setIsOpen(true); }}
-      >
-        <Sparkles className={`h-3.5 w-3.5 shrink-0 transition-colors ${nudgeExpanded && nudge ? "text-primary" : "text-muted-foreground"}`} />
-        <span className="text-sm text-muted-foreground truncate">
-          {nudgeExpanded && nudge ? nudge.message : "Ask AI anything..."}
-        </span>
-        {nudgeExpanded && nudge ? (
-          <button
-            onClick={(e) => { e.stopPropagation(); dismissNudge(); }}
-            className="ml-auto text-muted-foreground hover:text-foreground shrink-0"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        ) : (
-          <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground ml-auto shrink-0">
-            AI
-          </kbd>
-        )}
-        {isNewUser && (
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
-          </span>
-        )}
-      </div>
+      <span className="hidden" aria-hidden="true" />
       <div className="md:hidden fixed bottom-20 right-3 z-50" style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}>
         {nudge && !isOpen && (
           <div className={`absolute bottom-12 right-0 w-60 bg-card border border-primary/30 rounded-xl shadow-2xl p-3 transition-all duration-300 ${nudgeExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>

@@ -20,6 +20,43 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailyGamification } from "@/components/DashboardGamification";
 
+function getESTNow(): Date {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(
+    fmt.formatToParts(new Date()).map((p) => [p.type, p.value])
+  );
+  return new Date(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour), Number(parts.minute), Number(parts.second)
+  );
+}
+
+function formatESTTime(date: Date): string {
+  let h = date.getHours();
+  const m = String(date.getMinutes()).padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
+}
+
+function formatESTDate(): string {
+  return new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" });
+}
+
+function useESTClock(): Date {
+  const [now, setNow] = useState(() => getESTNow());
+  useEffect(() => {
+    const id = setInterval(() => setNow(getESTNow()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
 const TOUR_DONE_KEY = "mobile-onboarding-tour-done";
 
 const REQUIRED_TIER: Partial<Record<string, number>> = {
@@ -230,6 +267,9 @@ export default function TopTabBar({
   const { xp, streak } = useDailyGamification();
   const level = Math.floor(xp / 100) + 1;
   const router = useRouter();
+  const now = useESTClock();
+  const timeStr = formatESTTime(now);
+  const dateStr = formatESTDate();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -295,9 +335,12 @@ export default function TopTabBar({
           <Ionicons name="menu" size={24} color={C.text} />
         </TouchableOpacity>
 
-        <Text style={[styles.dashGreeting, { color: C.text }]} numberOfLines={1}>
-          Hi, {firstName}.
-        </Text>
+        <View style={styles.dashGreetingBlock}>
+          <Text style={[styles.dashGreeting, { color: C.text }]} numberOfLines={1}>
+            Hi, {firstName}. · <Text style={{ fontFamily: "Inter_400Regular" }}>{timeStr}</Text>
+          </Text>
+          <Text style={[styles.dashGreetingDate, { color: C.textSecondary }]} numberOfLines={1}>{dateStr}</Text>
+        </View>
 
         <View style={styles.rightRow}>
           <View style={[styles.dashBadge, { backgroundColor: C.backgroundTertiary, borderColor: C.cardBorder }]}>
@@ -341,7 +384,6 @@ export default function TopTabBar({
   }
 
   function renderDefaultBar() {
-    const activeLabel = activeRoute ? TAB_LABELS[activeRoute] : "";
     return (
       <View style={styles.bar}>
         <TouchableOpacity
@@ -353,13 +395,12 @@ export default function TopTabBar({
           <Ionicons name="menu" size={24} color={C.text} />
         </TouchableOpacity>
 
-        {activeLabel ? (
-          <Text style={[styles.screenLabel, { color: C.text }]} numberOfLines={1}>
-            {activeLabel}
-          </Text>
-        ) : null}
-
         <View style={styles.rightRow}>
+          <View style={styles.clockBlock}>
+            <Text style={[styles.clockTime, { color: C.text }]} numberOfLines={1}>{firstName} · {timeStr}</Text>
+            <Text style={[styles.clockDate, { color: C.textSecondary }]} numberOfLines={1}>{dateStr}</Text>
+          </View>
+
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => setProfileOpen(true)}
@@ -696,12 +737,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_700Bold",
   },
-  dashGreeting: {
+  dashGreetingBlock: {
     flex: 1,
     minWidth: 60,
-    fontSize: 14,
+    flexDirection: "column",
+    justifyContent: "center",
+  },
+  dashGreeting: {
+    fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.1,
+  },
+  dashGreetingDate: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
   },
   logTradeBtn: {
     flexDirection: "row",
@@ -975,6 +1025,22 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.1,
     flexShrink: 1,
+  },
+  clockBlock: {
+    flexDirection: "column",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    marginRight: 2,
+  },
+  clockTime: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.1,
+  },
+  clockDate: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
   },
 
   signOutBtn: {

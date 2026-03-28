@@ -14,6 +14,7 @@ import FloatingToolkit from "@/components/FloatingToolkit";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useToast } from "@/hooks/use-toast";
+import { getESTNow } from "@/lib/timeUtils";
 
 interface DrawerContextValue {
   openDrawer: () => void;
@@ -40,23 +41,78 @@ function HeaderGamificationBadges() {
   ];
   const earned = badgeChecks.filter(Boolean).length;
 
+  const tooltipText = `Lv ${level} (${rank}) · ${xpInLevel}/100 XP · ${streak}-day streak · ${earned}/8 badges`;
+
   return (
-    <div className="flex items-center gap-1.5 ml-auto">
-      <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-2.5 py-1" title={`Level ${level} — ${rank} · ${xpInLevel}/100 XP`}>
-        <Star className="h-3 w-3 text-primary" />
-        <span className="text-xs font-bold text-foreground">Lv {level}</span>
-        <div className="w-10 h-1.5 bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-primary rounded-full transition-all duration-1000" style={{ width: `${xpInLevel}%` }} />
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2 py-0.5 cursor-default select-none">
+          <Star className="h-2.5 w-2.5 text-primary shrink-0" />
+          <span className="text-[10px] font-bold text-foreground">Lv {level}</span>
+          <span className="text-muted-foreground/30 text-[10px]">|</span>
+          <Flame className={`h-2.5 w-2.5 shrink-0 ${streak >= 3 ? "text-red-500" : "text-muted-foreground"}`} />
+          <span className="text-[10px] font-bold text-foreground">{streak}d</span>
+          <span className="text-muted-foreground/30 text-[10px]">|</span>
+          <Trophy className="h-2.5 w-2.5 text-red-500 shrink-0" />
+          <span className="text-[10px] font-bold text-foreground">{earned}/8</span>
         </div>
+      </TooltipTrigger>
+      <TooltipContent>{tooltipText}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function useESTClock() {
+  const [now, setNow] = useState(() => getESTNow());
+  useEffect(() => {
+    const id = setInterval(() => setNow(getESTNow()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
+function formatESTTime(date: Date): string {
+  let h = date.getHours();
+  const m = String(date.getMinutes()).padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
+}
+
+function formatHeaderDate(): string {
+  return new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" });
+}
+
+function HeaderUserInfo() {
+  const { user } = useAuth();
+  const now = useESTClock();
+  const firstName = user?.name ? user.name.split(" ")[0] : "Trader";
+  const avatarUrl = user?.avatarUrl ?? null;
+  const initials = user?.name
+    ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "T";
+  const timeStr = formatESTTime(now);
+  const dateStr = formatHeaderDate();
+
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      {/* Date/time block — left of avatar */}
+      <div className="flex flex-col min-w-0 leading-none items-end">
+        <span className="text-sm font-semibold text-foreground whitespace-nowrap font-mono">{timeStr}</span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
       </div>
-      <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-2.5 py-1" title={`${streak}-day login streak`}>
-        <Flame className={`h-3 w-3 ${streak >= 3 ? "text-red-500" : "text-muted-foreground"}`} />
-        <span className="text-xs font-bold text-foreground">{streak}d</span>
-      </div>
-      <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-2.5 py-1" title={`${earned}/8 badges earned`}>
-        <Trophy className="h-3 w-3 text-red-500" />
-        <span className="text-xs font-bold text-foreground">{earned}/8</span>
-      </div>
+      {/* Avatar — rightmost (corner) */}
+      {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:")) ? (
+        <img src={avatarUrl} alt={firstName} className="w-9 h-9 rounded-full object-cover shrink-0 border-2 border-border" />
+      ) : avatarUrl && avatarUrl.length <= 4 ? (
+        <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center border-2 border-border text-xl leading-none" style={{ background: "#00C896" }}>
+          {avatarUrl}
+        </div>
+      ) : (
+        <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-sm font-bold border-2 border-border" style={{ background: "#00C896", color: "#020203" }}>
+          {initials}
+        </div>
+      )}
     </div>
   );
 }
@@ -362,9 +418,7 @@ export default function Layout() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const userPillRef = useRef<HTMLButtonElement>(null);
   const [userMenuPos, setUserMenuPos] = useState<{ top: number; right: number } | null>(null);
-  const [headerVisible, setHeaderVisible] = useState(true);
   const mainScrollRef = useRef<HTMLDivElement>(null);
-  const lastScrollY = useRef(0);
 
   const recalcUserMenuPos = useCallback(() => {
     if (userPillRef.current) {
@@ -475,33 +529,10 @@ export default function Layout() {
   }, [location.pathname]);
 
   useEffect(() => {
-    setHeaderVisible(true);
-    lastScrollY.current = 0;
     if (mainScrollRef.current) {
       mainScrollRef.current.scrollTop = 0;
     }
   }, [location.pathname]);
-
-  useEffect(() => {
-    const el = mainScrollRef.current;
-    if (!el) return;
-    const SCROLL_THRESHOLD = 8;
-    const onScroll = () => {
-      const currentY = el.scrollTop;
-      const delta = currentY - lastScrollY.current;
-      if (currentY <= 0) {
-        setHeaderVisible(true);
-        lastScrollY.current = 0;
-      } else if (delta > SCROLL_THRESHOLD) {
-        setHeaderVisible(false);
-        lastScrollY.current = currentY;
-      } else {
-        lastScrollY.current = currentY;
-      }
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
 
   const handleOpenShare = useCallback(() => {
     setShowShare(true);
@@ -525,7 +556,6 @@ export default function Layout() {
     navigate("/login");
   }
 
-  const isChartLab = location.pathname === "/paper-trading";
 
   return (
     <DrawerContext.Provider value={{ openDrawer: () => setDrawerOpen(true) }}>
@@ -761,13 +791,9 @@ export default function Layout() {
         </div>
 
         <div className="flex flex-col flex-1 min-w-0">
-          {!isChartLab && <div
-            className="relative flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0 h-12 border-t-[#020203] border-r-[#020203] border-b-[#020203] border-l-[#020203] bg-[#242438]"
-            style={{
-              transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
-              marginBottom: headerVisible ? 0 : "-3rem",
-              transition: "transform 475ms cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 475ms cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
+          <div
+            className="relative flex items-center gap-2 px-3 py-1.5 shrink-0 h-12 bg-[#242438]"
+            style={{ borderBottom: "none" }}
           >
             <button
               onClick={() => setDrawerOpen((prev) => !prev)}
@@ -779,7 +805,7 @@ export default function Layout() {
             </button>
             <div className="flex-1 flex items-center justify-center pointer-events-none select-none">
               <span
-                className="text-lg font-extrabold tracking-[0.18em] uppercase text-white"
+                className="text-2xl font-extrabold tracking-[0.18em] uppercase text-white"
                 style={{
                   textShadow: "0 0 8px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 40px rgba(255,255,255,0.3)",
                   fontFamily: "inherit",
@@ -788,11 +814,62 @@ export default function Layout() {
                 The Trading Mentor
               </span>
             </div>
-            <div className="ml-auto flex items-center gap-2">
-              <AIAssistant />
+            <div className="ml-auto flex items-center gap-2 pr-1">
               <HeaderGamificationBadges />
+              <AIAssistant />
+              <HeaderUserInfo />
             </div>
-          </div>}
+
+            {/* Full-width AI glow line — bottom edge of header, acts as the AI trigger */}
+            <style>{`
+              @keyframes ai-header-line-pulse {
+                0%, 100% { opacity: 0.5; }
+                50% { opacity: 1; }
+              }
+              @keyframes ai-header-dot-glow {
+                0%, 100% { box-shadow: 0 0 5px 2px #00C896, 0 0 12px 3px #00C89650; }
+                50% { box-shadow: 0 0 10px 4px #00C896, 0 0 24px 6px #00C89670; }
+              }
+            `}</style>
+            <div
+              className="absolute bottom-0 left-0 right-0 cursor-pointer"
+              style={{ height: 3, zIndex: 20 }}
+              onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
+              title="Open AI Assistant"
+              role="button"
+              aria-label="Open AI Assistant"
+            >
+              {/* The glowing line itself */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
+                  animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
+                  boxShadow: "0 0 5px 1px #00C89660",
+                }}
+              />
+              {/* Centered pulsing AI dot — sits on top of the line */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  transform: "translateX(-50%) translateY(-50%)",
+                  background: "#00C896",
+                  borderRadius: 999,
+                  padding: "3px 10px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 30,
+                  animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span style={{ color: "#020203", fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", lineHeight: 1 }}>AI</span>
+              </div>
+            </div>
+          </div>
 
           <main className="flex-1 overflow-hidden relative">
             <div className="flex h-full">
