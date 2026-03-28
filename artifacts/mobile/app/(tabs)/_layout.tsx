@@ -5,11 +5,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import FloatingToolkit from "@/components/FloatingToolkit";
+import RiskFloatingWidget from "@/components/RiskFloatingWidget";
 import TopTabBar from "@/components/TopTabBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { ChromeCollapseProvider, useChromeCollapse } from "@/contexts/ChromeCollapseContext";
 import { ScrollDirectionProvider } from "@/contexts/ScrollDirectionContext";
+import { PropAccountProvider } from "@/contexts/PropAccountContext";
 
 const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 
@@ -196,17 +198,20 @@ function TabLayoutInner() {
       </Animated.View>
 
       <FloatingToolkit />
+      <RiskFloatingWidget />
     </View>
   );
 }
 
 export default function TabLayout() {
   return (
-    <ChromeCollapseProvider>
-      <ScrollDirectionProvider>
-        <TabLayoutInner />
-      </ScrollDirectionProvider>
-    </ChromeCollapseProvider>
+    <PropAccountProvider>
+      <ChromeCollapseProvider>
+        <ScrollDirectionProvider>
+          <TabLayoutInner />
+        </ScrollDirectionProvider>
+      </ChromeCollapseProvider>
+    </PropAccountProvider>
   );
 }
 

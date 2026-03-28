@@ -15,12 +15,12 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  useGetPropAccount,
   useCreatePropAccount,
   useAddDailyLoss,
   useResetDailyLoss,
   useListTrades,
 } from "@workspace/api-client-react";
+import { usePropAccount } from "@/contexts/PropAccountContext";
 import Colors from "@/constants/colors";
 import type { Trade } from "@workspace/api-client-react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -264,17 +264,10 @@ export default function RiskShieldScreen() {
   }, [rawTrades]);
   const mobileInsights = useMemo(() => computeMobileInsights(completedTrades), [completedTrades]);
 
-  const { data: account, refetch } = useGetPropAccount();
+  const { balance, startingBalance, dailyLoss, maxDailyLoss, maxTotalLoss, hasAccount, refetch } = usePropAccount();
   const { mutateAsync: createAccount } = useCreatePropAccount();
   const { mutateAsync: addLoss } = useAddDailyLoss();
   const { mutateAsync: resetLoss } = useResetDailyLoss();
-
-  const hasAccount = !!account;
-  const balance = account?.currentBalance ?? 50000;
-  const startingBalance = account?.startingBalance ?? 50000;
-  const dailyLoss = account?.dailyLoss ?? 0;
-  const maxDailyLoss = account?.maxDailyLossPct ?? 2;
-  const maxTotalLoss = account?.maxTotalDrawdownPct ?? 10;
 
   const dailyLossPct = startingBalance > 0 ? (dailyLoss / startingBalance) * 100 : 0;
   const totalLossPct =
