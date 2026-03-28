@@ -19,6 +19,7 @@ import Colors from "@/constants/colors";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailyGamification } from "@/components/DashboardGamification";
+import { useAIAssistant } from "@/contexts/AIAssistantContext";
 
 function getESTNow(): Date {
   const fmt = new Intl.DateTimeFormat("en-US", {
@@ -271,6 +272,7 @@ export default function TopTabBar({
   const timeStr = formatESTTime(now);
   const dateStr = formatESTDate();
 
+  const { openWithTopic } = useAIAssistant();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -326,14 +328,24 @@ export default function TopTabBar({
   function renderDashboardBar() {
     return (
       <View style={styles.bar}>
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => setMenuOpen((v) => !v)}
-          accessibilityLabel="Open navigation menu"
-          accessibilityRole="button"
-        >
-          <Ionicons name="menu" size={24} color={C.text} />
-        </TouchableOpacity>
+        <View style={styles.leftPair}>
+          <TouchableOpacity
+            style={[styles.prominentBtn, { backgroundColor: C.backgroundSecondary, borderColor: C.cardBorder }]}
+            onPress={() => setMenuOpen((v) => !v)}
+            accessibilityLabel="Open navigation menu"
+            accessibilityRole="button"
+          >
+            <Ionicons name="menu" size={28} color={C.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.prominentBtn, { backgroundColor: C.accent + "22", borderColor: C.accent + "55" }]}
+            onPress={() => openWithTopic("")}
+            accessibilityLabel="Open AI assistant"
+            accessibilityRole="button"
+          >
+            <Ionicons name="sparkles" size={26} color={C.accent} />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.dashGreetingBlock}>
           <Text style={[styles.dashGreeting, { color: C.text }]} numberOfLines={1}>
@@ -386,14 +398,24 @@ export default function TopTabBar({
   function renderDefaultBar() {
     return (
       <View style={styles.bar}>
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => setMenuOpen((v) => !v)}
-          accessibilityLabel="Open navigation menu"
-          accessibilityRole="button"
-        >
-          <Ionicons name="menu" size={24} color={C.text} />
-        </TouchableOpacity>
+        <View style={styles.leftPair}>
+          <TouchableOpacity
+            style={[styles.prominentBtn, { backgroundColor: C.backgroundSecondary, borderColor: C.cardBorder }]}
+            onPress={() => setMenuOpen((v) => !v)}
+            accessibilityLabel="Open navigation menu"
+            accessibilityRole="button"
+          >
+            <Ionicons name="menu" size={28} color={C.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.prominentBtn, { backgroundColor: C.accent + "22", borderColor: C.accent + "55" }]}
+            onPress={() => openWithTopic("")}
+            accessibilityLabel="Open AI assistant"
+            accessibilityRole="button"
+          >
+            <Ionicons name="sparkles" size={26} color={C.accent} />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.rightRow}>
           <View style={styles.clockBlock}>
@@ -642,12 +664,10 @@ const styles = StyleSheet.create({
   container: {
     borderBottomWidth: 1,
     zIndex: 10,
-    minHeight: 42,
+    minHeight: 56,
   },
   bar: {
-    height: 42,
-    maxHeight: 42,
-    overflow: "hidden",
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
@@ -659,6 +679,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
+  },
+  leftPair: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  prominentBtn: {
+    width: 46,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 23,
+    borderWidth: 1,
   },
   rightRow: {
     flexDirection: "row",

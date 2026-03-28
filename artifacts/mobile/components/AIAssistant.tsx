@@ -31,7 +31,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { subscribeToAITrigger } from "@/lib/aiTrigger";
 import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import Colors from "@/constants/colors";
-import { useChromeCollapse } from "@/contexts/ChromeCollapseContext";
 
 interface AITrigger {
   message: string;
@@ -121,21 +120,17 @@ export default function AIAssistant() {
   const { data: conversations, refetch } = useListGeminiConversations();
   const { data: propAccount } = useGetPropAccount();
 
-  const { footerAnim } = useChromeCollapse();
-
-  const footerTranslateY = footerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 160],
-  });
-
   const drawdownNudgedRef = useRef(false);
 
   useEffect(() => {
     registerOpenHandler((topic: string) => {
-      setInput(`Tell me more about: ${topic}`);
+      if (topic) setInput(`Tell me more about: ${topic}`);
       setVisible(true);
+      if (!topic && !conversationId && (!conversations || conversations.length === 0)) {
+        startConversation();
+      }
     });
-  }, []);
+  }, [conversationId, conversations]);
 
   useEffect(() => {
     if (visible) {
@@ -508,13 +503,6 @@ export default function AIAssistant() {
     }
   }
 
-  function openDrawer() {
-    setVisible(true);
-    if (!conversationId && (!conversations || conversations.length === 0)) {
-      startConversation();
-    }
-  }
-
   return (
     <>
       {nudgeExpanded && nudge && (
@@ -547,18 +535,6 @@ export default function AIAssistant() {
           </TouchableOpacity>
         </Animated.View>
       )}
-      <Animated.View style={[s.fabFloating, { transform: [{ translateY: footerTranslateY }] }]}>
-        <View style={s.fabContainer}>
-          <TouchableOpacity
-            style={s.fabMini}
-            onPress={openDrawer}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="sparkles" size={14} color="#0A0A0F" />
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-
       <Modal
         visible={visible}
         animationType="slide"
@@ -818,29 +794,6 @@ const tcStyles = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
-  fabFloating: {
-    position: "absolute",
-    bottom: 90,
-    right: 14,
-    zIndex: 100,
-  },
-  fabContainer: {
-    alignItems: "flex-end",
-  },
-  fabMini: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: C.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 4,
-    shadowColor: C.accent,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    opacity: 0.85,
-  },
   nudgeCardLeft: {
     position: "absolute",
     left: 14,
