@@ -92,7 +92,7 @@ const TOUR_STEPS: TourStep[] = [
     icon: "trophy-outline",
     color: "#00C896",
     description:
-      "Scroll down on the Planner tab to find your XP tracker, daily spin wheel, and mission slot machine. Rewards for every lesson and trade logged!",
+      "Scroll down on the Planner tab to find your XP tracker and achievements. Rewards for every lesson and trade logged!",
     calloutPosition: "center",
     spotlightHint: "dashboard",
   },

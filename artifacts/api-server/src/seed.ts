@@ -152,7 +152,7 @@ export async function seedDefaults() {
             annualPrice: STANDARD_ANNUAL_PRICE,
             annualDiscountPct: 20,
             description: STANDARD_DESCRIPTION,
-            features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Prop Tracker", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges"],
+            features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Prop Tracker", "AI Mentor (unlimited)", "Achievement Badges"],
             stripePriceIdMonthly: null,
             stripePriceIdAnnual: null,
           })
@@ -196,7 +196,7 @@ export async function seedDefaults() {
         monthlyPrice: "0",
         annualPrice: "0",
         annualDiscountPct: 0,
-        features: ["ICT Academy (5 lessons)", "Daily Planner", "AI Mentor (3 questions/day)", "Daily Spin Wheel"],
+        features: ["ICT Academy (5 lessons)", "Daily Planner", "AI Mentor (3 questions/day)"],
         description: "Get a taste of what The Trading Mentor can do",
         isActive: true,
       },
@@ -206,7 +206,7 @@ export async function seedDefaults() {
         monthlyPrice: STANDARD_MONTHLY_PRICE,
         annualPrice: STANDARD_ANNUAL_PRICE,
         annualDiscountPct: 20,
-        features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Prop Tracker", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges"],
+        features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Prop Tracker", "AI Mentor (unlimited)", "Achievement Badges"],
         description: STANDARD_DESCRIPTION,
         isActive: true,
       },
@@ -216,7 +216,7 @@ export async function seedDefaults() {
         monthlyPrice: PREMIUM_MONTHLY_PRICE,
         annualPrice: PREMIUM_ANNUAL_PRICE,
         annualDiscountPct: 20,
-        features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Smart Journal", "Analytics Dashboard", "AI Mentor (unlimited)", "Daily Spin Wheel", "Achievement Badges", "Leaderboard Access", "TradingView Webhooks", "Priority Support"],
+        features: ["Full ICT Academy (39 lessons)", "Daily Planner", "Risk Shield", "Smart Journal", "Analytics Dashboard", "AI Mentor (unlimited)", "Achievement Badges", "Leaderboard Access", "TradingView Webhooks", "Priority Support"],
         description: PREMIUM_DESCRIPTION,
         isActive: true,
       },
@@ -254,7 +254,6 @@ export async function seedDefaults() {
     feature_hall_of_fame: "true",
     feature_win_rate_estimator: "true",
     feature_casino_elements: "true",
-    feature_daily_spin: "true",
   };
 
   const existingSettings = await db.select().from(adminSettingsTable);

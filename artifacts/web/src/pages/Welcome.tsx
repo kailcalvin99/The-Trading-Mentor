@@ -123,7 +123,7 @@ const FAQS = [
   },
   {
     q: "What's included in the free tier?",
-    a: "The free tier gives you access to the first 5 ICT Academy lessons, the daily planner, 3 AI mentor questions per day, and the daily spin wheel. No credit card is required to sign up.",
+    a: "The free tier gives you access to the first 5 ICT Academy lessons, the daily planner, and 3 AI mentor questions per day. No credit card is required to sign up.",
   },
   {
     q: "How does billing work? Can I cancel?",

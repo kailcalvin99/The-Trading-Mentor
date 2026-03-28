@@ -166,7 +166,6 @@ export function AdminPlatformTab({
           <SettingToggle label="Hall of Fame" desc="Show the leaderboard / Hall of Fame page" checked={settings.feature_hall_of_fame === "true"} onChange={() => toggleSetting("feature_hall_of_fame")} />
           <SettingToggle label="Win Rate Estimator" desc="Show the win rate estimation tool" checked={settings.feature_win_rate_estimator === "true"} onChange={() => toggleSetting("feature_win_rate_estimator")} />
           <SettingToggle label="Casino Elements" desc="Enable gamification features (streaks, XP, achievements)" checked={settings.feature_casino_elements === "true"} onChange={() => toggleSetting("feature_casino_elements")} />
-          <SettingToggle label="Daily Spin" desc="Enable the daily reward spin wheel" checked={settings.feature_daily_spin === "true"} onChange={() => toggleSetting("feature_daily_spin")} />
         </div>
       </SettingsSection>
 

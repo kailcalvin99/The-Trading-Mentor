@@ -1,8 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, Wrench, StickyNote, Bot, Gift, Newspaper, Shield, PenLine, CalendarDays, TrendingUp, ClipboardList, BarChart2 } from "lucide-react";
+import { X, Wrench, StickyNote, Bot, Newspaper, Shield, PenLine, CalendarDays, TrendingUp, ClipboardList, BarChart2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSpotify } from "@/contexts/SpotifyContext";
-import { SpinWheel } from "@/components/CasinoElements";
 import { EconomicCalendarWidget } from "@/components/LiveMarketWidgets";
 import { ConfidenceScoreCard } from "@/pages/dashboard/LiveSignalWidgets";
 import { QuickNoteModalInner } from "@/pages/dashboard/QuickNoteModal";
@@ -102,7 +101,7 @@ function FloatingPanel({ title, onClose, children, initialPos, width = "w-80" }:
   );
 }
 
-type OpenPanel = "spotify" | "note" | "ai" | "spin" | "news" | "confidence" | "pnl-calendar" | "futures" | "trading-plan" | "tv-tools" | null;
+type OpenPanel = "spotify" | "note" | "ai" | "news" | "confidence" | "pnl-calendar" | "futures" | "trading-plan" | "tv-tools" | null;
 
 const TOOLS = [
   {
@@ -122,12 +121,6 @@ const TOOLS = [
     label: "Ask AI",
     Icon: Bot,
     color: "bg-primary hover:bg-primary/90 text-primary-foreground",
-  },
-  {
-    id: "spin" as const,
-    label: "Spin Wheel",
-    Icon: Gift,
-    color: "bg-amber-500 hover:bg-amber-400 text-white",
   },
   {
     id: "news" as const,
@@ -265,19 +258,6 @@ export default function FloatingToolkit() {
           initialPos={{ x: Math.max(0, window.innerWidth - 320), y: 120 }}
         >
           <QuickNoteModalInner />
-        </FloatingPanel>
-      )}
-
-      {/* Spin Wheel */}
-      {openPanel === "spin" && (
-        <FloatingPanel
-          title="Daily Spin Wheel"
-          onClose={() => setOpenPanel(null)}
-          initialPos={{ x: Math.max(0, window.innerWidth - 380), y: 100 }}
-        >
-          <div className="p-4">
-            <SpinWheel />
-          </div>
         </FloatingPanel>
       )}
 

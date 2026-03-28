@@ -21,7 +21,6 @@ export interface AppConfig {
   feature_hall_of_fame: string;
   feature_win_rate_estimator: string;
   feature_casino_elements: string;
-  feature_daily_spin: string;
   [key: string]: string;
 }
 
@@ -44,7 +43,6 @@ const DEFAULTS: AppConfig = {
   feature_hall_of_fame: "true",
   feature_win_rate_estimator: "true",
   feature_casino_elements: "true",
-  feature_daily_spin: "true",
 };
 
 interface AppConfigCtx {

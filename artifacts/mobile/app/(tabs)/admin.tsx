@@ -36,11 +36,6 @@ const FEATURE_TOGGLE_KEYS: { key: string; label: string; desc: string }[] = [
     label: "Community Hub",
     desc: "Enable the community forum tab",
   },
-  {
-    key: "spin_wheel_enabled",
-    label: "Daily Spin Wheel",
-    desc: "Enable the daily reward spin",
-  },
 ];
 
 function SectionCard({
