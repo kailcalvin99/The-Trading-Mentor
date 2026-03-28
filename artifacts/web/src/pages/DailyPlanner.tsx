@@ -1425,32 +1425,32 @@ export default function DailyPlanner() {
       </div>
     </div>
 
-    {/* Floating Action Buttons — bottom-right, horizontal row */}
-    <div className="fixed bottom-6 right-4 z-40 flex flex-row items-center gap-2">
+    {/* Floating Action Buttons — bottom-center, horizontal row */}
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-row items-center gap-2">
       {speechSupported && (
         <button
           onClick={isListening ? stopVoiceNote : startVoiceNote}
           title={isListening ? "Stop recording" : "Voice Note"}
-          className={`w-12 h-12 rounded-full shadow-xl flex items-center justify-center transition-all ${
+          className={`w-7 h-7 rounded-full shadow-xl flex items-center justify-center transition-all ${
             isListening
               ? "bg-red-500 text-white animate-pulse"
               : "bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:scale-105"
           }`}
         >
-          {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+          {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
         </button>
       )}
       <button
         onClick={handleSendToJournal}
         disabled={showHaltBanner}
         title={showHaltBanner ? "Trading halted" : "Submit Trade"}
-        className={`h-12 px-5 rounded-full shadow-xl flex items-center gap-2 font-bold text-sm transition-all ${
+        className={`h-7 px-3 rounded-full shadow-xl flex items-center gap-2 font-bold text-xs transition-all ${
           showHaltBanner
             ? "bg-secondary border border-border text-muted-foreground cursor-not-allowed opacity-50"
             : "bg-primary text-primary-foreground hover:brightness-110 hover:scale-105"
         }`}
       >
-        <Send className="h-4 w-4 shrink-0" />
+        <Send className="h-3 w-3 shrink-0" />
         <span>Submit Trade</span>
       </button>
     </div>
