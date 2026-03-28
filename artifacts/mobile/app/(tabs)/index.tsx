@@ -282,50 +282,49 @@ function ConfidenceScoreMobileCard({ confidence }: { confidence: MobileConfidenc
     : "#EF4444";
 
   const gradeLabel =
-    score === null ? ""
+    score === null ? "—"
     : score >= 75 ? "High Probability"
     : score >= 50 ? "Moderate Setup"
     : "Wait for Alignment";
 
   return (
-    <View style={{ marginHorizontal: 14, marginBottom: 12, backgroundColor: C.backgroundSecondary, borderRadius: 16, borderWidth: 1, borderColor: C.cardBorder }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 }}>
-        <Ionicons name="shield-checkmark-outline" size={14} color={C.accent} />
-        <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: C.textSecondary, letterSpacing: 0.8, textTransform: "uppercase" }}>Smart Money Movement Score</Text>
+    <View style={{
+      marginHorizontal: 14,
+      marginBottom: 12,
+      backgroundColor: C.backgroundSecondary,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: C.cardBorder,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      gap: 12,
+    }}>
+      <View style={{
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        backgroundColor: scoreColor + "18",
+        borderWidth: 1,
+        borderColor: scoreColor + "40",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: scoreColor, lineHeight: 22 }}>
+          {score ?? "—"}
+        </Text>
       </View>
-      {!confidence ? (
-        <Text style={{ fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", paddingHorizontal: 14, paddingBottom: 12 }}>Computing…</Text>
-      ) : (
-        <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 10 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Text style={{ fontSize: 32, fontFamily: "Inter_700Bold", color: scoreColor }}>{score}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>/100 · {gradeLabel}</Text>
-              <View style={{ height: 8, backgroundColor: C.backgroundTertiary, borderRadius: 4, overflow: "hidden", marginTop: 6 }}>
-                <View style={{ height: 8, backgroundColor: scoreColor, borderRadius: 4, width: `${score ?? 0}%` }} />
-              </View>
-            </View>
-          </View>
-          <View style={{ gap: 6 }}>
-            {confidence.factors.map((f, i) => (
-              <View key={i} style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                paddingHorizontal: 10,
-                paddingVertical: 7,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: f.met ? "#00C89630" : C.cardBorder,
-                backgroundColor: f.met ? "#00C89610" : C.backgroundTertiary,
-              }}>
-                <Text style={{ fontSize: 12, color: f.met ? "#00C896" : C.textSecondary }}>{f.met ? "✓" : "○"}</Text>
-                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: f.met ? "#00C896" : C.textSecondary, flex: 1 }} numberOfLines={2}>{f.label}</Text>
-              </View>
-            ))}
-          </View>
+      <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Ionicons name="shield-checkmark-outline" size={11} color={C.accent} />
+          <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: C.textSecondary, letterSpacing: 0.7, textTransform: "uppercase" }}>Smart Money Score</Text>
         </View>
-      )}
+        <View style={{ height: 4, backgroundColor: C.backgroundTertiary, borderRadius: 2, overflow: "hidden" }}>
+          <View style={{ height: 4, backgroundColor: scoreColor, borderRadius: 2, width: `${score ?? 0}%` }} />
+        </View>
+        <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: scoreColor }}>{gradeLabel}</Text>
+      </View>
     </View>
   );
 }

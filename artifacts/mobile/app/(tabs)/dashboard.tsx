@@ -854,171 +854,6 @@ function TradePlanWidget({ refreshTrigger }: { refreshTrigger?: number }) {
   );
 }
 
-interface MobileFvgSignal {
-  direction: "bullish" | "bearish" | "none";
-  level: number;
-  instrument: string;
-  detected_at: string;
-}
-
-interface MobileConfidenceFactor {
-  label: string;
-  met: boolean;
-}
-
-interface MobileConfidenceData {
-  score: number;
-  factors: MobileConfidenceFactor[];
-}
-
-function useMobileLiveSignals(instrument = "NQ") {
-  const [fvg, setFvg] = useState<MobileFvgSignal | null>(null);
-  const [confidence, setConfidence] = useState<MobileConfidenceData | null>(null);
-
-  const fetchSignals = useCallback(async () => {
-    try {
-      const [fvgData, confData] = await Promise.all([
-        apiGet<MobileFvgSignal>(`signals/fvg?instrument=${instrument}`),
-        apiGet<MobileConfidenceData>(`signals/confidence?instrument=${instrument}`),
-      ]);
-      setFvg(fvgData);
-      setConfidence(confData);
-    } catch {}
-  }, [instrument]);
-
-  useEffect(() => {
-    fetchSignals();
-    const id = setInterval(fetchSignals, 15000);
-    return () => clearInterval(id);
-  }, [fetchSignals]);
-
-  return { fvg, confidence, fetchSignals };
-}
-
-function FvgSignalMobileCard({ fvg }: { fvg: MobileFvgSignal | null }) {
-
-  const isBullish = fvg?.direction === "bullish";
-  const isBearish = fvg?.direction === "bearish";
-  const hasGap = isBullish || isBearish;
-
-  const directionColor = isBullish ? "#00C896" : isBearish ? "#EF4444" : C.textSecondary;
-
-  function formatRelativeTime(isoStr: string): string {
-    const diff = Date.now() - new Date(isoStr).getTime();
-    const secs = Math.floor(diff / 1000);
-    if (secs < 60) return `${secs}s ago`;
-    return `${Math.floor(secs / 60)}m ago`;
-  }
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeaderRow}>
-        <Ionicons name="flash-outline" size={14} color={C.accent} />
-        <Text style={styles.cardLabel}>Fair Value Gap (FVG)</Text>
-      </View>
-      {!fvg ? (
-        <Text style={{ fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", paddingHorizontal: 14, paddingBottom: 12 }}>Scanning 5m chart…</Text>
-      ) : (
-        <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 10 }}>
-          <View style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 20,
-            borderWidth: 1,
-            alignSelf: "flex-start",
-            borderColor: directionColor + "40",
-            backgroundColor: directionColor + "15",
-          }}>
-            {hasGap && (
-              <Ionicons name={isBullish ? "arrow-up" : "arrow-down"} size={13} color={directionColor} />
-            )}
-            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: directionColor }}>
-              {hasGap ? (isBullish ? "Bullish FVG" : "Bearish FVG") + " detected" : "No FVG detected"}
-            </Text>
-          </View>
-          {hasGap && (
-            <View style={{ flexDirection: "row", gap: 16 }}>
-              <View>
-                <Text style={{ fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>Instrument</Text>
-                <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: C.text }}>{fvg.instrument}</Text>
-              </View>
-              <View>
-                <Text style={{ fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>~Level</Text>
-                <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: C.text, fontVariant: ["tabular-nums"] }}>{fvg.level.toFixed(2)}</Text>
-              </View>
-            </View>
-          )}
-          <Text style={{ fontSize: 11, color: C.textTertiary, fontFamily: "Inter_400Regular" }}>
-            Last scan: {formatRelativeTime(fvg.detected_at)}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-function ConfidenceScoreMobileCard({ confidence }: { confidence: MobileConfidenceData | null }) {
-
-  const score = confidence?.score ?? null;
-
-  const scoreColor =
-    score === null ? C.textSecondary
-    : score >= 75 ? "#00C896"
-    : score >= 50 ? "#F59E0B"
-    : "#EF4444";
-
-  const gradeLabel =
-    score === null ? ""
-    : score >= 75 ? "High Probability"
-    : score >= 50 ? "Moderate Setup"
-    : "Wait for Alignment";
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeaderRow}>
-        <Ionicons name="shield-checkmark-outline" size={14} color={C.accent} />
-        <Text style={styles.cardLabel}>Smart Money Movement Score</Text>
-      </View>
-      {!confidence ? (
-        <Text style={{ fontSize: 12, color: C.textSecondary, fontFamily: "Inter_400Regular", paddingHorizontal: 14, paddingBottom: 12 }}>Computing…</Text>
-      ) : (
-        <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 10 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Text style={{ fontSize: 32, fontFamily: "Inter_700Bold", color: scoreColor }}>{score}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 10, color: C.textSecondary, fontFamily: "Inter_400Regular" }}>/100 · {gradeLabel}</Text>
-              <View style={{ height: 8, backgroundColor: C.backgroundTertiary, borderRadius: 4, overflow: "hidden", marginTop: 6 }}>
-                <View style={{ height: 8, backgroundColor: scoreColor, borderRadius: 4, width: `${score ?? 0}%` }} />
-              </View>
-            </View>
-          </View>
-          <View style={{ gap: 6 }}>
-            {confidence.factors.map((f, i) => (
-              <View key={i} style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                paddingHorizontal: 10,
-                paddingVertical: 7,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: f.met ? "#00C89630" : C.cardBorder,
-                backgroundColor: f.met ? "#00C89610" : C.backgroundTertiary,
-              }}>
-                <Text style={{ fontSize: 12, color: f.met ? "#00C896" : C.textSecondary }}>{f.met ? "✓" : "○"}</Text>
-                <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: f.met ? "#00C896" : C.textSecondary, flex: 1 }} numberOfLines={2}>{f.label}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-    </View>
-  );
-}
-
 function NotesWidget() {
   const [text, setText] = useState("");
   const [saved, setSaved] = useState(false);
@@ -2399,19 +2234,15 @@ export default function DashboardScreen() {
   const [showAchievements, setShowAchievements] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [showPnLCalendar, setShowPnLCalendar] = useState(false);
-  const { fetchSignals } = useMobileLiveSignals();
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: [`/api/trades`] }),
-        fetchSignals(),
-      ]);
+      await qc.invalidateQueries({ queryKey: [`/api/trades`] });
     } finally {
       setRefreshing(false);
     }
-  }, [qc, fetchSignals]);
+  }, [qc]);
 
   useFocusEffect(
     useCallback(() => {
