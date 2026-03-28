@@ -850,7 +850,7 @@ export default function Layout() {
             {/* Header bar: Dashboard only, with scroll-hide */}
             {isDashboard && (
               <div
-                className="relative flex items-center gap-2 px-3 py-1.5 shrink-0 h-12 bg-[#1a1c26]"
+                className="relative flex items-center gap-2 px-3 py-1.5 shrink-0 h-12 bg-[#16151d]"
                 style={{
                   borderBottom: "none",
                   transition: "transform 475ms cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 475ms cubic-bezier(0.4, 0, 0.2, 1)",
