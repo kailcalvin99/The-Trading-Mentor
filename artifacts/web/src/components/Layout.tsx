@@ -584,358 +584,32 @@ export default function Layout() {
 
   return (
     <DrawerContext.Provider value={{ openDrawer: () => setDrawerOpen(true) }}>
-    <TooltipProvider delayDuration={300}>
-      {!authLoading && !quizDone && (
-        <OnboardingQuiz onComplete={() => {
-          setQuizDone(true);
-          fetch(`${API_BASE}/auth/user-flags`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-            credentials: "include",
-            body: JSON.stringify({ quizDone: true }),
-          }).catch(() => {});
-        }} />
-      )}
-      <div className="flex h-screen overflow-hidden">
-        {/* Dimming backdrop */}
-        <div
-          className={`fixed inset-0 z-40 transition-opacity duration-300 bg-black/60 backdrop-blur-[2px] ${drawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-          onClick={closeDrawer}
-        />
-
-
-        {/* AI glow line + glowing hamburger pill for non-dashboard pages */}
-        {!isDashboard && (
-          <>
-            <div
-              className="fixed top-0 left-0 right-0 cursor-pointer"
-              style={{ height: 3, zIndex: 60 }}
-              onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
-              title="Open AI Assistant"
-              role="button"
-              aria-label="Open AI Assistant"
-            >
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
-                  animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
-                  boxShadow: "0 0 5px 1px #00C89660",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  transform: "translateX(-50%) translateY(-50%)",
-                  background: "#00C896",
-                  borderRadius: 999,
-                  padding: "3px 10px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 30,
-                  animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <span style={{ color: "#020203", fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", lineHeight: 1 }}>AI</span>
-              </div>
-            </div>
-            <button
-              style={{
-                position: "fixed",
-                top: 3,
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 59,
-                background: "#00C896",
-                borderRadius: 6,
-                padding: "4px 6px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
-                border: "none",
-                cursor: "pointer",
-              }}
-              onClick={() => setDrawerOpen((prev) => !prev)}
-              aria-label="Open navigation"
-            >
-              <Menu className="h-3 w-3" style={{ color: "#020203" }} />
-            </button>
-          </>
+      <TooltipProvider delayDuration={300}>
+        {!authLoading && !quizDone && (
+          <OnboardingQuiz onComplete={() => {
+            setQuizDone(true);
+            fetch(`${API_BASE}/auth/user-flags`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+              credentials: "include",
+              body: JSON.stringify({ quizDone: true }),
+            }).catch(() => {});
+          }} />
         )}
-
-        {/* Top-drop drawer — clips and falls from below the AI line (6px) on non-dashboard, or top-0 on dashboard */}
-        <div className="fixed left-0 right-0 z-50 overflow-hidden pointer-events-none" style={{ top: 0 }}>
+        <div className="flex h-screen overflow-hidden">
+          {/* Dimming backdrop */}
           <div
-            className={`bg-sidebar border-b border-sidebar-border shadow-2xl transition-transform duration-300 ease-out pointer-events-auto ${
-              drawerOpen ? "translate-y-0" : "-translate-y-full"
-            }`}
-          >
-            {/* Nav grid */}
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-3 pl-[30px] pr-[30px] pb-[0px] pt-[0px]">
-              {visibleNavItems.map((item) => {
-                const isActive = location.pathname === item.to;
-                const isLocked = !isAdmin && tierLevel < (item.requiredTier ?? 0);
-                const hasBadge = (item.to === "/community" && communityHasNew) || (item.to === "/journal" && journalDraftCount > 0);
-                return (
-                  <button
-                    key={item.to}
-                    onClick={() => {
-                      if (isLocked) { handleLockedClick(); }
-                      else { navigate(item.to); closeDrawer(); }
-                    }}
-                    className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all relative ${
-                      isActive
-                        ? "bg-primary/15 text-primary"
-                        : isLocked
-                        ? "text-muted-foreground/40"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    }`}
-                  >
-                    <item.icon className="h-5 w-5 shrink-0" />
-                    <span className="text-[10px] font-semibold leading-none text-center">{item.label}</span>
-                    {isLocked && <span className="absolute top-1.5 right-1.5 text-[8px]">🔒</span>}
-                    {hasBadge && !isLocked && (
-                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            className={`fixed inset-0 z-40 transition-opacity duration-300 bg-black/60 backdrop-blur-[2px] ${drawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            onClick={closeDrawer}
+          />
 
-            {/* Utility strip */}
-            <div className="flex items-center gap-1 px-3 py-2 border-t border-sidebar-border flex-wrap">
-              <Link
-                to="/pricing"
-                onClick={closeDrawer}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              >
-                <CreditCard className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Subscription</span>
-              </Link>
-              <Link
-                to="/settings"
-                onClick={closeDrawer}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              >
-                <Settings className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Settings</span>
-              </Link>
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  onClick={closeDrawer}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                >
-                  <Lock className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Admin</span>
-                </Link>
-              )}
-              <Link
-                to="/welcome"
-                onClick={closeDrawer}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Help</span>
-              </Link>
-              <button
-                onClick={() => { handleOpenShare(); closeDrawer(); }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              >
-                <Share2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Invite</span>
-              </button>
-              <ModeSwitcher appMode={appMode} setAppMode={setAppMode} />
 
-              {/* User pill — right side */}
-              <div className="relative ml-auto">
-                <button
-                  ref={userPillRef}
-                  onClick={() => {
-                    if (!showUserMenu) {
-                      recalcUserMenuPos();
-                    }
-                    setShowUserMenu(!showUserMenu);
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                >
-                  <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden border border-border">
-                    {user?.avatarUrl ? (
-                      user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
-                        <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-sm leading-none">{user.avatarUrl}</span>
-                      )
-                    ) : (
-                      <span className="text-[10px] font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "?"}</span>
-                    )}
-                  </div>
-                  <span className="hidden sm:inline truncate max-w-[100px]">{user?.name}</span>
-                  {user?.isFounder && <Crown className="h-3 w-3 text-red-500 shrink-0" />}
-                  <ChevronDown className="h-3 w-3 shrink-0" />
-                </button>
-
-                {showUserMenu && userMenuPos && createPortal(
-                  <>
-                    <div className="fixed inset-0 z-[200]" onClick={() => { setShowUserMenu(false); setShowAvatarPicker(false); }} />
-                    <div
-                      className="fixed w-52 bg-card border border-border rounded-lg shadow-xl z-[201] py-1"
-                      style={{ top: userMenuPos.top, right: userMenuPos.right }}
-                    >
-                      <div className="px-3 py-2 border-b border-border">
-                        <p className="text-xs font-medium text-foreground">{user?.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{user?.email}</p>
-                        {user?.isFounder && (
-                          <span className="inline-flex items-center gap-1 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5 mt-1">
-                            <Crown className="h-2.5 w-2.5 text-red-500" />
-                            <span className="text-[9px] font-bold text-red-500">FOUNDER #{user.founderNumber}</span>
-                          </span>
-                        )}
-                        <p className="text-[10px] text-primary mt-1 font-medium">
-                          {subscription?.tierName || "Free"} Plan
-                        </p>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          setShowUserMenu(false);
-                          const result = await setAppMode(appMode === "lite" ? "full" : "lite");
-                          if (!result.success) {
-                            toast({
-                              title: "Could not switch mode",
-                              description: result.error || "Please try again.",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
-                      >
-                        {appMode === "lite" ? <Zap className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
-                        {appMode === "lite" ? "Full Mode" : "Learning Mode"}
-                      </button>
-                      <button
-                        onClick={() => { setShowAvatarPicker((v) => !v); }}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
-                      >
-                        <User className="h-4 w-4" />
-                        Change Avatar
-                      </button>
-                      {showAvatarPicker && (
-                        <div className="px-3 pb-2 border-t border-border">
-                          <p className="text-[10px] text-muted-foreground pt-2 mb-2">Pick a trading avatar:</p>
-                          <div className="grid grid-cols-4 gap-1 mb-2">
-                            {STOCK_AVATARS.map((av) => (
-                              <button
-                                key={av.id}
-                                onClick={async () => {
-                                  await setAvatarUrl(av.emoji);
-                                  setShowAvatarPicker(false);
-                                  setShowUserMenu(false);
-                                }}
-                                className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-all hover:bg-secondary text-center ${user?.avatarUrl === av.emoji ? "border-primary bg-primary/10" : "border-border"}`}
-                              >
-                                <span className="text-xl">{av.emoji}</span>
-                                <span className="text-[9px] text-muted-foreground">{av.label}</span>
-                              </button>
-                            ))}
-                          </div>
-                          <label className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer p-1.5 rounded-lg hover:bg-secondary transition-colors">
-                            <User className="h-3.5 w-3.5 shrink-0" />
-                            Upload Photo
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                try {
-                                  const dataUrl = await resizeImageToBase64(file);
-                                  await setAvatarUrl(dataUrl);
-                                  setShowAvatarPicker(false);
-                                  setShowUserMenu(false);
-                                } catch {}
-                              }}
-                            />
-                          </label>
-                        </div>
-                      )}
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 w-full text-left border-t border-border"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        Sign Out
-                      </button>
-                    </div>
-                  </>,
-                  document.body
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <style>{`
-          @keyframes ai-header-line-pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-          }
-          @keyframes ai-header-dot-glow {
-            0%, 100% { box-shadow: 0 0 5px 2px #00C896, 0 0 12px 3px #00C89650; }
-            50% { box-shadow: 0 0 10px 4px #00C896, 0 0 24px 6px #00C89670; }
-          }
-        `}</style>
-
-        <div className="flex flex-col flex-1 min-w-0">
-          {/* Header bar: Dashboard only, with scroll-hide */}
-          {isDashboard && (
-            <div
-              className="relative flex items-center gap-2 px-3 py-1.5 shrink-0 h-12 bg-[#242438]"
-              style={{
-                borderBottom: "none",
-                transition: "transform 475ms cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 475ms cubic-bezier(0.4, 0, 0.2, 1)",
-                transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
-                marginBottom: headerVisible ? 0 : "-3rem",
-              }}
-            >
-              <button
-                onClick={() => setDrawerOpen((prev) => !prev)}
-                className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-                aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
-                aria-expanded={drawerOpen}
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-              <div className="flex-1 flex items-center justify-center pointer-events-none select-none">
-                <div style={{
-                  background: "rgba(36, 36, 56, 0.55)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 999,
-                  padding: "4px 18px",
-                  boxShadow: "0 2px 16px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.05)"
-                }}>
-                  <span className="text-xl font-extrabold tracking-[0.18em] uppercase text-white" style={{ textShadow: "0 0 8px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.5)" }}>
-                    The Trading Mentor
-                  </span>
-                </div>
-              </div>
-              <div className="ml-auto flex items-center gap-2 pr-1">
-                <HeaderGamificationBadges />
-                <AIAssistant />
-                <HeaderUserInfo />
-              </div>
-
-              {/* AI glow line — bottom edge of header */}
+          {/* AI glow line + glowing hamburger pill for non-dashboard pages */}
+          {!isDashboard && (
+            <>
               <div
-                className="absolute bottom-0 left-0 right-0 cursor-pointer"
-                style={{ height: 3, zIndex: 20 }}
+                className="fixed top-0 left-0 right-0 cursor-pointer"
+                style={{ height: 3, zIndex: 60 }}
                 onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
                 title="Open AI Assistant"
                 role="button"
@@ -969,77 +643,403 @@ export default function Layout() {
                   <span style={{ color: "#020203", fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", lineHeight: 1 }}>AI</span>
                 </div>
               </div>
+              <button
+                style={{
+                  position: "fixed",
+                  top: 3,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  zIndex: 59,
+                  background: "#00C896",
+                  borderRadius: 6,
+                  padding: "4px 6px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+                onClick={() => setDrawerOpen((prev) => !prev)}
+                aria-label="Open navigation"
+              >
+                <Menu className="h-3 w-3" style={{ color: "#020203" }} />
+              </button>
+            </>
+          )}
+
+          {/* Top-drop drawer — clips and falls from below the AI line (6px) on non-dashboard, or top-0 on dashboard */}
+          <div className="fixed left-0 right-0 z-50 overflow-hidden pointer-events-none" style={{ top: 0 }}>
+            <div
+              className={`bg-sidebar border-b border-sidebar-border shadow-2xl transition-transform duration-300 ease-out pointer-events-auto ${
+                drawerOpen ? "translate-y-0" : "-translate-y-full"
+              }`}
+            >
+              {/* Nav grid */}
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-3 pl-[30px] pr-[30px] pb-[0px] pt-[0px]">
+                {visibleNavItems.map((item) => {
+                  const isActive = location.pathname === item.to;
+                  const isLocked = !isAdmin && tierLevel < (item.requiredTier ?? 0);
+                  const hasBadge = (item.to === "/community" && communityHasNew) || (item.to === "/journal" && journalDraftCount > 0);
+                  return (
+                    <button
+                      key={item.to}
+                      onClick={() => {
+                        if (isLocked) { handleLockedClick(); }
+                        else { navigate(item.to); closeDrawer(); }
+                      }}
+                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl transition-all relative ${
+                        isActive
+                          ? "bg-primary/15 text-primary"
+                          : isLocked
+                          ? "text-muted-foreground/40"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      <span className="text-[10px] font-semibold leading-none text-center">{item.label}</span>
+                      {isLocked && <span className="absolute top-1.5 right-1.5 text-[8px]">🔒</span>}
+                      {hasBadge && !isLocked && (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Utility strip */}
+              <div className="flex items-center gap-1 px-3 py-2 border-t border-sidebar-border flex-wrap">
+                <Link
+                  to="/pricing"
+                  onClick={closeDrawer}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Subscription</span>
+                </Link>
+                <Link
+                  to="/settings"
+                  onClick={closeDrawer}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Settings</span>
+                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={closeDrawer}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Lock className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Admin</span>
+                  </Link>
+                )}
+                <Link
+                  to="/welcome"
+                  onClick={closeDrawer}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Help</span>
+                </Link>
+                <button
+                  onClick={() => { handleOpenShare(); closeDrawer(); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Invite</span>
+                </button>
+                <ModeSwitcher appMode={appMode} setAppMode={setAppMode} />
+
+                {/* User pill — right side */}
+                <div className="relative ml-auto">
+                  <button
+                    ref={userPillRef}
+                    onClick={() => {
+                      if (!showUserMenu) {
+                        recalcUserMenuPos();
+                      }
+                      setShowUserMenu(!showUserMenu);
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden border border-border">
+                      {user?.avatarUrl ? (
+                        user.avatarUrl.startsWith("data:") || user.avatarUrl.startsWith("http") ? (
+                          <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-sm leading-none">{user.avatarUrl}</span>
+                        )
+                      ) : (
+                        <span className="text-[10px] font-bold text-primary">{user?.name?.charAt(0)?.toUpperCase() || "?"}</span>
+                      )}
+                    </div>
+                    <span className="hidden sm:inline truncate max-w-[100px]">{user?.name}</span>
+                    {user?.isFounder && <Crown className="h-3 w-3 text-red-500 shrink-0" />}
+                    <ChevronDown className="h-3 w-3 shrink-0" />
+                  </button>
+
+                  {showUserMenu && userMenuPos && createPortal(
+                    <>
+                      <div className="fixed inset-0 z-[200]" onClick={() => { setShowUserMenu(false); setShowAvatarPicker(false); }} />
+                      <div
+                        className="fixed w-52 bg-card border border-border rounded-lg shadow-xl z-[201] py-1"
+                        style={{ top: userMenuPos.top, right: userMenuPos.right }}
+                      >
+                        <div className="px-3 py-2 border-b border-border">
+                          <p className="text-xs font-medium text-foreground">{user?.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{user?.email}</p>
+                          {user?.isFounder && (
+                            <span className="inline-flex items-center gap-1 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5 mt-1">
+                              <Crown className="h-2.5 w-2.5 text-red-500" />
+                              <span className="text-[9px] font-bold text-red-500">FOUNDER #{user.founderNumber}</span>
+                            </span>
+                          )}
+                          <p className="text-[10px] text-primary mt-1 font-medium">
+                            {subscription?.tierName || "Free"} Plan
+                          </p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            setShowUserMenu(false);
+                            const result = await setAppMode(appMode === "lite" ? "full" : "lite");
+                            if (!result.success) {
+                              toast({
+                                title: "Could not switch mode",
+                                description: result.error || "Please try again.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
+                        >
+                          {appMode === "lite" ? <Zap className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+                          {appMode === "lite" ? "Full Mode" : "Learning Mode"}
+                        </button>
+                        <button
+                          onClick={() => { setShowAvatarPicker((v) => !v); }}
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary w-full text-left"
+                        >
+                          <User className="h-4 w-4" />
+                          Change Avatar
+                        </button>
+                        {showAvatarPicker && (
+                          <div className="px-3 pb-2 border-t border-border">
+                            <p className="text-[10px] text-muted-foreground pt-2 mb-2">Pick a trading avatar:</p>
+                            <div className="grid grid-cols-4 gap-1 mb-2">
+                              {STOCK_AVATARS.map((av) => (
+                                <button
+                                  key={av.id}
+                                  onClick={async () => {
+                                    await setAvatarUrl(av.emoji);
+                                    setShowAvatarPicker(false);
+                                    setShowUserMenu(false);
+                                  }}
+                                  className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-all hover:bg-secondary text-center ${user?.avatarUrl === av.emoji ? "border-primary bg-primary/10" : "border-border"}`}
+                                >
+                                  <span className="text-xl">{av.emoji}</span>
+                                  <span className="text-[9px] text-muted-foreground">{av.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                            <label className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                              <User className="h-3.5 w-3.5 shrink-0" />
+                              Upload Photo
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  try {
+                                    const dataUrl = await resizeImageToBase64(file);
+                                    await setAvatarUrl(dataUrl);
+                                    setShowAvatarPicker(false);
+                                    setShowUserMenu(false);
+                                  } catch {}
+                                }}
+                              />
+                            </label>
+                          </div>
+                        )}
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 w-full text-left border-t border-border"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </>,
+                    document.body
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes ai-header-line-pulse {
+              0%, 100% { opacity: 0.5; }
+              50% { opacity: 1; }
+            }
+            @keyframes ai-header-dot-glow {
+              0%, 100% { box-shadow: 0 0 5px 2px #00C896, 0 0 12px 3px #00C89650; }
+              50% { box-shadow: 0 0 10px 4px #00C896, 0 0 24px 6px #00C89670; }
+            }
+          `}</style>
+
+          <div className="flex flex-col flex-1 min-w-0">
+            {/* Header bar: Dashboard only, with scroll-hide */}
+            {isDashboard && (
+              <div
+                className="relative flex items-center gap-2 px-3 py-1.5 shrink-0 h-12 bg-[#1a1c26]"
+                style={{
+                  borderBottom: "none",
+                  transition: "transform 475ms cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 475ms cubic-bezier(0.4, 0, 0.2, 1)",
+                  transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
+                  marginBottom: headerVisible ? 0 : "-3rem",
+                }}
+              >
+                <button
+                  onClick={() => setDrawerOpen((prev) => !prev)}
+                  className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+                  aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
+                  aria-expanded={drawerOpen}
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                <div className="flex-1 flex items-center justify-center pointer-events-none select-none">
+                  <div style={{
+                    background: "rgba(36, 36, 56, 0.55)",
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 999,
+                    padding: "4px 18px",
+                    boxShadow: "0 2px 16px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.05)"
+                  }}>
+                    <span className="text-xl font-extrabold tracking-[0.18em] uppercase text-white" style={{ textShadow: "0 0 8px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.5)" }}>
+                      The Trading Mentor
+                    </span>
+                  </div>
+                </div>
+                <div className="ml-auto flex items-center gap-2 pr-1">
+                  <HeaderGamificationBadges />
+                  <AIAssistant />
+                  <HeaderUserInfo />
+                </div>
+
+                {/* AI glow line — bottom edge of header */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 cursor-pointer"
+                  style={{ height: 3, zIndex: 20 }}
+                  onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
+                  title="Open AI Assistant"
+                  role="button"
+                  aria-label="Open AI Assistant"
+                >
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
+                      animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
+                      boxShadow: "0 0 5px 1px #00C89660",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: "50%",
+                      top: "50%",
+                      transform: "translateX(-50%) translateY(-50%)",
+                      background: "#00C896",
+                      borderRadius: 999,
+                      padding: "3px 10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 30,
+                      animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <span style={{ color: "#020203", fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", lineHeight: 1 }}>AI</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <main className="flex-1 overflow-hidden relative">
+              <div className="flex h-full">
+                <div ref={mainScrollRef} className="flex-1 overflow-auto">
+                  <div className={location.pathname === "/" ? "pb-10" : ""}>
+                    <ErrorBoundary>
+                      <Outlet />
+                    </ErrorBoundary>
+                  </div>
+                </div>
+
+                {isFreeUser && (
+                  <div className="hidden xl:block w-72 border-l border-border bg-sidebar overflow-auto shrink-0">
+                    <FreeSidebar />
+                  </div>
+                )}
+              </div>
+            </main>
+
+
+          </div>
+
+          {location.pathname === "/" && (
+            <div className="fixed bottom-0 left-0 right-0 z-30">
+              <KillZoneStrip />
             </div>
           )}
 
-          <main className="flex-1 overflow-hidden relative">
-            <div className="flex h-full">
-              <div ref={mainScrollRef} className="flex-1 overflow-auto">
-                <div className={location.pathname === "/" ? "pb-10" : ""}>
-                  <ErrorBoundary>
-                    <Outlet />
-                  </ErrorBoundary>
+          {showShare && (
+            <ShareModal
+              founderSpotsLeft={founderSpotsLeft}
+              shareCopied={shareCopied}
+              setShareCopied={setShareCopied}
+              onClose={() => { setShowShare(false); setShareCopied(false); setFounderSpotsLeft(null); }}
+            />
+          )}
+
+          {showLockToast && (
+            <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="bg-card border border-border rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
+                <Crown className="h-5 w-5 text-red-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Premium Feature</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Upgrade your plan to unlock this feature.
+                  </p>
                 </div>
+                <button
+                  onClick={() => navigate("/pricing")}
+                  className="text-xs text-primary font-bold shrink-0 hover:underline"
+                >
+                  Upgrade
+                </button>
               </div>
-
-              {isFreeUser && (
-                <div className="hidden xl:block w-72 border-l border-border bg-sidebar overflow-auto shrink-0">
-                  <FreeSidebar />
-                </div>
-              )}
             </div>
-          </main>
+          )}
 
-
+          {tourState.visible && (
+            <TourGuide
+              onClose={closeTour}
+              onNeverShow={neverShowTour}
+              state={tourState}
+              dispatch={tourDispatch}
+            />
+          )}
         </div>
-
-        {location.pathname === "/" && (
-          <div className="fixed bottom-0 left-0 right-0 z-30">
-            <KillZoneStrip />
-          </div>
-        )}
-
-        {showShare && (
-          <ShareModal
-            founderSpotsLeft={founderSpotsLeft}
-            shareCopied={shareCopied}
-            setShareCopied={setShareCopied}
-            onClose={() => { setShowShare(false); setShareCopied(false); setFounderSpotsLeft(null); }}
-          />
-        )}
-
-        {showLockToast && (
-          <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="bg-card border border-border rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
-              <Crown className="h-5 w-5 text-red-500 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Premium Feature</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Upgrade your plan to unlock this feature.
-                </p>
-              </div>
-              <button
-                onClick={() => navigate("/pricing")}
-                className="text-xs text-primary font-bold shrink-0 hover:underline"
-              >
-                Upgrade
-              </button>
-            </div>
-          </div>
-        )}
-
-        {tourState.visible && (
-          <TourGuide
-            onClose={closeTour}
-            onNeverShow={neverShowTour}
-            state={tourState}
-            dispatch={tourDispatch}
-          />
-        )}
-      </div>
-      <SpotifyPlayer />
-      <FloatingToolkit />
-    </TooltipProvider>
+        <SpotifyPlayer />
+        <FloatingToolkit />
+      </TooltipProvider>
     </DrawerContext.Provider>
   );
 }
