@@ -523,7 +523,15 @@ export default function PaperTradingPage() {
         to: endDate,
       });
       const res = await fetch(`${API_BASE}/replay/candles?${params}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch candles");
+      if (!res.ok) {
+        let errorMessage = "Failed to fetch candles";
+        try {
+          const errBody = await res.json() as { error?: string };
+          if (errBody.error) errorMessage = errBody.error;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
       const data: Candle[] = await res.json();
       setAllCandles(data);
     } catch (err: unknown) {
