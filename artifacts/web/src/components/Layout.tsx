@@ -356,6 +356,9 @@ export default function Layout() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const userPillRef = useRef<HTMLButtonElement>(null);
   const [userMenuPos, setUserMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const lastScrollY = useRef(0);
 
   const recalcUserMenuPos = useCallback(() => {
     if (userPillRef.current) {
@@ -465,6 +468,36 @@ export default function Layout() {
     };
   }, [location.pathname]);
 
+  useEffect(() => {
+    setHeaderVisible(true);
+    lastScrollY.current = 0;
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const el = mainScrollRef.current;
+    if (!el) return;
+    const SCROLL_THRESHOLD = 8;
+    const onScroll = () => {
+      const currentY = el.scrollTop;
+      const delta = currentY - lastScrollY.current;
+      if (currentY <= 0) {
+        setHeaderVisible(true);
+      } else if (delta > SCROLL_THRESHOLD) {
+        setHeaderVisible(false);
+        lastScrollY.current = currentY;
+      } else if (delta < -SCROLL_THRESHOLD) {
+        setHeaderVisible(true);
+        lastScrollY.current = currentY;
+      }
+      if (currentY <= 0) lastScrollY.current = 0;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
   const handleOpenShare = useCallback(() => {
     setShowShare(true);
     fetch(`${API_BASE}/subscriptions/tiers`)
@@ -508,7 +541,7 @@ export default function Layout() {
         />
 
         {/* Top-drop drawer — clips and falls from below the header */}
-        <div className="fixed top-12 left-0 right-0 z-50 overflow-hidden pointer-events-none">
+        <div className="fixed top-0 left-0 right-0 z-50 overflow-hidden pointer-events-none">
           <div
             className={`bg-sidebar border-b border-sidebar-border shadow-2xl transition-transform duration-300 ease-out pointer-events-auto ${
               drawerOpen ? "translate-y-0" : "-translate-y-full"
@@ -720,7 +753,14 @@ export default function Layout() {
         </div>
 
         <div className="flex flex-col flex-1 min-w-0">
-          <div className="relative flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0 h-12 border-t-[#020203] border-r-[#020203] border-b-[#020203] border-l-[#020203] bg-[#242438]">
+          <div
+            className="relative flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0 h-12 border-t-[#020203] border-r-[#020203] border-b-[#020203] border-l-[#020203] bg-[#242438]"
+            style={{
+              transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
+              marginBottom: headerVisible ? 0 : "-3rem",
+              transition: "transform 300ms ease-in-out, margin-bottom 300ms ease-in-out",
+            }}
+          >
             <button
               onClick={() => setDrawerOpen((prev) => !prev)}
               className="relative z-50 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
@@ -746,13 +786,14 @@ export default function Layout() {
             </div>
           </div>
 
-          {location.pathname !== "/academy" && location.pathname !== "/videos" && (
-            <KillZoneStrip />
-          )}
-
-          <main className="flex-1 overflow-auto relative">
+          <main className="flex-1 overflow-hidden relative">
             <div className="flex h-full">
-              <div className="flex-1 overflow-auto">
+              <div ref={mainScrollRef} className="flex-1 overflow-auto">
+                {location.pathname !== "/academy" && location.pathname !== "/videos" && (
+                  <div className="sticky top-0 z-20">
+                    <KillZoneStrip />
+                  </div>
+                )}
                 <ErrorBoundary>
                   <Outlet />
                 </ErrorBoundary>
