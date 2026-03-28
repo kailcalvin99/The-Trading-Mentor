@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PremiumTeaser } from "@/components/CasinoElements";
 import { CumulativePnLChart } from "./dashboard/CumulativePnLChart";
 import { LastTradeGradeCard } from "./dashboard/LastTradeGradeCard";
-import { FvgAlertPopup, CommunityBanner } from "./dashboard/LiveSignalWidgets";
+import { FvgAlertPopup, CommunityBanner, ConfidenceScoreCard, FvgSignalCard } from "./dashboard/LiveSignalWidgets";
 import { RoutineWidgetConditional } from "./dashboard/RoutineWidgetConditional";
 import MorningBriefingWidget from "@/components/MorningBriefingWidget";
 import UpNextWidget from "@/components/UpNextWidget";
@@ -59,6 +59,11 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <CumulativePnLChart />
             <LastTradeGradeCard />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ConfidenceScoreCard />
+            <FvgSignalCard />
           </div>
 
           <RoutineWidgetConditional />
