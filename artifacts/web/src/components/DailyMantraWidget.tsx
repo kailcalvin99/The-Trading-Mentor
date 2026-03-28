@@ -148,13 +148,6 @@ export default function DailyMantraWidget() {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 80% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 70%)",
-        }}
-      />
 
       <div
         className="absolute inset-0 flex items-center justify-center"
