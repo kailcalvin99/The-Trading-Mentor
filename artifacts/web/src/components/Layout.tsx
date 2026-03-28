@@ -604,17 +604,67 @@ export default function Layout() {
         />
 
 
-        {/* Fixed hamburger for mobile on non-dashboard pages */}
+        {/* AI glow line + glowing hamburger pill for non-dashboard pages */}
         {!isDashboard && (
-          <button
-            className="md:hidden fixed left-2 z-[49] p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            style={{ top: 7 }}
-            onClick={() => setDrawerOpen((prev) => !prev)}
-            aria-label={drawerOpen ? "Close navigation" : "Open navigation"}
-            aria-expanded={drawerOpen}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          <>
+            <div
+              className="fixed top-0 left-0 right-0 cursor-pointer"
+              style={{ height: 3, zIndex: 60 }}
+              onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
+              title="Open AI Assistant"
+              role="button"
+              aria-label="Open AI Assistant"
+            >
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
+                  animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
+                  boxShadow: "0 0 5px 1px #00C89660",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  transform: "translateX(-50%) translateY(-50%)",
+                  background: "#00C896",
+                  borderRadius: 999,
+                  padding: "3px 10px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 30,
+                  animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span style={{ color: "#020203", fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", lineHeight: 1 }}>AI</span>
+              </div>
+            </div>
+            <button
+              style={{
+                position: "fixed",
+                top: 1,
+                left: 12,
+                zIndex: 59,
+                background: "#00C896",
+                borderRadius: 999,
+                padding: "3px 10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                animation: "ai-header-dot-glow 2.5s ease-in-out infinite",
+                border: "none",
+                cursor: "pointer",
+              }}
+              onClick={() => setDrawerOpen((prev) => !prev)}
+              aria-label="Open navigation"
+            >
+              <Menu className="h-3 w-3" style={{ color: "#020203" }} />
+            </button>
+          </>
         )}
 
         {/* Top-drop drawer — clips and falls from below the AI line (6px) on non-dashboard, or top-0 on dashboard */}
@@ -829,6 +879,17 @@ export default function Layout() {
           </div>
         </div>
 
+        <style>{`
+          @keyframes ai-header-line-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+          }
+          @keyframes ai-header-dot-glow {
+            0%, 100% { box-shadow: 0 0 5px 2px #00C896, 0 0 12px 3px #00C89650; }
+            50% { box-shadow: 0 0 10px 4px #00C896, 0 0 24px 6px #00C89670; }
+          }
+        `}</style>
+
         <div className="flex flex-col flex-1 min-w-0">
           {/* Header bar: Dashboard only, with scroll-hide */}
           {isDashboard && (
@@ -871,16 +932,6 @@ export default function Layout() {
               </div>
 
               {/* AI glow line — bottom edge of header */}
-              <style>{`
-                @keyframes ai-header-line-pulse {
-                  0%, 100% { opacity: 0.5; }
-                  50% { opacity: 1; }
-                }
-                @keyframes ai-header-dot-glow {
-                  0%, 100% { box-shadow: 0 0 5px 2px #00C896, 0 0 12px 3px #00C89650; }
-                  50% { box-shadow: 0 0 10px 4px #00C896, 0 0 24px 6px #00C89670; }
-                }
-              `}</style>
               <div
                 className="absolute bottom-0 left-0 right-0 cursor-pointer"
                 style={{ height: 3, zIndex: 20 }}
