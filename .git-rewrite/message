@@ -1,0 +1,32 @@
+Fix TourGuide navigation loop (history.replaceState crash)
+
+Task: #56 — Fix TourGuide navigation loop (history.replaceState crash)
+
+Problem:
+In TourGuide.tsx, the NAVIGATING useEffect had `navigate` in its dependency
+array. React Router v6's useNavigate() can return a new function reference
+during an in-progress navigation, causing the effect to re-fire while
+machineState was still "NAVIGATING", leading to repeated navigate() calls
+until the browser hit its 100 history.replaceState/10s limit and crashed.
+
+Fix applied to artifacts/web/src/components/TourGuide.tsx:
+
+1. Added `useLayoutEffect` to the React import.
+
+2. Added two refs after the existing refs in TourGuide():
+   - `navigateRef` (updated synchronously via useLayoutEffect) so navigate
+     never needs to be in the deps array, preventing identity-change re-fires.
+   - `navigatingRef` boolean lock that prevents the effect from triggering
+     navigate + timer more than once per NAVIGATING state entrance.
+
+3. Replaced the NAVIGATING useEffect:
+   - Guard condition: `!navigatingRef.current` prevents re-entry.
+   - Uses `navigateRef.current(targetRoute)` instead of `navigate(targetRoute)`.
+   - Removed `navigate` from the dependency array (replaced by ref pattern).
+   - Cleanup resets `navigatingRef.current = false` so next NAVIGATING entrance works.
+
+No regressions: HeyGen video fallback, step progression, and route navigation
+all continue to work correctly. Pre-existing TypeScript errors in other files
+are unrelated to this change.
+
+Replit-Task-Id: 57959716-87e3-4777-b917-fc712b023f50

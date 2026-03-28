@@ -1,0 +1,20 @@
+ICT Trading Mentor — 1000-VU Stress Test Suite
+================================================
+Base URL  : http://localhost:8080/api
+Timestamp : 20260319_210146
+Mode      : smoke (SMOKE_TEST=true, 5 VUs, 30s stages via run-all.sh --smoke)
+
+PASS  | 01-auth
+PASS  | 02-dashboard
+PASS  | 03-trade-journal
+PASS  | 04-ai-assistant
+PASS  | 05-community
+PASS  | 06-subscription-gate
+
+Results
+-------
+Passed  : 6
+Failed  : 0
+Skipped : 0
+
+STATUS: ALL THRESHOLDS MET

@@ -1,0 +1,53 @@
+const accent = "#00C896";
+const accentDim = "#00A07A";
+const accentAlert = "#FF4444";
+const accentWarn = "#FFB340";
+
+export default {
+  dark: {
+    background: "#0A0A0F",
+    backgroundSecondary: "#12121A",
+    backgroundTertiary: "#1A1A24",
+    card: "#15151F",
+    cardBorder: "#1E1E2E",
+    text: "#FFFFFF",
+    textSecondary: "#8B8BA0",
+    textTertiary: "#55556A",
+    tint: accent,
+    tintDim: accentDim,
+    accent,
+    accentDim,
+    accentAlert,
+    accentWarn,
+    tabIconDefault: "#55556A",
+    tabIconSelected: accent,
+    separator: "#1E1E2E",
+    inputBackground: "#12121A",
+    success: "#00C896",
+    danger: "#FF4444",
+    warning: "#FFB340",
+  },
+  light: {
+    background: "#F4F6F9",
+    backgroundSecondary: "#FFFFFF",
+    backgroundTertiary: "#EEF0F5",
+    card: "#FFFFFF",
+    cardBorder: "#E2E6EE",
+    text: "#0A0A1A",
+    textSecondary: "#5A5A78",
+    textTertiary: "#9A9AB0",
+    tint: accentDim,
+    tintDim: accentDim,
+    accent,
+    accentDim,
+    accentAlert,
+    accentWarn,
+    tabIconDefault: "#9A9AB0",
+    tabIconSelected: accent,
+    separator: "#E2E6EE",
+    inputBackground: "#F0F2F7",
+    success: "#00C896",
+    danger: "#FF4444",
+    warning: "#FFB340",
+  },
+};

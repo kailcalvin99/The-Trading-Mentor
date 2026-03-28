@@ -1,0 +1,47 @@
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import geminiRouter from "./gemini";
+import propRouter from "./prop";
+import tradesRouter from "./trades";
+import webhookRouter from "./webhook";
+import authRouter from "./auth";
+import subscriptionsRouter from "./subscriptions";
+import adminRouter from "./admin";
+import userSettingsRouter from "./user-settings";
+import communityRouter from "./community";
+import leaderboardRouter from "./leaderboard";
+import videosRouter from "./videos";
+import academyRouter from "./academy";
+import plannerRouter from "./planner";
+import tagsRouter from "./tags";
+import pricesRouter from "./prices";
+import calendarRouter from "./calendar";
+import signalsRouter from "./signals";
+import analyticsRouter from "./analytics";
+import replayRouter from "./replay";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use("/auth", authRouter);
+router.use("/subscriptions", subscriptionsRouter);
+router.use("/admin", adminRouter);
+router.use("/user/settings", userSettingsRouter);
+router.use("/user-settings", userSettingsRouter);
+router.use("/gemini", geminiRouter);
+router.use("/prop", propRouter);
+router.use("/trades", tradesRouter);
+router.use("/webhook", webhookRouter);
+router.use("/community", communityRouter);
+router.use("/leaderboard", leaderboardRouter);
+router.use("/videos", videosRouter);
+router.use("/academy", academyRouter);
+router.use("/planner", plannerRouter);
+router.use("/tags", tagsRouter);
+router.use("/prices", pricesRouter);
+router.use("/calendar", calendarRouter);
+router.use("/signals", signalsRouter);
+router.use("/analytics", analyticsRouter);
+router.use("/replay", replayRouter);
+
+export default router;

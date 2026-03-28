@@ -1,0 +1,17 @@
+ICT Trading Mentor — 1000-VU Stress Test Suite
+================================================
+Base URL  : http://localhost:8080/api
+Timestamp : 20260319_205000
+
+PASS  | 01-auth
+PASS  | 02-dashboard
+PASS  | 03-trade-journal
+PASS  | 04-ai-assistant
+PASS  | 05-community
+PASS  | 06-subscription-gate
+
+Results
+-------
+Passed  : 6
+Failed  : 0
+STATUS: ALL THRESHOLDS MET

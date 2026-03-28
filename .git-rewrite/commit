@@ -1,0 +1,15 @@
+tree e3fbb51253b8f2718c0a2e8ce5b94a5d49207340
+parent acb73e81e8d5b78bb4d8ba86e7d3ce4d5a7fa608
+author alexcalvinac <55994527-alexcalvinac@users.noreply.replit.com> 1773747516 +0000
+committer alexcalvinac <55994527-alexcalvinac@users.noreply.replit.com> 1773747741 +0000
+
+Add subscription screen and update navigation logic
+
+Add new subscription screen, update tab bar navigation to show conditionally for admins, and wrap the app in AuthProvider context.
+
+Replit-Commit-Author: Agent
+Replit-Commit-Session-Id: 6ae2fd50-e82f-4151-a9ac-c2c2dc7ac7bb
+Replit-Commit-Checkpoint-Type: full_checkpoint
+Replit-Commit-Event-Id: 087345bd-0aa9-446b-8dd5-4cda72b98026
+Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/57159b01-6c34-4dca-986c-3dfeaa612020/6ae2fd50-e82f-4151-a9ac-c2c2dc7ac7bb/H88P2lo
+Replit-Helium-Checkpoint-Created: true

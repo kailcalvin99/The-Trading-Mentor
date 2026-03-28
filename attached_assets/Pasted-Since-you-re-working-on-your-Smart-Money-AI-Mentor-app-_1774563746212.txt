@@ -1,0 +1,25 @@
+Since you're working on your Smart Money AI Mentor app, you’ll want a prompt that forces the AI to look past the surface and find those tricky logical errors in your trading math or database calls.
+For the best results, use Plan Mode in Replit first. This prevents the AI from changing code until you've seen its "audit report."
+The "Fine-Tooth Comb" Audit Prompt
+Copy and paste this into the Replit Agent or Assistant:
+> Role: Act as a Senior Full-Stack Engineer and QA Specialist.
+> Goal: Perform a comprehensive audit of my entire codebase to identify bugs, logical flaws, and security risks. Do NOT change any code yet.
+> Instructions:
+>  * Code Walkthrough: Go through every file with a fine-tooth comb. Look for "zombie code," unhandled edge cases (especially in trading logic), and potential race conditions.
+>  * Bug Hunting: Specifically look for:
+>    * Data Integrity: Are database writes failing silently? Is there any risk of "Smart Money" calculations returning null or undefined?
+>         * Security: Check for exposed API keys, lack of input validation, or insecure session handling.
+>    * Performance: Identify any functions that will slow down as the user's trading history grows.
+>  * Edge Case Analysis: What happens if the API returns an error? What if a user enters a negative value or zero for a trade?
+> Output: Provide a structured report categorized by "Critical," "Moderate," and "Optimization." For each issue, explain WHY it is a problem and suggest a specific fix.
+> Stop Rule: Wait for my approval before implementing any changes.
+> 
+Pro-Tips for Replit Auditing
+ * The "Brainstorm" Trick: Before you let it fix anything, reply with: "Brainstorm 3 different ways a user could accidentally 'break' this specific feature." It often catches things the initial scan missed.
+ * Use the Security Scanner: Replit has a built-in tool. Search for "Security Scanner" in the "All Tools" menu. It’s a great second opinion for things like leaked secrets or vulnerable packages.
+ * Cross-Check with Gemini: If you're still hitting a wall, you can copy a specific complex function (like your ICT/SMC logic) and ask me to audit it. I can often spot "logic drift" where the AI started writing code that doesn't actually follow the trading rules you intended.
+Key Takeaways
+ * Plan First: Never let the AI "fix" everything at once; it might create new bugs while fixing old ones.
+ * Categorize: Make the AI rank issues so you don't get overwhelmed by small styling suggestions.
+ * Edge Cases: Focus on what happens when things don't go perfectly (API down, bad user input).
+Would you like me to review a specific piece of your trading logic or a database schema to see if I spot any immediate red flags?

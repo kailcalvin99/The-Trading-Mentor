@@ -1,0 +1,54 @@
+This is going to be the "Brain" of your trading website. By making it click-only and adding a 100% chime, you are turning a stressful process into a professional game.
+Confidence: 10/10
+Futures Tick Value Cheat Sheet
+Your calculator will use these numbers to tell you exactly how many contracts to buy. I have listed the "Micro" and "Mini" versions since many traders start with Micros.
+| Asset (Futures) | Tick Size | Tick Value (Mini) | Tick Value (Micro) |
+|---|---|---|---|
+| NQ (Nasdaq) | 0.25 | $5.00 | $0.50 |
+| ES (S&P 500) | 0.25 | $12.50 | $1.25 |
+| GC (Gold) | 0.10 | $10.00 | $1.00 |
+| CL (Crude Oil) | 0.01 | $10.00 | $1.00 |
+The Mission Control Layout (Final Version)
+1. The Dashboard (Always on Top)
+ * Balance & Drawdown: A bar that turns Bright Red if you lose more than 3% in a day. It will say: "Trading Halted: Protect Your Capital."
+ * Probability Meter: A giant % dial. When it hits 100%, a "Ding!" sound plays to let you know it’s an A+ trade.
+2. The Daily Bias (The "Master Switch")
+ * Click [BULLISH] or [BEARISH].
+ * Note: If you don't click one, the rest of the buttons stay "greyed out" so you can't cheat.
+3. The Strategy (The Branch)
+ * Pick One: [Conservative] or [Aggressive].
+ * Clickable Levels: (Easy List)
+   * [ ] Previous Day High/Low
+   * [ ] Midnight Opening Price
+   * [ ] New Week Opening Gap
+4. The Execution Math
+ * Stop Loss: You click a button or type the ticks.
+ * The Math: 
+ * Output: The tool says: "Buy 4 Micro NQ Contracts."
+5. The Journal Send-off
+ * Exit Criteria: (Checkboxes) [ ] Hit Target [ ] Invalidation [ ] News Coming.
+ * Voice Note: Hit the Mic icon and say why you took the trade.
+ * Button: [SEND TO JOURNAL]
+The Replit Build Instruction
+Copy this into your coding chat to build the final logic:
+> Prompt: Build the "Mission Control" tab for my website.
+>  * Header: Live Balance, a 3% Drawdown Warning, and a Circular Probability Meter that Chimes at 100%.
+>  * Logic: Require "Daily Bias" to be selected before showing other tools.
+>  * The Branch: Create a toggle for "Conservative" vs "Aggressive" that changes the checklist rules.
+>  * Clickable Levels: Add a grid of buttons for "Key Levels" (PDH, PDL, NWOG) that highlight when clicked.
+>  * The Calculator: Build a Futures Position Sizer. Use a dropdown for Asset (NQ, ES, GC) and input for "Stop Loss Ticks." Output "Contract Size."
+>  * Voice & Save: Add a Web Speech API button for voice notes. When "Send to Journal" is clicked, save all data to the /journal page database.
+>  * Colors: Dark "Stealth" mode with neon blue and green accents.
+> 
+Analogy: The "Safe" on a Gun
+In aviation or with tools, a "Safety" prevents accidents. Your Daily Bias and Drawdown Warning are the "Safety" on your trading account. You can't "pull the trigger" (take the trade) until the safety is off and all the lights are green.
+Key Takeaways
+ * Automatic Math: No more guessing how many contracts to use.
+ * Sound Feedback: The "Chime" builds a habit of only taking 100% setups.
+ * Easy Entry: Clickable lists for "Key Levels" mean you spend more time looking at the chart and less time typing.
+Would you like me to create the "Success Message" that pops up after you send a trade to the journal?
+A few questions to finish the setup:
+ * Do you want the "Chime" to be a soft bell or a loud "Mission Accomplished" sound?
+ * For the "Key Levels" list, are there any other specific ones you use (like "London High")?
+ * Should the "Risk %" default to 1%, or do you want to change it for every trade?
+ * Would you like a "screenshot" button that captures the chart and adds it to the journal automatically?

@@ -1,0 +1,791 @@
+import { useState, useCallback, useMemo } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Shield,
+  Settings,
+  TrendingDown,
+  Calculator,
+  CircleDot,
+  OctagonAlert,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const NQ_POINT_VALUE = 20;
+const MNQ_POINT_VALUE = 2;
+
+const STOP_TRADING_RULES = [
+  "You hit your max daily loss — you are DONE for today",
+  "Close ALL open trades right now",
+  "No revenge trading — write down what happened in your journal",
+  "Step away from the screen and clear your head",
+  "Come back tomorrow with a fresh start",
+];
+
+const EXIT_RULES = [
+  "Keep your stop loss where you set it — no exceptions",
+  "Don't move your stop to breakeven too early",
+  "Wait for price to reach your target — don't exit early",
+  "Get out right away if the market turns against you (MSS — Market Structure Shift)",
+  "Only have one trade open at a time — don't add to a losing trade",
+];
+
+interface AccountState {
+  startingBalance: number;
+  currentBalance: number;
+  dailyLoss: number;
+  maxDailyLossPct: number;
+  maxTotalDrawdownPct: number;
+}
+
+function DrawdownGauge({
+  value,
+  max,
+  label,
+  size = 180,
+}: {
+  value: number;
+  max: number;
+  label: string;
+  size?: number;
+}) {
+  const pct = Math.min(value / max, 1);
+  const color =
+    pct >= 1 ? "#EF4444" : pct >= 0.75 ? "#F59E0B" : "#00C896";
+  const trackColor = "rgba(255,255,255,0.06)";
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const strokeWidth = 12;
+  const radius = (size - strokeWidth) / 2 - 4;
+  const startAngle = 135;
+  const endAngle = 405;
+  const totalAngle = endAngle - startAngle;
+  const filledAngle = startAngle + totalAngle * pct;
+
+  const polarToCartesian = (angle: number) => {
+    const rad = ((angle - 90) * Math.PI) / 180;
+    return {
+      x: cx + radius * Math.cos(rad),
+      y: cy + radius * Math.sin(rad),
+    };
+  };
+
+  const describeArc = (start: number, end: number) => {
+    const s = polarToCartesian(start);
+    const e = polarToCartesian(end);
+    const largeArc = end - start > 180 ? 1 : 0;
+    return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${largeArc} 1 ${e.x} ${e.y}`;
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={size} height={size * 0.8} viewBox={`0 0 ${size} ${size * 0.85}`}>
+        <path
+          d={describeArc(startAngle, endAngle)}
+          fill="none"
+          stroke={trackColor}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+        />
+        {pct > 0 && (
+          <path
+            d={describeArc(startAngle, filledAngle)}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            style={{
+              filter: `drop-shadow(0 0 6px ${color}66)`,
+              transition: "all 0.5s ease",
+            }}
+          />
+        )}
+        <text
+          x={cx}
+          y={cy - 8}
+          textAnchor="middle"
+          fill={color}
+          fontSize="28"
+          fontWeight="700"
+          fontFamily="Inter, sans-serif"
+        >
+          {value.toFixed(1)}%
+        </text>
+        <text
+          x={cx}
+          y={cy + 14}
+          textAnchor="middle"
+          fill="rgba(255,255,255,0.5)"
+          fontSize="11"
+          fontFamily="Inter, sans-serif"
+        >
+          of {max}% limit
+        </text>
+      </svg>
+      <span className="text-xs text-muted-foreground mt-1 tracking-wide uppercase font-semibold">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function GaugeBar({
+  value,
+  max,
+  label,
+  isStopTrading,
+}: {
+  value: number;
+  max: number;
+  label: string;
+  isStopTrading?: boolean;
+}) {
+  const pct = Math.min(value / max, 1);
+  const color =
+    pct >= 1 ? "#EF4444" : pct >= 0.75 ? "#F59E0B" : "#00C896";
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="text-sm font-bold" style={{ color }}>
+          {value.toFixed(2)}%
+        </span>
+      </div>
+      <div className="h-2.5 bg-white/5 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{
+            width: `${pct * 100}%`,
+            backgroundColor: color,
+            boxShadow: isStopTrading ? `0 0 12px ${color}88` : "none",
+          }}
+        />
+      </div>
+      <div className="text-right">
+        <span className="text-[10px] text-muted-foreground">Limit: {max}%</span>
+      </div>
+    </div>
+  );
+}
+
+export default function RiskShield() {
+  const [account, setAccount] = useState<AccountState>({
+    startingBalance: 50000,
+    currentBalance: 50000,
+    dailyLoss: 0,
+    maxDailyLossPct: 2,
+    maxTotalDrawdownPct: 10,
+  });
+  const [showAccountSetup, setShowAccountSetup] = useState(false);
+  const [showFocusMode, setShowFocusMode] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [lossInput, setLossInput] = useState("");
+  const [pointsAtRisk, setPointsAtRisk] = useState("");
+  const [customBalance, setCustomBalance] = useState("");
+
+  const [setupForm, setSetupForm] = useState({
+    startingBalance: "",
+    maxDailyLossPct: "",
+    maxTotalDrawdownPct: "",
+  });
+
+  const dailyLossPct = useMemo(
+    () => (account.dailyLoss / account.startingBalance) * 100,
+    [account.dailyLoss, account.startingBalance],
+  );
+  const totalLossPct = useMemo(
+    () =>
+      ((account.startingBalance - account.currentBalance) /
+        account.startingBalance) *
+      100,
+    [account.startingBalance, account.currentBalance],
+  );
+  const isStopTrading = dailyLossPct >= account.maxDailyLossPct;
+
+  const parsedCustomBalance = parseFloat(customBalance);
+  const calcBalance =
+    customBalance && !isNaN(parsedCustomBalance) && parsedCustomBalance > 0
+      ? parsedCustomBalance
+      : account.currentBalance;
+  const riskAmount = calcBalance * 0.005;
+  const pts = parseFloat(pointsAtRisk) || 0;
+  const nqContracts = pts > 0 ? riskAmount / (pts * NQ_POINT_VALUE) : 0;
+  const mnqContracts = pts > 0 ? riskAmount / (pts * MNQ_POINT_VALUE) : 0;
+
+  const handleAddLoss = useCallback(() => {
+    const amount = parseFloat(lossInput);
+    if (isNaN(amount) || amount <= 0) return;
+    setAccount((prev) => ({
+      ...prev,
+      dailyLoss: prev.dailyLoss + amount,
+      currentBalance: prev.currentBalance - amount,
+    }));
+    setLossInput("");
+  }, [lossInput]);
+
+  const handleResetDaily = useCallback(() => {
+    setAccount((prev) => ({ ...prev, dailyLoss: 0 }));
+    setShowResetConfirm(false);
+  }, []);
+
+  const handleSaveAccount = useCallback(() => {
+    const sb = parseFloat(setupForm.startingBalance);
+    const mdl = parseFloat(setupForm.maxDailyLossPct);
+    const mtd = parseFloat(setupForm.maxTotalDrawdownPct);
+    if (isNaN(sb) || sb <= 0) return;
+    setAccount((prev) => {
+      const newMaxDaily = isNaN(mdl) || mdl <= 0 ? 2 : mdl;
+      const newMaxTotal = isNaN(mtd) || mtd <= 0 ? 10 : mtd;
+      if (sb !== prev.startingBalance) {
+        return {
+          startingBalance: sb,
+          currentBalance: sb,
+          dailyLoss: 0,
+          maxDailyLossPct: newMaxDaily,
+          maxTotalDrawdownPct: newMaxTotal,
+        };
+      }
+      return {
+        ...prev,
+        maxDailyLossPct: newMaxDaily,
+        maxTotalDrawdownPct: newMaxTotal,
+      };
+    });
+    setShowAccountSetup(false);
+  }, [setupForm]);
+
+  const openAccountSetup = useCallback(() => {
+    setSetupForm({
+      startingBalance: account.startingBalance.toString(),
+      maxDailyLossPct: account.maxDailyLossPct.toString(),
+      maxTotalDrawdownPct: account.maxTotalDrawdownPct.toString(),
+    });
+    setShowAccountSetup(true);
+  }, [account]);
+
+  return (
+    <div
+      className={cn(
+        "dark min-h-screen bg-[#050508] text-foreground transition-colors duration-300",
+        isStopTrading && "bg-[#0A0304]",
+      )}
+    >
+      {isStopTrading && (
+        <div className="sticky top-0 z-40 flex items-center justify-center gap-3 bg-red-500/10 border-b border-red-500/30 px-4 py-3 backdrop-blur-sm">
+          <OctagonAlert className="h-5 w-5 text-red-500 animate-pulse" />
+          <span className="text-sm font-bold text-red-400 tracking-widest uppercase">
+            STOP TRADING — DAILY LIMIT HIT
+          </span>
+          <OctagonAlert className="h-5 w-5 text-red-500 animate-pulse" />
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <Shield
+              className={cn(
+                "h-8 w-8",
+                isStopTrading ? "text-red-500" : "text-[#00C896]",
+              )}
+            />
+            <div>
+              <h1
+                className={cn(
+                  "text-2xl font-bold tracking-tight",
+                  isStopTrading && "text-red-400",
+                )}
+              >
+                Risk Shield
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Keeping your account safe & figuring out trade size
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openAccountSetup}
+              className="border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+            >
+              <Settings className="h-4 w-4 mr-1.5" />
+              Account
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFocusMode(true)}
+              className={cn(
+                "border-[#00C896]/40 text-[#00C896] hover:bg-[#00C896]/10 hover:text-[#00C896]",
+              )}
+            >
+              <EyeOff className="h-4 w-4 mr-1.5" />
+              Focus Mode
+            </Button>
+          </div>
+        </div>
+
+        {isStopTrading && (
+          <Card className="mb-6 border-red-500/40 bg-red-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-red-400 flex items-center gap-2 text-xl">
+                <OctagonAlert className="h-6 w-6" />
+                STOP TRADING
+              </CardTitle>
+              <CardDescription className="text-red-300/70">
+                You lost too much today. Follow the rules below.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {STOP_TRADING_RULES.map((rule, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span className="text-red-400 font-bold text-sm min-w-[20px]">
+                    {i + 1}.
+                  </span>
+                  <span className="text-red-200/80 text-sm leading-relaxed">
+                    {rule}
+                  </span>
+                </div>
+              ))}
+              <div className="pt-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowResetConfirm(true)}
+                  className="border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300 w-full"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reset Daily Loss Counter
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            <Card
+              className={cn(
+                "border-white/8 bg-white/[0.02]",
+                isStopTrading && "border-red-500/30 bg-red-500/[0.03]",
+              )}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  Account Balance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className={cn(
+                    "text-4xl font-bold tracking-tight",
+                    isStopTrading ? "text-red-400" : "text-[#00C896]",
+                  )}
+                >
+                  $
+                  {account.currentBalance.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                  })}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Starting: ${account.startingBalance.toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={cn(
+                "border-white/8 bg-white/[0.02]",
+                isStopTrading && "border-red-500/30 bg-red-500/[0.03]",
+              )}
+            >
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4" />
+                  Drawdown Gauges (How Much You've Lost)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <DrawdownGauge
+                    value={dailyLossPct}
+                    max={account.maxDailyLossPct}
+                    label="Daily Drawdown (Lost Today)"
+                  />
+                  <DrawdownGauge
+                    value={totalLossPct}
+                    max={account.maxTotalDrawdownPct}
+                    label="Total Drawdown (Lost Overall)"
+                  />
+                </div>
+                <div className="mt-6 space-y-4">
+                  <GaugeBar
+                    value={dailyLossPct}
+                    max={account.maxDailyLossPct}
+                    label="Daily Drawdown (Lost Today)"
+                    isStopTrading={isStopTrading}
+                  />
+                  <GaugeBar
+                    value={totalLossPct}
+                    max={account.maxTotalDrawdownPct}
+                    label="Total Drawdown (Lost Overall)"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {!isStopTrading && (
+              <Card className="border-white/8 bg-white/[0.02]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <TrendingDown className="h-4 w-4 text-red-400" />
+                    Log a Loss
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        type="number"
+                        value={lossInput}
+                        onChange={(e) => setLossInput(e.target.value)}
+                        placeholder="Amount lost on this trade"
+                        className="pl-7 bg-white/5 border-white/10"
+                        onKeyDown={(e) => e.key === "Enter" && handleAddLoss()}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleAddLoss}
+                      className="bg-[#00C896] text-black hover:bg-[#00C896]/90 font-bold"
+                    >
+                      Log
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {!isStopTrading && (
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mx-auto"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Reset Daily Loss
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <Card className="border-white/8 bg-white/[0.02]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-[#00C896]" />
+                  <div>
+                    <CardTitle className="text-base font-bold">
+                      Position Size Calculator
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Figure out how many contracts to trade (risking 0.5%)
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="text-sm text-muted-foreground whitespace-nowrap">
+                      Account Balance
+                    </label>
+                    <div className="relative w-[180px]">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        $
+                      </span>
+                      <Input
+                        type="number"
+                        value={customBalance}
+                        onChange={(e) => setCustomBalance(e.target.value)}
+                        placeholder={account.currentBalance.toFixed(0)}
+                        className="pl-7 bg-white/5 border-white/10 text-sm h-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <label className="text-sm text-muted-foreground whitespace-nowrap">
+                      Points at Risk (Stop Loss Distance)
+                    </label>
+                    <div className="relative w-[180px]">
+                      <Input
+                        type="number"
+                        value={pointsAtRisk}
+                        onChange={(e) => setPointsAtRisk(e.target.value)}
+                        placeholder="e.g. 10"
+                        className="pr-10 bg-white/5 border-white/10 text-sm h-9"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
+                        pts
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-[#00C896]/10 rounded-lg px-3 py-2.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-[#00C896] shrink-0" />
+                  <span className="text-xs text-[#00C896] font-medium">
+                    Max Risk: ${riskAmount.toFixed(2)} (0.5% of $
+                    {calcBalance.toLocaleString()})
+                  </span>
+                </div>
+
+                {pts > 0 ? (
+                  <div className="rounded-xl border border-white/8 overflow-hidden bg-white/[0.02]">
+                    <div className="flex items-center justify-between p-4">
+                      <div>
+                        <div className="text-sm font-semibold">
+                          NQ Full Contract
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ${NQ_POINT_VALUE}/point
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-[#00C896]">
+                          {nqContracts.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          contracts
+                        </div>
+                      </div>
+                    </div>
+                    <div className="h-px bg-white/8" />
+                    <div className="flex items-center justify-between p-4">
+                      <div>
+                        <div className="text-sm font-semibold">
+                          MNQ Micro Contract
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ${MNQ_POINT_VALUE}/point
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-amber-400">
+                          {Math.round(mnqContracts)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          contracts
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-white/8 bg-white/[0.02] p-6 text-center">
+                    <CircleDot className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Enter points at risk to calculate position size
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={showAccountSetup} onOpenChange={setShowAccountSetup}>
+        <DialogContent className="dark bg-[#0A0A0F] border-white/10 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Up Your Prop Account</DialogTitle>
+            <DialogDescription>
+              Enter how much money you're starting with and how much you're allowed to lose.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Starting Balance</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  type="number"
+                  value={setupForm.startingBalance}
+                  onChange={(e) =>
+                    setSetupForm((f) => ({
+                      ...f,
+                      startingBalance: e.target.value,
+                    }))
+                  }
+                  placeholder="50000"
+                  className="pl-7 bg-white/5 border-white/10"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Max Loss Per Day %
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={setupForm.maxDailyLossPct}
+                    onChange={(e) =>
+                      setSetupForm((f) => ({
+                        ...f,
+                        maxDailyLossPct: e.target.value,
+                      }))
+                    }
+                    placeholder="2"
+                    className="pr-7 bg-white/5 border-white/10"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    %
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Max Total Loss %
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={setupForm.maxTotalDrawdownPct}
+                    onChange={(e) =>
+                      setSetupForm((f) => ({
+                        ...f,
+                        maxTotalDrawdownPct: e.target.value,
+                      }))
+                    }
+                    placeholder="10"
+                    className="pr-7 bg-white/5 border-white/10"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    %
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAccountSetup(false)}
+              className="border-white/10 bg-white/5"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveAccount}
+              className="bg-[#00C896] text-black hover:bg-[#00C896]/90 font-bold"
+            >
+              Save Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <DialogContent className="dark bg-[#0A0A0F] border-white/10 sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset Daily Loss?</DialogTitle>
+            <DialogDescription>
+              This will reset today's loss counter to zero. Your total
+              drawdown will not be affected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowResetConfirm(false)}
+              className="border-white/10 bg-white/5"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleResetDaily}
+              className="bg-[#00C896] text-black hover:bg-[#00C896]/90 font-bold"
+            >
+              Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {showFocusMode && (
+        <div className="fixed inset-0 z-50 bg-[#020202] flex flex-col items-center justify-center p-6">
+          <div className="max-w-lg w-full space-y-8">
+            <div className="text-center">
+              <h2 className="text-3xl font-bold text-white mb-2">
+                FOCUS MODE
+              </h2>
+              <p className="text-muted-foreground">
+                P&L hidden — stay disciplined
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-[#00C896]/30 bg-[#00C896]/5 p-6">
+              <h3 className="text-xs font-bold text-[#00C896] tracking-[0.15em] uppercase mb-5">
+                EXIT RULES
+              </h3>
+              <div className="space-y-3.5">
+                {EXIT_RULES.map((rule, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#00C896] mt-2 shrink-0" />
+                    <span className="text-[15px] text-white/90 leading-relaxed">
+                      {rule}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <h3 className="text-[10px] font-bold text-muted-foreground tracking-[0.15em] uppercase mb-3">
+                MINDSET ANCHOR
+              </h3>
+              <p className="text-sm text-muted-foreground italic leading-relaxed">
+                "I follow my plan, not my feelings. My only job is to take the
+                right setup. The results will come."
+              </p>
+            </div>
+
+            <Button
+              onClick={() => setShowFocusMode(false)}
+              className="w-full bg-[#00C896] text-black hover:bg-[#00C896]/90 font-bold h-12 text-base rounded-xl"
+            >
+              <Eye className="h-5 w-5 mr-2" />
+              Exit Focus Mode
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

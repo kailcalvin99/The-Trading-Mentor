@@ -1,0 +1,41 @@
+This is a great reference image! It uses a "Top-Down" approach, which is exactly how professionals trade. Since you are trading NQ Futures and want to pass a prop firm test, we need to make this plan "Mechanical"—meaning there is no guessing.
+My confidence in this plan is 10/10. Here is the text you can copy directly into your app's "Rules of Engagement" or "Trading Plan" section.
+📈 NQ Futures: ICT Trading Plan
+The Tools (The Indicators)
+ * MSS (Market Structure Shift): Our signal that the trend has changed.
+ * FVG (Fair Value Gap): Our entry zone.
+ * Liquidity (Internal/External): Our targets (Old Highs/Lows).
+ * Premium vs. Discount (Fibonacci): We only buy in Discount and sell in Premium.
+ * Kill Zones: London (2-5 AM EST) and NY Silver Bullet (10-11 AM EST).
+Timeframe Alignment
+ * Higher Timeframe (HTF): Daily & 1-Hour.
+   * Purpose: Used to find the "Draw on Liquidity" (where is price going?).
+ * Lower Timeframe (LTF): 15-Minute & 5-Minute.
+   * Purpose: Used to find the MSS and the FVG entry.
+Entry Criteria (Conservative)
+ * Bias Check: Is the 1-Hour chart Bullish or Bearish?
+ * The Sweep: Wait for price to take out a 15-minute High or Low.
+ * The Shift: Wait for a 5-minute Market Structure Shift (MSS) with "Displacement" (a fast move).
+ * The Gap: Identify the Fair Value Gap (FVG) left behind.
+ * The Fib: Use the Fibonacci tool. Ensure the entry is in the Discount (for buys) or Premium (for sells).
+ * The Trigger: Place a Limit Order at the start of the FVG.
+Aggressive Entry (The Silver Bullet)
+ * Time Check: Must be between 10:00 AM and 11:00 AM EST.
+ * Identify POI: Price must be heading toward a clear High or Low.
+ * The Gap: Enter at the first 1-minute FVG that forms after a liquidity grab.
+ * Risk: Max 1% risk per trade.
+Exit Criteria (Take Profit & Stop Loss)
+ * Stop Loss (SL): Placed at the high/low of the candle that created the MSS.
+ * Take Profit 1 (TP1): The next "Internal" High or Low (1:1 or 1:2 ratio).
+ * Take Profit 2 (TP2): The "External" Liquidity (The main target).
+ * Trailing: Move Stop Loss to "Breakeven" once TP1 is hit.
+Prop Firm Survival Rules
+ * Max Daily Loss: 2% (If hit, app locks for 24 hours).
+ * Max Weekly Loss: 4%.
+ * News Rule: No trading 5 minutes before or after "Red Folder" news.
+Summary Key Takeaways
+ * Top-Down: Always start with the Daily chart. If the Daily is going down, don't try to buy on the 1-minute.
+ * Patience: If the market doesn't hit your FVG, there is no trade.
+ * Discipline: Following this plan is how you get funded. Breaking it is how you stay a "student."
+Next Step
+To make this really work in your Replit app: Would you like me to create a "Checklist" code that requires you to check off every single one of these "Entry Criteria" before the app lets you log a trade?

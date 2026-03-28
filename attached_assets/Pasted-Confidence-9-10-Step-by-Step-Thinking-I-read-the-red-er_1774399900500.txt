@@ -1,0 +1,24 @@
+Confidence: 9/10 ### Step-by-Step Thinking:
+ * I read the red error text in your image: [handleSubmit] Could not save trade: ApiError: HTTP 404.
+ * I know that "HTTP 404" is a computer code that means "Not Found."
+ * I see this happened in a piece of code called handleSubmit.
+ * I figure out that your app tried to send the new trade data over the internet to your server, but it went to a web address that does not exist.
+What is Happening?
+An HTTP 404 error means your app is trying to talk to your server to save your trade, but it cannot find the right place to put the data.
+Analogy: Imagine writing a letter and putting it in the mail, but you wrote down the wrong street number. The mail carrier looks for the house, but it isn't there, so the letter comes back marked "Not Found." Your app is doing the exact same thing with your trade data!
+How to Fix It
+You need to check the web address (URL) your app uses when it tries to save the trade.
+ * Look inside your app's code for the handleSubmit function.
+ * Find the line of code that sends the data (it usually looks like fetch(...) or axios.post(...)).
+ * Make sure the web link inside those parentheses perfectly matches the address set up on your server.
+ * Check your server to make sure it is turned on and running properly.
+Pros and Cons of Where to Look
+ * Pro of checking your app code first: It is often a very quick fix, like catching a small typo in the web link.
+ * Con of checking your app code first: Your app's code might actually be perfectly fine, and the real problem is that your server is accidentally turned off or missing the right file.
+Summary
+Your app tried to save a trade, but it sent the information to a web address that could not be found. To fix it, you need to check the link in your code and make sure your server is awake to receive it.
+To help me give you the exact fix, could you answer these questions?
+ * What is the exact web link (URL) your handleSubmit code is trying to send the trade to?
+ * Is your server currently turned on and running without any errors?
+ * Can you share the code inside your handleSubmit function so I can look at it?
+Would you like me to show you an example of what a correct fetch request looks like for saving data?

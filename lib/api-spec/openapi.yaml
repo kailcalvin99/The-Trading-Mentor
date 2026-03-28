@@ -1,0 +1,489 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: gemini
+    description: Gemini AI chat and image operations
+  - name: prop
+    description: Prop firm account tracking
+  - name: trades
+    description: Trade journal entries
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /gemini/conversations:
+    get:
+      operationId: listGeminiConversations
+      tags: [gemini]
+      summary: List all conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeminiConversation"
+    post:
+      operationId: createGeminiConversation
+      tags: [gemini]
+      summary: Create a new conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGeminiConversationBody"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiConversation"
+
+  /gemini/conversations/{id}:
+    get:
+      operationId: getGeminiConversation
+      tags: [gemini]
+      summary: Get conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiConversationWithMessages"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiError"
+    delete:
+      operationId: deleteGeminiConversation
+      tags: [gemini]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiError"
+
+  /gemini/conversations/{id}/messages:
+    get:
+      operationId: listGeminiMessages
+      tags: [gemini]
+      summary: List messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeminiMessage"
+    post:
+      operationId: sendGeminiMessage
+      tags: [gemini]
+      summary: Send a message and receive an AI response (SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendGeminiMessageBody"
+      responses:
+        "200":
+          description: SSE stream of assistant response chunks
+          content:
+            text/event-stream: {}
+
+  /prop/account:
+    get:
+      operationId: getPropAccount
+      tags: [prop]
+      summary: Get prop firm account
+      responses:
+        "200":
+          description: Prop account data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropAccount"
+        "404":
+          description: Not found
+    post:
+      operationId: createPropAccount
+      tags: [prop]
+      summary: Create or update prop account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePropAccountBody"
+      responses:
+        "200":
+          description: Saved prop account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropAccount"
+
+  /prop/account/daily-loss:
+    post:
+      operationId: addDailyLoss
+      tags: [prop]
+      summary: Add a daily loss amount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddDailyLossBody"
+      responses:
+        "200":
+          description: Updated prop account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropAccount"
+
+  /prop/account/reset-daily:
+    post:
+      operationId: resetDailyLoss
+      tags: [prop]
+      summary: Reset daily loss to zero
+      responses:
+        "200":
+          description: Updated prop account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropAccount"
+
+  /trades:
+    get:
+      operationId: listTrades
+      tags: [trades]
+      summary: List all trades
+      responses:
+        "200":
+          description: List of trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trade"
+    post:
+      operationId: createTrade
+      tags: [trades]
+      summary: Log a new trade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTradeBody"
+      responses:
+        "201":
+          description: Created trade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trade"
+
+  /trades/{id}:
+    delete:
+      operationId: deleteTrade
+      tags: [trades]
+      summary: Delete a trade
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    GeminiConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - createdAt
+
+    GeminiMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+
+    CreateGeminiConversationBody:
+      type: object
+      properties:
+        title:
+          type: string
+      required:
+        - title
+
+    SendGeminiMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    GeminiConversationWithMessages:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeminiMessage"
+      required:
+        - id
+        - title
+        - createdAt
+        - messages
+
+    GeminiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    PropAccount:
+      type: object
+      properties:
+        id:
+          type: integer
+        startingBalance:
+          type: number
+        currentBalance:
+          type: number
+        dailyLoss:
+          type: number
+        totalDrawdown:
+          type: number
+        maxDailyLossPct:
+          type: number
+        maxTotalDrawdownPct:
+          type: number
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - startingBalance
+        - currentBalance
+        - dailyLoss
+        - totalDrawdown
+        - maxDailyLossPct
+        - maxTotalDrawdownPct
+        - updatedAt
+
+    CreatePropAccountBody:
+      type: object
+      properties:
+        startingBalance:
+          type: number
+        maxDailyLossPct:
+          type: number
+        maxTotalDrawdownPct:
+          type: number
+      required:
+        - startingBalance
+
+    AddDailyLossBody:
+      type: object
+      properties:
+        amount:
+          type: number
+      required:
+        - amount
+
+    Trade:
+      type: object
+      properties:
+        id:
+          type: integer
+        pair:
+          type: string
+        entryTime:
+          type: string
+        riskPct:
+          type: number
+        liquiditySweep:
+          type: boolean
+        outcome:
+          type: string
+        notes:
+          type: string
+        behaviorTag:
+          type: string
+          nullable: true
+        followedTimeRule:
+          type: boolean
+          nullable: true
+        hasFvgConfirmation:
+          type: boolean
+          nullable: true
+        stressLevel:
+          type: integer
+          nullable: true
+        isDraft:
+          type: boolean
+        ticker:
+          type: string
+          nullable: true
+        sideDirection:
+          type: string
+          nullable: true
+        coachFeedback:
+          type: string
+          nullable: true
+        setupScore:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - pair
+        - entryTime
+        - riskPct
+        - liquiditySweep
+        - createdAt
+
+    CreateTradeBody:
+      type: object
+      properties:
+        pair:
+          type: string
+        entryTime:
+          type: string
+        riskPct:
+          type: number
+        liquiditySweep:
+          type: boolean
+        outcome:
+          type: string
+        notes:
+          type: string
+        setupScore:
+          type: integer
+        behaviorTag:
+          type: string
+        stressLevel:
+          type: integer
+        isDraft:
+          type: boolean
+        sideDirection:
+          type: string
+        followedTimeRule:
+          type: boolean
+        hasFvgConfirmation:
+          type: boolean
+      required:
+        - pair
+        - entryTime
+        - riskPct
+        - liquiditySweep

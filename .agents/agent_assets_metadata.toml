@@ -1,0 +1,20 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "3b4Tn1SnUM5O0t8h83A7n"
+uri = "file://artifacts/web/public/logo.png"
+type = "image"
+title = "ICT AI Trading Mentor Logo"
+
+[[outputs]]
+id = "DV7aSZsgTDIefv3XVdAG-"
+uri = "file://docs/video-scripts/ict-mentor-video-series.md"
+type = "text"
+title = "ICT Mentor Video Scripts — All 12 Scripts"
+
+[[outputs]]
+id = "UKaxXlWM2k8lOpSKxCx4j"
+uri = "file://docs/video-scripts/ict-mentor-video-scripts.txt"
+type = "text"
+title = "ICT Mentor Video Scripts — All 12 Scripts (Download)"

@@ -1,0 +1,36 @@
+This prompt is designed for the Replit "Hybrid Solution" we discussed. It focuses on maintaining a public-facing "front door" to satisfy Stripe's requirements while keeping your core trading app secure and professional.
+Copy and paste this into your System Instructions or use it to guide your AI developer in Replit.
+THE REPLIT HYBRID SYSTEM PROMPT
+> Persona: You are a Senior Full-Stack Developer and Stripe Compliance Expert. Your goal is to build a high-performance trading website that passes Stripe's Activation Audit while maintaining 100% security for the core app.
+> 1. THE "FRONT DOOR" ARCHITECTURE (Public Layer)
+>  * Public Access: Create a Landing Page at the root URL (/) that is not password protected.
+>  * Visual Clarity: The landing page must clearly display the Business Name, a professional Hero Section, and a "Features" section showing the Risk Shield and ICT Logic tools.
+>  * Stripe Compliance Bar: The footer must contain working links to:
+>    * Terms of Service (must include "Trading involves risk" disclaimers).
+>    * Privacy Policy (how user data is handled).
+>    * Refund Policy (clearly stating the 24-hour drawdown/subscription rules).
+> 2. THE "VAULT" ARCHITECTURE (Private Layer)
+>  * Authentication: Place all ICT Calculators, Journaling Tools, and Risk Shield settings behind a secure login at /dashboard or /app.
+>  * Session Logic: Ensure that once a user logs in, their Account Balance and Trading History are private and encrypted.
+> 3. CONTENT & MESSAGING RULES
+>  * Tone: Use a 6th-8th grade reading level to ensure clarity.
+>  * The "Why": Explain the product as a "Decision Support Tool" for traders, not a financial advisory service.
+>  * Trust Indicators: Highlight the Aviation-style safety checks (Daily Loss Limits and Drawdown Shields) to show Stripe you are a responsible merchant.
+> 4. DEVELOPMENT STEPS
+>  * Draft HTML/CSS for the public landing page first.
+>  * Generate Legal Text for the footer links.
+>  * Configure Replit Secrets for Stripe API keys.
+>  * Test Public View: Ensure a "Guest" user can see the landing page but cannot access the trading tools.
+> 
+Recommended Tools to Build Your "Front Door"
+To make your website look like a million-dollar professional firm (which helps Stripe approve you faster), I recommend these items:
+| Tool/Resource | Why it helps your App | Ease of Use |
+|---|---|---|
+| Professional Website Template | Gives you a clean, non-password-protected layout instantly. | High |
+| Legal Document Generator | Creates the Terms of Service and Refund Policy Stripe needs. | Medium |
+| Stripe Payments for Dummies | Helps you understand the "KYC" rules to avoid account bans. | Easy |
+Key Takeaways
+ * Don't Hide Everything: Stripe's bots need to "crawl" your site. If they hit a password wall, they will fail your activation.
+ * Landing Page is Key: Your public page is your Business Card. It tells Stripe (and customers) that you are a legitimate service provider.
+ * Disclaimers: Since you are in Aviation Maintenance, you know the value of "Warning Labels." Put your trading risk disclaimers in bold on the footer.
+Would you like me to write the actual HTML and CSS code for this public landing page so you can just paste it into your Replit project?

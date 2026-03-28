@@ -1,0 +1,29 @@
+The "Pro-SMC" Website Roadmap
+Confidence: 10/10
+If I were using this app to manage my own capital, I would want it to act as both a mirror (to show my mistakes) and a map (to show where the money is). Since you are trading Indices like NQ and ES, precision and psychology are everything.
+Here are the prompts for the essential features your website is missing:
+1. The "Equity Curve" Visualizer
+A list of numbers is hard to read. You need to see the "mountain range" of your account balance.
+ * Prompt: "Create a line chart component using Chart.js. Plot the cumulative profit/loss over the 200 trades. Add a 'Drawdown' indicator that highlights the biggest dip in the curve so I can see my max pain point."
+2. The "Session Performance" Filter
+SMC traders usually perform differently during the London Open vs. New York Open.
+ * Prompt: "Add a timestamp to every trade. Create a bar chart that shows the Win Rate sorted by hour. If the Win Rate is below 40% during a specific time block, highlight that block in Red to warn me not to trade then."
+3. The "Mistake Cost" Calculator
+This is the most powerful psychological tool. It shows you exactly how much money your "Behavior Tags" cost you.
+ * Prompt: "Calculate the total money lost on trades tagged with 'Revenge', 'FOMO', and 'Chased'. Display this at the top of the dashboard as 'Total Cost of Discipline Errors.' This shows the user how much more they would have made if they just followed their rules."
+4. The "Confluence" Tracker
+In SMC, we look for things like Fair Value Gaps (FVG), Order Blocks (OB), and Liquidity Sweeps. Your app should track which "tool" works best.
+ * Prompt: "Add a multi-select checklist for 'Setup Type' (e.g., FVG, Order Block, Turtle Soup). Create a table that ranks which setup has the highest Win Rate and highest Average RR."
+Pros and Cons of These Additions
+| Feature | Pro | Con |
+|---|---|---|
+| Mistake Cost | Forces extreme honesty and stops bad habits. | Can be depressing to see how much money you "threw away." |
+| Session Filter | Tells you exactly when you should be sleeping vs. trading. | Requires precise logging of trade times. |
+| Confluence Tracker | Proves which SMC concepts actually work for you. | Makes the "Add Trade" form slightly longer to fill out. |
+Summary of Key Takeaways
+ * Visualize the Data: Use charts to turn numbers into a story.
+ * Focus on Time: Trading NQ/ES is all about "Kill Zones" (time of day).
+ * Quantify Behavior: Put a dollar amount on your emotions (FOMO/Revenge).
+ * Would you like me to write the HTML/CSS/JS for the "Mistake Cost" dashboard card?
+ * Should we create a "Backtesting" mode where you can practice these prompts before going live?
+ * Do you want a prompt to build a "Trade Journal" section where you can upload screenshots of your entries?

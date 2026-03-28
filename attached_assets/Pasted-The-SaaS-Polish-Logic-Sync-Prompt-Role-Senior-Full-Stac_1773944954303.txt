@@ -1,0 +1,32 @@
+The "SaaS Polish & Logic Sync" Prompt
+Role: Senior Full-Stack Developer / UX Engineer
+
+Task: Audit and Refine the "ICT AI Trading Mentor" platform based on a high-level UI/UX review. Focus on consistency, conversion optimization, and logic synchronization.
+
+Core Objectives:
+
+Pricing & Logic Sync: >    - Ensure the pricing page (Standard: $14.99, Premium: $30.00) matches the logic in the admin dashboard and the Stripe/Payment integration. Remove any hardcoded $29.99/$59.99 values that conflict with the "Founder Member" promotion.
+
+Navigation & Consistency:
+
+Standardize terminology: Use "Risk Shield" as the primary brand name for all protection features (replace "Guardrails" where applicable).
+
+Audit the Sidebar and User Profile dropdown. Ensure icons and labels for "Subscription," "Full Mode," and "Settings" are identical.
+
+Onboarding Optimization:
+
+The Quiz: If skillLevel === 'Beginner', apply a CSS filter (e.g., grayscale(1) opacity(0.5)) and a "Locked" overlay to advanced Academy modules like "Inducement" and "Liquidity Sweeps."
+
+The Tour: Shorten the ICT Tour Guide from 11 steps to a 5-step "Quick Start" focusing on: 1. Dashboard, 2. Morning Routine, 3. Trade Planner, 4. Risk Shield, 5. Smart Journal.
+
+UI Refinements:
+
+Planner Page: Implement a "Sticky Footer" for the Ready to Trade button so it is always visible, regardless of how far the user scrolls down the ICT Entry Criteria.
+
+Empty States: On the Analytics and Journal pages, replace the "No Data" text with a high-visibility "Log Your First Trade" CTA button.
+
+Welcome Page: Replace the "Video Coming Soon" placeholder with a temporary high-quality image of the Dashboard and a "Coming Soon" badge overlay to maintain professional aesthetics.
+
+Referral Logic: >    - Update the Invite Friends share text to dynamically pull the current deployment URL instead of a static or development link.
+
+Deliverable: Update the necessary components (React/Next.js/HTML) and CSS modules to reflect these changes. Maintain the existing dark-mode neon green theme.

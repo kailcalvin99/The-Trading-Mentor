@@ -1,0 +1,17 @@
+Since you are building this in Replit (likely using the Replit Agent or a React/Next.js template), you need to be very specific about the layout and state issues.
+Here is a master prompt you can copy and paste into the Replit chat to fix the most critical "bugs" found in your audit.
+🚀 The "Fix-It" Prompt for Replit
+> "I need to fix 3 critical UI/UX bugs in my trading app to improve the mobile experience. Please apply the following changes:
+>  * Fix Keyboard Overlap: In the Planner and Position Sizer views, the numerical keypad is covering my 'Add' and 'Send to Journal' buttons. Implement a KeyboardAvoidingView (or equivalent CSS for web-mobile) so that the active input scrolls into view and the 'Submit' button remains accessible above the keyboard.
+>  * Header & Safe Area Fix: The top 'Session Timer' bar is currently overlapping the 'ICT Academy' and 'Planner' page titles. Please add proper padding to the top of the main container to account for the Status Bar and Dynamic Island. Ensure there is at least 20px of breathing room between the timer bar and the page headers.
+>  * Legibility & Progress Update: In the Academy lesson list, remove the text-decoration: line-through from completed lessons. Instead, keep the green checkmark but change the text color to a dimmed hex code (like #666666) so it's still readable. Also, fix the 'Stats Bar' at the top so labels like 'Win Rate' and 'P&L' don't get cut off—make the container scrollable horizontally if the screen is too narrow."
+> 
+🛠️ Why this works for your app:
+ * The Keyboard Fix: This is your #1 issue. Without this, the app is "dead on arrival" because users can't finish the forms.
+ * The Safe Area Fix: This makes the app look like a professional App Store product rather than a website.
+ * The Dimming Fix: Trading is about data. If a user wants to review the "Top-Down Approach" lesson they already finished, they need to be able to read the title clearly.
+💡 Pro-Tip for Replit Agent
+If the Agent tells you it can't "see" the overlap, tell it:
+> "The viewport height is being reduced by the virtual keyboard, causing the flex container to squish. Please use a ScrollView to allow the form to remain scrollable even when the keyboard is active."
+> 
+Would you like me to also provide the specific React Native or CSS code block for that Position Sizer logic if the Agent gets stuck?

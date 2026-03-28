@@ -1,0 +1,43 @@
+#107 - Dashboard & Planner Mobile UI Overhaul
+What & Why
+A focused set of UI improvements across the mobile dashboard and daily planner to reduce clutter, improve at-a-glance information density, and make high-frequency actions faster to reach.
+
+Done looks like
+Tab bar icons are visibly smaller
+Top of the dashboard shows a horizontally swipeable session card banner (NY Open, Silver Bullet, London Open — each as its own card that auto-highlights when live)
+The Trade Plan widget has tappable pre-written chip buttons (e.g. "Bullish bias", "Waiting for liquidity sweep", "No trade today") that insert text on tap
+The Achievements trophy icon lives in the top header banner bar (not as a separate button buried in the screen)
+The AI welcome card is compact (single line greeting + one actionable tip sentence showing the next kill zone time or checklist status) — no large box
+The daily planner screen merges "Morning Routine", "Today's Schedule", and any separate task list into a single unified scrollable section
+Hall of Fame is removed from the community screen
+The dashboard has a small quick-journal entry row (one-line text input + "Log" button) so a trader can capture a thought without navigating away
+A slim, full-width data ticker banner sits near the top of the dashboard showing key stats at a glance (e.g. today's win rate, trade count, P&L, current streak) — scrolling or static marquee style
+Out of scope
+Any changes to the web app
+Adding new journal fields or analytics — the quick journal entry is a plain text note only
+Changing subscription or paywall logic
+Tasks
+Smaller tab bar icons — Reduce the icon size in the TopTabBar component so they feel less oversized on smaller screens.
+
+Swipeable market session banner — Replace the current KillZoneCard block with a horizontally swipeable flat banner at the very top of the dashboard screen. Each session (NY Open, Silver Bullet, London Open) gets its own card/slide with name, time, status (Live / countdown), and a colored accent. The currently-live session auto-snaps to front.
+
+Pre-written tap chips on Trade Plan — Above the free-text area in TradePlanWidget, add a horizontal row of tappable chips with pre-written ICT phrases ("Bullish today", "Bearish today", "Waiting for sweep", "Silver Bullet only", "No trade — red news", "Targeting NY Open"). Tapping a chip appends it to the text.
+
+Achievements icon in header banner — Move the achievements trophy icon and XP badge into the top header bar (alongside the logo/greeting area) so it's always visible without scrolling. Remove it from its current in-scroll position.
+
+Compact AI welcome card — Shrink the AIGreetingCard to a single slim row: greeting text on the left, and one dynamic actionable line on the right (e.g. "Next: Silver Bullet in 2h 15m" or "Checklist 3/4 done"). Remove the large tip box card.
+
+Merge routine + schedule + tasks in planner — In the daily planner screen (index.tsx), combine the Morning Routine checklist, the session schedule timeline, and any separate task list into one unified vertically scrolling section under a single header. Use subtle dividers between subsections rather than separate cards.
+
+Remove Hall of Fame from community — Remove the Hall of Fame toggle button and the HallOfFame component render from community.tsx. Clean up any unused state.
+
+Quick journal entry widget on dashboard — Add a compact single-row widget on the dashboard: a small text input ("What's on your mind?") and a "Log" button. On submit, saves the note as a journal entry (timestamp + text) to AsyncStorage, shows a brief "Saved ✓" confirmation, then clears the field.
+
+Trade data slim ticker banner — Add a slim full-width horizontal strip on the dashboard (below the session banner) showing quick read-only stats pulled from local storage / API: today's P&L, win rate, trade count, current streak. Style it as a compact dark pill row with colored values. No tap required — it's purely informational at a glance.
+
+Relevant files
+artifacts/mobile/app/(tabs)/dashboard.tsx
+artifacts/mobile/app/(tabs)/index.tsx
+artifacts/mobile/app/(tabs)/community.tsx
+artifacts/mobile/components/TopTabBar.tsx
+artifacts/mobile/components/DashboardGamification.tsx
