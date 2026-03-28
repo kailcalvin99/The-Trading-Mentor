@@ -429,7 +429,7 @@ export default function AIAssistant() {
     nudgeTimerRef.current = setTimeout(() => {
       setNudgeExpanded(false);
       nudgeTimerRef.current = setTimeout(() => setNudge(null), 400);
-    }, 6000);
+    }, 20000);
     if (trigger.autoOpen) {
       if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
       autoOpenTimerRef.current = setTimeout(() => {
