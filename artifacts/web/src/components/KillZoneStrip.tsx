@@ -86,7 +86,7 @@ export default function KillZoneStrip() {
       return (
         <div
           key={prefix + session.name}
-          className="flex-shrink-0 flex items-center gap-2 px-4 h-[48px] border rounded-xl transition-all border-border bg-[#020203]"
+          className="flex-shrink-0 flex items-center gap-2 px-4 h-[48px] border rounded-xl transition-all border-border bg-[#020203] opacity-[0.5]"
           style={{
             minWidth: 180,
             ...(isLive ? { borderColor: session.color, boxShadow: `0 0 10px ${session.color}30` } : {}),
