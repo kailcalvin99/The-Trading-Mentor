@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Clock, Newspaper, Radio, GraduationCap, Play, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getESTNow, KILL_ZONES } from "@/lib/timeUtils";
+import { getESTNow, KILL_ZONES, getActiveKillZone } from "@/lib/timeUtils";
 import { useCalendarEvents, type CalendarEvent } from "@/hooks/useLiveMarket";
 import { COURSE_CHAPTERS } from "@/data/academy-data";
 
@@ -208,12 +208,31 @@ function NewsSlide({ events }: { events: CalendarEvent[] }) {
   );
 }
 
-function AcademySlide() {
+function getLessonTeaser(title: string): string {
+  const lower = title.toLowerCase();
+  if (lower.includes("market structure")) return "Learn how price forms trends and how to read the flow of the market like an institutional trader.";
+  if (lower.includes("fair value gap") || lower.includes("fvg")) return "Discover the price gaps Smart Money leaves behind — and how to use them as precision entry points.";
+  if (lower.includes("liquidity")) return "Understand how banks hunt stop-losses and why this is the key to trading with the big players.";
+  if (lower.includes("kill zone") || lower.includes("session")) return "Learn the exact trading windows when institutional orders flood the market and setups appear.";
+  if (lower.includes("fibonacci") || lower.includes("ote")) return "Master the pullback measurement tool used to find the optimal trade entry zone every time.";
+  if (lower.includes("candlestick") || lower.includes("candle")) return "Read the language of price action — every candle tells a story of buyers and sellers battling it out.";
+  if (lower.includes("prop firm") || lower.includes("funded")) return "Discover how to get funded with up to $200,000 of someone else's money to trade with.";
+  if (lower.includes("risk") || lower.includes("loss")) return "Protect your capital with the exact risk rules used by professional prop firm traders.";
+  return "Build your edge with this essential ICT concept used by top traders worldwide.";
+}
+
+function AcademyHeroSlide() {
   const navigate = useNavigate();
   const [completed, setCompleted] = useState<Set<string>>(() => getAcademyProgress());
+  const [killzone, setKillzone] = useState(() => getActiveKillZone());
 
   useEffect(() => {
     const id = setInterval(() => setCompleted(getAcademyProgress()), 2000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setKillzone(getActiveKillZone()), 10000);
     return () => clearInterval(id);
   }, []);
 
@@ -222,6 +241,8 @@ function AcademySlide() {
       ...l,
       chapterTitle: ch.title,
       chapterColor: ch.color,
+      lessonIndex: li,
+      totalLessons: ch.lessons.length,
       estMins: 8 + ((ci * 10 + li) % 7) * 2,
     }))
   );
@@ -234,51 +255,171 @@ function AcademySlide() {
     if (!completed.has(lesson.id)) { nextLesson = lesson; break; }
   }
 
-  if (!nextLesson || pct >= 100) {
+  const allDone = !nextLesson || pct >= 100;
+
+  if (allDone) {
     return (
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-          <GraduationCap className="w-4 h-4 text-primary" />
+      <div className="w-full -mx-4 -mb-3">
+        <div
+          className="relative flex flex-col items-center justify-center py-8 overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, #F59E0B40 0%, #F59E0B10 60%, transparent 100%)",
+            minHeight: 160,
+          }}
+        >
+          <div className="hero-shimmer-sweep" />
+          <div className="hero-trophy-bounce" style={{ fontSize: 56, lineHeight: 1 }}>
+            🏆
+          </div>
+          <div className="mt-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40">
+            <span className="text-[10px] font-bold text-amber-400 tracking-wider">ALL DONE!</span>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground font-medium">ICT Academy</p>
-          <p className="text-sm font-semibold text-foreground">All lessons complete!</p>
+        <div className="px-4 py-3">
+          <p className="text-base font-bold text-amber-400 mb-0.5">Course Complete! 🎉</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            You've finished all ICT lessons. Review them anytime.
+          </p>
+          <div className="relative inline-block">
+            <div
+              className="absolute inset-0 rounded-lg hero-btn-ring"
+              style={{ backgroundColor: "#F59E0B" }}
+            />
+            <button
+              onClick={() => navigate("/academy")}
+              className="relative flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs"
+              style={{ backgroundColor: "#F59E0B", color: "#0A0A0F" }}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              Review Lessons
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  const color = nextLesson!.chapterColor;
+  const teaser = getLessonTeaser(nextLesson!.title);
+
   return (
-    <div className="w-full min-w-0">
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-xs font-medium text-muted-foreground">{completed.size} / {total} lessons</span>
-        <span className="text-muted-foreground/40 text-xs">·</span>
-        <span className="text-xs font-semibold text-primary">{pct}%</span>
-      </div>
-      <div className="h-1 bg-muted rounded-full overflow-hidden mb-3">
+    <div className="w-full -mx-4 -mb-3">
+      <div
+        className="relative flex flex-col items-center justify-center overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, ${color}40 0%, ${color}10 60%, transparent 100%)`,
+          minHeight: 160,
+        }}
+      >
+        <div className="hero-shimmer-sweep" />
+
         <div
-          className="h-full bg-primary rounded-full transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="flex items-center gap-3">
+          className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider"
+          style={{ backgroundColor: `${color}25`, color }}
+        >
+          LESSON {nextLesson!.lessonIndex + 1}
+        </div>
+
         <div
-          className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: `${nextLesson.chapterColor}18` }}
+          className={`absolute bottom-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full ${killzone ? "left-2.5" : "right-2.5"}`}
+          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
         >
-          <Play className="w-4 h-4" style={{ color: nextLesson.chapterColor }} />
+          <Clock className="w-2.5 h-2.5 text-white/70" />
+          <span className="text-[9px] font-medium text-white/70">{nextLesson!.estMins} min</span>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] text-muted-foreground truncate">{nextLesson.chapterTitle}</p>
-          <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{nextLesson.title}</p>
+
+        {killzone && (
+          <div
+            className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase"
+            style={{
+              backgroundColor: `${killzone.color}20`,
+              borderColor: `${killzone.color}60`,
+              color: killzone.color,
+            }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full animate-pulse"
+              style={{ backgroundColor: killzone.color }}
+            />
+            LIVE · {killzone.label}
+          </div>
+        )}
+
+        <div className="relative flex items-center justify-center" style={{ width: 72, height: 72 }}>
+          <div
+            className="absolute inset-0 rounded-full border-2 hero-ring-expand"
+            style={{ borderColor: `${color}55` }}
+          />
+          <div
+            className="hero-play-pulse flex items-center justify-center rounded-full border-2"
+            style={{
+              width: 56,
+              height: 56,
+              backgroundColor: `${color}25`,
+              borderColor: `${color}80`,
+            }}
+          >
+            <Play className="w-6 h-6" style={{ color, fill: color }} />
+          </div>
         </div>
-        <button
-          onClick={() => navigate(`/academy?lesson=${nextLesson!.id}`)}
-          className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          <Play className="h-2.5 w-2.5" />
-          Watch
-        </button>
+      </div>
+
+      <div className="px-4 py-3">
+        {killzone && (
+          <p className="text-[11px] font-semibold mb-1.5" style={{ color: killzone.color }}>
+            Markets are moving — great time to study this pattern.
+          </p>
+        )}
+
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+          <span className="text-[9px] font-bold tracking-widest uppercase text-muted-foreground">Up Next</span>
+        </div>
+
+        <p className="text-[11px] font-medium mb-0.5" style={{ color }}>
+          {nextLesson!.chapterTitle}
+        </p>
+        <p className="text-sm font-bold text-foreground leading-tight mb-1 line-clamp-2">
+          {nextLesson!.title}
+        </p>
+        <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+          {teaser}
+        </p>
+
+        <div className="flex items-center gap-1 mb-3">
+          <span className="text-xs">🔥</span>
+          <span className="text-[10px] text-muted-foreground">
+            Lesson {nextLesson!.lessonIndex + 1} of {nextLesson!.totalLessons} — keep the streak!
+          </span>
+        </div>
+
+        <div className="mb-3">
+          <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+            <span>{completed.size} / {total} lessons</span>
+            <span className="font-semibold" style={{ color }}>{pct}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${pct}%`, backgroundColor: color }}
+            />
+          </div>
+        </div>
+
+        <div className="relative inline-block">
+          <div
+            className="absolute inset-0 rounded-lg hero-btn-ring"
+            style={{ backgroundColor: color }}
+          />
+          <button
+            onClick={() => navigate(`/academy?lesson=${nextLesson!.id}`)}
+            className="relative flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs"
+            style={{ backgroundColor: color, color: "#0A0A0F" }}
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            Watch Now
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -339,7 +480,7 @@ export default function UpNextWidget() {
   }
 
   return (
-    <div className="bg-card border border-border rounded-2xl px-4 py-3">
+    <div className={`bg-card border border-border rounded-2xl px-4 py-3 ${slide === "academy" ? "overflow-hidden" : ""}`}>
       <div className="flex items-center gap-2 mb-3">
         <Radio className="h-3.5 w-3.5 text-primary shrink-0 animate-pulse" />
         <h3 className="text-xs font-semibold text-foreground flex-1">Up Next</h3>
@@ -366,11 +507,11 @@ export default function UpNextWidget() {
       </div>
 
       <div
-        className="transition-opacity duration-300 min-h-[52px] flex items-center"
+        className="transition-opacity duration-300"
         style={{ opacity: visible ? 1 : 0 }}
       >
         {loading && events.length === 0 && slide !== "academy" ? (
-          <div className="flex items-center gap-3 w-full">
+          <div className="flex items-center gap-3 w-full min-h-[52px]">
             <div className="shrink-0 w-8 h-8 rounded-full bg-secondary/40 animate-pulse" />
             <div className="flex-1 space-y-1.5">
               <div className="h-3 rounded bg-secondary/40 animate-pulse w-24" />
@@ -378,11 +519,15 @@ export default function UpNextWidget() {
             </div>
           </div>
         ) : slide === "killzone" ? (
-          <KillZoneSlide />
+          <div className="min-h-[52px] flex items-center">
+            <KillZoneSlide />
+          </div>
         ) : slide === "news" ? (
-          <NewsSlide events={events} />
+          <div className="min-h-[52px] flex items-center">
+            <NewsSlide events={events} />
+          </div>
         ) : (
-          <AcademySlide />
+          <AcademyHeroSlide />
         )}
       </div>
     </div>
