@@ -67,7 +67,7 @@ const navItems = [
   { to: "/videos", label: "Videos", icon: Video, requiredTier: 0, minSkillLevel: 0 },
   { to: "/planner", label: "Mission Control", icon: Calendar, requiredTier: 0, minSkillLevel: 0 },
   { to: "/prop-tracker", label: "Prop Tracker", icon: Trophy, requiredTier: 1, minSkillLevel: 1 },
-  { to: "/paper-trading", label: "Paper Trading", icon: CandlestickChart, requiredTier: 1, minSkillLevel: 1 },
+  { to: "/paper-trading", label: "Chart Lab", icon: CandlestickChart, requiredTier: 1, minSkillLevel: 1 },
   { to: "/journal", label: "Smart Journal", icon: BookOpen, requiredTier: 1, minSkillLevel: 1 },
   { to: "/analytics", label: "Analytics", icon: BarChart3, requiredTier: 2, minSkillLevel: 1 },
   { to: "/leaderboard", label: "Leaderboard", icon: Trophy, requiredTier: 2, minSkillLevel: 2 },

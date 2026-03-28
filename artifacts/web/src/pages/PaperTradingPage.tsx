@@ -4,15 +4,24 @@ import {
   ColorType,
   type IChartApi,
   type ISeriesApi,
-  type IPriceLine,
-  type SeriesMarker,
   type Time,
   type ISeriesPrimitive,
   type SeriesAttachedParameter,
   type SeriesType,
   type IChartApiBase,
 } from "lightweight-charts";
-import { Play, Pause, SkipForward, SkipBack, TrendingUp, TrendingDown, ChevronDown } from "lucide-react";
+import {
+  MousePointer2,
+  Square,
+  TrendingUp,
+  Clock,
+  Minus,
+  Eraser,
+  Hand,
+  RotateCcw,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   detectFVGs,
@@ -23,20 +32,17 @@ import {
   detectMarketStructure,
   getKillZoneTimestamps,
   calcPDHL,
-  calcPremiumDiscount,
   isIntradayTimeframe,
   type Candle as ICTCandle,
   type FVG,
   type OrderBlock,
   type StructureLabel,
-  type SwingPoint,
 } from "@/utils/ictIndicators";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const INSTRUMENTS = ["EUR/USD", "GBP/USD", "GBP/JPY", "NAS100", "US30", "XAU/USD"];
 const TIMEFRAMES = ["1m", "5m", "15m", "1H", "4H", "Daily"];
-const SPEEDS = [1, 5, 10, 50];
 
 interface Candle {
   time: number;
@@ -46,58 +52,35 @@ interface Candle {
   close: number;
 }
 
-interface Position {
+type DrawingTool = "cursor" | "fvg" | "ob" | "structure" | "killzone" | "pdhl" | "eraser";
+
+interface UserAnnotation {
   id: string;
-  direction: "buy" | "sell";
-  lotSize: number;
-  entryPrice: number;
-  stopLoss: number;
-  takeProfit: number;
-  entryTime: number;
-  pair: string;
+  type: "fvg" | "ob" | "structure" | "hline";
+  startTime: number;
+  endTime: number;
+  top: number;
+  bottom: number;
+  label?: string;
+  color: string;
 }
 
-interface ClosedTrade {
-  id: string;
-  direction: "buy" | "sell";
-  lotSize: number;
-  entryPrice: number;
-  exitPrice: number;
-  stopLoss: number;
-  takeProfit: number;
-  entryTime: number;
-  exitTime: number;
-  pair: string;
-  pnlUsd: number;
-  closedBy: "sl" | "tp" | "manual";
+interface AnalysisStep {
+  step: number;
+  title: string;
+  concept: string;
+  priceFrom: number;
+  priceTo: number;
+  timeFrom: number;
+  timeTo: number;
+  explanation: string;
+  grade: string;
 }
 
-interface IndicatorToggles {
-  fvg: boolean;
-  ob: boolean;
-  structure: boolean;
-  killZones: boolean;
-  premiumDiscount: boolean;
-  pdhl: boolean;
-}
-
-function calcPnl(pos: Position, exitPrice: number): number {
-  const priceDiff =
-    pos.direction === "buy" ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
-
-  if (pos.pair === "NAS100" || pos.pair === "US30") return priceDiff * pos.lotSize;
-  if (pos.pair === "XAU/USD") return priceDiff * pos.lotSize * 100;
-
-  const pipSize = pos.pair === "GBP/JPY" ? 0.01 : 0.0001;
-  const pipsCount = priceDiff / pipSize;
-  const pipValueUsd = pos.pair === "GBP/JPY" ? pos.lotSize * 9.0 : pos.lotSize * 10;
-  return pipsCount * pipValueUsd;
-}
-
-function formatPrice(price: number): string {
-  if (price >= 10000) return price.toFixed(2);
-  if (price >= 100) return price.toFixed(3);
-  return price.toFixed(5);
+interface AnalysisResult {
+  steps: AnalysisStep[];
+  overallScore: number;
+  summary: string;
 }
 
 type BitmapScope = {
@@ -340,77 +323,6 @@ class HLinePrimitive implements ISeriesPrimitive<Time> {
   }
 }
 
-class ShadePrimitive implements ISeriesPrimitive<Time> {
-  private _bands: Array<{
-    top: number;
-    bottom: number;
-    fillColor: string;
-    opacity: number;
-    label?: string;
-    labelColor?: string;
-  }> = [];
-  private _series: AttachedSeries | null = null;
-
-  attached(param: SeriesAttachedParameter<Time>): void {
-    this._series = param.series;
-  }
-
-  detached(): void {
-    this._series = null;
-  }
-
-  setBands(bands: typeof this._bands): void {
-    this._bands = bands;
-  }
-
-  paneViews() {
-    return [this];
-  }
-
-  renderer() {
-    const series = this._series;
-    const bands = this._bands;
-
-    return {
-      draw(target: DrawTarget) {
-        if (!series) return;
-        target.useBitmapCoordinateSpace((scope: BitmapScope) => {
-          const ctx = scope.context;
-          const width = scope.bitmapSize.width;
-
-          for (const band of bands) {
-            const y1 = series.priceToCoordinate(band.top);
-            const y2 = series.priceToCoordinate(band.bottom);
-            if (y1 === null || y2 === null) continue;
-
-            const py1 = Math.round(y1 * scope.verticalPixelRatio);
-            const py2 = Math.round(y2 * scope.verticalPixelRatio);
-            const top = Math.min(py1, py2);
-            const height = Math.abs(py2 - py1);
-            if (height === 0) continue;
-
-            ctx.save();
-            ctx.globalAlpha = band.opacity;
-            ctx.fillStyle = band.fillColor;
-            ctx.fillRect(0, top, width, height);
-
-            if (band.label && band.labelColor) {
-              ctx.globalAlpha = 0.6;
-              const fontSize = Math.round(10 * scope.verticalPixelRatio);
-              ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-              ctx.fillStyle = band.labelColor;
-              ctx.textAlign = "left";
-              ctx.textBaseline = "middle";
-              ctx.fillText(band.label, 8, top + height / 2);
-            }
-            ctx.restore();
-          }
-        });
-      },
-    };
-  }
-}
-
 class KillZonePrimitive implements ISeriesPrimitive<Time> {
   private _zones: Array<{ start: number; end: number; color: string; label: string }> = [];
   private _chart: AttachedChart | null = null;
@@ -475,232 +387,112 @@ class KillZonePrimitive implements ISeriesPrimitive<Time> {
   }
 }
 
-const INDICATOR_LABELS: Record<keyof IndicatorToggles, string> = {
-  fvg: "FVG",
-  ob: "OB",
-  structure: "Structure",
-  killZones: "Kill Zones",
-  premiumDiscount: "Prem/Disc",
-  pdhl: "PDH/PDL",
+const TOOL_COLORS: Record<string, string> = {
+  fvg: "#3b82f6",
+  ob: "#f97316",
+  structure: "#a855f7",
+  hline: "#f59e0b",
 };
 
-interface LegendItem {
-  color: string;
-  label: string;
-  type?: "box" | "line" | "dashed";
+const DRAWING_TOOLS: { id: DrawingTool; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "cursor", label: "Select", icon: MousePointer2 },
+  { id: "fvg", label: "FVG", icon: Square },
+  { id: "ob", label: "Order Block", icon: Square },
+  { id: "structure", label: "Structure", icon: TrendingUp },
+  { id: "killzone", label: "Kill Zones", icon: Clock },
+  { id: "pdhl", label: "PDH/PDL", icon: Minus },
+  { id: "eraser", label: "Eraser", icon: Eraser },
+];
+
+function formatPrice(price: number): string {
+  if (price >= 10000) return price.toFixed(2);
+  if (price >= 100) return price.toFixed(3);
+  return price.toFixed(5);
 }
 
-const INDICATOR_LEGEND_ITEMS: Record<keyof IndicatorToggles, LegendItem[]> = {
-  fvg: [
-    { color: "#22c55e", label: "Bullish FVG", type: "box" },
-    { color: "#ef4444", label: "Bearish FVG", type: "box" },
-  ],
-  ob: [
-    { color: "#3b82f6", label: "Bullish OB", type: "box" },
-    { color: "#f97316", label: "Bearish OB", type: "box" },
-  ],
-  structure: [
-    { color: "#22c55e", label: "BOS (Bull)", type: "line" },
-    { color: "#ef4444", label: "BOS (Bear)", type: "line" },
-    { color: "#f59e0b", label: "CHoCH", type: "line" },
-    { color: "#ef444466", label: "Swing High", type: "dashed" },
-    { color: "#22c55e66", label: "Swing Low", type: "dashed" },
-  ],
-  killZones: [
-    { color: "#818cf8", label: "London KZ", type: "box" },
-    { color: "#F59E0B", label: "NY Open KZ", type: "box" },
-    { color: "#ef4444", label: "Silver Bullet", type: "box" },
-  ],
-  premiumDiscount: [
-    { color: "#ef4444", label: "Premium", type: "box" },
-    { color: "#22c55e", label: "Discount", type: "box" },
-    { color: "#f59e0b", label: "Equilibrium", type: "dashed" },
-  ],
-  pdhl: [
-    { color: "#ef4444", label: "PDH", type: "dashed" },
-    { color: "#22c55e", label: "PDL", type: "dashed" },
-  ],
-};
-
-function IndicatorLegend({
-  indicators,
-  killZonesDisabled,
-}: {
-  indicators: IndicatorToggles;
-  killZonesDisabled: boolean;
-}) {
-  const [collapsed, setCollapsed] = useState(false);
-
-  const activeItems: LegendItem[] = (
-    Object.keys(indicators) as Array<keyof IndicatorToggles>
-  ).flatMap((key) => {
-    if (!indicators[key]) return [];
-    if (key === "killZones" && killZonesDisabled) return [];
-    return INDICATOR_LEGEND_ITEMS[key];
-  });
-
-  if (activeItems.length === 0) return null;
-
-  return (
-    <div
-      className="absolute top-2 right-2 z-10 rounded-md pointer-events-none select-none"
-      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
-    >
-      <button
-        onClick={() => setCollapsed((c) => !c)}
-        className="flex items-center gap-1 px-2 py-1.5 w-full text-white/80 hover:text-white transition-colors pointer-events-auto"
-        aria-label={collapsed ? "Expand legend" : "Collapse legend"}
-        aria-expanded={!collapsed}
-      >
-        <span className="text-[10px] font-semibold leading-none tracking-wide uppercase">
-          Key
-        </span>
-        <svg
-          className={`w-2.5 h-2.5 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
-          viewBox="0 0 10 10"
-          fill="currentColor"
-        >
-          <path d="M5 3L9 7H1L5 3Z" />
-        </svg>
-      </button>
-      {!collapsed && (
-        <div className="px-2 pb-1.5 space-y-0.5">
-          {activeItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <Swatch color={item.color} type={item.type} />
-              <span className="text-[10px] leading-none text-white/90 font-medium whitespace-nowrap">
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+function formatDateRange(candles: Candle[]): string {
+  if (candles.length === 0) return "";
+  const first = new Date(candles[0].time * 1000);
+  const last = new Date(candles[candles.length - 1].time * 1000);
+  const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return `${fmt(first)} – ${fmt(last)}`;
 }
 
-function Swatch({ color, type }: { color: string; type?: "box" | "line" | "dashed" }) {
-  if (type === "line") {
-    return (
-      <span
-        className="inline-block flex-shrink-0"
-        style={{
-          width: 14,
-          height: 2,
-          borderRadius: 1,
-          backgroundColor: color,
-        }}
-      />
-    );
-  }
-  if (type === "dashed") {
-    return (
-      <span
-        className="inline-block flex-shrink-0"
-        style={{
-          width: 14,
-          height: 0,
-          borderTop: `2px dashed ${color}`,
-        }}
-      />
-    );
-  }
-  return (
-    <span
-      className="inline-block flex-shrink-0 rounded-sm"
-      style={{
-        width: 10,
-        height: 10,
-        backgroundColor: color,
-        opacity: 0.85,
-      }}
-    />
-  );
+function getScoreColor(score: number): string {
+  if (score >= 80) return "#22c55e";
+  if (score >= 60) return "#f59e0b";
+  return "#ef4444";
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 90) return "Outstanding";
+  if (score >= 80) return "Excellent";
+  if (score >= 70) return "Good";
+  if (score >= 60) return "Fair";
+  if (score >= 50) return "Developing";
+  return "Needs Work";
 }
 
 export default function PaperTradingPage() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  const markersRef = useRef<SeriesMarker<Time>[]>([]);
-  const prevIndexRef = useRef<number>(0);
 
   const fvgPrimitiveRef = useRef<RectanglePrimitive | null>(null);
   const obPrimitiveRef = useRef<RectanglePrimitive | null>(null);
   const structureLabelPrimitiveRef = useRef<LabelPrimitive | null>(null);
   const structureLinesPrimitiveRef = useRef<HLinePrimitive | null>(null);
   const killZonePrimitiveRef = useRef<KillZonePrimitive | null>(null);
-  const pdShadePrimitiveRef = useRef<ShadePrimitive | null>(null);
-  const pdLinePrimitiveRef = useRef<HLinePrimitive | null>(null);
-
-  const pdhlLinesRef = useRef<{ pdh: IPriceLine | null; pdl: IPriceLine | null }>({
-    pdh: null,
-    pdl: null,
-  });
+  const pdhlPrimitiveRef = useRef<HLinePrimitive | null>(null);
+  const userAnnotationRectPrimitiveRef = useRef<RectanglePrimitive | null>(null);
+  const userAnnotationLabelPrimitiveRef = useRef<LabelPrimitive | null>(null);
+  const highlightPrimitiveRef = useRef<RectanglePrimitive | null>(null);
 
   const [instrument, setInstrument] = useState("EUR/USD");
   const [timeframe, setTimeframe] = useState("15m");
-  const [startDate, setStartDate] = useState(() => {
+  const [allCandles, setAllCandles] = useState<Candle[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const [activeTool, setActiveTool] = useState<DrawingTool>("cursor");
+  const [showAIIct, setShowAIIct] = useState(false);
+  const [showKillZones, setShowKillZones] = useState(false);
+  const [showPdhl, setShowPdhl] = useState(false);
+
+  const [userAnnotations, setUserAnnotations] = useState<UserAnnotation[]>([]);
+
+  const isDrawingRef = useRef(false);
+  const drawStartRef = useRef<{ time: number; price: number } | null>(null);
+  const currentDrawRef = useRef<UserAnnotation | null>(null);
+
+  const [analysisMode, setAnalysisMode] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [showFinalGrade, setShowFinalGrade] = useState(false);
+  const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+
+  const startDate = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 8);
     return d.toISOString().split("T")[0];
-  });
-  const [endDate, setEndDate] = useState(() => {
+  }, []);
+
+  const endDate = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
     return d.toISOString().split("T")[0];
-  });
-  const [allCandles, setAllCandles] = useState<Candle[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
-  const [loading, setLoading] = useState(false);
-
-  const [direction, setDirection] = useState<"buy" | "sell">("buy");
-  const [lotSize, setLotSize] = useState("0.10");
-  const [slPrice, setSlPrice] = useState("");
-  const [tpPrice, setTpPrice] = useState("");
-
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [closedTrades, setClosedTrades] = useState<ClosedTrade[]>([]);
-  const [savingJournal, setSavingJournal] = useState<string[]>([]);
-
-  const [indicators, setIndicators] = useState<IndicatorToggles>({
-    fvg: false,
-    ob: false,
-    structure: false,
-    killZones: false,
-    premiumDiscount: false,
-    pdhl: false,
-  });
-
-  const [visibleTimeRange, setVisibleTimeRange] = useState<{ from: number; to: number } | null>(null);
-
-  const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  function updateChartMarkers(newMarkers: SeriesMarker<Time>[]) {
-    markersRef.current = newMarkers;
-    if (seriesRef.current) {
-      seriesRef.current.setMarkers(newMarkers);
-    }
-  }
-
-  function addMarker(marker: SeriesMarker<Time>) {
-    const sorted = [...markersRef.current, marker].sort(
-      (a, b) => (a.time as number) - (b.time as number)
-    );
-    updateChartMarkers(sorted);
-  }
+  }, []);
 
   const fetchCandles = useCallback(async () => {
     setLoading(true);
-    setIsPlaying(false);
-    setPositions([]);
-    setClosedTrades([]);
-    setCurrentIndex(0);
-    prevIndexRef.current = 0;
-    updateChartMarkers([]);
-    if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+    setUserAnnotations([]);
+    setAnalysisMode(false);
+    setAnalysisResult(null);
+    setShowFinalGrade(false);
+    setStepIndex(0);
+    if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
 
     try {
       const params = new URLSearchParams({
@@ -713,11 +505,6 @@ export default function PaperTradingPage() {
       if (!res.ok) throw new Error("Failed to fetch candles");
       const data: Candle[] = await res.json();
       setAllCandles(data);
-      if (data.length > 0) {
-        const contextStart = Math.min(50, data.length);
-        setCurrentIndex(contextStart);
-        prevIndexRef.current = contextStart;
-      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load candles";
       toast.error(message);
@@ -725,6 +512,10 @@ export default function PaperTradingPage() {
       setLoading(false);
     }
   }, [instrument, timeframe, startDate, endDate]);
+
+  useEffect(() => {
+    fetchCandles();
+  }, [fetchCandles]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -738,7 +529,7 @@ export default function PaperTradingPage() {
         horzLines: { color: "#1f2937" },
       },
       width: chartContainerRef.current.clientWidth,
-      height: 420,
+      height: chartContainerRef.current.clientHeight,
       timeScale: {
         borderColor: "#374151",
         timeVisible: true,
@@ -747,6 +538,8 @@ export default function PaperTradingPage() {
       rightPriceScale: {
         borderColor: "#374151",
       },
+      handleScroll: true,
+      handleScale: true,
     });
 
     const series = chart.addCandlestickSeries({
@@ -765,61 +558,53 @@ export default function PaperTradingPage() {
     const structLabelPrim = new LabelPrimitive();
     const structLinesPrim = new HLinePrimitive();
     const killPrim = new KillZonePrimitive();
-    const pdShadePrim = new ShadePrimitive();
-    const pdLinePrim = new HLinePrimitive();
+    const pdhlPrim = new HLinePrimitive();
+    const userRectPrim = new RectanglePrimitive();
+    const userLabelPrim = new LabelPrimitive();
+    const highlightPrim = new RectanglePrimitive();
 
     series.attachPrimitive(fvgPrim);
     series.attachPrimitive(obPrim);
     series.attachPrimitive(structLabelPrim);
     series.attachPrimitive(structLinesPrim);
     series.attachPrimitive(killPrim);
-    series.attachPrimitive(pdShadePrim);
-    series.attachPrimitive(pdLinePrim);
+    series.attachPrimitive(pdhlPrim);
+    series.attachPrimitive(userRectPrim);
+    series.attachPrimitive(userLabelPrim);
+    series.attachPrimitive(highlightPrim);
 
     fvgPrimitiveRef.current = fvgPrim;
     obPrimitiveRef.current = obPrim;
     structureLabelPrimitiveRef.current = structLabelPrim;
     structureLinesPrimitiveRef.current = structLinesPrim;
     killZonePrimitiveRef.current = killPrim;
-    pdShadePrimitiveRef.current = pdShadePrim;
-    pdLinePrimitiveRef.current = pdLinePrim;
-
-    const handleVisibleRangeChange = () => {
-      const range = chart.timeScale().getVisibleRange();
-      if (range) {
-        setVisibleTimeRange({ from: range.from as number, to: range.to as number });
-      }
-    };
-    chart.timeScale().subscribeVisibleTimeRangeChange(handleVisibleRangeChange);
+    pdhlPrimitiveRef.current = pdhlPrim;
+    userAnnotationRectPrimitiveRef.current = userRectPrim;
+    userAnnotationLabelPrimitiveRef.current = userLabelPrim;
+    highlightPrimitiveRef.current = highlightPrim;
 
     const observer = new ResizeObserver(() => {
       if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+        chart.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight,
+        });
       }
     });
     observer.observe(chartContainerRef.current);
 
     return () => {
-      chart.timeScale().unsubscribeVisibleTimeRangeChange(handleVisibleRangeChange);
       observer.disconnect();
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
-      fvgPrimitiveRef.current = null;
-      obPrimitiveRef.current = null;
-      structureLabelPrimitiveRef.current = null;
-      structureLinesPrimitiveRef.current = null;
-      killZonePrimitiveRef.current = null;
-      pdShadePrimitiveRef.current = null;
-      pdLinePrimitiveRef.current = null;
     };
   }, []);
 
   useEffect(() => {
     if (!seriesRef.current || allCandles.length === 0) return;
-    const visible = allCandles.slice(0, currentIndex);
     seriesRef.current.setData(
-      visible.map((c) => ({
+      allCandles.map((c) => ({
         time: c.time as Time,
         open: c.open,
         high: c.high,
@@ -827,57 +612,45 @@ export default function PaperTradingPage() {
         close: c.close,
       }))
     );
-    if (chartRef.current && visible.length > 0) {
+    if (chartRef.current) {
       chartRef.current.timeScale().fitContent();
-      chartRef.current.timeScale().applyOptions({ barSpacing: 7 });
     }
-    seriesRef.current.setMarkers(markersRef.current);
-  }, [allCandles, currentIndex]);
+  }, [allCandles]);
 
-  const visibleCandles = useMemo(
-    () => allCandles.slice(0, currentIndex) as ICTCandle[],
-    [allCandles, currentIndex]
-  );
+  const ictCandles = useMemo(() => allCandles as ICTCandle[], [allCandles]);
 
-  const allFVGs = useMemo(() => detectFVGs(visibleCandles), [visibleCandles]);
+  const allFVGs = useMemo(() => (showAIIct ? detectFVGs(ictCandles) : []), [ictCandles, showAIIct]);
   const mitigatedFVGs = useMemo(
-    () => updateFVGMitigation(allFVGs, visibleCandles),
-    [allFVGs, visibleCandles]
+    () => (showAIIct ? updateFVGMitigation(allFVGs, ictCandles) : []),
+    [allFVGs, ictCandles, showAIIct]
   );
 
-  const allOBs = useMemo(() => detectOrderBlocks(visibleCandles), [visibleCandles]);
+  const allOBs = useMemo(() => (showAIIct ? detectOrderBlocks(ictCandles) : []), [ictCandles, showAIIct]);
   const mitigatedOBs = useMemo(
-    () => updateOBMitigation(allOBs, visibleCandles),
-    [allOBs, visibleCandles]
+    () => (showAIIct ? updateOBMitigation(allOBs, ictCandles) : []),
+    [allOBs, ictCandles, showAIIct]
   );
 
-  const swingPoints = useMemo(() => detectSwingPoints(visibleCandles, 3), [visibleCandles]);
+  const swingPoints = useMemo(
+    () => (showAIIct ? detectSwingPoints(ictCandles, 3) : []),
+    [ictCandles, showAIIct]
+  );
   const structureLabels = useMemo(
-    () => detectMarketStructure(visibleCandles, swingPoints),
-    [visibleCandles, swingPoints]
+    () => (showAIIct ? detectMarketStructure(ictCandles, swingPoints) : []),
+    [ictCandles, swingPoints, showAIIct]
   );
 
   const killZones = useMemo(() => {
-    if (!isIntradayTimeframe(timeframe)) return [];
-    return getKillZoneTimestamps(visibleCandles);
-  }, [visibleCandles, timeframe]);
+    if (!showKillZones || !isIntradayTimeframe(timeframe)) return [];
+    return getKillZoneTimestamps(ictCandles);
+  }, [ictCandles, timeframe, showKillZones]);
 
-  const pdhl = useMemo(() => calcPDHL(visibleCandles), [visibleCandles]);
-
-  const premiumDiscount = useMemo(
-    () =>
-      calcPremiumDiscount(
-        visibleCandles,
-        visibleTimeRange?.from,
-        visibleTimeRange?.to
-      ),
-    [visibleCandles, visibleTimeRange]
-  );
+  const pdhl = useMemo(() => (showPdhl ? calcPDHL(ictCandles) : null), [ictCandles, showPdhl]);
 
   const endTime = useMemo(() => {
-    if (visibleCandles.length === 0) return 0;
-    return visibleCandles[visibleCandles.length - 1].time + 86400 * 30;
-  }, [visibleCandles]);
+    if (allCandles.length === 0) return 0;
+    return allCandles[allCandles.length - 1].time + 86400 * 30;
+  }, [allCandles]);
 
   function invalidateChart() {
     chartRef.current?.applyOptions({});
@@ -885,12 +658,11 @@ export default function PaperTradingPage() {
 
   useEffect(() => {
     if (!fvgPrimitiveRef.current) return;
-    if (!indicators.fvg || visibleCandles.length === 0) {
+    if (!showAIIct || allCandles.length === 0) {
       fvgPrimitiveRef.current.setRects([]);
       invalidateChart();
       return;
     }
-
     const rects = mitigatedFVGs.map((fvg: FVG) => ({
       startTime: fvg.startTime,
       endTime: fvg.mitigated ? fvg.mitigatedTime! : endTime,
@@ -898,21 +670,19 @@ export default function PaperTradingPage() {
       bottom: fvg.bottom,
       fillColor: fvg.type === "bullish" ? "#22c55e" : "#ef4444",
       borderColor: fvg.type === "bullish" ? "#22c55e" : "#ef4444",
-      opacity: fvg.mitigated ? 0.04 : 0.13,
+      opacity: fvg.mitigated ? 0.05 : 0.15,
     }));
-
     fvgPrimitiveRef.current.setRects(rects);
     invalidateChart();
-  }, [mitigatedFVGs, indicators.fvg, visibleCandles.length, endTime]);
+  }, [mitigatedFVGs, endTime, showAIIct, allCandles.length]);
 
   useEffect(() => {
     if (!obPrimitiveRef.current) return;
-    if (!indicators.ob || visibleCandles.length === 0) {
+    if (!showAIIct || allCandles.length === 0) {
       obPrimitiveRef.current.setRects([]);
       invalidateChart();
       return;
     }
-
     const rects = mitigatedOBs.map((ob: OrderBlock) => ({
       startTime: ob.startTime,
       endTime: ob.mitigated ? ob.mitigatedTime! : endTime,
@@ -920,825 +690,876 @@ export default function PaperTradingPage() {
       bottom: ob.bottom,
       fillColor: ob.type === "bullish" ? "#3b82f6" : "#f97316",
       borderColor: ob.type === "bullish" ? "#3b82f6" : "#f97316",
-      opacity: ob.mitigated ? 0.03 : 0.11,
+      opacity: ob.mitigated ? 0.05 : 0.15,
     }));
-
     obPrimitiveRef.current.setRects(rects);
     invalidateChart();
-  }, [mitigatedOBs, indicators.ob, visibleCandles.length, endTime]);
+  }, [mitigatedOBs, endTime, showAIIct, allCandles.length]);
 
   useEffect(() => {
     if (!structureLabelPrimitiveRef.current || !structureLinesPrimitiveRef.current) return;
-
-    if (!indicators.structure || visibleCandles.length === 0) {
+    if (!showAIIct || allCandles.length === 0) {
       structureLabelPrimitiveRef.current.setLabels([]);
       structureLinesPrimitiveRef.current.setLines([]);
       invalidateChart();
       return;
     }
-
     const labels = structureLabels.map((sl: StructureLabel) => ({
       time: sl.time,
       price: sl.price,
       text: sl.label,
-      color:
-        sl.label === "BOS"
-          ? sl.direction === "bullish"
-            ? "#22c55e"
-            : "#ef4444"
-          : "#f59e0b",
+      color: sl.label === "CHoCH" ? "#f59e0b" : sl.direction === "bullish" ? "#22c55e" : "#ef4444",
     }));
     structureLabelPrimitiveRef.current.setLabels(labels);
-
-    const swingLines = swingPoints.map((sp: SwingPoint) => ({
-      price: sp.price,
-      color: sp.type === "high" ? "#ef444466" : "#22c55e66",
-      dash: [2, 4],
-      lineWidth: 1,
-      opacity: 0.5,
-    }));
-    structureLinesPrimitiveRef.current.setLines(swingLines);
-
+    structureLinesPrimitiveRef.current.setLines([]);
     invalidateChart();
-  }, [structureLabels, swingPoints, indicators.structure, visibleCandles.length]);
+  }, [structureLabels, showAIIct, allCandles.length]);
 
   useEffect(() => {
     if (!killZonePrimitiveRef.current) return;
-    if (!indicators.killZones || killZones.length === 0) {
+    if (!showKillZones || killZones.length === 0) {
       killZonePrimitiveRef.current.setZones([]);
       invalidateChart();
       return;
     }
-    killZonePrimitiveRef.current.setZones(killZones);
+    const zones = killZones.map((kz) => ({
+      start: kz.start,
+      end: kz.end,
+      color: kz.color,
+      label: kz.label,
+    }));
+    killZonePrimitiveRef.current.setZones(zones);
     invalidateChart();
-  }, [killZones, indicators.killZones]);
+  }, [killZones, showKillZones]);
 
   useEffect(() => {
-    const series = seriesRef.current;
-    if (!series) return;
-
-    const { pdh: existingPdh, pdl: existingPdl } = pdhlLinesRef.current;
-    if (existingPdh) {
-      try { series.removePriceLine(existingPdh); } catch {}
-    }
-    if (existingPdl) {
-      try { series.removePriceLine(existingPdl); } catch {}
-    }
-    pdhlLinesRef.current = { pdh: null, pdl: null };
-
-    if (!indicators.pdhl || !pdhl) return;
-
-    const pdhLine = series.createPriceLine({
-      price: pdhl.pdh,
-      color: "#ef4444",
-      lineWidth: 1,
-      lineStyle: 2,
-      axisLabelVisible: true,
-      title: `PDH ${formatPrice(pdhl.pdh)}`,
-    });
-
-    const pdlLine = series.createPriceLine({
-      price: pdhl.pdl,
-      color: "#22c55e",
-      lineWidth: 1,
-      lineStyle: 2,
-      axisLabelVisible: true,
-      title: `PDL ${formatPrice(pdhl.pdl)}`,
-    });
-
-    pdhlLinesRef.current = { pdh: pdhLine, pdl: pdlLine };
-
-    return () => {
-      try { series.removePriceLine(pdhLine); } catch {}
-      try { series.removePriceLine(pdlLine); } catch {}
-    };
-  }, [pdhl, indicators.pdhl]);
-
-  useEffect(() => {
-    if (!pdShadePrimitiveRef.current || !pdLinePrimitiveRef.current) return;
-    if (!indicators.premiumDiscount || !premiumDiscount) {
-      pdShadePrimitiveRef.current.setBands([]);
-      pdLinePrimitiveRef.current.setLines([]);
+    if (!pdhlPrimitiveRef.current) return;
+    if (!showPdhl || !pdhl) {
+      pdhlPrimitiveRef.current.setLines([]);
       invalidateChart();
       return;
     }
-
-    pdShadePrimitiveRef.current.setBands([
-      {
-        top: premiumDiscount.high,
-        bottom: premiumDiscount.mid,
-        fillColor: "#ef4444",
-        opacity: 0.05,
-        label: "Premium",
-        labelColor: "#ef4444",
-      },
-      {
-        top: premiumDiscount.mid,
-        bottom: premiumDiscount.low,
-        fillColor: "#22c55e",
-        opacity: 0.05,
-        label: "Discount",
-        labelColor: "#22c55e",
-      },
-    ]);
-
-    pdLinePrimitiveRef.current.setLines([
-      {
-        price: premiumDiscount.mid,
-        color: "#f59e0b",
-        dash: [4, 4],
-        label: "EQ 50%",
-        labelSide: "left",
-      },
-    ]);
+    const lines = [
+      { price: pdhl.pdh, color: "#ef4444", dash: [6, 3], label: "PDH", labelSide: "right" as const, lineWidth: 1.5 },
+      { price: pdhl.pdl, color: "#22c55e", dash: [6, 3], label: "PDL", labelSide: "right" as const, lineWidth: 1.5 },
+    ];
+    pdhlPrimitiveRef.current.setLines(lines);
     invalidateChart();
-  }, [premiumDiscount, indicators.premiumDiscount]);
+  }, [pdhl, showPdhl]);
 
   useEffect(() => {
-    if (!isPlaying || allCandles.length === 0) return;
+    if (!userAnnotationRectPrimitiveRef.current || !userAnnotationLabelPrimitiveRef.current) return;
+    const rects = userAnnotations
+      .filter((a) => a.type !== "structure" && a.type !== "hline")
+      .map((a) => ({
+        startTime: a.startTime,
+        endTime: a.endTime,
+        top: a.top,
+        bottom: a.bottom,
+        fillColor: a.color,
+        borderColor: a.color,
+        opacity: 0.2,
+      }));
+    const labels = userAnnotations
+      .filter((a) => a.label)
+      .map((a) => ({
+        time: a.startTime,
+        price: (a.top + a.bottom) / 2,
+        text: a.label!,
+        color: a.color,
+      }));
+    userAnnotationRectPrimitiveRef.current.setRects(rects);
+    userAnnotationLabelPrimitiveRef.current.setLabels(labels);
+    invalidateChart();
+  }, [userAnnotations]);
 
-    const intervalMs = Math.max(50, 500 / speed);
-    playIntervalRef.current = setInterval(() => {
-      setCurrentIndex((prev) => {
-        if (prev >= allCandles.length) {
-          setIsPlaying(false);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, intervalMs);
+  const getChartCoords = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>): { time: number; price: number } | null => {
+      const chart = chartRef.current;
+      const series = seriesRef.current;
+      const container = chartContainerRef.current;
+      if (!chart || !series || !container) return null;
 
-    return () => {
-      if (playIntervalRef.current) clearInterval(playIntervalRef.current);
-    };
-  }, [isPlaying, speed, allCandles.length]);
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
 
-  useEffect(() => {
-    const prev = prevIndexRef.current;
-    const isSteppingForward = currentIndex > prev;
-    prevIndexRef.current = currentIndex;
+      const time = chart.timeScale().coordinateToTime(x);
+      const price = series.coordinateToPrice(y);
 
-    if (!isSteppingForward) return;
-    if (currentIndex === 0 || allCandles.length === 0) return;
-    const latestCandle = allCandles[currentIndex - 1];
-    if (!latestCandle) return;
+      if (time === null || price === null) return null;
+      return { time: time as number, price };
+    },
+    []
+  );
 
-    setPositions((prevPositions) => {
-      const remaining: Position[] = [];
-      const newClosed: ClosedTrade[] = [];
+  const handleChartMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (activeTool === "cursor" || activeTool === "killzone" || activeTool === "pdhl") return;
+      if (activeTool === "eraser") return;
 
-      for (const pos of prevPositions) {
-        let closed = false;
-        let exitPrice = 0;
-        let closedBy: "sl" | "tp" = "sl";
+      const coords = getChartCoords(e);
+      if (!coords) return;
 
-        if (pos.direction === "buy") {
-          if (latestCandle.low <= pos.stopLoss) {
-            exitPrice = pos.stopLoss;
-            closedBy = "sl";
-            closed = true;
-          } else if (latestCandle.high >= pos.takeProfit) {
-            exitPrice = pos.takeProfit;
-            closedBy = "tp";
-            closed = true;
-          }
+      if (activeTool === "structure") {
+        const nearestIdx = allCandles.reduce(
+          (bestIdx, c, i) => {
+            const diff = Math.abs(c.time - coords.time);
+            const bestDiff = Math.abs(allCandles[bestIdx].time - coords.time);
+            return diff < bestDiff ? i : bestIdx;
+          },
+          0
+        );
+        const candle = allCandles[nearestIdx];
+        if (!candle) return;
+
+        const swingHigh = candle.high;
+        const swingLow = candle.low;
+        const isHigh = Math.abs(coords.price - swingHigh) < Math.abs(coords.price - swingLow);
+        const swingPrice = isHigh ? swingHigh : swingLow;
+
+        const lookback = 5;
+        const prevCandles = allCandles.slice(Math.max(0, nearestIdx - lookback), nearestIdx);
+        const postCandles = allCandles.slice(nearestIdx + 1, Math.min(allCandles.length, nearestIdx + lookback + 1));
+
+        let label: string;
+        if (isHigh) {
+          const breaksAbove = postCandles.some((c) => c.close > swingPrice);
+          const prevHigh = prevCandles.length > 0 ? Math.max(...prevCandles.map((c) => c.high)) : 0;
+          const isSwingHigh = swingPrice > prevHigh;
+          label = breaksAbove ? "BOS" : isSwingHigh ? "CHoCH" : "Swing High";
         } else {
-          if (latestCandle.high >= pos.stopLoss) {
-            exitPrice = pos.stopLoss;
-            closedBy = "sl";
-            closed = true;
-          } else if (latestCandle.low <= pos.takeProfit) {
-            exitPrice = pos.takeProfit;
-            closedBy = "tp";
-            closed = true;
-          }
+          const breaksBelow = postCandles.some((c) => c.close < swingPrice);
+          const prevLow = prevCandles.length > 0 ? Math.min(...prevCandles.map((c) => c.low)) : Infinity;
+          const isSwingLow = swingPrice < prevLow;
+          label = breaksBelow ? "BOS" : isSwingLow ? "CHoCH" : "Swing Low";
         }
 
-        if (closed) {
-          const pnl = calcPnl(pos, exitPrice);
-          newClosed.push({
-            ...pos,
-            exitPrice,
-            exitTime: latestCandle.time,
-            pnlUsd: pnl,
-            closedBy,
-          });
+        const labelColor =
+          label === "BOS"
+            ? isHigh ? "#22c55e" : "#ef4444"
+            : label === "CHoCH"
+            ? "#f59e0b"
+            : TOOL_COLORS.structure;
 
-          addMarker({
-            time: latestCandle.time as Time,
-            position: closedBy === "tp" ? "aboveBar" : "belowBar",
-            color: closedBy === "tp" ? "#22c55e" : "#ef4444",
-            shape: closedBy === "tp" ? "arrowUp" : "arrowDown",
-            text:
-              closedBy === "tp"
-                ? `TP +$${pnl.toFixed(0)}`
-                : `SL -$${Math.abs(pnl).toFixed(0)}`,
-          });
-        } else {
-          remaining.push(pos);
-        }
+        const annotation: UserAnnotation = {
+          id: crypto.randomUUID(),
+          type: "structure",
+          startTime: candle.time,
+          endTime: candle.time + 3600,
+          top: swingPrice,
+          bottom: swingPrice,
+          label,
+          color: labelColor,
+        };
+        setUserAnnotations((prev) => [...prev, annotation]);
+        return;
       }
 
-      if (newClosed.length > 0) {
-        setClosedTrades((ct) => [...ct, ...newClosed]);
-        for (const ct of newClosed) {
-          if (ct.closedBy === "tp") {
-            toast.success(
-              `${ct.pair} ${ct.direction.toUpperCase()} — TP hit! +$${ct.pnlUsd.toFixed(2)}`
-            );
-          } else {
-            toast.error(
-              `${ct.pair} ${ct.direction.toUpperCase()} — SL hit. -$${Math.abs(ct.pnlUsd).toFixed(2)}`
-            );
-          }
-        }
+      isDrawingRef.current = true;
+      drawStartRef.current = coords;
+
+      if (chartRef.current) {
+        chartRef.current.applyOptions({ handleScroll: false, handleScale: false });
       }
+    },
+    [activeTool, getChartCoords, allCandles]
+  );
 
-      return remaining;
-    });
-  }, [currentIndex, allCandles]);
+  const handleChartMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!isDrawingRef.current || !drawStartRef.current) return;
+      const coords = getChartCoords(e);
+      if (!coords) return;
 
-  function placeOrder() {
-    const lot = parseFloat(lotSize);
-    const sl = parseFloat(slPrice);
-    const tp = parseFloat(tpPrice);
+      const start = drawStartRef.current;
+      const color = TOOL_COLORS[activeTool] || "#3b82f6";
 
-    if (isNaN(lot) || lot < 0.01 || lot > 10) {
-      toast.error("Lot size must be between 0.01 and 10");
+      const draft: UserAnnotation = {
+        id: "__draft__",
+        type: activeTool === "fvg" ? "fvg" : activeTool === "ob" ? "ob" : "hline",
+        startTime: Math.min(start.time, coords.time),
+        endTime: Math.max(start.time, coords.time),
+        top: Math.max(start.price, coords.price),
+        bottom: Math.min(start.price, coords.price),
+        label: activeTool === "fvg" ? "FVG" : activeTool === "ob" ? "OB" : undefined,
+        color,
+      };
+      currentDrawRef.current = draft;
+
+      if (userAnnotationRectPrimitiveRef.current) {
+        const existing = userAnnotations.filter((a) => a.id !== "__draft__" && a.type !== "structure" && a.type !== "hline");
+        userAnnotationRectPrimitiveRef.current.setRects([
+          ...existing.map((a) => ({
+            startTime: a.startTime,
+            endTime: a.endTime,
+            top: a.top,
+            bottom: a.bottom,
+            fillColor: a.color,
+            borderColor: a.color,
+            opacity: 0.2,
+          })),
+          {
+            startTime: draft.startTime,
+            endTime: draft.endTime,
+            top: draft.top,
+            bottom: draft.bottom,
+            fillColor: draft.color,
+            borderColor: draft.color,
+            opacity: 0.25,
+          },
+        ]);
+        invalidateChart();
+      }
+    },
+    [activeTool, getChartCoords, userAnnotations]
+  );
+
+  const handleChartMouseUp = useCallback(() => {
+    if (!isDrawingRef.current || !currentDrawRef.current) {
+      isDrawingRef.current = false;
+      if (chartRef.current) {
+        chartRef.current.applyOptions({ handleScroll: true, handleScale: true });
+      }
       return;
     }
-    if (isNaN(sl) || sl <= 0) {
-      toast.error("Enter a valid stop loss price");
-      return;
-    }
-    if (isNaN(tp) || tp <= 0) {
-      toast.error("Enter a valid take profit price");
-      return;
-    }
-    if (currentIndex === 0 || allCandles.length === 0) {
-      toast.error("Load and start the replay first");
-      return;
+
+    const draft = currentDrawRef.current;
+    if (draft && draft.id === "__draft__" && Math.abs(draft.endTime - draft.startTime) > 0) {
+      const finalAnnotation: UserAnnotation = { ...draft, id: crypto.randomUUID() };
+      setUserAnnotations((prev) => [...prev, finalAnnotation]);
     }
 
-    const latestCandle = allCandles[currentIndex - 1];
-    const entryPrice = latestCandle.close;
+    isDrawingRef.current = false;
+    currentDrawRef.current = null;
+    drawStartRef.current = null;
 
-    const pos: Position = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      direction,
-      lotSize: lot,
-      entryPrice,
-      stopLoss: sl,
-      takeProfit: tp,
-      entryTime: latestCandle.time,
-      pair: instrument,
-    };
+    if (chartRef.current) {
+      chartRef.current.applyOptions({ handleScroll: true, handleScale: true });
+    }
+  }, []);
 
-    setPositions((prev) => [...prev, pos]);
+  const handleChartClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (activeTool !== "eraser") return;
+      const coords = getChartCoords(e);
+      if (!coords) return;
+      setUserAnnotations((prev) =>
+        prev.filter((a) => {
+          const inTime = coords.time >= a.startTime && coords.time <= a.endTime;
+          const inPrice = coords.price >= a.bottom && coords.price <= a.top;
+          return !(inTime && inPrice);
+        })
+      );
+    },
+    [activeTool, getChartCoords]
+  );
 
-    addMarker({
-      time: latestCandle.time as Time,
-      position: direction === "buy" ? "belowBar" : "aboveBar",
-      color: direction === "buy" ? "#22c55e" : "#ef4444",
-      shape: direction === "buy" ? "arrowUp" : "arrowDown",
-      text: `${direction.toUpperCase()} @ ${formatPrice(entryPrice)}`,
-    });
+  const resetDrawings = useCallback(() => {
+    setUserAnnotations([]);
+    setShowKillZones(false);
+    setShowPdhl(false);
+    setShowAIIct(false);
+    toast.success("Drawings cleared");
+  }, []);
 
-    toast.success(`${direction.toUpperCase()} order placed at ${formatPrice(entryPrice)}`);
-  }
+  const runAnalysis = useCallback(async () => {
+    if (allCandles.length === 0) {
+      toast.error("Load a chart first");
+      return;
+    }
+    setAnalysisLoading(true);
 
-  function closePosition(id: string) {
-    const pos = positions.find((p) => p.id === id);
-    if (!pos || currentIndex === 0) return;
-    const latestCandle = allCandles[currentIndex - 1];
-    const exitPrice = latestCandle.close;
-    const pnl = calcPnl(pos, exitPrice);
-    setPositions((prev) => prev.filter((p) => p.id !== id));
-    setClosedTrades((prev) => [
-      ...prev,
-      {
-        ...pos,
-        exitPrice,
-        exitTime: latestCandle.time,
-        pnlUsd: pnl,
-        closedBy: "manual" as const,
-      },
-    ]);
-
-    addMarker({
-      time: latestCandle.time as Time,
-      position: "aboveBar",
-      color: "#a855f7",
-      shape: "circle",
-      text: `Closed $${pnl.toFixed(0)}`,
-    });
-
-    toast(`${pos.pair} closed manually. PnL: $${pnl.toFixed(2)}`);
-  }
-
-  async function saveToJournal(trade: ClosedTrade) {
-    setSavingJournal((prev) => [...prev, trade.id]);
     try {
-      const res = await fetch(`${API_BASE}/trades`, {
+      const convRes = await fetch(`${API_BASE}/gemini/conversations`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pair: trade.pair,
-          entryTime: new Date(trade.entryTime * 1000).toISOString(),
-          riskPct: "1.00",
-          liquiditySweep: false,
-          isDraft: true,
-          sideDirection: trade.direction,
-          entryPrice: trade.entryPrice.toString(),
-          stopLoss: trade.stopLoss.toString(),
-          takeProfit: trade.takeProfit.toString(),
-          outcome:
-            trade.closedBy === "tp"
-              ? "win"
-              : trade.closedBy === "sl"
-              ? "loss"
-              : "breakeven",
-          notes: `Paper trade replay. PnL: $${trade.pnlUsd.toFixed(2)}. Closed by: ${trade.closedBy}`,
-        }),
+        credentials: "include",
+        body: JSON.stringify({ title: `Chart Lab — ${instrument} ${timeframe}` }),
       });
-      if (!res.ok) throw new Error("Save failed");
-      toast.success("Saved to journal as draft");
+      if (!convRes.ok) throw new Error("Failed to create conversation");
+      const conv = await convRes.json();
+      conversationIdRef.current = conv.id;
+
+      const sample = allCandles.slice(-200);
+      const structuredAnnotations = userAnnotations.map((a) => ({
+        type: a.type,
+        label: a.label || a.type.toUpperCase(),
+        startTime: a.startTime,
+        endTime: a.endTime,
+        priceTop: a.top,
+        priceBottom: a.bottom,
+        priceMid: parseFloat(((a.top + a.bottom) / 2).toFixed(5)),
+      }));
+
+      const analysisCandles = ictCandles;
+      const analysisFVGs = updateFVGMitigation(detectFVGs(analysisCandles), analysisCandles);
+      const analysisOBs = updateOBMitigation(detectOrderBlocks(analysisCandles), analysisCandles);
+      const analysisSwings = detectSwingPoints(analysisCandles, 3);
+      const analysisStructure = detectMarketStructure(analysisCandles, analysisSwings);
+      const analysisKillZones = isIntradayTimeframe(timeframe)
+        ? getKillZoneTimestamps(analysisCandles).slice(0, 10)
+        : [];
+      const analysisPDHL = calcPDHL(analysisCandles);
+
+      const autoDetectedZones = {
+        fairValueGaps: analysisFVGs.slice(0, 10).map((f) => ({
+          type: f.type,
+          top: f.top,
+          bottom: f.bottom,
+          startTime: f.startTime,
+          mitigated: f.mitigated,
+        })),
+        orderBlocks: analysisOBs.slice(0, 10).map((ob) => ({
+          type: ob.type,
+          top: ob.top,
+          bottom: ob.bottom,
+          startTime: ob.startTime,
+          mitigated: ob.mitigated,
+        })),
+        structure: analysisStructure.slice(0, 10).map((sl) => ({
+          label: sl.label,
+          direction: sl.direction,
+          time: sl.time,
+          price: sl.price,
+        })),
+        killZones: analysisKillZones.map((kz) => ({
+          label: kz.label,
+          start: kz.start,
+          end: kz.end,
+        })),
+        pdhl: analysisPDHL
+          ? { previousDayHigh: analysisPDHL.pdh, previousDayLow: analysisPDHL.pdl, date: analysisPDHL.pdDate }
+          : null,
+      };
+
+      const ohlcSample = sample.map((c) => ({
+        t: new Date(c.time * 1000).toISOString().split("T")[0],
+        ts: c.time,
+        o: parseFloat(c.open.toFixed(5)),
+        h: parseFloat(c.high.toFixed(5)),
+        l: parseFloat(c.low.toFixed(5)),
+        c: parseFloat(c.close.toFixed(5)),
+      }));
+
+      const prompt = `You are an ICT (Inner Circle Trader) trading mentor analyzing a chart.
+
+CHART INFO:
+- Instrument: ${instrument}
+- Timeframe: ${timeframe}
+- Candles: ${sample.length} candles from ${new Date(sample[0].time * 1000).toLocaleDateString()} to ${new Date(sample[sample.length - 1].time * 1000).toLocaleDateString()}
+
+OHLC DATA (last ${Math.min(200, sample.length)} candles, one per entry):
+${JSON.stringify(ohlcSample)}
+
+USER ANNOTATIONS (what the user marked on the chart):
+${structuredAnnotations.length > 0 ? JSON.stringify(structuredAnnotations, null, 2) : "None"}
+
+AUTO-DETECTED ICT ZONES (algorithmic reference for grading user annotations):
+${JSON.stringify(autoDetectedZones, null, 2)}
+
+TASK: Walk through this chart identifying Smart Money concepts (FVG, Order Block, BOS, CHoCH, Kill Zone, PDH/PDL, Liquidity Sweep, etc.).
+
+For each concept, output EXACTLY this format with delimiter tags:
+[STEP]{"step":1,"title":"Order Block at 1.0850","concept":"Order Block","priceFrom":1.0840,"priceTo":1.0860,"timeFrom":1700000000,"timeTo":1700003600,"explanation":"This bullish order block formed before the impulsive move upward...","grade":"A"}[/STEP]
+
+Then output the overall result:
+[SUMMARY]{"overallScore":78,"summary":"Your analysis identified 3 of 5 key concepts correctly..."}[/SUMMARY]
+
+Rules:
+- Provide 4-8 steps for the most significant concepts on this chart
+- Use UNIX timestamps for timeFrom/timeTo (must be within the chart range ${sample[0].time} to ${sample[sample.length - 1].time})
+- Use actual prices from the OHLC data
+- Grade A=user correctly identified it, B=partially identified, C=missed but common, D=fundamental gap, F=incorrect identification
+- Be educational and specific about each concept`;
+
+      const msgRes = await fetch(
+        `${API_BASE}/gemini/conversations/${conv.id}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            content: prompt,
+            pageContext: {
+              currentPage: "Chart Lab",
+              route: "/paper-trading",
+              pageData: {
+                instrument,
+                timeframe,
+                candleCount: sample.length,
+                userAnnotationCount: structuredAnnotations.length,
+              },
+            },
+          }),
+        }
+      );
+
+      if (!msgRes.ok) throw new Error("AI analysis failed");
+
+      const reader = msgRes.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+      let sseBuffer = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lineEnd = sseBuffer.lastIndexOf("\n");
+          if (lineEnd === -1) continue;
+          const completeLines = sseBuffer.slice(0, lineEnd + 1);
+          sseBuffer = sseBuffer.slice(lineEnd + 1);
+          for (const line of completeLines.split("\n")) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data: ")) continue;
+            try {
+              const parsed = JSON.parse(trimmed.slice(6));
+              if (parsed.content) fullText += parsed.content;
+            } catch {
+              /* ignore non-JSON data lines */
+            }
+          }
+        }
+        if (sseBuffer.startsWith("data: ")) {
+          try {
+            const parsed = JSON.parse(sseBuffer.slice(6));
+            if (parsed.content) fullText += parsed.content;
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
+      const steps: AnalysisStep[] = [];
+      const stepMatches = fullText.matchAll(/\[STEP\]([\s\S]*?)\[\/STEP\]/g);
+      for (const match of stepMatches) {
+        try {
+          const step = JSON.parse(match[1].trim());
+          steps.push(step);
+        } catch {
+          /* skip malformed step */
+        }
+      }
+
+      let overallScore = 70;
+      let summary = "Analysis complete. Review each concept highlighted on the chart.";
+      const summaryMatch = fullText.match(/\[SUMMARY\]([\s\S]*?)\[\/SUMMARY\]/);
+      if (summaryMatch) {
+        try {
+          const s = JSON.parse(summaryMatch[1].trim());
+          overallScore = s.overallScore ?? overallScore;
+          summary = s.summary ?? summary;
+        } catch {
+          /* use defaults */
+        }
+      }
+
+      if (steps.length === 0) {
+        const fallbackStep: AnalysisStep = {
+          step: 1,
+          title: "Chart Overview",
+          concept: "Market Structure",
+          priceFrom: allCandles[allCandles.length - 1].low,
+          priceTo: allCandles[allCandles.length - 1].high,
+          timeFrom: allCandles[Math.max(0, allCandles.length - 20)].time,
+          timeTo: allCandles[allCandles.length - 1].time,
+          explanation: fullText || "The AI analyzed your chart. Review the overall structure for key Smart Money concepts.",
+          grade: "B",
+        };
+        steps.push(fallbackStep);
+      }
+
+      const result: AnalysisResult = { steps, overallScore, summary };
+      setAnalysisResult(result);
+      setAnalysisMode(true);
+      setStepIndex(0);
+      setShowFinalGrade(false);
+
+      toast.success(`Mentor found ${steps.length} concepts to review`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to save to journal";
+      const message = err instanceof Error ? err.message : "Analysis failed";
       toast.error(message);
     } finally {
-      setSavingJournal((prev) => prev.filter((id) => id !== trade.id));
+      setAnalysisLoading(false);
     }
-  }
+  }, [allCandles, userAnnotations, instrument, timeframe, ictCandles]);
 
-  function toggleIndicator(key: keyof IndicatorToggles) {
-    setIndicators((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
+  useEffect(() => {
+    if (!analysisMode || !analysisResult || showFinalGrade) return;
 
-  const totalTrades = closedTrades.length;
-  const wins = closedTrades.filter((t) => t.pnlUsd > 0).length;
-  const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : "0.0";
-  const totalPnl = closedTrades.reduce((sum, t) => sum + t.pnlUsd, 0);
-  const avgRR =
-    totalTrades > 0
-      ? (
-          closedTrades.reduce((sum, t) => {
-            const risk = Math.abs(t.entryPrice - t.stopLoss);
-            const reward = Math.abs(t.exitPrice - t.entryPrice);
-            return sum + (risk > 0 ? reward / risk : 0);
-          }, 0) / totalTrades
-        ).toFixed(2)
-      : "0.00";
+    const currentStep = analysisResult.steps[stepIndex];
+    if (!currentStep) return;
 
-  const latestPrice =
-    currentIndex > 0 && allCandles[currentIndex - 1]
-      ? allCandles[currentIndex - 1].close
-      : null;
+    if (chartRef.current && currentStep.timeFrom) {
+      try {
+        const ts = chartRef.current.timeScale();
+        const timeFrom = currentStep.timeFrom as Time;
+        const timeTo = (currentStep.timeTo || currentStep.timeFrom + 86400) as Time;
 
-  const killZonesDisabled = !isIntradayTimeframe(timeframe);
+        const fromCoord = ts.timeToCoordinate(timeFrom);
+        const toCoord = ts.timeToCoordinate(timeTo);
+
+        if (fromCoord !== null && toCoord !== null) {
+          const fromLogical = ts.coordinateToLogical(fromCoord);
+          const toLogical = ts.coordinateToLogical(toCoord);
+          if (fromLogical !== null && toLogical !== null) {
+            const centerLogical = (fromLogical + toLogical) / 2;
+            const rangeSize = Math.max(toLogical - fromLogical, 30);
+            ts.setVisibleLogicalRange({
+              from: centerLogical - rangeSize * 2,
+              to: centerLogical + rangeSize * 2,
+            });
+          }
+        } else {
+          ts.scrollToRealTime();
+        }
+      } catch {
+        /* ignore scroll errors */
+      }
+    }
+
+    if (highlightPrimitiveRef.current && currentStep.priceFrom && currentStep.priceTo && currentStep.timeFrom) {
+      highlightPrimitiveRef.current.setRects([
+        {
+          startTime: currentStep.timeFrom,
+          endTime: currentStep.timeTo || currentStep.timeFrom + 86400,
+          top: Math.max(currentStep.priceFrom, currentStep.priceTo),
+          bottom: Math.min(currentStep.priceFrom, currentStep.priceTo),
+          fillColor: "#f59e0b",
+          borderColor: "#f59e0b",
+          opacity: 0.25,
+        },
+      ]);
+      invalidateChart();
+    }
+  }, [stepIndex, analysisMode, analysisResult, showFinalGrade, allCandles.length]);
+
+  useEffect(() => {
+    if (!analysisMode || !analysisResult || isPaused || showFinalGrade) return;
+
+    const interval = setInterval(() => {
+      setStepIndex((prev) => {
+        const next = prev + 1;
+        if (next >= analysisResult.steps.length) {
+          clearInterval(interval);
+          setShowFinalGrade(true);
+          if (highlightPrimitiveRef.current) {
+            highlightPrimitiveRef.current.setRects([]);
+            invalidateChart();
+          }
+          return prev;
+        }
+        return next;
+      });
+    }, 3500);
+
+    stepIntervalRef.current = interval;
+
+    return () => clearInterval(interval);
+  }, [analysisMode, analysisResult, isPaused, showFinalGrade, stepIndex]);
+
+  const exitAnalysis = useCallback(() => {
+    setAnalysisMode(false);
+    setAnalysisResult(null);
+    setStepIndex(0);
+    setShowFinalGrade(false);
+    setIsPaused(false);
+    if (highlightPrimitiveRef.current) {
+      highlightPrimitiveRef.current.setRects([]);
+      invalidateChart();
+    }
+    if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
+  }, []);
+
+  const cursorStyle = useMemo(() => {
+    if (activeTool === "eraser") return "crosshair";
+    if (activeTool === "cursor") return "default";
+    return "crosshair";
+  }, [activeTool]);
+
+  const currentStep = analysisResult?.steps[stepIndex];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="p-4 md:p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <TrendingUp className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">Paper Trading Replay</h1>
-            <p className="text-sm text-muted-foreground">Practise ICT setups on real historical data</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 items-end bg-card border border-border rounded-xl p-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground font-medium">Instrument</label>
-            <div className="relative">
-              <select
-                value={instrument}
-                onChange={(e) => setInstrument(e.target.value)}
-                className="appearance-none bg-secondary border border-border rounded-lg px-3 py-2 text-sm pr-8 focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                {INSTRUMENTS.map((i) => (
-                  <option key={i} value={i}>{i}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground font-medium">Timeframe</label>
-            <div className="flex gap-1">
-              {TIMEFRAMES.map((tf) => (
-                <button
-                  key={tf}
-                  onClick={() => setTimeframe(tf)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    timeframe === tf
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {tf}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground font-medium">Start Date</label>
-            <input
-              type="date"
-              value={startDate}
-              max={endDate}
-              min={
-                new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000)
-                  .toISOString()
-                  .split("T")[0]
-              }
-              onChange={(e) => {
-                const newStart = e.target.value;
-                setStartDate(newStart);
-                const defaultEnd = new Date(newStart);
-                defaultEnd.setDate(defaultEnd.getDate() + 7);
-                const today = new Date().toISOString().split("T")[0];
-                const proposed = defaultEnd.toISOString().split("T")[0];
-                const clampedEnd = proposed > today ? today : proposed;
-                setEndDate(clampedEnd);
-              }}
-              className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground font-medium">End Date</label>
-            <input
-              type="date"
-              value={endDate}
-              min={startDate}
-              max={new Date().toISOString().split("T")[0]}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
+    <div className="flex flex-col h-full bg-background overflow-hidden" style={{ height: "100dvh" }}>
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card shrink-0">
+        <span className="text-sm font-bold text-foreground mr-1">Chart Lab</span>
+        <div className="flex items-center gap-1.5">
+          <select
+            value={instrument}
+            onChange={(e) => setInstrument(e.target.value)}
+            className="text-xs bg-background border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            {INSTRUMENTS.map((i) => (
+              <option key={i} value={i}>{i}</option>
+            ))}
+          </select>
+          <select
+            value={timeframe}
+            onChange={(e) => setTimeframe(e.target.value)}
+            className="text-xs bg-background border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            {TIMEFRAMES.map((tf) => (
+              <option key={tf} value={tf}>{tf}</option>
+            ))}
+          </select>
           <button
             onClick={fetchCandles}
             disabled={loading}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 mt-auto"
+            className="text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded px-2.5 py-1 transition-colors disabled:opacity-50"
           >
-            {loading ? "Loading…" : "Load Candles"}
+            {loading ? "Loading…" : "Load"}
           </button>
-
-          {allCandles.length > 0 && (
-            <div className="flex items-center gap-2 ml-auto">
-              <button
-                onClick={() => {
-                  prevIndexRef.current = currentIndex - 1;
-                  setCurrentIndex((i) => Math.max(1, i - 1));
-                }}
-                disabled={currentIndex <= 1}
-                className="p-2 bg-secondary rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
-                title="Step back"
-              >
-                <SkipBack className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setIsPlaying((p) => !p)}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg flex items-center gap-2 text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                {isPlaying ? "Pause" : "Play"}
-              </button>
-              <button
-                onClick={() => {
-                  prevIndexRef.current = currentIndex;
-                  setCurrentIndex((i) => Math.min(allCandles.length, i + 1));
-                }}
-                disabled={currentIndex >= allCandles.length}
-                className="p-2 bg-secondary rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
-                title="Step forward"
-              >
-                <SkipForward className="h-4 w-4" />
-              </button>
-              <div className="flex items-center gap-1 bg-secondary rounded-lg px-2">
-                {SPEEDS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSpeed(s)}
-                    className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
-                      speed === s
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {s}×
-                  </button>
-                ))}
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {currentIndex}/{allCandles.length}
-              </span>
-            </div>
-          )}
         </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button
+            onClick={() => setShowAIIct((v) => !v)}
+            className={`flex items-center gap-1 text-xs border rounded px-2 py-1 transition-colors ${
+              showAIIct
+                ? "bg-primary/20 border-primary/40 text-primary"
+                : "bg-background border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {showAIIct ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+            Show AI ICT
+          </button>
+        </div>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mr-1">
-            ICT Overlays
-          </span>
-          {(Object.keys(INDICATOR_LABELS) as Array<keyof IndicatorToggles>).map((key) => {
-            const isDisabled = key === "killZones" && killZonesDisabled;
-            const isOn = indicators[key];
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col items-center gap-1 px-1 py-2 border-r border-border bg-card w-12 shrink-0">
+          {DRAWING_TOOLS.map((tool) => {
+            const Icon = tool.icon;
+            const isActive = activeTool === tool.id;
+            const isToggleOn =
+              (tool.id === "killzone" && showKillZones) ||
+              (tool.id === "pdhl" && showPdhl);
             return (
               <button
-                key={key}
-                onClick={() => !isDisabled && toggleIndicator(key)}
-                disabled={isDisabled}
-                title={
-                  isDisabled ? "Kill Zones only available on 1m, 5m, 15m" : undefined
-                }
-                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
-                  isDisabled
-                    ? "opacity-30 cursor-not-allowed border-border text-muted-foreground"
-                    : isOn
-                    ? "border-primary bg-primary/15 text-primary"
-                    : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                key={tool.id}
+                onClick={() => {
+                  setActiveTool(tool.id);
+                  if (tool.id === "killzone") {
+                    if (!isIntradayTimeframe(timeframe)) {
+                      toast.info("Kill Zones only available on intraday timeframes");
+                      return;
+                    }
+                    setShowKillZones((v) => !v);
+                  }
+                  if (tool.id === "pdhl") {
+                    const p = calcPDHL(ictCandles);
+                    if (p) setShowPdhl((v) => !v);
+                  }
+                }}
+                title={tool.label}
+                className={`w-9 h-9 flex items-center justify-center rounded transition-all ${
+                  isActive || isToggleOn
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
-                {isOn ? "● " : "○ "}
-                {INDICATOR_LABELS[key]}
+                <Icon className="h-4 w-4" />
               </button>
             );
           })}
-          {killZonesDisabled && (
-            <span className="text-[10px] text-muted-foreground ml-1">
-              Kill Zones: intraday only
-            </span>
-          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <div className="lg:col-span-3 bg-card border border-border rounded-xl overflow-hidden relative">
-            {allCandles.length === 0 && !loading && (
-              <div className="flex items-center justify-center h-[420px] text-muted-foreground text-sm">
-                Select an instrument and click "Load Candles" to begin
-              </div>
-            )}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div
+            ref={chartContainerRef}
+            className="flex-1"
+            style={{ cursor: analysisMode ? (isPaused ? "grab" : "default") : cursorStyle, position: "relative" }}
+            onMouseDown={analysisMode ? undefined : handleChartMouseDown}
+            onMouseMove={analysisMode ? undefined : handleChartMouseMove}
+            onMouseUp={analysisMode ? undefined : handleChartMouseUp}
+            onMouseLeave={analysisMode ? undefined : handleChartMouseUp}
+            onClick={analysisMode ? undefined : handleChartClick}
+            onPointerDown={analysisMode ? () => setIsPaused(true) : undefined}
+            onPointerUp={analysisMode ? () => setIsPaused(false) : undefined}
+            onPointerLeave={analysisMode ? () => setIsPaused(false) : undefined}
+          >
             {loading && (
-              <div className="flex items-center justify-center h-[420px] text-muted-foreground text-sm">
-                Fetching historical data…
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <span className="text-sm text-muted-foreground">Loading chart…</span>
+                </div>
               </div>
             )}
-            <div
-              ref={chartContainerRef}
-              className={allCandles.length === 0 || loading ? "hidden" : ""}
-              style={{ height: 420 }}
-            />
-            {allCandles.length > 0 && !loading && (
-              <IndicatorLegend indicators={indicators} killZonesDisabled={killZonesDisabled} />
+
+            {analysisMode && analysisResult && !showFinalGrade && (
+              <>
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1">
+                  {analysisResult.steps.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setStepIndex(i)}
+                      className={`h-2 rounded-full transition-all ${
+                        i === stepIndex ? "w-5 bg-primary" : i < stepIndex ? "w-2 bg-primary/50" : "w-2 bg-muted"
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {currentStep && (
+                  <div
+                    className="absolute bottom-0 left-0 right-0 z-20"
+                    onPointerDown={() => setIsPaused(true)}
+                    onPointerUp={() => setIsPaused(false)}
+                    onPointerLeave={() => setIsPaused(false)}
+                  >
+                    <div
+                      className="mx-3 mb-3 rounded-xl border border-border shadow-2xl overflow-hidden"
+                      style={{ background: "rgba(10,10,20,0.92)", backdropFilter: "blur(12px)" }}
+                    >
+                      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                            style={{ background: "rgba(255,255,255,0.08)", color: "#9ca3af" }}
+                          >
+                            Step {currentStep.step} of {analysisResult.steps.length}
+                          </span>
+                          <span className="text-xs font-semibold text-foreground">{currentStep.title}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="text-xs font-bold px-2 py-0.5 rounded"
+                            style={{
+                              background:
+                                currentStep.grade === "A"
+                                  ? "rgba(34,197,94,0.15)"
+                                  : currentStep.grade === "B"
+                                  ? "rgba(59,130,246,0.15)"
+                                  : currentStep.grade === "C"
+                                  ? "rgba(245,158,11,0.15)"
+                                  : "rgba(239,68,68,0.15)",
+                              color:
+                                currentStep.grade === "A"
+                                  ? "#22c55e"
+                                  : currentStep.grade === "B"
+                                  ? "#3b82f6"
+                                  : currentStep.grade === "C"
+                                  ? "#f59e0b"
+                                  : "#ef4444",
+                            }}
+                          >
+                            {currentStep.grade}
+                          </span>
+                          <button
+                            onClick={exitAnalysis}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                      <div className="px-4 pb-3">
+                        <p className="text-sm text-muted-foreground leading-relaxed">{currentStep.explanation}</p>
+                        {isPaused && (
+                          <p className="text-[10px] text-primary/70 mt-1">Hold to pause • Release to continue</p>
+                        )}
+                      </div>
+                      <div className="h-0.5 bg-muted/20">
+                        {!isPaused && (
+                          <div
+                            className="h-full bg-primary/60 transition-none"
+                            style={{ animation: "progress-bar 3.5s linear forwards" }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {showFinalGrade && analysisResult && (
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur-md">
+                <div
+                  className="rounded-2xl border border-border p-6 max-w-sm w-full mx-4 shadow-2xl"
+                  style={{ background: "rgba(10,10,20,0.95)" }}
+                >
+                  <div className="text-center mb-4">
+                    <div
+                      className="text-6xl font-black mb-1"
+                      style={{ color: getScoreColor(analysisResult.overallScore) }}
+                    >
+                      {analysisResult.overallScore}
+                    </div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {getScoreLabel(analysisResult.overallScore)}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center leading-relaxed mb-4">
+                    {analysisResult.summary}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={exitAnalysis}
+                      className="flex-1 text-sm border border-border rounded-lg py-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    >
+                      Try Again
+                    </button>
+                    <button
+                      onClick={() => {
+                        exitAnalysis();
+                        fetchCandles();
+                      }}
+                      className="flex-1 text-sm bg-primary text-primary-foreground rounded-lg py-2 font-semibold hover:bg-primary/90 transition-colors"
+                    >
+                      New Chart
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
-          <div className="space-y-3">
-            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-              <h3 className="text-sm font-semibold">Place Order</h3>
-              {latestPrice !== null && (
-                <p className="text-xs text-muted-foreground">
-                  Current price:{" "}
-                  <span className="text-foreground font-mono">
-                    {formatPrice(latestPrice)}
-                  </span>
-                </p>
+          <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-card shrink-0">
+            <div className="text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">{instrument}</span>
+              {allCandles.length > 0 && (
+                <span className="ml-1.5">{formatDateRange(allCandles)}</span>
               )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setDirection("buy")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    direction === "buy"
-                      ? "bg-green-500/20 text-green-400 border border-green-500/40"
-                      : "bg-secondary text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  Buy
-                </button>
-                <button
-                  onClick={() => setDirection("sell")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    direction === "sell"
-                      ? "bg-red-500/20 text-red-400 border border-red-500/40"
-                      : "bg-secondary text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <TrendingDown className="h-3.5 w-3.5" />
-                  Sell
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs text-muted-foreground">Lot Size</label>
-                  <input
-                    type="number"
-                    value={lotSize}
-                    min="0.01"
-                    max="10"
-                    step="0.01"
-                    onChange={(e) => setLotSize(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Stop Loss</label>
-                  <input
-                    type="number"
-                    value={slPrice}
-                    step="0.00001"
-                    placeholder="e.g. 1.08500"
-                    onChange={(e) => setSlPrice(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Take Profit</label>
-                  <input
-                    type="number"
-                    value={tpPrice}
-                    step="0.00001"
-                    placeholder="e.g. 1.09200"
-                    onChange={(e) => setTpPrice(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={placeOrder}
-                disabled={allCandles.length === 0 || currentIndex === 0}
-                className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 ${
-                  direction === "buy"
-                    ? "bg-green-500 text-white hover:bg-green-600"
-                    : "bg-red-500 text-white hover:bg-red-600"
-                }`}
-              >
-                Place {direction === "buy" ? "Buy" : "Sell"} Order
-              </button>
             </div>
 
-            {positions.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-4 space-y-2">
-                <h3 className="text-sm font-semibold">Open Positions</h3>
-                {positions.map((pos) => {
-                  const currentPnl = latestPrice !== null ? calcPnl(pos, latestPrice) : 0;
-                  return (
-                    <div key={pos.id} className="bg-secondary/50 rounded-lg p-3 space-y-1 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`font-bold ${
-                            pos.direction === "buy" ? "text-green-400" : "text-red-400"
-                          }`}
-                        >
-                          {pos.direction.toUpperCase()} {pos.lotSize} lots
-                        </span>
-                        <span
-                          className={`font-mono font-bold ${
-                            currentPnl >= 0 ? "text-green-400" : "text-red-400"
-                          }`}
-                        >
-                          {currentPnl >= 0 ? "+" : ""}${currentPnl.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="text-muted-foreground">
-                        Entry:{" "}
-                        <span className="font-mono text-foreground">
-                          {formatPrice(pos.entryPrice)}
-                        </span>
-                      </div>
-                      <div className="flex gap-3">
-                        <span className="text-muted-foreground">
-                          SL:{" "}
-                          <span className="font-mono text-red-400">
-                            {formatPrice(pos.stopLoss)}
-                          </span>
-                        </span>
-                        <span className="text-muted-foreground">
-                          TP:{" "}
-                          <span className="font-mono text-green-400">
-                            {formatPrice(pos.takeProfit)}
-                          </span>
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => closePosition(pos.id)}
-                        className="mt-1 text-xs text-muted-foreground hover:text-foreground underline"
-                      >
-                        Close manually
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <button
+              onClick={runAnalysis}
+              disabled={analysisLoading || analysisMode || allCandles.length === 0}
+              className="flex items-center gap-2 bg-primary text-primary-foreground font-bold rounded-full px-6 h-11 text-sm shadow-lg hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {analysisLoading ? (
+                <>
+                  <div className="h-4 w-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
+                  Analyzing…
+                </>
+              ) : (
+                <>
+                  <Hand className="h-4 w-4" />
+                  Ask Mentor
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={resetDrawings}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 transition-colors"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </button>
           </div>
         </div>
-
-        {totalTrades > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-card border border-border rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold">{totalTrades}</div>
-              <div className="text-xs text-muted-foreground mt-1">Total Trades</div>
-            </div>
-            <div className="bg-card border border-border rounded-xl p-4 text-center">
-              <div
-                className={`text-2xl font-bold ${
-                  parseFloat(winRate) >= 50 ? "text-green-400" : "text-red-400"
-                }`}
-              >
-                {winRate}%
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">Win Rate</div>
-            </div>
-            <div className="bg-card border border-border rounded-xl p-4 text-center">
-              <div
-                className={`text-2xl font-bold ${
-                  totalPnl >= 0 ? "text-green-400" : "text-red-400"
-                }`}
-              >
-                {totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">Total P&L</div>
-            </div>
-            <div className="bg-card border border-border rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold">{avgRR}</div>
-              <div className="text-xs text-muted-foreground mt-1">Avg R:R</div>
-            </div>
-          </div>
-        )}
-
-        {closedTrades.length > 0 && (
-          <div className="bg-card border border-border rounded-xl p-4">
-            <h3 className="text-sm font-semibold mb-3">Session Trade Log</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-muted-foreground border-b border-border">
-                    <th className="text-left pb-2">Pair</th>
-                    <th className="text-left pb-2">Dir</th>
-                    <th className="text-left pb-2">Lots</th>
-                    <th className="text-left pb-2">Entry</th>
-                    <th className="text-left pb-2">Exit</th>
-                    <th className="text-left pb-2">SL</th>
-                    <th className="text-left pb-2">TP</th>
-                    <th className="text-left pb-2">Closed By</th>
-                    <th className="text-right pb-2">P&L</th>
-                    <th className="text-right pb-2">Journal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {closedTrades.map((t) => (
-                    <tr key={t.id} className="border-b border-border/50 hover:bg-secondary/30">
-                      <td className="py-2 font-medium">{t.pair}</td>
-                      <td
-                        className={`py-2 font-bold ${
-                          t.direction === "buy" ? "text-green-400" : "text-red-400"
-                        }`}
-                      >
-                        {t.direction.toUpperCase()}
-                      </td>
-                      <td className="py-2">{t.lotSize}</td>
-                      <td className="py-2 font-mono">{formatPrice(t.entryPrice)}</td>
-                      <td className="py-2 font-mono">{formatPrice(t.exitPrice)}</td>
-                      <td className="py-2 font-mono text-red-400">{formatPrice(t.stopLoss)}</td>
-                      <td className="py-2 font-mono text-green-400">{formatPrice(t.takeProfit)}</td>
-                      <td className="py-2 capitalize">{t.closedBy}</td>
-                      <td
-                        className={`py-2 text-right font-mono font-bold ${
-                          t.pnlUsd >= 0 ? "text-green-400" : "text-red-400"
-                        }`}
-                      >
-                        {t.pnlUsd >= 0 ? "+" : ""}${t.pnlUsd.toFixed(2)}
-                      </td>
-                      <td className="py-2 text-right">
-                        <button
-                          onClick={() => saveToJournal(t)}
-                          disabled={savingJournal.includes(t.id)}
-                          className="text-primary hover:underline disabled:opacity-50"
-                        >
-                          {savingJournal.includes(t.id) ? "Saving…" : "Save"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
+
+      <style>{`
+        @keyframes progress-bar {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+      `}</style>
     </div>
   );
 }
