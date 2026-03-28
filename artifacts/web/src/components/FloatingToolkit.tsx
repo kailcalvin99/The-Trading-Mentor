@@ -173,56 +173,86 @@ const TOOLS = [
   },
 ] as const;
 
-const ARC_RADIUS = 155;
-const ARC_START_DEG = 140;
-const ARC_END_DEG = 300;
+const RING_RADIUS = 210;
+const HUB_SIZE = 48;
+
+const HUB_CENTER_MS = 370;
+const RING_COLLAPSE_MS = TOOLS.length * 25 + 380;
 
 export default function FloatingToolkit() {
   const [fanOpen, setFanOpen] = useState(false);
+  const [isCentered, setIsCentered] = useState(false);
+  const [ringExpanded, setRingExpanded] = useState(false);
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
   const { setShowFloat } = useSpotify();
   const navigate = useNavigate();
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const hubInitial = useRef({ x: window.innerWidth - 72, y: window.innerHeight - 180 });
-  const { pos: hubPos, onMouseDown: hubMouseDown, moved } = useDraggable(hubInitial.current);
+  function clearAllTimers() {
+    if (openTimer.current) { clearTimeout(openTimer.current); openTimer.current = null; }
+    if (collapseTimer.current) { clearTimeout(collapseTimer.current); collapseTimer.current = null; }
+  }
 
   useEffect(() => {
-    if (!fanOpen) return;
+    return () => clearAllTimers();
+  }, []);
+
+  function openFan() {
+    clearAllTimers();
+    setFanOpen(true);
+    setIsCentered(true);
+    setRingExpanded(false);
+    openTimer.current = setTimeout(() => {
+      openTimer.current = null;
+      setRingExpanded(true);
+    }, HUB_CENTER_MS);
+  }
+
+  function closeFan() {
+    clearAllTimers();
+    setFanOpen(false);
+    setRingExpanded(false);
+    collapseTimer.current = setTimeout(() => {
+      collapseTimer.current = null;
+      setIsCentered(false);
+    }, RING_COLLAPSE_MS);
+  }
+
+  useEffect(() => {
     function handleEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") setFanOpen(false);
+      if (e.key === "Escape" && fanOpen) closeFan();
     }
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
   }, [fanOpen]);
 
-  function handleHubMouseDown(e: React.MouseEvent) {
-    hubMouseDown(e);
-  }
-
   function handleHubClick() {
-    if (moved.current) return;
-    setFanOpen((v) => !v);
+    if (fanOpen) {
+      closeFan();
+    } else {
+      openFan();
+    }
   }
 
   function openTool(id: (typeof TOOLS)[number]["id"]) {
+    closeFan();
     if (id === "spotify") {
       setShowFloat(true);
-      setFanOpen(false);
       return;
     }
     if (id === "ai") {
       window.dispatchEvent(new Event("ict-open-ai"));
-      setFanOpen(false);
       return;
     }
     if (id === "log-trade") {
       navigate("/journal?new=1");
-      setFanOpen(false);
       return;
     }
     setOpenPanel((prev) => (prev === id ? null : id as OpenPanel));
-    setFanOpen(false);
   }
+
+  const total = TOOLS.length;
 
   return (
     <>
@@ -324,19 +354,50 @@ export default function FloatingToolkit() {
         </FloatingPanel>
       )}
 
-      {/* Hub + Fan */}
+      {/* Backdrop overlay — stays visible while hub/ring are centered (isCentered),
+          but only responds to clicks when fan is actively open (fanOpen) */}
       <div
-        className="fixed z-40 select-none"
-        style={{ left: hubPos.x, top: hubPos.y }}
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        style={{
+          opacity: isCentered ? 1 : 0,
+          pointerEvents: fanOpen ? "auto" : "none",
+          transition: "opacity 300ms ease",
+        }}
+        onClick={() => closeFan()}
+      />
+
+      {/*
+        Hub container: fixed-size box (HUB_SIZE × HUB_SIZE) that moves between
+        bottom-right corner and viewport center.
+        - Closed: bottom-right corner via right/bottom
+        - Open (isCentered): left: 50vw / top: 50vh / translate(-50%,-50%)
+        All child tool icons are anchored at `left: 50%; top: 50%` (hub center)
+        so radial transforms burst outward from the exact hub center.
+      */}
+      <div
+        className="fixed z-50 select-none"
+        style={{
+          width: HUB_SIZE,
+          height: HUB_SIZE,
+          right: isCentered ? "auto" : "1.5rem",
+          bottom: isCentered ? "auto" : "5rem",
+          left: isCentered ? "50vw" : "auto",
+          top: isCentered ? "50vh" : "auto",
+          transform: isCentered ? "translate(-50%, -50%)" : "none",
+          transition: "left 350ms ease-in-out, right 350ms ease-in-out, top 350ms ease-in-out, bottom 350ms ease-in-out, transform 350ms ease-in-out",
+        }}
       >
-        {/* Fan tool icons */}
+        {/* 360° ring of tool icons — each anchored at hub center (50%, 50%) */}
         {TOOLS.map((tool, i) => {
-          const total = TOOLS.length;
-          const angleDeg =
-            ARC_START_DEG + ((ARC_END_DEG - ARC_START_DEG) / (total - 1)) * i;
+          const angleDeg = (360 / total) * i - 90;
           const angleRad = (angleDeg * Math.PI) / 180;
-          const tx = Math.cos(angleRad) * ARC_RADIUS;
-          const ty = Math.sin(angleRad) * ARC_RADIUS;
+          const tx = Math.cos(angleRad) * RING_RADIUS;
+          const ty = Math.sin(angleRad) * RING_RADIUS;
+
+          const labelRadius = RING_RADIUS + 44;
+          const lx = Math.cos(angleRad) * labelRadius;
+          const ly = Math.sin(angleRad) * labelRadius;
+
           const { Icon } = tool;
 
           return (
@@ -344,37 +405,47 @@ export default function FloatingToolkit() {
               key={tool.id}
               className="absolute"
               style={{
-                left: 24,
-                top: 24,
-                transform: fanOpen
+                left: "50%",
+                top: "50%",
+                transform: ringExpanded
                   ? `translate(calc(${tx}px - 50%), calc(${ty}px - 50%))`
                   : "translate(-50%, -50%)",
-                transition: `transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1) ${fanOpen ? i * 40 : (total - 1 - i) * 30}ms, opacity 200ms ease ${fanOpen ? i * 40 : 0}ms`,
-                opacity: fanOpen ? 1 : 0,
-                pointerEvents: fanOpen ? "auto" : "none",
+                transition: `transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1) ${ringExpanded ? i * 35 : (total - 1 - i) * 25}ms, opacity 250ms ease ${ringExpanded ? i * 35 : 0}ms`,
+                opacity: ringExpanded ? 1 : 0,
+                pointerEvents: ringExpanded ? "auto" : "none",
               }}
             >
-              <div className="relative group">
-                <button
-                  onClick={() => openTool(tool.id)}
-                  className={`w-10 h-10 rounded-full ${tool.color} shadow-lg flex items-center justify-center transition-transform hover:scale-110`}
-                  title={tool.label}
-                >
-                  <Icon className="w-4 h-4" />
-                </button>
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-0.5 bg-card border border-border text-[10px] font-semibold text-foreground rounded-full whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
-                  {tool.label}
-                </span>
-              </div>
+              <button
+                onClick={() => openTool(tool.id)}
+                className={`w-11 h-11 rounded-full ${tool.color} shadow-lg flex items-center justify-center transition-transform hover:scale-110`}
+                title={tool.label}
+              >
+                <Icon className="w-5 h-5" />
+              </button>
+
+              {/* Always-visible radial label positioned further along radial */}
+              <span
+                className="absolute pointer-events-none whitespace-nowrap text-white font-semibold"
+                style={{
+                  fontSize: "11px",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)",
+                  left: `calc(50% + ${lx - tx}px)`,
+                  top: `calc(50% + ${ly - ty}px)`,
+                  transform: "translate(-50%, -50%)",
+                  opacity: ringExpanded ? 1 : 0,
+                  transition: `opacity 250ms ease ${ringExpanded ? i * 35 + 150 : 0}ms`,
+                }}
+              >
+                {tool.label}
+              </span>
             </div>
           );
         })}
 
-        {/* Hub button */}
+        {/* Hub button — sits at the natural flow position, center of container */}
         <button
-          onMouseDown={handleHubMouseDown}
           onClick={handleHubClick}
-          className={`relative w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-all duration-200 cursor-grab active:cursor-grabbing ${
+          className={`absolute inset-0 rounded-full shadow-2xl flex items-center justify-center transition-all duration-200 ${
             fanOpen
               ? "bg-primary text-primary-foreground scale-95"
               : "bg-card border-2 border-primary text-primary hover:scale-105"
