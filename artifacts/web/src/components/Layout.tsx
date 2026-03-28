@@ -61,17 +61,17 @@ const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
 const COMMUNITY_POLL_INTERVAL = 3 * 60 * 1000;
 
 const navItems = [
-  { to: "/", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkillLevel: 0 },
-  { to: "/open-positions", label: "Open Positions", mobileLabel: "Positions", icon: Activity, requiredTier: 0, minSkillLevel: 0 },
-  { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0, minSkillLevel: 0 },
-  { to: "/videos", label: "Videos", mobileLabel: "Videos", icon: Video, requiredTier: 0, minSkillLevel: 0 },
-  { to: "/planner", label: "Mission Control", mobileLabel: "Mission", icon: Calendar, requiredTier: 0, minSkillLevel: 0 },
-  { to: "/prop-tracker", label: "Prop Tracker", mobileLabel: "Prop", icon: Trophy, requiredTier: 1, minSkillLevel: 1 },
-  { to: "/paper-trading", label: "Paper Trading", mobileLabel: "Replay", icon: CandlestickChart, requiredTier: 1, minSkillLevel: 1 },
-  { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 1, minSkillLevel: 1 },
-  { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2, minSkillLevel: 1 },
-  { to: "/leaderboard", label: "Leaderboard", mobileLabel: "Rank", icon: Trophy, requiredTier: 2, minSkillLevel: 2 },
-  { to: "/community", label: "Community", mobileLabel: "Community", icon: Users, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/open-positions", label: "Open Positions", icon: Activity, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/academy", label: "ICT Academy", icon: GraduationCap, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/videos", label: "Videos", icon: Video, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/planner", label: "Mission Control", icon: Calendar, requiredTier: 0, minSkillLevel: 0 },
+  { to: "/prop-tracker", label: "Prop Tracker", icon: Trophy, requiredTier: 1, minSkillLevel: 1 },
+  { to: "/paper-trading", label: "Paper Trading", icon: CandlestickChart, requiredTier: 1, minSkillLevel: 1 },
+  { to: "/journal", label: "Smart Journal", icon: BookOpen, requiredTier: 1, minSkillLevel: 1 },
+  { to: "/analytics", label: "Analytics", icon: BarChart3, requiredTier: 2, minSkillLevel: 1 },
+  { to: "/leaderboard", label: "Leaderboard", icon: Trophy, requiredTier: 2, minSkillLevel: 2 },
+  { to: "/community", label: "Community", icon: Users, requiredTier: 0, minSkillLevel: 0 },
 ];
 
 const SKILL_LEVEL_NUM: Record<SkillLevel | "none", number> = {
@@ -171,63 +171,6 @@ function NavItem({
   return link;
 }
 
-function MobileNavItem({
-  to,
-  mobileLabel,
-  icon: Icon,
-  requiredTier,
-  userTier,
-  onLockedClick,
-  badge,
-}: {
-  to: string;
-  mobileLabel: string;
-  icon: React.ComponentType<{ className?: string }>;
-  requiredTier: number;
-  userTier: number;
-  onLockedClick: () => void;
-  badge?: boolean | number;
-}) {
-  const isLocked = requiredTier > userTier;
-
-  if (isLocked) {
-    return (
-      <button
-        onClick={onLockedClick}
-        className="flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-2 text-[10px] font-medium text-muted-foreground/30 cursor-not-allowed"
-      >
-        <div className="relative">
-          <Icon className="h-5 w-5 opacity-40" />
-          <Lock className="h-2.5 w-2.5 absolute -bottom-0.5 -right-0.5 text-muted-foreground/50" />
-        </div>
-        <span className="opacity-40">{mobileLabel}</span>
-      </button>
-    );
-  }
-
-  const badgeNum = typeof badge === "number" ? badge : badge ? 1 : 0;
-  return (
-    <NavLink
-      to={to}
-      end
-      className={({ isActive }) =>
-        `flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-2 text-[10px] font-medium transition-colors ${
-          isActive ? "text-primary" : "text-muted-foreground"
-        }`
-      }
-    >
-      <div className="relative">
-        <Icon className="h-5 w-5" />
-        {badgeNum > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full bg-red-500 border border-background text-[9px] font-bold text-white">
-            {badgeNum > 99 ? "99+" : badgeNum}
-          </span>
-        )}
-      </div>
-      <span>{mobileLabel}</span>
-    </NavLink>
-  );
-}
 
 function ShareModal({
   founderSpotsLeft,
@@ -823,17 +766,7 @@ export default function Layout() {
             </div>
           </main>
 
-          <nav className="md:hidden flex items-center border-t border-border bg-sidebar shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-            {visibleNavItems.map((item) => (
-              <MobileNavItem
-                key={item.to}
-                {...item}
-                userTier={tierLevel}
-                onLockedClick={handleLockedClick}
-                badge={item.to === "/community" ? communityHasNew : item.to === "/journal" ? journalDraftCount : undefined}
-              />
-            ))}
-          </nav>
+
         </div>
 
         {showShare && (
