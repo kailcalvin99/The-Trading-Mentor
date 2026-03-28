@@ -485,14 +485,13 @@ export default function Layout() {
       const delta = currentY - lastScrollY.current;
       if (currentY <= 0) {
         setHeaderVisible(true);
+        lastScrollY.current = 0;
       } else if (delta > SCROLL_THRESHOLD) {
         setHeaderVisible(false);
         lastScrollY.current = currentY;
-      } else if (delta < -SCROLL_THRESHOLD) {
-        setHeaderVisible(true);
+      } else {
         lastScrollY.current = currentY;
       }
-      if (currentY <= 0) lastScrollY.current = 0;
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
@@ -758,7 +757,7 @@ export default function Layout() {
             style={{
               transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
               marginBottom: headerVisible ? 0 : "-3rem",
-              transition: "transform 300ms ease-in-out, margin-bottom 300ms ease-in-out",
+              transition: "transform 475ms cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 475ms cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
             <button
