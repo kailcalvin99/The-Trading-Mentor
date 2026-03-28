@@ -24,6 +24,8 @@ import {
   Square,
   X,
   CheckCircle2,
+  Circle,
+  Zap,
 } from "lucide-react";
 import { usePlanner } from "@/contexts/PlannerContext";
 import SmartMoneyChecklist from "@/components/SmartMoneyChecklist";
@@ -342,28 +344,6 @@ function useSmartMoneyScore() {
   return confidence;
 }
 
-function SmartMoneySquareWidget({ confidence }: { confidence: { score: number; factors: Array<{ label: string; met: boolean }> } | null }) {
-  if (!confidence) return null;
-
-  const score = confidence.score;
-  const barColor = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
-  const colorClass = score >= 80 ? "text-emerald-400" : score >= 60 ? "text-amber-400" : "text-red-400";
-  const gradeLabel = score >= 80 ? "High Prob" : score >= 60 ? "Moderate" : "Wait";
-
-  return (
-    <div className="absolute top-0 right-0 translate-x-[calc(100%+12px)] w-[110px] h-[110px] bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl items-center justify-center gap-1 p-2.5 flex-col hidden lg:flex">
-      <div className="flex items-center gap-1 mb-0.5">
-        <Shield className="h-3 w-3 text-primary shrink-0" />
-        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Smart $</span>
-      </div>
-      <span className={`text-3xl font-bold font-mono leading-none ${colorClass}`}>{score}</span>
-      <div className="w-full h-1.5 bg-muted/40 rounded-full overflow-hidden mt-0.5">
-        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${score}%`, backgroundColor: barColor }} />
-      </div>
-      <span className={`text-[10px] font-semibold leading-none mt-0.5 ${colorClass}`}>{gradeLabel}</span>
-    </div>
-  );
-}
 
 export default function DailyPlanner() {
   const navigate = useNavigate();
@@ -386,8 +366,9 @@ export default function DailyPlanner() {
   const [riskChecked, setRiskChecked] = useState<Record<string, boolean>>(() => getRiskChecklistState());
   const [fvgChecked, setFvgChecked] = useState<Record<string, boolean>>(() => getFvgChecklistState());
   const [rulesChecked, setRulesChecked] = useState<Record<string, boolean>>(() => getRulesChecklistState());
-  const [fvgOpen, setFvgOpen] = useState(true);
   const [rulesOpen, setRulesOpen] = useState(true);
+  const [smartMoneyOpen, setSmartMoneyOpen] = useState(false);
+  const [fvgPopupOpen, setFvgPopupOpen] = useState(false);
   const [posCalcPoints, setPosCalcPoints] = useState("");
   const [successToast, setSuccessToast] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -815,8 +796,34 @@ export default function DailyPlanner() {
         </CardContent>
       </Card>
 
-      <div className="relative">
-        <SmartMoneySquareWidget confidence={smartMoneyConfidence} />
+      {/* Widget trigger row — Smart Money + FVG */}
+      <div className="flex gap-2 mb-4">
+        {smartMoneyConfidence && (() => {
+          const s = smartMoneyConfidence.score;
+          const sc = s >= 80 ? "text-emerald-400" : s >= 60 ? "text-amber-400" : "text-red-400";
+          return (
+            <button
+              onClick={() => setSmartMoneyOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-bold shadow hover:border-primary/40 transition-all"
+            >
+              <Shield className="h-3.5 w-3.5 text-primary" />
+              <span className="text-muted-foreground">Smart $</span>
+              <span className={sc}>{s}</span>
+            </button>
+          );
+        })()}
+        <button
+          onClick={() => setFvgPopupOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-bold shadow hover:border-cyan-500/30 transition-all"
+        >
+          <Zap className="h-3.5 w-3.5 text-cyan-400" />
+          <span className="text-muted-foreground">FVG Scan</span>
+          <span className={fvgAllChecked ? "text-cyan-400" : "text-muted-foreground"}>
+            {PRETRADE_FVG_ITEMS.filter((i) => fvgChecked[i.id]).length}/{PRETRADE_FVG_ITEMS.length}
+          </span>
+        </button>
+      </div>
+
       <Card className="mb-4">
         <CardContent className="p-4">
           <button onClick={() => setTradePlanOpen(!tradePlanOpen)} className="flex items-center justify-between w-full">
@@ -1035,54 +1042,6 @@ export default function DailyPlanner() {
                     </div>
                   </div>
 
-                  {/* FVG Scan */}
-                  <div className="border-t border-border pt-4">
-                    <button
-                      onClick={() => setFvgOpen(!fvgOpen)}
-                      className="flex items-center justify-between w-full mb-3"
-                    >
-                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 cursor-pointer">
-                        <ClipboardCheck className="h-3.5 w-3.5 text-cyan-400" />
-                        FVG Scan
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${fvgAllChecked ? "bg-cyan-500/20 text-cyan-400" : "bg-secondary text-muted-foreground"}`}>
-                          {PRETRADE_FVG_ITEMS.filter((i) => fvgChecked[i.id]).length}/{PRETRADE_FVG_ITEMS.length}
-                        </span>
-                        {fvgOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-                      </div>
-                    </button>
-                    {fvgOpen && (
-                      <>
-                        <div className="space-y-2">
-                          {PRETRADE_FVG_ITEMS.map((item) => (
-                            <button
-                              key={item.id}
-                              onClick={() => toggleFvgChecklist(item.id)}
-                              className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${fvgChecked[item.id] ? "bg-cyan-500/10 border-cyan-500/30" : "bg-secondary/30 border-border hover:border-cyan-500/30"}`}
-                            >
-                              {fvgChecked[item.id]
-                                ? <CheckSquare className="h-4 w-4 text-cyan-500 shrink-0 mt-0.5" />
-                                : <Square className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
-                              <div>
-                                <div className={`text-sm font-semibold ${fvgChecked[item.id] ? "text-cyan-400" : "text-foreground"}`}>{item.label}</div>
-                                <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                        {fvgAllChecked && (
-                          <button
-                            onClick={resetFvgChecklist}
-                            className="mt-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
-                          >
-                            Reset FVG scan
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-
                   {/* Rules Before Trade */}
                   <div className="border-t border-border pt-4">
                     <button
@@ -1282,7 +1241,6 @@ export default function DailyPlanner() {
           )}
         </CardContent>
       </Card>
-      </div>
 
       <div className={!biasSelected ? "pointer-events-none opacity-35 relative" : ""}>
         {!biasSelected && (
@@ -1544,6 +1502,100 @@ export default function DailyPlanner() {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    )}
+    {/* Smart Money Score popup */}
+    {smartMoneyOpen && smartMoneyConfidence && (() => {
+      const s = smartMoneyConfidence.score;
+      const barColor = s >= 80 ? "#10b981" : s >= 60 ? "#f59e0b" : "#ef4444";
+      const colorClass = s >= 80 ? "text-emerald-400" : s >= 60 ? "text-amber-400" : "text-red-400";
+      const gradeLabel = s >= 80 ? "High Prob" : s >= 60 ? "Moderate" : "Wait";
+      return (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setSmartMoneyOpen(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-2xl shadow-2xl p-5 w-72 max-w-[90vw]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                Smart Money Movement Score
+              </h3>
+              <button onClick={() => setSmartMoneyOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="text-center mb-4">
+              <span className={`text-5xl font-bold font-mono ${colorClass}`}>{s}</span>
+              <div className="w-full h-2 bg-muted/40 rounded-full overflow-hidden mt-2">
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${s}%`, backgroundColor: barColor }} />
+              </div>
+              <span className={`text-sm font-semibold mt-1 block ${colorClass}`}>{gradeLabel}</span>
+            </div>
+            <div className="space-y-1.5">
+              {smartMoneyConfidence.factors.map((f) => (
+                <div
+                  key={f.label}
+                  className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg ${f.met ? "bg-emerald-500/10 text-emerald-400" : "bg-secondary text-muted-foreground"}`}
+                >
+                  {f.met ? <CheckCircle2 className="h-3 w-3 shrink-0" /> : <Circle className="h-3 w-3 shrink-0" />}
+                  {f.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+
+    {/* FVG Scan popup */}
+    {fvgPopupOpen && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        onClick={() => setFvgPopupOpen(false)}
+      >
+        <div
+          className="bg-card border border-border rounded-2xl shadow-2xl p-5 w-80 max-w-[90vw]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <Zap className="h-4 w-4 text-cyan-400" />
+              FVG Scan
+            </h3>
+            <button onClick={() => setFvgPopupOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-2">
+            {PRETRADE_FVG_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => toggleFvgChecklist(item.id)}
+                className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${fvgChecked[item.id] ? "bg-cyan-500/10 border-cyan-500/30" : "bg-secondary/30 border-border hover:border-cyan-500/30"}`}
+              >
+                {fvgChecked[item.id]
+                  ? <CheckCircle2 className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
+                  : <Circle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />}
+                <div>
+                  <div className={`text-sm font-semibold ${fvgChecked[item.id] ? "text-cyan-400" : "text-foreground"}`}>{item.label}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+          {fvgAllChecked && (
+            <button
+              onClick={() => { resetFvgChecklist(); }}
+              className="mt-3 w-full text-xs text-muted-foreground hover:text-foreground py-1.5 text-center border border-dashed border-border rounded-lg hover:border-foreground/30 transition-colors"
+            >
+              Reset FVG scan
+            </button>
+          )}
         </div>
       </div>
     )}
