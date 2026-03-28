@@ -35,6 +35,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import CoolDownOverlay, { FailureAnalysis } from "@/components/CoolDownOverlay";
 import { recordDisciplinedDay } from "@/components/HallOfFame";
 import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
+import { ConfidenceScoreCard, FvgSignalCard } from "@/pages/dashboard/LiveSignalWidgets";
 
 import {
   PRETRADE_CHECKLIST_ITEMS as RISK_CHECKLIST_ITEMS,
@@ -640,7 +641,7 @@ export default function DailyPlanner() {
       </div>
     )}
 
-    <div className="p-6 max-w-3xl mx-auto pb-24">
+    <div className="p-6 pb-24 max-w-screen-xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Calendar className="h-6 w-6 text-primary" />
@@ -661,6 +662,9 @@ export default function DailyPlanner() {
           </button>
         </div>
       </div>
+
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex-1 min-w-0 w-full">
 
       {/* Risk Tool Buttons */}
       <div className="flex items-center gap-2 mb-5 flex-wrap">
@@ -1294,6 +1298,16 @@ export default function DailyPlanner() {
           </button>
         </div>
       )}
+      </div>
+
+      {/* Sticky Right Panel — Smart Money & FVG widgets */}
+      <div className="w-full lg:w-72 lg:shrink-0">
+        <div className="lg:sticky lg:top-6 space-y-4">
+          <ConfidenceScoreCard />
+          <FvgSignalCard />
+        </div>
+      </div>
+
       </div>
     </div>
 
