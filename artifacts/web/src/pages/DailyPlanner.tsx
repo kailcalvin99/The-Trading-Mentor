@@ -324,54 +324,43 @@ declare global {
 }
 
 
-function PlannerConfidenceScorePanel() {
+function useSmartMoneyScore() {
   const [confidence, setConfidence] = useState<{ score: number; factors: Array<{ label: string; met: boolean }> } | null>(null);
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL || "/api";
-    fetch(`${apiBase}/signals/confidence`, { credentials: "include" })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d) setConfidence(d); })
-      .catch(() => {});
-    const id = setInterval(() => {
+    const doFetch = () =>
       fetch(`${apiBase}/signals/confidence`, { credentials: "include" })
         .then((r) => r.ok ? r.json() : null)
         .then((d) => { if (d) setConfidence(d); })
         .catch(() => {});
-    }, 15000);
+    doFetch();
+    const id = setInterval(doFetch, 15000);
     return () => clearInterval(id);
   }, []);
 
+  return confidence;
+}
+
+function SmartMoneySquareWidget({ confidence }: { confidence: { score: number; factors: Array<{ label: string; met: boolean }> } | null }) {
   if (!confidence) return null;
 
   const score = confidence.score;
-  const color = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
+  const barColor = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
   const colorClass = score >= 80 ? "text-emerald-400" : score >= 60 ? "text-amber-400" : "text-red-400";
+  const gradeLabel = score >= 80 ? "High Prob" : score >= 60 ? "Moderate" : "Wait";
 
   return (
-    <div className="sticky top-[48px] z-10 bg-card/95 backdrop-blur-md border-b border-border px-4 py-2.5 flex items-center gap-3 flex-wrap">
-      <div className="flex items-center gap-1.5 shrink-0">
-        <Shield className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">Smart Money</span>
+    <div className="absolute top-0 right-0 translate-x-[calc(100%+12px)] w-[110px] h-[110px] bg-card/95 backdrop-blur-md border border-border rounded-2xl shadow-2xl items-center justify-center gap-1 p-2.5 flex-col hidden lg:flex">
+      <div className="flex items-center gap-1 mb-0.5">
+        <Shield className="h-3 w-3 text-primary shrink-0" />
+        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Smart $</span>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className={`text-lg font-bold font-mono leading-none ${colorClass}`}>{score}</span>
-        <div className="w-20 h-1.5 bg-muted/40 rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${score}%`, backgroundColor: color }} />
-        </div>
+      <span className={`text-3xl font-bold font-mono leading-none ${colorClass}`}>{score}</span>
+      <div className="w-full h-1.5 bg-muted/40 rounded-full overflow-hidden mt-0.5">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${score}%`, backgroundColor: barColor }} />
       </div>
-      <div className="flex items-center gap-1 flex-wrap">
-        {confidence.factors.map((f, i) => (
-          <span
-            key={i}
-            className={`text-[10px] px-1.5 py-0.5 rounded font-semibold whitespace-nowrap ${
-              f.met ? "bg-emerald-500/15 text-emerald-400" : "bg-secondary/60 text-muted-foreground"
-            }`}
-          >
-            {f.met ? "✓" : "○"} {f.label}
-          </span>
-        ))}
-      </div>
+      <span className={`text-[10px] font-semibold leading-none mt-0.5 ${colorClass}`}>{gradeLabel}</span>
     </div>
   );
 }
@@ -406,6 +395,7 @@ export default function DailyPlanner() {
   const { data: apiTrades } = useListTrades();
   const trades = (apiTrades || []) as TradeRecord[];
   const { data: propAccount } = useGetPropAccount();
+  const smartMoneyConfidence = useSmartMoneyScore();
 
   const isToday = selectedDate.toISOString().split("T")[0] === new Date().toISOString().split("T")[0];
   const keyLevels = migrateKeyLevels(dayData.tradePlan.keyLevels);
@@ -669,8 +659,6 @@ export default function DailyPlanner() {
       </div>
     )}
 
-    <PlannerConfidenceScorePanel />
-
     <div className="p-6 max-w-3xl mx-auto pb-24">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -827,6 +815,8 @@ export default function DailyPlanner() {
         </CardContent>
       </Card>
 
+      <div className="relative">
+        <SmartMoneySquareWidget confidence={smartMoneyConfidence} />
       <Card className="mb-4">
         <CardContent className="p-4">
           <button onClick={() => setTradePlanOpen(!tradePlanOpen)} className="flex items-center justify-between w-full">
@@ -1292,6 +1282,7 @@ export default function DailyPlanner() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       <div className={!biasSelected ? "pointer-events-none opacity-35 relative" : ""}>
         {!biasSelected && (
