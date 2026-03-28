@@ -4,7 +4,6 @@ import { Animated, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import AIAssistant from "@/components/AIAssistant";
 import FloatingToolkit from "@/components/FloatingToolkit";
 import TopTabBar from "@/components/TopTabBar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -197,7 +196,6 @@ function TabLayoutInner() {
       </Animated.View>
 
       <FloatingToolkit />
-      <AIAssistant />
     </View>
   );
 }
