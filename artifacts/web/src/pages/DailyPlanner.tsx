@@ -102,12 +102,12 @@ const TICK_DATA: Record<string, { tick: number; miniValue: number; microValue: n
 };
 
 const PRESET_LEVELS = [
-  { label: "PDH", type: "resistance" as const, desc: "Prev Day High" },
-  { label: "PDL", type: "support" as const, desc: "Prev Day Low" },
+  { label: "Prev Day High", type: "resistance" as const, desc: "Prev Day High" },
+  { label: "Prev Day Low", type: "support" as const, desc: "Prev Day Low" },
   { label: "Midnight Open", type: "support" as const, desc: "Midnight Open" },
-  { label: "NWOG", type: "support" as const, desc: "New Week Opening Gap" },
-  { label: "ODL", type: "support" as const, desc: "Opening Day Low" },
-  { label: "ODH", type: "resistance" as const, desc: "Opening Day High" },
+  { label: "New Week Opening Gap", type: "support" as const, desc: "New Week Opening Gap" },
+  { label: "Opening Day Low", type: "support" as const, desc: "Opening Day Low" },
+  { label: "Opening Day High", type: "resistance" as const, desc: "Opening Day High" },
 ];
 
 function getDayKey(date: Date) {
