@@ -4,7 +4,6 @@ import {
   Shield, BookOpen, Calendar, Brain, CheckCircle2, AlertTriangle,
   ArrowRight, ChevronDown, Star, Zap, Crown, Check, Mail,
 } from "lucide-react";
-import Logo from "@/components/Logo";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -178,15 +177,9 @@ export default function Welcome() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
 
-      {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
+      {/* ── Fixed Header ── */}
+      <header className="fixed top-0 left-0 right-0 w-full z-50 border-b border-border bg-background/90 backdrop-blur-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 h-14">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-7 w-7" />
-            <span className="font-bold text-foreground text-sm hidden sm:inline">The Trading Mentor</span>
-          </Link>
-
           {/* Nav links */}
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
@@ -210,7 +203,7 @@ export default function Welcome() {
         </div>
       </header>
 
-      <main className="flex-1">
+      <main className="flex-1 pt-14">
 
         {/* ── Hero Banner ── */}
         <section
