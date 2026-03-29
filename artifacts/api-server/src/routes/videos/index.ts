@@ -43,7 +43,7 @@ router.post("/watched", authRequired, async (req, res) => {
 router.delete("/watched/:videoId", authRequired, async (req, res) => {
   try {
     const userId = req.user!.userId;
-    const { videoId } = req.params;
+    const videoId = String(req.params.videoId);
     await db
       .delete(videoWatchedTable)
       .where(and(eq(videoWatchedTable.userId, userId), eq(videoWatchedTable.videoId, videoId)));

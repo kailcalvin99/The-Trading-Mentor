@@ -87,7 +87,7 @@ export interface CreateTradeBody {
   pair: string;
   entryTime: string;
   riskPct: number;
-  liquiditySweep: boolean;
+  liquiditySweep?: boolean;
   outcome?: string;
   notes?: string;
   setupScore?: number;
@@ -97,4 +97,7 @@ export interface CreateTradeBody {
   sideDirection?: string;
   followedTimeRule?: boolean;
   hasFvgConfirmation?: boolean;
+  setupType?: string;
+  entryPrice?: string;
+  tradingSession?: string;
 }

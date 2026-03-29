@@ -6,15 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from "./addDailyLossBody";
-export * from "./createGeminiConversationBody";
-export * from "./createPropAccountBody";
-export * from "./createTradeBody";
-export * from "./geminiConversation";
-export * from "./geminiConversationWithMessages";
-export * from "./geminiError";
-export * from "./geminiMessage";
-export * from "./healthStatus";
-export * from "./propAccount";
-export * from "./sendGeminiMessageBody";
-export * from "./trade";
+export type * from "./addDailyLossBody";
+export type * from "./createGeminiConversationBody";
+export type * from "./createPropAccountBody";
+export type * from "./createTradeBody";
+export type * from "./geminiConversation";
+export type * from "./geminiConversationWithMessages";
+export type * from "./geminiError";
+export type * from "./geminiMessage";
+export type * from "./healthStatus";
+export type * from "./propAccount";
+export type * from "./sendGeminiMessageBody";
+export type * from "./trade";

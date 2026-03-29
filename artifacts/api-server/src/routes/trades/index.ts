@@ -194,7 +194,7 @@ router.post("/", authRequired, async (req, res) => {
 // FIX #3: ownership check — only the trade owner can get coaching
 router.post("/:id/coach", authRequired, tierRequired(2), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     if (isNaN(id) || id <= 0) {
       res.status(400).json({ error: "Invalid trade ID" });
       return;
@@ -302,7 +302,7 @@ router.delete("/all", authRequired, async (req, res) => {
 // FIX #2: ownership check — only the trade owner can delete it
 router.delete("/:id", authRequired, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     if (isNaN(id) || id <= 0) {
       res.status(400).json({ error: "Invalid trade ID" });
       return;

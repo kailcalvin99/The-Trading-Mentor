@@ -37,6 +37,7 @@ export default function MorningBriefingWidget() {
       const t = setTimeout(() => setVisible(true), 50);
       return () => clearTimeout(t);
     }
+    return;
   }, [shouldShow]);
 
   useEffect(() => {

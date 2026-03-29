@@ -1,14 +1,15 @@
-type Type = string;
+import type { FunctionDeclaration } from "@google/genai";
+import { Type } from "@google/genai";
 
-export const USER_TOOL_DECLARATIONS = [
+export const USER_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
     name: "navigate",
     description: "Navigate the user to a specific page in the app. Use this when the user asks to go to a page, or when an action requires showing a specific page.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
         page: {
-          type: "STRING" as Type,
+          type: Type.STRING,
           description: "The page to navigate to. Options: academy, planner, risk-shield, journal, analytics, pricing, admin, welcome, community, dashboard",
         },
       },
@@ -19,15 +20,15 @@ export const USER_TOOL_DECLARATIONS = [
     name: "log_trade",
     description: "Log a trade in the Smart Journal. Use this when the user says they want to log a trade, record a win/loss, etc.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        pair: { type: "STRING" as Type, description: "Trading pair/ticker (e.g., NQ1!, MNQ1!, ES1!)" },
-        outcome: { type: "STRING" as Type, description: "Trade outcome: win, loss, or breakeven" },
-        riskPct: { type: "NUMBER" as Type, description: "Risk percentage (e.g., 0.5)" },
-        entryTime: { type: "STRING" as Type, description: "Entry time (e.g., 10:15 AM)" },
-        notes: { type: "STRING" as Type, description: "Trade notes including entry mode [Conservative] or [Silver Bullet]" },
-        sideDirection: { type: "STRING" as Type, description: "BUY or SELL" },
-        behaviorTag: { type: "STRING" as Type, description: "Behavior tag: Disciplined, FOMO, Chased, or Greedy" },
+        pair: { type: Type.STRING, description: "Trading pair/ticker (e.g., NQ1!, MNQ1!, ES1!)" },
+        outcome: { type: Type.STRING, description: "Trade outcome: win, loss, or breakeven" },
+        riskPct: { type: Type.NUMBER, description: "Risk percentage (e.g., 0.5)" },
+        entryTime: { type: Type.STRING, description: "Entry time (e.g., 10:15 AM)" },
+        notes: { type: Type.STRING, description: "Trade notes including entry mode [Conservative] or [Silver Bullet]" },
+        sideDirection: { type: Type.STRING, description: "BUY or SELL" },
+        behaviorTag: { type: Type.STRING, description: "Behavior tag: Disciplined, FOMO, Chased, or Greedy" },
       },
       required: ["pair", "outcome"],
     },
@@ -36,9 +37,9 @@ export const USER_TOOL_DECLARATIONS = [
     name: "get_journal_entries",
     description: "Get the user's recent trade journal entries. Use when the user asks about their trades, recent performance, or trading history.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        limit: { type: "NUMBER" as Type, description: "Number of trades to return (default 10)" },
+        limit: { type: Type.NUMBER, description: "Number of trades to return (default 10)" },
       },
     },
   },
@@ -46,7 +47,7 @@ export const USER_TOOL_DECLARATIONS = [
     name: "get_analytics_summary",
     description: "Get a summary of the user's trading analytics including win rate, total trades, behavior patterns, profit factor, etc. Use when the user asks 'how did I do', 'what's my win rate', or anything about their performance.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {},
     },
   },
@@ -54,11 +55,11 @@ export const USER_TOOL_DECLARATIONS = [
     name: "calculate_position_size",
     description: "Calculate position size for NQ/MNQ futures based on account balance, risk percentage, and stop loss distance. Use when the user asks about position sizing, how many contracts to trade, etc.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        stopLossPoints: { type: "NUMBER" as Type, description: "Stop loss distance in points" },
-        riskPct: { type: "NUMBER" as Type, description: "Risk percentage of account (default 0.5)" },
-        accountBalance: { type: "NUMBER" as Type, description: "Optional override for account balance" },
+        stopLossPoints: { type: Type.NUMBER, description: "Stop loss distance in points" },
+        riskPct: { type: Type.NUMBER, description: "Risk percentage of account (default 0.5)" },
+        accountBalance: { type: Type.NUMBER, description: "Optional override for account balance" },
       },
       required: ["stopLossPoints"],
     },
@@ -67,13 +68,13 @@ export const USER_TOOL_DECLARATIONS = [
     name: "complete_planner_items",
     description: "Mark morning routine items as complete. Use when the user says 'mark my routine done', 'complete my morning routine', etc.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        markAll: { type: "BOOLEAN" as Type, description: "If true, mark ALL routine items as complete" },
+        markAll: { type: Type.BOOLEAN, description: "If true, mark ALL routine items as complete" },
         items: {
-          type: "ARRAY" as Type,
+          type: Type.ARRAY,
           description: "Specific item keys to mark complete",
-          items: { type: "STRING" as Type },
+          items: { type: Type.STRING },
         },
       },
     },
@@ -82,7 +83,7 @@ export const USER_TOOL_DECLARATIONS = [
     name: "get_user_context",
     description: "Get the current user's profile, subscription, and app context. Use when you need information about the user to answer a question.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {},
     },
   },
@@ -90,7 +91,7 @@ export const USER_TOOL_DECLARATIONS = [
     name: "get_kill_zone_status",
     description: "Get the current ICT kill zone status based on real New York time. Use when the user asks 'are we in a kill zone?', 'should I be trading right now?', 'what session is active?', or any timing-related question.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {},
     },
   },
@@ -98,10 +99,10 @@ export const USER_TOOL_DECLARATIONS = [
     name: "get_academy_lesson",
     description: "Look up academy lesson content by ICT concept keyword. Use when the user asks 'what is X?', 'explain X', 'teach me about X' — for any ICT concept (FVG, OB, OTE, MSS, liquidity, sweep, kill zone, premium, discount, displacement, SMT, IPDA, etc.).",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
         concept: {
-          type: "STRING" as Type,
+          type: Type.STRING,
           description: "The ICT concept or keyword to look up (e.g., 'FVG', 'Order Block', 'OTE', 'liquidity sweep', 'MSS', 'kill zone', 'premium', 'discount')",
         },
       },
@@ -112,18 +113,18 @@ export const USER_TOOL_DECLARATIONS = [
     name: "get_psychology_report",
     description: "Get a structured psychology/emotional-leaks report from the trading journal. Use when the user asks 'what are my emotional leaks?', 'how is my discipline?', 'am I trading emotionally?', 'what is my mindset score?', or anything about trading psychology and behaviour patterns.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {},
     },
   },
 ];
 
-export const ADMIN_TOOL_DECLARATIONS = [
+export const ADMIN_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
     name: "list_users_summary",
     description: "List all users with their subscription status. Admin only. Use when admin asks about users, user count, who's subscribed, etc.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {},
     },
   },
@@ -131,7 +132,7 @@ export const ADMIN_TOOL_DECLARATIONS = [
     name: "get_platform_stats",
     description: "Get platform-wide statistics: user counts, subscription distribution, trade counts, revenue summary. Admin only.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {},
     },
   },
@@ -139,9 +140,9 @@ export const ADMIN_TOOL_DECLARATIONS = [
     name: "get_inactive_users",
     description: "Get a list of users who haven't been active on the platform (no AI conversations or app usage) in a specified number of days. Admin only. Note: trade journal is a shared team resource without per-user tracking.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        days: { type: "NUMBER" as Type, description: "Number of days of inactivity (default 7)" },
+        days: { type: Type.NUMBER, description: "Number of days of inactivity (default 7)" },
       },
     },
   },
@@ -149,9 +150,9 @@ export const ADMIN_TOOL_DECLARATIONS = [
     name: "suggest_system_prompt",
     description: "Generate a suggested AI mentor system prompt based on current platform data and usage patterns. Admin only.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        focus: { type: "STRING" as Type, description: "Optional focus area for the prompt (e.g., 'risk management', 'discipline', 'ICT concepts')" },
+        focus: { type: Type.STRING, description: "Optional focus area for the prompt (e.g., 'risk management', 'discipline', 'ICT concepts')" },
       },
     },
   },
@@ -159,9 +160,9 @@ export const ADMIN_TOOL_DECLARATIONS = [
     name: "read_source_file",
     description: "Read the contents of a source file inside the artifacts/ directory. Use when the admin asks you to read, review, or audit a source file before proposing changes. Always read the file before proposing any edits. Admin only.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        path: { type: "STRING" as Type, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
+        path: { type: Type.STRING, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
       },
       required: ["path"],
     },
@@ -170,11 +171,11 @@ export const ADMIN_TOOL_DECLARATIONS = [
     name: "write_source_file",
     description: "Overwrite a source file inside the artifacts/ directory with new content. Only call this AFTER the admin has explicitly confirmed the change in chat. Writes outside artifacts/ are rejected. Admin only.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        path: { type: "STRING" as Type, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
-        content: { type: "STRING" as Type, description: "The full new content to write to the file" },
-        reason: { type: "STRING" as Type, description: "Brief description of what changed and why" },
+        path: { type: Type.STRING, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
+        content: { type: Type.STRING, description: "The full new content to write to the file" },
+        reason: { type: Type.STRING, description: "Brief description of what changed and why" },
       },
       required: ["path", "content", "reason"],
     },
@@ -183,24 +184,24 @@ export const ADMIN_TOOL_DECLARATIONS = [
     name: "update_self_system_prompt",
     description: "Write a new system prompt for the AI mentor to the admin_settings table (key: ai_mentor_system_prompt). This replaces the active prompt immediately. Only call after the admin has reviewed and approved the new prompt text in chat. Admin only.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        prompt: { type: "STRING" as Type, description: "The full new system prompt text to save" },
-        reason: { type: "STRING" as Type, description: "Brief explanation of why the prompt is being updated" },
+        prompt: { type: Type.STRING, description: "The full new system prompt text to save" },
+        reason: { type: Type.STRING, description: "Brief explanation of why the prompt is being updated" },
       },
       required: ["prompt", "reason"],
     },
   },
 ];
 
-export const CODE_EDITOR_TOOL_DECLARATIONS = [
+export const CODE_EDITOR_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
     name: "read_source_file",
     description: "Read the contents of a source file inside the artifacts/ directory. Returns content WITH LINE NUMBERS on the left (e.g., '   1 | import React...'). Always read before editing — use the line numbers with replace_lines.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        path: { type: "STRING" as Type, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
+        path: { type: Type.STRING, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
       },
       required: ["path"],
     },
@@ -209,12 +210,12 @@ export const CODE_EDITOR_TOOL_DECLARATIONS = [
     name: "replace_lines",
     description: "PREFERRED tool for all modifications. Replaces lines start_line through end_line (inclusive, 1-indexed) with new_content. Uses line numbers from read_source_file — no fragile string matching required. Always prefer this over edit_source_file.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        path: { type: "STRING" as Type, description: "Relative path to the file, e.g. 'artifacts/web/src/pages/Dashboard.tsx'" },
-        start_line: { type: "NUMBER" as Type, description: "First line to replace (1-indexed, inclusive). Get this number from read_source_file output." },
-        end_line: { type: "NUMBER" as Type, description: "Last line to replace (1-indexed, inclusive). Use the same as start_line for a single-line change." },
-        new_content: { type: "STRING" as Type, description: "The replacement content (replaces everything from start_line to end_line). Must be syntactically valid code." },
+        path: { type: Type.STRING, description: "Relative path to the file, e.g. 'artifacts/web/src/pages/Dashboard.tsx'" },
+        start_line: { type: Type.NUMBER, description: "First line to replace (1-indexed, inclusive). Get this number from read_source_file output." },
+        end_line: { type: Type.NUMBER, description: "Last line to replace (1-indexed, inclusive). Use the same as start_line for a single-line change." },
+        new_content: { type: Type.STRING, description: "The replacement content (replaces everything from start_line to end_line). Must be syntactically valid code." },
       },
       required: ["path", "start_line", "end_line", "new_content"],
     },
@@ -223,11 +224,11 @@ export const CODE_EDITOR_TOOL_DECLARATIONS = [
     name: "edit_source_file",
     description: "Fallback string-replacement edit. Only use this if replace_lines is not suitable. Finds old_string verbatim in the file and replaces it with new_string — WILL FAIL if whitespace or indentation differs even slightly.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        path: { type: "STRING" as Type, description: "Relative path to the file, e.g. 'artifacts/web/src/pages/Dashboard.tsx'" },
-        old_string: { type: "STRING" as Type, description: "The exact text to find and replace — copy it verbatim from the read_source_file output, preserving indentation and whitespace." },
-        new_string: { type: "STRING" as Type, description: "The replacement text. Must be syntactically valid code." },
+        path: { type: Type.STRING, description: "Relative path to the file, e.g. 'artifacts/web/src/pages/Dashboard.tsx'" },
+        old_string: { type: Type.STRING, description: "The exact text to find and replace — copy it verbatim from the read_source_file output, preserving indentation and whitespace." },
+        new_string: { type: Type.STRING, description: "The replacement text. Must be syntactically valid code." },
       },
       required: ["path", "old_string", "new_string"],
     },
@@ -236,11 +237,11 @@ export const CODE_EDITOR_TOOL_DECLARATIONS = [
     name: "write_source_file",
     description: "Overwrite a source file with entirely new content. Only use this when creating a brand new file from scratch — for all edits use replace_lines instead.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        path: { type: "STRING" as Type, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
-        content: { type: "STRING" as Type, description: "The full new content to write to the file" },
-        reason: { type: "STRING" as Type, description: "Brief description of what changed and why" },
+        path: { type: Type.STRING, description: "Relative path to the file inside the artifacts/ directory (e.g., 'artifacts/web/src/components/Dashboard.tsx')" },
+        content: { type: Type.STRING, description: "The full new content to write to the file" },
+        reason: { type: Type.STRING, description: "Brief description of what changed and why" },
       },
       required: ["path", "content", "reason"],
     },
@@ -249,11 +250,11 @@ export const CODE_EDITOR_TOOL_DECLARATIONS = [
     name: "report_critical_error",
     description: "Call this ONLY when the Checker phase finds a major error that cannot be self-corrected — e.g., a broken import, a missing component, or a syntax error that breaks the file structure. Provide a plain-English description of exactly what is wrong, which file is affected, and what the user should do next.",
     parameters: {
-      type: "OBJECT" as Type,
+      type: Type.OBJECT,
       properties: {
-        file: { type: "STRING" as Type, description: "The file path where the critical error was found" },
-        error: { type: "STRING" as Type, description: "Plain-English description of the error" },
-        suggestion: { type: "STRING" as Type, description: "What the user should do to fix it (e.g., 'Revert the change to line 42' or 'Re-run with more specific instructions')" },
+        file: { type: Type.STRING, description: "The file path where the critical error was found" },
+        error: { type: Type.STRING, description: "Plain-English description of the error" },
+        suggestion: { type: Type.STRING, description: "What the user should do to fix it (e.g., 'Revert the change to line 42' or 'Re-run with more specific instructions')" },
       },
       required: ["file", "error", "suggestion"],
     },

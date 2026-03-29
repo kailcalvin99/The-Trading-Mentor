@@ -450,7 +450,8 @@ router.post("/cooldown-event", authRequired, async (req, res) => {
     const userId = req.user!.userId;
     const { eventType, triggerTags, durationSeconds } = req.body;
     if (!eventType || typeof eventType !== "string") {
-      return res.status(400).json({ error: "eventType is required" });
+      res.status(400).json({ error: "eventType is required" });
+      return;
     }
     await db.insert(cooldownEventsTable).values({
       userId,

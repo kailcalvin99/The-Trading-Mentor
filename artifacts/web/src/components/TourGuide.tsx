@@ -203,7 +203,6 @@ export function useTourGuide(userId?: string | number, userTourShown?: boolean) 
       const timer = setTimeout(() => {
         const latest = stateRef.current;
         const stillEligible =
-          userTourShown !== true &&
           !localStorage.getItem(TOUR_AUTO_SHOWN_KEY) &&
           !localStorage.getItem(TOUR_NEVER_SHOW_KEY) &&
           !latest.visible &&

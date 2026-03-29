@@ -4,6 +4,7 @@ import {
   Shield, BookOpen, Calendar, Brain, CheckCircle2, AlertTriangle,
   ArrowRight, ChevronDown, Star, Zap, Crown, Check, Mail,
 } from "lucide-react";
+import Logo from "@/components/Logo";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 

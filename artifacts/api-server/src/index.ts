@@ -17,7 +17,7 @@ async function initStripe() {
 
   try {
     console.log("Initializing Stripe schema...");
-    await runMigrations({ databaseUrl, schema: "stripe" });
+    await runMigrations({ databaseUrl });
     console.log("Stripe schema ready");
 
     const stripeSync = await getStripeSync();
@@ -27,7 +27,7 @@ async function initStripe() {
     const webhookResult = await stripeSync.findOrCreateManagedWebhook(
       `${webhookBaseUrl}/api/stripe/webhook`
     );
-    console.log("Webhook configured:", webhookResult?.webhook?.url || "setup complete");
+    console.log("Webhook configured:", webhookResult?.url || "setup complete");
 
     stripeSync.syncBackfill()
       .then(() => console.log("Stripe data synced"))

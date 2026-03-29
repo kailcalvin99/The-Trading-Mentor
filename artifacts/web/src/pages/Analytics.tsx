@@ -63,7 +63,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
+import { useListTrades, useGetPropAccount, getListTradesQueryKey } from "@workspace/api-client-react";
 
 interface ExtendedTrade {
   id: number;
@@ -412,7 +412,7 @@ function GradeGauge({ score }: { score: number }) {
 
 type ExpandedChart = "pnl" | "hour" | "day" | "setup" | "behavior" | "confluence" | null;
 
-const LIST_TRADES_OPTIONS = { query: { refetchOnMount: "always" as const } };
+const LIST_TRADES_OPTIONS = { query: { queryKey: getListTradesQueryKey(), refetchOnMount: "always" as const } };
 
 export default function Analytics() {
   const navigate = useNavigate();

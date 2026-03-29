@@ -260,6 +260,7 @@ interface TradeRecord {
   pair?: string | null;
   entryTime?: string | null;
   isDraft?: boolean | null;
+  createdAt?: string | null;
 }
 
 function computeWinRate(trades: TradeRecord[], bias: string, sessionFocus: string): { winRate: number; trades: number; message: string } | null {

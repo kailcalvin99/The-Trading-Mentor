@@ -35,7 +35,7 @@ async function getCredentials(): Promise<{ secretKey: string }> {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as { items?: Array<{ settings?: { secret?: string } }> };
         const settings = data.items?.[0]?.settings;
         if (settings?.secret) {
           return { secretKey: settings.secret };
@@ -67,7 +67,7 @@ export async function getStripeSync(): Promise<StripeSync> {
     const { secretKey } = await getCredentials();
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) throw new Error("DATABASE_URL is required");
-    stripeSyncInstance = new StripeSync({ stripeSecretKey: secretKey, databaseUrl });
+    stripeSyncInstance = new StripeSync({ stripeSecretKey: secretKey, databaseUrl, poolConfig: { connectionString: databaseUrl } });
   }
   return stripeSyncInstance;
 }

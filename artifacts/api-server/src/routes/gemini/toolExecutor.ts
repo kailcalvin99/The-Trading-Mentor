@@ -40,7 +40,7 @@ export async function executeToolCall(toolName: string, args: Record<string, unk
         pair,
         outcome,
         riskPct: riskPct.toString(),
-        entryTime: new Date(entryTime),
+        entryTime,
         notes,
         sideDirection,
         behaviorTag,

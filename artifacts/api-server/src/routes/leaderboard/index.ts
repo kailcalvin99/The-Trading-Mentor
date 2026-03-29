@@ -42,9 +42,9 @@ async function buildLeaderboard() {
   const userInfoMap = new Map(users.map((u) => [u.id, u]));
 
   return rows
-    .filter((r) => r.total >= 1 && userInfoMap.has(r.userId))
+    .filter((r) => r.total >= 1 && r.userId !== null && userInfoMap.has(r.userId))
     .map((r) => {
-      const info = userInfoMap.get(r.userId)!;
+      const info = userInfoMap.get(r.userId!)!;
       return {
         userId: r.userId,
         name: info.name,

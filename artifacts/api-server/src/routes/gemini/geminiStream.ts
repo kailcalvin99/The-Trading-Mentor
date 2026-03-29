@@ -1,5 +1,6 @@
 import type { Response } from "express";
 import { ai } from "@workspace/integrations-gemini-ai";
+import type { FunctionDeclaration } from "@google/genai";
 import { db } from "@workspace/db";
 import { conversations, messages, userSubscriptionsTable, subscriptionTiersTable } from "@workspace/db";
 import { eq, count, and, gte } from "drizzle-orm";
@@ -77,7 +78,7 @@ export async function runAgenticStream(
   res: Response,
   chatHistory: Array<{ role: "user" | "model"; parts: Array<Record<string, unknown>> }>,
   systemPrompt: string,
-  tools: unknown[],
+  tools: FunctionDeclaration[],
   isCodeEditor: boolean,
   userId: number | undefined,
   isAdmin: boolean | undefined,

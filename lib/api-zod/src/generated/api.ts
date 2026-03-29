@@ -200,6 +200,9 @@ export const CreateTradeBody = zod.object({
   sideDirection: zod.string().optional(),
   followedTimeRule: zod.boolean().optional(),
   hasFvgConfirmation: zod.boolean().optional(),
+  setupType: zod.string().optional(),
+  entryPrice: zod.string().optional(),
+  tradingSession: zod.string().optional(),
 });
 
 /**
