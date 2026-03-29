@@ -820,17 +820,15 @@ export default function AIAssistant({ hideFab = false }: { hideFab?: boolean }) 
           </div>
         )}
         <button
-          className={`flex items-center gap-1.5 rounded-full bg-primary/90 text-primary-foreground shadow-lg transition-all duration-300 hover:opacity-90 relative ${nudgeExpanded ? "px-3 py-2" : "w-8 h-8 justify-center"}`}
+          className="flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2.5 shadow-[0_0_16px_4px_rgba(34,197,94,0.45)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_24px_6px_rgba(34,197,94,0.55)] relative"
           onClick={() => setIsOpen(true)}
         >
-          <Sparkles className="h-3.5 w-3.5 shrink-0" />
-          {nudgeExpanded && <span className="text-xs font-semibold whitespace-nowrap">AI</span>}
-          {isNewUser && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-foreground" />
-            </span>
-          )}
+          <Sparkles className="h-4 w-4 shrink-0" />
+          <span className="text-sm font-bold whitespace-nowrap">AI</span>
+          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-primary-foreground" />
+          </span>
         </button>
       </div>}
       {nudge && !isOpen && (
