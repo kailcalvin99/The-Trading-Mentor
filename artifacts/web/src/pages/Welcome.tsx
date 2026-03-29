@@ -177,29 +177,81 @@ export default function Welcome() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
-        <div className="px-6 py-3 flex items-center justify-between">
-          {/* Nav links */}
-          <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-            <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
-          </nav>
+      <style>{`
+        @keyframes ai-header-line-pulse {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+        @keyframes ai-orb-pulse {
+          0%, 100% {
+            transform: translateY(-50%) scale(1);
+            box-shadow: 0 0 6px 2px #00C896, 0 0 14px 4px #00C89660, 0 0 0 0 #00C89640;
+          }
+          50% {
+            transform: translateY(-50%) scale(1.18);
+            box-shadow: 0 0 10px 4px #00C896, 0 0 24px 8px #00C89680, 0 0 32px 10px #00C89630;
+          }
+        }
+      `}</style>
 
-          {/* Auth buttons */}
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Log In
-            </Link>
-            <Link
-              to="/signup"
-              className="text-sm bg-primary text-primary-foreground font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
-            >
-              Sign Up Free
-            </Link>
-          </div>
+      {/* ── Sticky Header ── */}
+      <header
+        className="relative sticky top-0 z-50 h-12 bg-[#16151d] flex items-center px-3 py-1.5"
+        style={{ borderBottom: "none" }}
+      >
+        {/* Green glowing line at very top */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 2,
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
+              animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
+              boxShadow: "0 0 5px 1px #00C89660",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: 12,
+              top: "50%",
+              width: 12,
+              height: 12,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, #7FFFD4 0%, #00C896 55%, #009970 100%)",
+              animation: "ai-orb-pulse 2.5s ease-in-out infinite",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+
+        {/* Center title */}
+        <div className="flex-1 flex items-center justify-center">
+          <span className="glowing-3d-title-header text-xl">The Trading Mentor</span>
+        </div>
+
+        {/* Auth buttons */}
+        <div className="flex items-center gap-3">
+          <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Log In
+          </Link>
+          <Link
+            to="/signup"
+            className="text-sm bg-primary text-primary-foreground font-semibold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+          >
+            Sign Up Free
+          </Link>
         </div>
       </header>
 
