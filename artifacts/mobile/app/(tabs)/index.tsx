@@ -678,23 +678,6 @@ function PlannerScreen() {
             <Text style={styles.title}>Mission Control</Text>
             <Text style={styles.dateText}>{dateStr}</Text>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.fvgIconBtn,
-              fvg && fvg.direction !== "none" && {
-                borderColor: (fvg.direction === "bullish" ? "#00C896" : "#EF4444") + "70",
-                backgroundColor: (fvg.direction === "bullish" ? "#00C896" : "#EF4444") + "12",
-              },
-            ]}
-            onPress={() => setShowFvgModal(true)}
-            accessibilityLabel="View FVG Signal"
-          >
-            <Ionicons
-              name="flash-outline"
-              size={18}
-              color={fvg && fvg.direction !== "none" ? (fvg.direction === "bullish" ? "#00C896" : "#EF4444") : C.accent}
-            />
-          </TouchableOpacity>
         </View>
 
         {/* Risk Tool Buttons */}
@@ -1208,11 +1191,6 @@ function PlannerScreen() {
           </>
         )}
 
-        {/* ICT Confidence Score — shown when bias is selected */}
-        {biasSelected && (
-          <ConfidenceScoreMobileCard confidence={confidence} />
-        )}
-
         {/* Entry Criteria - Bias Gated */}
         <View style={[styles.planCard, !biasSelected && { opacity: 0.35 }]} pointerEvents={biasSelected ? "auto" : "none"}>
           {!biasSelected && (
@@ -1339,9 +1317,56 @@ function PlannerScreen() {
           ))}
         </View>
 
-        <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
+        <View style={{ height: Platform.OS === "ios" ? 160 : 80 }} />
         </View>
       </KeyboardAwareScrollViewCompat>
+
+      {/* Floating FVG Widget */}
+      <TouchableOpacity
+        style={[
+          styles.floatingFvg,
+          fvg && fvg.direction !== "none" && {
+            borderColor: (fvg.direction === "bullish" ? "#00C896" : "#EF4444") + "70",
+            backgroundColor: (fvg.direction === "bullish" ? "#00C896" : "#EF4444") + "18",
+          },
+        ]}
+        onPress={() => setShowFvgModal(true)}
+        activeOpacity={0.8}
+        accessibilityLabel="View FVG Signal"
+      >
+        <Ionicons
+          name="flash-outline"
+          size={14}
+          color={fvg && fvg.direction !== "none" ? (fvg.direction === "bullish" ? "#00C896" : "#EF4444") : C.accent}
+        />
+        <Text style={[
+          styles.floatingFvgLabel,
+          { color: fvg && fvg.direction !== "none" ? (fvg.direction === "bullish" ? "#00C896" : "#EF4444") : C.textSecondary },
+        ]}>
+          {!fvg ? "No FVG" : fvg.direction === "bullish" ? "Bull" : fvg.direction === "bearish" ? "Bear" : "No FVG"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Floating Smart Money Score Widget */}
+      <View style={styles.floatingScore}>
+        {(() => {
+          const score = biasSelected ? (confidence?.score ?? null) : null;
+          const scoreColor =
+            score === null ? C.textSecondary
+            : score >= 75 ? "#00C896"
+            : score >= 50 ? "#F59E0B"
+            : "#EF4444";
+          return (
+            <>
+              <Ionicons name="shield-checkmark-outline" size={12} color={biasSelected ? C.accent : C.textTertiary} />
+              <Text style={[styles.floatingScoreValue, { color: scoreColor }]}>
+                {score !== null ? score : "—"}
+              </Text>
+              <Text style={styles.floatingScoreLabel}>SM</Text>
+            </>
+          );
+        })()}
+      </View>
 
       {/* Send to Journal Modal */}
       <Modal visible={sendModalOpen} transparent animationType="fade" onRequestClose={() => setSendModalOpen(false)}>
@@ -1518,7 +1543,7 @@ const styles = StyleSheet.create({
   riskToolBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 9, borderRadius: 12, backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder },
   riskToolBtnDone: { borderColor: "#00C896" + "66", backgroundColor: "#00C896" + "10" },
   riskToolBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: C.accent },
-  fvgIconBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.backgroundSecondary, borderWidth: 1, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
+
   gaugeContainer: { backgroundColor: C.backgroundTertiary, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.cardBorder },
   gaugeHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   gaugeLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.text },
@@ -1552,4 +1577,57 @@ const styles = StyleSheet.create({
   routineRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, gap: 10, borderTopWidth: 1, borderTopColor: C.cardBorder },
   routineCheckbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
   routineCheckboxDone: { backgroundColor: C.accent, borderColor: C.accent },
+  floatingFvg: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 100 : 72,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+    zIndex: 50,
+  },
+  floatingFvgLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+  },
+  floatingScore: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 148 : 120,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+    zIndex: 50,
+  },
+  floatingScoreValue: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  floatingScoreLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: C.textSecondary,
+  },
 });
