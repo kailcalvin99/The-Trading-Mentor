@@ -824,6 +824,49 @@ export default function Layout() {
             }
           `}</style>
 
+          {/* Global green glow line — fixed to top of viewport on every page */}
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 2,
+              zIndex: 70,
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
+                animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
+                boxShadow: "0 0 5px 1px #00C89660",
+                pointerEvents: "none",
+              }}
+            />
+            <button
+              onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
+              aria-label="Open AI assistant"
+              style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                background: "radial-gradient(circle, #7FFFD4 0%, #00C896 55%, #009970 100%)",
+                animation: "ai-orb-pulse 2.5s ease-in-out infinite",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+                zIndex: 71,
+                pointerEvents: "auto",
+              }}
+            />
+          </div>
+
           <div className="flex flex-col flex-1 min-w-0">
             {/* Header bar: Dashboard only, always visible */}
             {isDashboard && (
@@ -893,39 +936,6 @@ export default function Layout() {
                   </button>
                 </div>
 
-                {/* Decorative glow line — bottom edge of header (visual only) */}
-                <div
-                  className="absolute bottom-0 left-0 right-0"
-                  style={{ height: 2, zIndex: 20 }}
-                >
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background: "linear-gradient(90deg, transparent 0%, #00C896 25%, #00C896 75%, transparent 100%)",
-                      animation: "ai-header-line-pulse 2.5s ease-in-out infinite",
-                      boxShadow: "0 0 5px 1px #00C89660",
-                    }}
-                  />
-                  {/* AI pulsing orb — left end of the green line */}
-                  <button
-                    onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
-                    aria-label="Open AI assistant"
-                    style={{
-                      position: "absolute",
-                      left: 12,
-                      top: "50%",
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: "radial-gradient(circle, #7FFFD4 0%, #00C896 55%, #009970 100%)",
-                      animation: "ai-orb-pulse 2.5s ease-in-out infinite",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                      zIndex: 21,
-                    }}
-                  />
-                </div>
               </div>
             )}
 
