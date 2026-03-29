@@ -314,7 +314,7 @@ function ToolCallCard({ toolCall, onConfirm, onNavigate }: {
   return null;
 }
 
-export default function AIAssistant() {
+export default function AIAssistant({ hideFab = false }: { hideFab?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -788,7 +788,7 @@ export default function AIAssistant() {
   return (
     <>
       <span className="hidden" aria-hidden="true" />
-      <div className="md:hidden fixed bottom-20 right-3 z-50" style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      {!hideFab && <div className="md:hidden fixed bottom-20 right-3 z-50" style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}>
         {nudge && !isOpen && (
           <div className={`absolute bottom-12 right-0 w-60 bg-card border border-primary/30 rounded-xl shadow-2xl p-3 transition-all duration-300 ${nudgeExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
             <button onClick={dismissNudge} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
@@ -832,7 +832,7 @@ export default function AIAssistant() {
             </span>
           )}
         </button>
-      </div>
+      </div>}
       {nudge && !isOpen && (
         <div className={`hidden md:block fixed bottom-4 right-4 z-40 w-72 bg-card border border-primary/30 rounded-xl shadow-2xl p-4 transition-all duration-300 ${nudgeExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
           <button onClick={dismissNudge} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">

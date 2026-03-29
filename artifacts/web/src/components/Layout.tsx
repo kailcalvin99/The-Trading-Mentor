@@ -558,7 +558,7 @@ export default function Layout() {
 
 
           {/* AIAssistant mounted globally so ict-open-ai works on all routes */}
-          <AIAssistant />
+          <AIAssistant hideFab />
 
           {/* Hamburger + AI FAB for non-dashboard pages */}
           {!isDashboard && (
