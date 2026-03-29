@@ -858,10 +858,10 @@ export default function Layout() {
             aria-label="Open AI assistant"
             style={{
               position: "fixed",
-              bottom: 24,
-              right: 20,
-              width: 56,
-              height: 56,
+              top: 4,
+              left: 8,
+              width: 28,
+              height: 28,
               borderRadius: "50%",
               background: "radial-gradient(circle, #7FFFD4 0%, #00C896 55%, #009970 100%)",
               animation: "ai-orb-pulse 2.5s ease-in-out infinite",
