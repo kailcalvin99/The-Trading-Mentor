@@ -35,7 +35,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import CoolDownOverlay, { FailureAnalysis } from "@/components/CoolDownOverlay";
 import { recordDisciplinedDay } from "@/components/HallOfFame";
 import { useListTrades, useGetPropAccount } from "@workspace/api-client-react";
-import { ConfidenceScoreCard, FvgSignalCard } from "@/pages/dashboard/LiveSignalWidgets";
+import { useLiveSignals } from "@/pages/dashboard/LiveSignalWidgets";
 
 import {
   PRETRADE_CHECKLIST_ITEMS as RISK_CHECKLIST_ITEMS,
@@ -327,24 +327,6 @@ declare global {
 }
 
 
-function useSmartMoneyScore() {
-  const [confidence, setConfidence] = useState<{ score: number; factors: Array<{ label: string; met: boolean }> } | null>(null);
-
-  useEffect(() => {
-    const apiBase = import.meta.env.VITE_API_URL || "/api";
-    const doFetch = () =>
-      fetch(`${apiBase}/signals/confidence`, { credentials: "include" })
-        .then((r) => r.ok ? r.json() : null)
-        .then((d) => { if (d) setConfidence(d); })
-        .catch(() => {});
-    doFetch();
-    const id = setInterval(doFetch, 15000);
-    return () => clearInterval(id);
-  }, []);
-
-  return confidence;
-}
-
 
 export default function DailyPlanner() {
   const navigate = useNavigate();
@@ -377,7 +359,8 @@ export default function DailyPlanner() {
   const { data: apiTrades } = useListTrades();
   const trades = (apiTrades || []) as TradeRecord[];
   const { data: propAccount } = useGetPropAccount();
-  const smartMoneyConfidence = useSmartMoneyScore();
+  const { fvg: liveFvg, confidence: liveConfidence } = useLiveSignals();
+  const smartMoneyConfidence = liveConfidence;
 
   const isToday = selectedDate.toISOString().split("T")[0] === new Date().toISOString().split("T")[0];
   const keyLevels = migrateKeyLevels(dayData.tradePlan.keyLevels);
@@ -1293,14 +1276,6 @@ export default function DailyPlanner() {
       )}
       </div>
 
-      {/* Sticky Right Panel — Smart Money & FVG widgets */}
-      <div className="w-full lg:w-72 lg:shrink-0">
-        <div className="lg:sticky lg:top-6 space-y-4">
-          <ConfidenceScoreCard />
-          <FvgSignalCard />
-        </div>
-      </div>
-
       </div>
     </div>
 
@@ -1322,6 +1297,74 @@ export default function DailyPlanner() {
           />
         </div>
       </div>
+    </div>
+
+    {/* Floating Smart Money Score Widget — right side, below Setup score */}
+    <div className="fixed top-48 right-4 z-40 pointer-events-none">
+      <button
+        className="pointer-events-auto bg-card/90 backdrop-blur-md border border-border rounded-2xl px-3 py-2.5 shadow-xl flex flex-col items-center min-w-[88px] hover:border-primary/50 transition-all group cursor-pointer"
+        onClick={() => setSmartMoneyOpen(true)}
+        title="Smart Money Movement Score"
+      >
+        <div className="flex items-center gap-1 mb-1">
+          <Shield className="h-3 w-3 text-primary" />
+          <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Smart $</span>
+        </div>
+        {liveConfidence ? (
+          <>
+            <span className={`text-xl font-bold font-mono leading-none ${liveConfidence.score >= 75 ? "text-emerald-400" : liveConfidence.score >= 50 ? "text-amber-400" : "text-red-400"}`}>
+              {liveConfidence.score}
+            </span>
+            <span className="text-[9px] text-muted-foreground mt-0.5">/ 100</span>
+            <div className="w-full mt-1.5 h-1 bg-muted/40 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${liveConfidence.score}%`,
+                  backgroundColor: liveConfidence.score >= 75 ? "#10b981" : liveConfidence.score >= 50 ? "#f59e0b" : "#ef4444",
+                }}
+              />
+            </div>
+          </>
+        ) : (
+          <span className="text-[9px] text-muted-foreground animate-pulse">…</span>
+        )}
+      </button>
+    </div>
+
+    {/* Floating FVG Detect Widget — right side, below Smart Money widget */}
+    <div className="fixed right-4 z-40 pointer-events-none" style={{ top: "calc(12rem + 100px + 8px)" }}>
+      {(() => {
+        const isBullish = liveFvg?.direction === "bullish";
+        const isBearish = liveFvg?.direction === "bearish";
+        const hasGap = isBullish || isBearish;
+        return (
+          <button
+            className={`pointer-events-auto bg-card/90 backdrop-blur-md border rounded-2xl px-3 py-2.5 shadow-xl flex flex-col items-center min-w-[88px] transition-all cursor-pointer ${hasGap ? (isBullish ? "border-emerald-500/40 hover:border-emerald-400/60" : "border-red-500/40 hover:border-red-400/60") : "border-border hover:border-border/80"}`}
+            onClick={() => { setSmartMoneyOpen(false); setFvgPopupOpen(true); }}
+            title="Fair Value Gap"
+          >
+            <div className="flex items-center gap-1 mb-1">
+              <Zap className="h-3 w-3 text-cyan-400" />
+              <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">FVG</span>
+            </div>
+            {!liveFvg ? (
+              <span className="text-[9px] text-muted-foreground animate-pulse">Scanning…</span>
+            ) : hasGap ? (
+              <>
+                <span className={`text-base font-bold leading-none ${isBullish ? "text-emerald-400" : "text-red-400"}`}>
+                  {isBullish ? "▲" : "▼"}
+                </span>
+                <span className={`text-[9px] font-bold mt-0.5 ${isBullish ? "text-emerald-400" : "text-red-400"}`}>
+                  {isBullish ? "Bullish" : "Bearish"}
+                </span>
+              </>
+            ) : (
+              <span className="text-[9px] text-muted-foreground font-medium">None</span>
+            )}
+          </button>
+        );
+      })()}
     </div>
 
     {/* Floating Action Buttons — bottom-center, horizontal row */}
