@@ -368,8 +368,6 @@ export default function Layout() {
   const userPillRef = useRef<HTMLButtonElement>(null);
   const [userMenuPos, setUserMenuPos] = useState<{ top: number; right: number } | null>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
-  const [headerVisible, setHeaderVisible] = useState(true);
-  const lastScrollY = useRef(0);
 
   const recalcUserMenuPos = useCallback(() => {
     if (userPillRef.current) {
@@ -483,8 +481,6 @@ export default function Layout() {
     if (mainScrollRef.current) {
       mainScrollRef.current.scrollTop = 0;
     }
-    setHeaderVisible(true);
-    lastScrollY.current = 0;
   }, [location.pathname]);
 
   const isDashboard = location.pathname === "/";
@@ -515,24 +511,6 @@ export default function Layout() {
     setMantraEditing(false);
   }
 
-  useEffect(() => {
-    if (!isDashboard) return;
-    const el = mainScrollRef.current;
-    if (!el) return;
-    function handleScroll() {
-      const current = el!.scrollTop;
-      if (current <= 0) {
-        setHeaderVisible(true);
-      } else if (current > lastScrollY.current) {
-        setHeaderVisible(false);
-      } else {
-        setHeaderVisible(true);
-      }
-      lastScrollY.current = current;
-    }
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleScroll);
-  }, [isDashboard]);
 
   const handleOpenShare = useCallback(() => {
     setShowShare(true);
@@ -847,15 +825,12 @@ export default function Layout() {
           `}</style>
 
           <div className="flex flex-col flex-1 min-w-0">
-            {/* Header bar: Dashboard only, with scroll-hide */}
+            {/* Header bar: Dashboard only, always visible */}
             {isDashboard && (
               <div
-                className="relative flex items-center gap-2 px-3 py-1.5 shrink-0 h-12 bg-[#16151d]"
+                className="relative flex items-center gap-2 px-3 py-1.5 shrink-0 h-12 bg-[#16151d] sticky top-0 z-30"
                 style={{
                   borderBottom: "none",
-                  transition: "transform 475ms cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 475ms cubic-bezier(0.4, 0, 0.2, 1)",
-                  transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
-                  marginBottom: headerVisible ? 0 : "-3rem",
                 }}
               >
                 <div className="flex-1 flex items-center justify-center relative overflow-hidden min-w-0">
