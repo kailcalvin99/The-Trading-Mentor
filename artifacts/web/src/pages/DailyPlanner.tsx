@@ -651,24 +651,6 @@ export default function DailyPlanner() {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
       <div className="flex-1 min-w-0 w-full">
 
-      {/* Risk Tool Buttons */}
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <button
-          onClick={() => setShowRiskTools(true)}
-          className="flex items-center gap-1.5 text-xs font-semibold bg-secondary border border-border hover:bg-secondary/80 text-foreground rounded-xl px-3 py-2 transition-colors"
-        >
-          <Shield className="h-3.5 w-3.5 text-emerald-400" />
-          Risk Gauges
-        </button>
-        <button
-          onClick={() => setShowPositionCalc(true)}
-          className="flex items-center gap-1.5 text-xs font-semibold bg-secondary border border-border hover:bg-secondary/80 text-foreground rounded-xl px-3 py-2 transition-colors"
-        >
-          <Calculator className="h-3.5 w-3.5 text-blue-400" />
-          Position Calc
-        </button>
-      </div>
-
       <p className="text-muted-foreground mb-6 text-sm">
         Plan your trading day. Complete your routine, set your goals, and stay disciplined.
       </p>
@@ -1369,6 +1351,20 @@ export default function DailyPlanner() {
 
     {/* Floating Action Buttons — bottom-center, horizontal row */}
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-row items-center gap-2">
+      <button
+        onClick={() => setShowRiskTools(true)}
+        title="Risk Gauges"
+        className="w-7 h-7 rounded-full shadow-xl flex items-center justify-center transition-all bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:scale-105"
+      >
+        <Shield className="h-3.5 w-3.5 text-emerald-400" />
+      </button>
+      <button
+        onClick={() => setShowPositionCalc(true)}
+        title="Position Calculator"
+        className="w-7 h-7 rounded-full shadow-xl flex items-center justify-center transition-all bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:scale-105"
+      >
+        <Calculator className="h-3.5 w-3.5 text-blue-400" />
+      </button>
       {speechSupported && (
         <button
           onClick={isListening ? stopVoiceNote : startVoiceNote}
