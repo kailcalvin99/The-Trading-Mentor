@@ -142,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (res.ok) {
         if (data.token) storeToken(data.token);
-        setUser(data.user);
+        setLoading(true);
         await refreshUser();
         if (data.user?.role === "admin") {
           setIsPersistentAdmin(true);
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (res.ok) {
         if (data.token) storeToken(data.token);
-        setUser(data.user);
+        setLoading(true);
         await refreshUser();
         setIsPersistentAdmin(false);
         try { localStorage.removeItem("ICT_TRADING_MENTOR_ADMIN"); } catch {}

@@ -619,6 +619,8 @@ export default function DailyPlanner() {
   const riskPct = dayData.tradePlan.strategy === "conservative" ? 0.5 : dayData.tradePlan.strategy === "aggressive" ? 1.0 : 0.5;
   const stopTicks = parseFloat(dayData.tradePlan.stopLossTicks) || 0;
   const contracts = stopTicks > 0 && tickInfo ? Math.floor((accountBalance * riskPct / 100) / (stopTicks * tickInfo.miniValue) * 10) / 10 : 0;
+  const selectedSession = TARGET_SESSIONS.find((s) => s.id === dayData.tradePlan.targetSession) ?? null;
+  const selectedSessionColors = selectedSession ? SESSION_COLOR_MAP[selectedSession.color] : null;
 
   return (
     <>
@@ -783,8 +785,6 @@ export default function DailyPlanner() {
           </div>
         </div>
       )}
-
-      <div>
       <Card className="mb-4">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-4">
@@ -802,20 +802,18 @@ export default function DailyPlanner() {
 
       {/* Widget trigger row — Smart Money + FVG */}
       <div className="flex gap-2 mb-4">
-        {smartMoneyConfidence && (() => {
-          const s = smartMoneyConfidence.score;
-          const sc = s >= 80 ? "text-emerald-400" : s >= 60 ? "text-amber-400" : "text-red-400";
-          return (
-            <button
-              onClick={() => setSmartMoneyOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-bold shadow hover:border-primary/40 transition-all"
-            >
-              <Shield className="h-3.5 w-3.5 text-primary" />
-              <span className="text-muted-foreground">Smart $</span>
-              <span className={sc}>{s}</span>
-            </button>
-          );
-        })()}
+        {smartMoneyConfidence && (
+          <button
+            onClick={() => setSmartMoneyOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-bold shadow hover:border-primary/40 transition-all"
+          >
+            <Shield className="h-3.5 w-3.5 text-primary" />
+            <span className="text-muted-foreground">Smart $</span>
+            <span className={smartMoneyConfidence.score >= 80 ? "text-emerald-400" : smartMoneyConfidence.score >= 60 ? "text-amber-400" : "text-red-400"}>
+              {smartMoneyConfidence.score}
+            </span>
+          </button>
+        )}
         <button
           onClick={() => setFvgPopupOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-bold shadow hover:border-cyan-500/30 transition-all"
@@ -885,17 +883,12 @@ export default function DailyPlanner() {
                         );
                       })}
                     </div>
-                    {dayData.tradePlan.targetSession && (() => {
-                      const sess = TARGET_SESSIONS.find((s) => s.id === dayData.tradePlan.targetSession);
-                      if (!sess) return null;
-                      const colors = SESSION_COLOR_MAP[sess.color];
-                      return (
-                        <div className={`mt-2 p-2.5 rounded-lg border ${colors.bg} flex items-start gap-2`}>
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${colors.text} mt-0.5 shrink-0`}>ICT</span>
-                          <p className={`text-xs ${colors.text}`}>{sess.tip}</p>
-                        </div>
-                      );
-                    })()}
+                    {selectedSession && selectedSessionColors && (
+                      <div className={`mt-2 p-2.5 rounded-lg border ${selectedSessionColors.bg} flex items-start gap-2`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${selectedSessionColors.text} mt-0.5 shrink-0`}>ICT</span>
+                        <p className={`text-xs ${selectedSessionColors.text}`}>{selectedSession.tip}</p>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -1520,51 +1513,55 @@ export default function DailyPlanner() {
       </div>
     )}
     {/* Smart Money Score popup */}
-    {smartMoneyOpen && smartMoneyConfidence && (() => {
-      const s = smartMoneyConfidence.score;
-      const barColor = s >= 80 ? "#10b981" : s >= 60 ? "#f59e0b" : "#ef4444";
-      const colorClass = s >= 80 ? "text-emerald-400" : s >= 60 ? "text-amber-400" : "text-red-400";
-      const gradeLabel = s >= 80 ? "High Prob" : s >= 60 ? "Moderate" : "Wait";
-      return (
+    {smartMoneyOpen && smartMoneyConfidence && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        onClick={() => setSmartMoneyOpen(false)}
+      >
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={() => setSmartMoneyOpen(false)}
+          className="bg-card border border-border rounded-2xl shadow-2xl p-5 w-72 max-w-[90vw]"
+          onClick={(e) => e.stopPropagation()}
         >
-          <div
-            className="bg-card border border-border rounded-2xl shadow-2xl p-5 w-72 max-w-[90vw]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm flex items-center gap-2">
-                <Shield className="h-4 w-4 text-primary" />
-                Smart Money Movement Score
-              </h3>
-              <button onClick={() => setSmartMoneyOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
-              </button>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" />
+              Smart Money Movement Score
+            </h3>
+            <button onClick={() => setSmartMoneyOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="text-center mb-4">
+            <span className={`text-5xl font-bold font-mono ${smartMoneyConfidence.score >= 80 ? "text-emerald-400" : smartMoneyConfidence.score >= 60 ? "text-amber-400" : "text-red-400"}`}>
+              {smartMoneyConfidence.score}
+            </span>
+            <div className="w-full h-2 bg-muted/40 rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${smartMoneyConfidence.score}%`,
+                  backgroundColor: smartMoneyConfidence.score >= 80 ? "#10b981" : smartMoneyConfidence.score >= 60 ? "#f59e0b" : "#ef4444",
+                }}
+              />
             </div>
-            <div className="text-center mb-4">
-              <span className={`text-5xl font-bold font-mono ${colorClass}`}>{s}</span>
-              <div className="w-full h-2 bg-muted/40 rounded-full overflow-hidden mt-2">
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${s}%`, backgroundColor: barColor }} />
+            <span className={`text-sm font-semibold mt-1 block ${smartMoneyConfidence.score >= 80 ? "text-emerald-400" : smartMoneyConfidence.score >= 60 ? "text-amber-400" : "text-red-400"}`}>
+              {smartMoneyConfidence.score >= 80 ? "High Prob" : smartMoneyConfidence.score >= 60 ? "Moderate" : "Wait"}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {smartMoneyConfidence.factors.map((f) => (
+              <div
+                key={f.label}
+                className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg ${f.met ? "bg-emerald-500/10 text-emerald-400" : "bg-secondary text-muted-foreground"}`}
+              >
+                {f.met ? <CheckCircle2 className="h-3 w-3 shrink-0" /> : <Circle className="h-3 w-3 shrink-0" />}
+                {f.label}
               </div>
-              <span className={`text-sm font-semibold mt-1 block ${colorClass}`}>{gradeLabel}</span>
-            </div>
-            <div className="space-y-1.5">
-              {smartMoneyConfidence.factors.map((f) => (
-                <div
-                  key={f.label}
-                  className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg ${f.met ? "bg-emerald-500/10 text-emerald-400" : "bg-secondary text-muted-foreground"}`}
-                >
-                  {f.met ? <CheckCircle2 className="h-3 w-3 shrink-0" /> : <Circle className="h-3 w-3 shrink-0" />}
-                  {f.label}
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
-      );
-    })()}
+      </div>
+    )}
 
     {/* FVG Scan popup */}
     {fvgPopupOpen && (
