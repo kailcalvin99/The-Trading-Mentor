@@ -931,13 +931,13 @@ export default function Layout() {
                       boxShadow: "0 0 5px 1px #00C89660",
                     }}
                   />
-                  {/* AI pulsing orb — right end of the green line */}
+                  {/* AI pulsing orb — left end of the green line */}
                   <button
                     onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
                     aria-label="Open AI assistant"
                     style={{
                       position: "absolute",
-                      right: 12,
+                      left: 12,
                       top: "50%",
                       width: 12,
                       height: 12,
