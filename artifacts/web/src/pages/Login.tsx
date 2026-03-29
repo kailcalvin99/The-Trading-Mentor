@@ -264,8 +264,8 @@ export default function Login() {
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <PlayCircle className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">Paper Trading Replay</h3>
-              <p className="text-sm text-muted-foreground">Replay real market sessions and practice entries risk-free — perfect for building confidence without losing money.</p>
+              <h3 className="font-semibold text-foreground mb-2">Chart Lab</h3>
+              <p className="text-sm text-muted-foreground">Replay real market sessions, annotate charts with ICT concepts, and practice entries risk-free — build confidence without losing money.</p>
             </div>
             <div className="bg-card border border-border rounded-xl p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
