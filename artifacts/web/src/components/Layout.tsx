@@ -814,13 +814,17 @@ export default function Layout() {
             }
             @keyframes ai-orb-pulse {
               0%, 100% {
-                transform: translateY(-50%) scale(1);
+                transform: scale(1);
                 box-shadow: 0 0 6px 2px #00C896, 0 0 14px 4px #00C89660, 0 0 0 0 #00C89640;
               }
               50% {
-                transform: translateY(-50%) scale(1.18);
+                transform: scale(1.18);
                 box-shadow: 0 0 10px 4px #00C896, 0 0 24px 8px #00C89680, 0 0 32px 10px #00C89630;
               }
+            }
+            .ai-orb-btn:active {
+              animation: none;
+              transform: scale(0.92);
             }
           `}</style>
 
@@ -846,26 +850,28 @@ export default function Layout() {
                 pointerEvents: "none",
               }}
             />
-            <button
-              onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
-              aria-label="Open AI assistant"
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                width: 12,
-                height: 12,
-                borderRadius: "50%",
-                background: "radial-gradient(circle, #7FFFD4 0%, #00C896 55%, #009970 100%)",
-                animation: "ai-orb-pulse 2.5s ease-in-out infinite",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-                zIndex: 71,
-                pointerEvents: "auto",
-              }}
-            />
           </div>
+
+          <button
+            className="ai-orb-btn"
+            onClick={() => window.dispatchEvent(new Event("ict-open-ai"))}
+            aria-label="Open AI assistant"
+            style={{
+              position: "fixed",
+              bottom: 24,
+              right: 20,
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, #7FFFD4 0%, #00C896 55%, #009970 100%)",
+              animation: "ai-orb-pulse 2.5s ease-in-out infinite",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              zIndex: 71,
+              boxShadow: "0 0 16px 4px #00C89650, 0 4px 12px rgba(0,0,0,0.4)",
+            }}
+          />
 
           <div className="flex flex-col flex-1 min-w-0">
             {/* Header bar: Dashboard only, always visible */}
