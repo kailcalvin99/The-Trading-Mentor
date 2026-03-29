@@ -788,9 +788,9 @@ export default function AIAssistant({ hideFab = false }: { hideFab?: boolean }) 
   return (
     <>
       <span className="hidden" aria-hidden="true" />
-      {!hideFab && <div className="md:hidden fixed bottom-20 right-3 z-50" style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      {!hideFab && <div className="md:hidden fixed bottom-4 right-4 z-50" style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}>
         {nudge && !isOpen && (
-          <div className={`absolute bottom-12 right-0 w-60 bg-card border border-primary/30 rounded-xl shadow-2xl p-3 transition-all duration-300 ${nudgeExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
+          <div className={`absolute bottom-16 right-0 w-60 bg-card border border-primary/30 rounded-xl shadow-2xl p-3 transition-all duration-300 ${nudgeExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
             <button onClick={dismissNudge} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />
             </button>
@@ -805,7 +805,7 @@ export default function AIAssistant({ hideFab = false }: { hideFab?: boolean }) 
           </div>
         )}
         {showTip && !isOpen && !nudge && (
-          <div className="absolute bottom-12 right-0 w-60 bg-card border border-border rounded-xl shadow-2xl p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="absolute bottom-16 right-0 w-60 bg-card border border-border rounded-xl shadow-2xl p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <button onClick={dismissTip} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />
             </button>
@@ -820,11 +820,11 @@ export default function AIAssistant({ hideFab = false }: { hideFab?: boolean }) 
           </div>
         )}
         <button
-          className="flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2.5 shadow-[0_0_16px_4px_rgba(34,197,94,0.45)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_24px_6px_rgba(34,197,94,0.55)] relative"
+          className="flex items-center gap-2.5 rounded-full bg-primary text-primary-foreground px-5 py-3 ring-2 ring-primary/40 ring-offset-2 ring-offset-background shadow-[0_0_20px_6px_rgba(34,197,94,0.5)] transition-all duration-200 hover:scale-105 hover:shadow-[0_0_28px_8px_rgba(34,197,94,0.65)] active:scale-95 relative animate-[fab-pulse_3s_ease-in-out_infinite]"
           onClick={() => setIsOpen(true)}
         >
-          <Sparkles className="h-4 w-4 shrink-0" />
-          <span className="text-sm font-bold whitespace-nowrap">AI</span>
+          <Sparkles className="h-5 w-5 shrink-0" />
+          <span className="text-sm font-bold whitespace-nowrap">Ask AI</span>
           <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
             <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-primary-foreground" />

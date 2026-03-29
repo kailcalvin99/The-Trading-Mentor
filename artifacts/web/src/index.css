@@ -238,6 +238,11 @@
   }
 }
 
+@keyframes fab-pulse {
+  0%, 100% { box-shadow: 0 0 20px 6px rgba(34,197,94,0.5); }
+  50% { box-shadow: 0 0 30px 10px rgba(34,197,94,0.75); }
+}
+
 @keyframes hero-shimmer {
   0% { transform: translateX(-120%); }
   100% { transform: translateX(220%); }
