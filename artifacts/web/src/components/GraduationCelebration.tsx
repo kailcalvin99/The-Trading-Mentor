@@ -247,7 +247,7 @@ export default function GraduationCelebration({ userName = "Graduate", onClose }
                   <line x1="80" y1="116" x2="240" y2="116" stroke="#D4AF37" strokeWidth="0.5" />
                   <text x="160" y="138" textAnchor="middle" fill="#666" fontSize="8" fontFamily="serif">has successfully completed the</text>
                   <text x="160" y="156" textAnchor="middle" fill="#00C896" fontSize="13" fontWeight="bold" fontFamily="serif">ICT Trading Academy</text>
-                  <text x="160" y="172" textAnchor="middle" fill="#666" fontSize="7" fontFamily="serif">All 39 Lessons & Final Examination</text>
+                  <text x="160" y="172" textAnchor="middle" fill="#666" fontSize="7" fontFamily="serif">All 48 Lessons & Final Examination</text>
                   <circle cx="260" cy="195" r="18" fill="url(#sealGold)" stroke="#B8860B" strokeWidth="2" />
                   <text x="260" y="192" textAnchor="middle" fill="#8B4513" fontSize="6" fontWeight="bold">ICT AI</text>
                   <text x="260" y="202" textAnchor="middle" fill="#8B4513" fontSize="5">CERTIFIED</text>
@@ -280,12 +280,12 @@ export default function GraduationCelebration({ userName = "Graduate", onClose }
             You've mastered the ICT Trading Academy!
           </p>
           <p className="text-sm text-white/60 mb-6 max-w-md mx-auto">
-            All 39 lessons completed. All quizzes passed. You are now an ICT-certified trader ready to conquer the markets.
+            All 48 lessons completed. All quizzes passed. You are now an ICT-certified trader ready to conquer the markets.
           </p>
 
           <div className="flex flex-wrap gap-3 justify-center mb-8">
             {[
-              { label: "39/39 Lessons", icon: "📚" },
+              { label: "48/48 Lessons", icon: "📚" },
               { label: "Quiz Passed", icon: "✅" },
               { label: "ICT Certified", icon: "🏅" },
               { label: "Course Graduate", icon: "🎓" },

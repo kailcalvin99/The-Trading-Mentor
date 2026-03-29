@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ChevronLeft,
   List,
+  Lock,
 } from "lucide-react";
 import {
   TOUR_STEPS,
@@ -495,6 +496,13 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
               <div className="relative bg-secondary/50 border border-border rounded-lg p-2 mb-2">
                 <p className="text-[10px] text-foreground/80 leading-relaxed line-clamp-4">{step.description}</p>
               </div>
+
+              {step.tierNote && (
+                <div className="flex items-start gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1.5 mb-2">
+                  <Lock className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-[9px] text-amber-500/90 leading-relaxed">{step.tierNote}</p>
+                </div>
+              )}
 
               <div className="mb-2">
                 <div className="flex gap-0.5">

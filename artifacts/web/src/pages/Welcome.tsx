@@ -22,7 +22,7 @@ interface Tier {
 }
 
 const STATS = [
-  { value: "39", label: "Structured Lessons" },
+  { value: "48", label: "Structured Lessons" },
   { value: "24hr", label: "Drawdown Lock" },
   { value: "3", label: "Subscription Tiers" },
   { value: "Free", label: "To Get Started" },
@@ -75,7 +75,7 @@ const FEATURES = [
     border: "border-indigo-500/20",
     desc: "A private ICT tutor available 24/7. Ask anything, get plain-language answers, and build real knowledge — not just guesses.",
     bullets: [
-      "39 structured lessons from zero to advanced ICT",
+      "48 structured lessons from zero to advanced ICT",
       "Adaptive quiz that adjusts to your skill level",
       "16-term glossary in plain, simple language",
       "AI answers any trading question, any time",
@@ -114,7 +114,7 @@ const FEATURES = [
 const FAQS = [
   {
     q: "What exactly is The Trading Mentor?",
-    a: "The Trading Mentor is a decision-support tool for futures traders who follow the Inner Circle Trader (ICT) methodology. It combines a structured course (39 lessons), an AI-powered mentor, a daily planner with pre-session checklists, a smart trading journal, and a risk shield that enforces hard drawdown limits. It is not a trading signal service or broker.",
+    a: "The Trading Mentor is a decision-support tool for futures traders who follow the Inner Circle Trader (ICT) methodology. It combines a structured course (48 lessons), an AI-powered mentor, a daily planner with pre-session checklists, a smart trading journal, and a risk shield that enforces hard drawdown limits. It is not a trading signal service or broker.",
   },
   {
     q: "Is this financial advice?",
@@ -387,7 +387,7 @@ export default function Welcome() {
               </button>
               <span className={`text-sm font-medium ${annual ? "text-foreground" : "text-muted-foreground"}`}>
                 Annual
-                <span className="ml-1.5 text-xs text-primary font-bold">Save 17%</span>
+                <span className="ml-1.5 text-xs text-primary font-bold">Save 20%</span>
               </span>
             </div>
 
