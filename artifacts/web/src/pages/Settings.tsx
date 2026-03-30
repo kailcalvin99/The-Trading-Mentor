@@ -876,7 +876,6 @@ export default function Settings() {
 
 const DASHBOARD_WIDGET_DEFS = [
   { id: "mascot", label: "Mascot Greeting", desc: "ICT trading tip mascot at the top" },
-  { id: "slotmachine", label: "Daily Mission", desc: "Today's session, action and goal" },
   { id: "sessions", label: "Market Sessions Clock", desc: "Live countdowns for each trading session" },
   { id: "tradeplan", label: "Today's Trade Plan", desc: "Daily trade plan note, resets each day" },
   { id: "notes", label: "Notes Scratch-pad", desc: "Persistent notes between sessions" },
@@ -890,7 +889,6 @@ type DashboardWidgetId = typeof DASHBOARD_WIDGET_DEFS[number]["id"];
 
 const DASHBOARD_DEFAULT_VISIBLE: Record<DashboardWidgetId, boolean> = {
   mascot: true,
-  slotmachine: true,
   sessions: true,
   tradeplan: true,
   notes: true,

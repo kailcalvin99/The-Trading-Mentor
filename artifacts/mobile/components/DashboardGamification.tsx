@@ -1,11 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  Animated,
-  Easing,
   type DimensionValue,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,40 +11,11 @@ import Colors from "@/constants/colors";
 
 const C = Colors.dark;
 
-const DAILY_TIPS = [
-  "Always wait for the liquidity sweep before entering!",
-  "The best setups happen at session opens — be ready!",
-  "Never risk more than 1% on a single trade.",
-  "FVGs are your best friend — learn to spot them!",
-  "Patience is the most profitable trading skill.",
-  "Check the daily bias BEFORE looking at charts.",
-  "Silver Bullet window (10-11 AM) has the highest probability.",
-  "If you missed the move, DON'T chase it!",
-  "Your journal is your most powerful trading tool.",
-  "3 green days in a row? Time for a rest day.",
-  "The market rewards discipline, not aggression.",
-  "Always trade with the trend — the trend is your friend.",
-];
-
-const SLOT_SESSIONS = ["Silver Bullet 🎯", "NY Open 📈", "London 🌍", "Asian 🌏"];
-const SLOT_ACTIONS = ["FVG Entry", "OB Retest", "Liquidity Grab", "Market Structure"];
-const SLOT_GOALS = ["1 trade max", "Watch only", "Log in journal", "50-pt target"];
-
 const RANKS = ["Apprentice", "Student", "Trader", "Pro", "Master", "ICT Legend"];
 
 const XP_KEY = "mobile-total-xp";
 const STREAK_KEY = "mobile-login-streak";
 const LAST_LOGIN_KEY = "mobile-last-login-date";
-
-function dateSeed(): number {
-  const d = new Date().toDateString();
-  let hash = 0;
-  for (let i = 0; i < d.length; i++) {
-    hash = (hash << 5) - hash + d.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
 
 export function useDailyGamification() {
   const [xp, setXp] = useState(0);
@@ -146,103 +114,6 @@ export function XPLevelCard() {
   );
 }
 
-export function SlotMachineCard() {
-  const [reelsStopped, setReelsStopped] = useState([false, false, false]);
-  const [results, setResults] = useState(["", "", ""]);
-  const [reelValues, setReelValues] = useState(["", "", ""]);
-
-  const seed = dateSeed();
-
-  useEffect(() => {
-    const r1 = SLOT_SESSIONS[seed % SLOT_SESSIONS.length];
-    const r2 = SLOT_ACTIONS[Math.floor(seed / 7) % SLOT_ACTIONS.length];
-    const r3 = SLOT_GOALS[Math.floor(seed / 13) % SLOT_GOALS.length];
-    const finalResults = [r1, r2, r3];
-
-    const intervals: ReturnType<typeof setInterval>[] = [];
-    const stops: ReturnType<typeof setTimeout>[] = [];
-
-    const opts = [SLOT_SESSIONS, SLOT_ACTIONS, SLOT_GOALS];
-
-    opts.forEach((options, i) => {
-      let counter = 0;
-      const iv = setInterval(() => {
-        counter++;
-        setReelValues((prev) => {
-          const next = [...prev];
-          next[i] = options[counter % options.length];
-          return next;
-        });
-      }, 100);
-      intervals.push(iv);
-
-      const delay = 1200 + i * 600;
-      const timeout = setTimeout(() => {
-        clearInterval(intervals[i]);
-        setResults((prev) => {
-          const next = [...prev];
-          next[i] = finalResults[i];
-          return next;
-        });
-        setReelValues((prev) => {
-          const next = [...prev];
-          next[i] = finalResults[i];
-          return next;
-        });
-        setReelsStopped((prev) => {
-          const next = [...prev];
-          next[i] = true;
-          return next;
-        });
-      }, delay);
-      stops.push(timeout);
-    });
-
-    return () => {
-      intervals.forEach((iv) => clearInterval(iv));
-      stops.forEach((t) => clearTimeout(t));
-    };
-  }, []);
-
-  const allDone = reelsStopped.every(Boolean);
-
-  return (
-    <View style={styles.slotCard}>
-      <View style={styles.cardHeader}>
-        <Ionicons name="trophy-outline" size={16} color="#E53E3E" />
-        <Text style={[styles.cardTitle, { color: "#E53E3E" }]}>Today's Mission</Text>
-        <View style={styles.dailyBadge}>
-          <Text style={styles.dailyBadgeText}>DAILY</Text>
-        </View>
-      </View>
-
-      <View style={styles.reelsRow}>
-        {["Session", "Action", "Goal"].map((label, i) => (
-          <View key={label} style={styles.reelContainer}>
-            <Text style={styles.reelLabel}>{label}</Text>
-            <View style={[styles.reel, reelsStopped[i] && styles.reelStopped]}>
-              <Text
-                style={[styles.reelText, !reelsStopped[i] && styles.reelTextBlurred]}
-                numberOfLines={2}
-              >
-                {reelValues[i] || "..."}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      {allDone && (
-        <View style={styles.missionBox}>
-          <Text style={styles.missionText}>
-            <Text style={styles.missionLabel}>Mission: </Text>
-            {results[0]} → {results[1]} → {results[2]}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   card: {
@@ -252,18 +123,6 @@ const styles = StyleSheet.create({
     borderColor: C.cardBorder,
     padding: 16,
     marginBottom: 14,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 14,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: C.text,
-    flex: 1,
   },
   xpRow: {
     flexDirection: "row",
@@ -321,82 +180,5 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 3,
-  },
-  slotCard: {
-    backgroundColor: C.backgroundSecondary,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E53E3E30",
-    padding: 16,
-    marginBottom: 14,
-  },
-  dailyBadge: {
-    backgroundColor: "#E53E3E20",
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  dailyBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#E53E3E",
-  },
-  reelsRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 12,
-  },
-  reelContainer: {
-    flex: 1,
-    alignItems: "center",
-  },
-  reelLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: C.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 6,
-  },
-  reel: {
-    width: "100%",
-    height: 64,
-    backgroundColor: C.cardBorder + "80",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 6,
-  },
-  reelStopped: {
-    borderColor: "#E53E3E40",
-    backgroundColor: "#E53E3E08",
-  },
-  reelText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: C.text,
-    textAlign: "center",
-  },
-  reelTextBlurred: {
-    opacity: 0.4,
-  },
-  missionBox: {
-    backgroundColor: "#E53E3E10",
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#E53E3E30",
-  },
-  missionText: {
-    fontSize: 13,
-    color: C.text,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  missionLabel: {
-    color: "#E53E3E",
-    fontWeight: "700",
   },
 });

@@ -739,7 +739,7 @@ AI Mentor (mobile): Embedded via AIAssistantContext. No standalone ai-assistant.
 
 Key Mobile Components (artifacts/mobile/components/):
   AIAssistant.tsx           — Mobile AI Mentor chat overlay (streaming, tool calls, RN-adapted)
-  DashboardGamification.tsx — Slot machine card, daily gamification hook
+  DashboardGamification.tsx — Daily gamification hook (XP, streak)
   LiveMarketWidgets.tsx     — Mobile live price strip, open trade card, kill zone countdown, economic calendar
   MorningBriefingWidget.tsx — Mobile morning briefing widget
   NewsModal.tsx             — Modal for checking economic news (morning routine step)

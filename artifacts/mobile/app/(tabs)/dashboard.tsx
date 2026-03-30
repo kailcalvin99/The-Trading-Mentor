@@ -23,7 +23,7 @@ import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, useFocusEffect } from "expo-router";
 import Colors from "@/constants/colors";
-import { SlotMachineCard, useDailyGamification } from "@/components/DashboardGamification";
+import { useDailyGamification } from "@/components/DashboardGamification";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGetPropAccount, useListTrades } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1249,20 +1249,6 @@ function AchievementsModal({ visible, onClose, xp, streak }: {
   );
 }
 
-function MissionModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose} />
-      <View style={styles.modalSheet}>
-        <View style={styles.modalHandle} />
-        <SlotMachineCard />
-        <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
-          <Text style={styles.doneBtnText}>Got It!</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
-  );
-}
 
 const ICT_ACADEMY_PROGRESS_KEY = "ict-academy-progress";
 const ACADEMY_PENDING_LESSON_KEY = "ict-academy-pending-lesson";

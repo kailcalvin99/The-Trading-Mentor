@@ -16,7 +16,7 @@ The application is built as a pnpm monorepo, leveraging Node.js 24 and TypeScrip
 - **Aesthetic:** Sophisticated, minimal, and expensive look with a gold and deep navy-black color scheme (`hsl(43 76% 52%)` and `hsl(240 25% 4%)`).
 - **Typography:** Playfair Display for headings and Inter for body text.
 - **Branding:** Gold gradient SVG chart-line logo with "ICT" text.
-- **Gamification:** Features like daily spin wheels, slot machine challenges, daily streaks, achievements, and a Hall of Fame are integrated to enhance user engagement.
+- **Gamification:** Features like daily streaks, XP, achievements, and a Hall of Fame are integrated to enhance user engagement.
 - **Feature Locking:** UI elements and features are dynamically locked or unlocked based on the user's subscription tier.
 
 **Technical Implementations:**
