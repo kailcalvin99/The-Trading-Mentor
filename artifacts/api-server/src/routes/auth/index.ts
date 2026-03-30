@@ -2,8 +2,8 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import { db, usersTable, userSubscriptionsTable, subscriptionTiersTable, adminSettingsTable, passwordResetTokensTable } from "@workspace/db";
-import { eq, count, and, gt, desc } from "drizzle-orm";
+import { db, usersTable, userSubscriptionsTable, subscriptionTiersTable, adminSettingsTable, passwordResetTokensTable, betaInviteCodesTable, tradesTable, conversations, messages, propAccountTable, communityPostsTable, communityRepliesTable, postLikesTable } from "@workspace/db";
+import { eq, count, and, gt, desc, inArray, sql } from "drizzle-orm";
 import { signToken, authRequired, setAuthCookie, clearAuthCookie } from "../../middleware/auth";
 
 async function upsertAdminSubscription(userId: number): Promise<void> {
@@ -95,7 +95,7 @@ router.get("/setup-status", async (_req, res) => {
 
 router.post("/register", registerLimiter, async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, inviteCode } = req.body;
 
     if (!email || !password || !name) {
       res.status(400).json({ error: "Email, password, and name are required" });
@@ -122,6 +122,25 @@ router.post("/register", registerLimiter, async (req, res) => {
       return;
     }
 
+    // Validate beta invite code if provided
+    let betaCodeRecord: typeof betaInviteCodesTable.$inferSelect | null = null;
+    const normalizedInviteCode = typeof inviteCode === "string" ? inviteCode.trim().toUpperCase() : "";
+    if (normalizedInviteCode) {
+      const [foundCode] = await db
+        .select()
+        .from(betaInviteCodesTable)
+        .where(eq(betaInviteCodesTable.code, normalizedInviteCode));
+      if (!foundCode) {
+        res.status(400).json({ error: "Invalid invite code" });
+        return;
+      }
+      if (foundCode.usedByUserId !== null) {
+        res.status(400).json({ error: "This invite code has already been used" });
+        return;
+      }
+      betaCodeRecord = foundCode;
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
 
     const founderLimitSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_limit"));
@@ -133,8 +152,12 @@ router.post("/register", registerLimiter, async (req, res) => {
     const currentFounderCount = founderCountResult.count;
     const [userCountResult] = await db.select({ count: count() }).from(usersTable);
     const currentUserCount = userCountResult.count;
-    const isFounder = currentFounderCount < founderLimit;
+    // Beta testers do not get founder status
+    const isFounder = !betaCodeRecord && currentFounderCount < founderLimit;
     const founderNumber = isFounder ? currentFounderCount + 1 : null;
+
+    const isBetaTester = betaCodeRecord !== null;
+    const betaTrialEndsAt = isBetaTester ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null;
 
     // FIX #4: read admin email from environment variable — never hardcode personal emails
     const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
@@ -147,10 +170,36 @@ router.post("/register", registerLimiter, async (req, res) => {
       role: isAdmin ? "admin" : "user",
       isFounder,
       founderNumber,
+      isBetaTester,
+      betaTrialEndsAt,
     }).returning();
 
     if (isAdmin) {
       await upsertAdminSubscription(user.id);
+    } else if (isBetaTester) {
+      // Beta testers get top-tier access with status "beta_trial"
+      const topTiers = await db
+        .select()
+        .from(subscriptionTiersTable)
+        .where(eq(subscriptionTiersTable.isActive, true))
+        .orderBy(desc(subscriptionTiersTable.level))
+        .limit(1);
+      if (topTiers.length > 0) {
+        await db.insert(userSubscriptionsTable).values({
+          userId: user.id,
+          tierId: topTiers[0].id,
+          status: "beta_trial",
+          billingCycle: "monthly",
+          founderDiscount: false,
+          founderDiscountEndsAt: null,
+          endDate: betaTrialEndsAt,
+        });
+      }
+      // Mark the invite code as used
+      await db
+        .update(betaInviteCodesTable)
+        .set({ usedByUserId: user.id, usedAt: new Date() })
+        .where(eq(betaInviteCodesTable.id, betaCodeRecord!.id));
     } else {
       const defaultTier = await db.select().from(subscriptionTiersTable).where(eq(subscriptionTiersTable.level, 1));
       if (defaultTier.length > 0) {
@@ -181,9 +230,12 @@ router.post("/register", registerLimiter, async (req, res) => {
         role: user.role,
         isFounder: user.isFounder,
         founderNumber: user.founderNumber,
+        isBetaTester: user.isBetaTester,
+        betaTrialEndsAt: user.betaTrialEndsAt,
       },
       isFounder,
       founderNumber,
+      isBetaTester,
     });
   } catch (err) {
     console.error("Registration error:", err);
@@ -280,6 +332,8 @@ router.get("/me", authRequired, async (req, res) => {
         avatarUrl: user.avatarUrl || null,
         quizDone: user.quizDone ?? false,
         tourShown: user.tourShown ?? false,
+        isBetaTester: user.isBetaTester ?? false,
+        betaTrialEndsAt: user.betaTrialEndsAt ?? null,
       },
       subscription: subscription[0] || null,
     });
@@ -310,6 +364,108 @@ router.post("/user-flags", authRequired, async (req, res) => {
 router.post("/logout", (_req, res) => {
   clearAuthCookie(res);
   res.json({ success: true });
+});
+
+router.get("/beta-status", authRequired, async (req, res) => {
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.user!.userId));
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    if (!user.isBetaTester) {
+      res.json({ isBetaTester: false, trialExpired: false, betaTrialEndsAt: null });
+      return;
+    }
+    const now = new Date();
+    const trialExpired = user.betaTrialEndsAt ? user.betaTrialEndsAt < now : false;
+    if (trialExpired) {
+      // Ensure subscription status reflects trial_expired
+      const [sub] = await db
+        .select()
+        .from(userSubscriptionsTable)
+        .where(eq(userSubscriptionsTable.userId, user.id));
+      if (sub && sub.status === "beta_trial") {
+        await db
+          .update(userSubscriptionsTable)
+          .set({ status: "trial_expired" })
+          .where(eq(userSubscriptionsTable.userId, user.id));
+      }
+    }
+    res.json({
+      isBetaTester: true,
+      trialExpired,
+      betaTrialEndsAt: user.betaTrialEndsAt,
+    });
+  } catch (err) {
+    console.error("Beta status error:", err);
+    res.status(500).json({ error: "Failed to get beta status" });
+  }
+});
+
+router.delete("/account", authRequired, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Cancel Stripe subscription if any
+    const [sub] = await db.select().from(userSubscriptionsTable).where(eq(userSubscriptionsTable.userId, userId));
+    if (sub?.stripeSubscriptionId) {
+      try {
+        const { getStripeClient } = await import("../../stripe/stripeClient");
+        const stripe = await getStripeClient();
+        await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
+      } catch (stripeErr) {
+        console.warn("Could not cancel Stripe subscription during account deletion:", stripeErr);
+      }
+    }
+
+    // Delete community data
+    const userPosts = await db.select({ id: communityPostsTable.id }).from(communityPostsTable).where(eq(communityPostsTable.userId, userId));
+    if (userPosts.length > 0) {
+      const postIds = userPosts.map(p => p.id);
+      await db.delete(postLikesTable).where(inArray(postLikesTable.postId, postIds));
+      await db.delete(communityRepliesTable).where(inArray(communityRepliesTable.postId, postIds));
+    }
+    await db.delete(postLikesTable).where(eq(postLikesTable.userId, userId));
+    await db.delete(communityRepliesTable).where(eq(communityRepliesTable.userId, userId));
+    await db.delete(communityPostsTable).where(eq(communityPostsTable.userId, userId));
+
+    // Delete messages and conversations
+    await db.delete(messages).where(
+      sql`conversation_id IN (SELECT id FROM conversations WHERE user_id = ${userId})`
+    );
+    await db.delete(conversations).where(eq(conversations.userId, userId));
+
+    // Delete prop accounts
+    await db.delete(propAccountTable).where(eq(propAccountTable.userId, userId));
+
+    // Delete trades
+    await db.delete(tradesTable).where(eq(tradesTable.userId, userId));
+
+    // Delete subscriptions
+    await db.delete(userSubscriptionsTable).where(eq(userSubscriptionsTable.userId, userId));
+
+    // Null out beta invite code references (so the code record is preserved for admin tracking)
+    await db
+      .update(betaInviteCodesTable)
+      .set({ usedByUserId: null, usedAt: null })
+      .where(eq(betaInviteCodesTable.usedByUserId, userId));
+
+    // Delete user
+    await db.delete(usersTable).where(eq(usersTable.id, userId));
+
+    clearAuthCookie(res);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Account deletion error:", err);
+    res.status(500).json({ error: "Failed to delete account" });
+  }
 });
 
 router.post("/forgot-password", forgotPasswordLimiter, async (req, res) => {

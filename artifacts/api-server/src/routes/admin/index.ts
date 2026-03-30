@@ -1,8 +1,9 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
-import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, tradesTable, conversations, messages, propAccountTable, communityPostsTable, communityRepliesTable, postLikesTable, passwordResetTokensTable } from "@workspace/db";
+import { db, usersTable, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable, tradesTable, conversations, messages, propAccountTable, communityPostsTable, communityRepliesTable, postLikesTable, passwordResetTokensTable, betaInviteCodesTable } from "@workspace/db";
 import { eq, sql, inArray, and, gt } from "drizzle-orm";
+import crypto from "crypto";
 import { authRequired, adminRequired, clearAuthCookie } from "../../middleware/auth";
 import { seedDefaults } from "../../seed";
 import { getStripeClient } from "../../stripe/stripeClient";
@@ -268,6 +269,15 @@ router.delete("/users/:id", async (req, res) => {
     }
 
     try {
+      await db
+        .update(betaInviteCodesTable)
+        .set({ usedByUserId: null, usedAt: null })
+        .where(eq(betaInviteCodesTable.usedByUserId, userId));
+    } catch (err: unknown) {
+      console.error("Delete user error at step beta codes:", err);
+    }
+
+    try {
       await db.delete(usersTable).where(eq(usersTable.id, userId));
     } catch (err: unknown) {
       console.error("Delete user error at step user record:", err);
@@ -512,6 +522,47 @@ router.get("/psychology-analytics", async (_req, res) => {
   } catch (err) {
     console.error("Psychology analytics error:", err);
     res.status(500).json({ error: "Failed to fetch psychology analytics" });
+  }
+});
+
+router.get("/beta-codes", async (_req, res) => {
+  try {
+    const codes = await db
+      .select({
+        id: betaInviteCodesTable.id,
+        code: betaInviteCodesTable.code,
+        usedByUserId: betaInviteCodesTable.usedByUserId,
+        usedAt: betaInviteCodesTable.usedAt,
+        createdAt: betaInviteCodesTable.createdAt,
+        usedByEmail: usersTable.email,
+        usedByName: usersTable.name,
+      })
+      .from(betaInviteCodesTable)
+      .leftJoin(usersTable, eq(betaInviteCodesTable.usedByUserId, usersTable.id))
+      .orderBy(betaInviteCodesTable.id);
+    res.json({ codes });
+  } catch (err) {
+    console.error("Get beta codes error:", err);
+    res.status(500).json({ error: "Failed to get beta invite codes" });
+  }
+});
+
+router.post("/beta-codes/generate", async (_req, res) => {
+  try {
+    const existingCount = await db.select().from(betaInviteCodesTable);
+    const toGenerate = Math.max(0, 20 - existingCount.length);
+    if (toGenerate === 0) {
+      res.json({ success: true, generated: 0, message: "Already have 20 codes" });
+      return;
+    }
+    const newCodes = Array.from({ length: toGenerate }, () => ({
+      code: "BETA-" + crypto.randomBytes(4).toString("hex").toUpperCase(),
+    }));
+    await db.insert(betaInviteCodesTable).values(newCodes);
+    res.json({ success: true, generated: toGenerate });
+  } catch (err) {
+    console.error("Generate beta codes error:", err);
+    res.status(500).json({ error: "Failed to generate beta invite codes" });
   }
 });
 

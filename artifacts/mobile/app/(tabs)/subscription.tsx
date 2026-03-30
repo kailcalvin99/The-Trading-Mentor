@@ -196,6 +196,12 @@ export default function SubscriptionScreen() {
               <Text style={s.founderBadgeText}>Founder #{user.founderNumber}</Text>
             </View>
           )}
+          {user?.isBetaTester && !user?.isFounder && (
+            <View style={s.betaBadge}>
+              <Ionicons name="flask-outline" size={11} color={C.accent} />
+              <Text style={s.betaBadgeText}>Beta Access</Text>
+            </View>
+          )}
         </View>
 
         {/* Founder discount notice */}
@@ -204,6 +210,16 @@ export default function SubscriptionScreen() {
             <Ionicons name="gift-outline" size={16} color="#E53E3E" />
             <Text style={s.founderNoticeText}>
               You receive {founderDiscountPct}% founder discount on all paid plans!
+            </Text>
+          </View>
+        )}
+
+        {/* Beta tester notice */}
+        {user?.isBetaTester && !user?.isFounder && (
+          <View style={s.betaNotice}>
+            <Ionicons name="flask-outline" size={16} color={C.accent} />
+            <Text style={s.betaNoticeText}>
+              You have beta access — 30-day free trial of the full platform.
             </Text>
           </View>
         )}
@@ -353,6 +369,31 @@ const s = StyleSheet.create({
     paddingVertical: 4,
   },
   founderBadgeText: { fontSize: 11, fontWeight: "700", color: "#E53E3E" },
+
+  betaBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: `${C.accent}20`,
+    borderWidth: 1,
+    borderColor: `${C.accent}50`,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  betaBadgeText: { fontSize: 11, fontWeight: "700", color: C.accent },
+
+  betaNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: `${C.accent}10`,
+    borderWidth: 1,
+    borderColor: `${C.accent}30`,
+    borderRadius: 10,
+    padding: 12,
+  },
+  betaNoticeText: { flex: 1, fontSize: 13, color: C.accent, fontWeight: "600" },
 
   founderNotice: {
     flexDirection: "row",

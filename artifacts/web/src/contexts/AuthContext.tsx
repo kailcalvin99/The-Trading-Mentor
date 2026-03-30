@@ -14,6 +14,8 @@ interface UserData {
   avatarUrl: string | null;
   quizDone: boolean;
   tourShown: boolean;
+  isBetaTester: boolean;
+  betaTrialEndsAt: string | null;
 }
 
 interface SubscriptionData {
@@ -37,7 +39,7 @@ interface AuthContextType {
   subscription: SubscriptionData | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: string }>;
-  register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string; isFounder?: boolean; founderNumber?: number }>;
+  register: (email: string, password: string, name: string, inviteCode?: string) => Promise<{ success: boolean; error?: string; isFounder?: boolean; founderNumber?: number }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   hasFeature: (feature: string) => boolean;
@@ -160,13 +162,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (email: string, password: string, name: string, inviteCode?: string) => {
     try {
+      const body: Record<string, string> = { email, password, name };
+      if (inviteCode) body.inviteCode = inviteCode;
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (res.ok) {

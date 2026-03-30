@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, UserPlus, Crown, Sparkles, PartyPopper } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Crown, Sparkles, PartyPopper, FlaskConical } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -16,6 +16,7 @@ export default function Signup() {
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
   const [showFounderModal, setShowFounderModal] = useState(false);
   const [founderNum, setFounderNum] = useState(0);
+  const [inviteCode, setInviteCode] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export default function Signup() {
     }
     setLoading(true);
 
-    const result = await register(email, password, name);
+    const result = await register(email, password, name, inviteCode.trim() || undefined);
     setLoading(false);
 
     if (result.success) {
@@ -191,6 +192,22 @@ export default function Signup() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5 flex items-center gap-1.5">
+                <FlaskConical className="h-3.5 w-3.5 text-muted-foreground" />
+                Beta Invite Code
+                <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 font-mono uppercase tracking-wider transition-colors"
+                placeholder="BETA-XXXXXXXX"
+                autoComplete="off"
+              />
             </div>
 
             <label className="flex items-start gap-2.5 cursor-pointer group">

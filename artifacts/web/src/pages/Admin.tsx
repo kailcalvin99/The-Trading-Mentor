@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
-import { Users, Settings, DollarSign, BarChart3, Code2 } from "lucide-react";
+import { Users, Settings, DollarSign, BarChart3, Code2, FlaskConical } from "lucide-react";
 import { AdminAIPanel } from "./admin/AdminAIPanel";
 import { AdminUsersTab } from "./admin/AdminUsersTab";
 import { AdminSubscriptionsTab } from "./admin/AdminSubscriptionsTab";
 import { AdminPlatformTab } from "./admin/AdminPlatformTab";
 import { AdminDevToolsTab } from "./admin/AdminDevToolsTab";
+import { AdminBetaTab } from "./admin/AdminBetaTab";
 import { useMonteCarlo } from "./admin/useMonteCarlo";
 import { useAdminData } from "./admin/useAdminData";
 
 export default function Admin() {
   const { user, logout } = useAuth();
   const { reload: reloadConfig } = useAppConfig();
-  const [tab, setTab] = useState<"users" | "subscriptions" | "platform" | "analytics" | "devtools">("users");
+  const [tab, setTab] = useState<"users" | "subscriptions" | "platform" | "analytics" | "devtools" | "beta">("users");
 
   const mc = useMonteCarlo();
   const data = useAdminData(reloadConfig, logout);
@@ -51,6 +52,7 @@ export default function Admin() {
           { key: "subscriptions" as const, label: "Subscriptions", icon: DollarSign },
           { key: "platform" as const, label: "Platform Settings", icon: Settings },
           { key: "analytics" as const, label: "Analytics", icon: BarChart3 },
+          { key: "beta" as const, label: "Beta Testers", icon: FlaskConical },
           { key: "devtools" as const, label: "Developer Tools", icon: Code2 },
         ].map(({ key, label, icon: Icon }) => (
           <button
@@ -135,6 +137,8 @@ export default function Admin() {
           saving={saving}
         />
       )}
+
+      {tab === "beta" && <AdminBetaTab />}
 
       {tab === "devtools" && <AdminDevToolsTab mc={mc} />}
     </div>

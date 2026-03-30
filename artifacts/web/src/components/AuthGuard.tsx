@@ -1,6 +1,81 @@
-import type { ReactNode } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { type ReactNode, useState, useEffect } from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { BetaTrialExpiredModal } from "./BetaTrialExpiredModal";
+
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+function getToken(): string | null {
+  try {
+    return localStorage.getItem("ICT_TRADING_MENTOR_TOKEN");
+  } catch {
+    return null;
+  }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function BetaTrialChecker({ children }: { children: ReactNode }) {
+  const { user, isAdmin, logout } = useAuth();
+  const [trialExpired, setTrialExpired] = useState(false);
+  const [checked, setChecked] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!user || isAdmin) {
+      setTrialExpired(false);
+      setChecked(true);
+      return;
+    }
+    async function checkBetaStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/auth/beta-status`, {
+          credentials: "include",
+          headers: authHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setTrialExpired(data.trialExpired === true);
+        }
+      } catch {
+        // If check fails, don't block the user
+      } finally {
+        setChecked(true);
+      }
+    }
+    checkBetaStatus();
+  }, [user?.id, isAdmin]);
+
+  // Re-check on location change (navigation)
+  useEffect(() => {
+    if (!user || isAdmin || !checked) return;
+    async function recheck() {
+      try {
+        const res = await fetch(`${API_BASE}/auth/beta-status`, {
+          credentials: "include",
+          headers: authHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setTrialExpired(data.trialExpired === true);
+        }
+      } catch {}
+    }
+    recheck();
+  }, [location.pathname]);
+
+  if (!checked) return null;
+
+  return (
+    <>
+      {children}
+      {trialExpired && <BetaTrialExpiredModal onLogout={logout} />}
+    </>
+  );
+}
 
 export function AuthGuard() {
   const { user, loading } = useAuth();
@@ -17,7 +92,11 @@ export function AuthGuard() {
     return <Navigate to="/login" replace />;
   }
 
-  return <Outlet />;
+  return (
+    <BetaTrialChecker>
+      <Outlet />
+    </BetaTrialChecker>
+  );
 }
 
 export function AdminGuard({ children }: { children: ReactNode }) {

@@ -27,6 +27,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,11 +47,13 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
-      const data = await apiPost<{ token?: string; user: unknown }>("auth/register", {
+      const body: Record<string, string> = {
         name: name.trim(),
         email: email.trim(),
         password,
-      });
+      };
+      if (inviteCode.trim()) body.inviteCode = inviteCode.trim().toUpperCase();
+      const data = await apiPost<{ token?: string; user: unknown }>("auth/register", body);
       await handleAuthResponse(data as Parameters<typeof handleAuthResponse>[0]);
       await refresh();
       router.replace("/(tabs)/dashboard");
@@ -153,6 +156,19 @@ export default function RegisterScreen() {
                 />
               </TouchableOpacity>
             </View>
+
+            <Text style={[s.label, s.mt]}>Beta Invite Code</Text>
+            <TextInput
+              style={s.input}
+              value={inviteCode}
+              onChangeText={(t) => setInviteCode(t.toUpperCase())}
+              placeholder="BETA-XXXXXXXX (optional)"
+              placeholderTextColor={C.textSecondary}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={handleRegister}
+            />
 
             <TouchableOpacity
               style={[s.btn, loading && s.btnLoading]}

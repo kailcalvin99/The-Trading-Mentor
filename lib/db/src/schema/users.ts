@@ -32,6 +32,8 @@ export const usersTable = pgTable("users", {
   tradingRules: text("trading_rules"),
   quizDone: boolean("quiz_done").notNull().default(false),
   tourShown: boolean("tour_shown").notNull().default(false),
+  isBetaTester: boolean("is_beta_tester").notNull().default(false),
+  betaTrialEndsAt: timestamp("beta_trial_ends_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

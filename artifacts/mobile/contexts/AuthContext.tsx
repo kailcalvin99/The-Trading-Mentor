@@ -61,6 +61,8 @@ interface AuthUser {
   founderNumber: number | null;
   appMode?: "full" | "lite";
   avatarUrl?: string | null;
+  isBetaTester?: boolean;
+  betaTrialEndsAt?: string | null;
 }
 
 interface AuthSubscription {

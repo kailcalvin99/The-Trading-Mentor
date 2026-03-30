@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle, Shield } from "lucide-react";
+import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle, Shield, FlaskConical } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -186,6 +186,16 @@ export default function Pricing() {
             <div>
               <p className="text-sm font-bold text-amber-500">Founder Member #{user.founderNumber}</p>
               <p className="text-xs text-muted-foreground">You get {founderDiscountPct}% off any paid plan for 6 months!</p>
+            </div>
+          </div>
+        )}
+
+        {user?.isBetaTester && !user?.isFounder && (
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-xl p-4 mb-8 flex items-center gap-3">
+            <FlaskConical className="h-6 w-6 text-primary shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-primary">Beta Access</p>
+              <p className="text-xs text-muted-foreground">You have a 30-day free trial of the full platform. Choose a plan to continue after your trial.</p>
             </div>
           </div>
         )}

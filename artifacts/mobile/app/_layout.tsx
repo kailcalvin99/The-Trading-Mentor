@@ -8,7 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -18,6 +18,7 @@ import { getToken, fireOn401, getBaseUrl } from "@/lib/api";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { BetaTrialExpiredScreen } from "@/components/BetaTrialExpiredScreen";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { PlannerProvider } from "@/contexts/PlannerContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
@@ -31,9 +32,11 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin, logout } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const [betaExpired, setBetaExpired] = useState(false);
+  const choosingPlanRef = useRef(false);
 
   useEffect(() => {
     if (loading) return;
@@ -45,7 +48,61 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, segments, router]);
 
-  return <>{children}</>;
+  const checkBeta = useCallback(async () => {
+    if (!user || isAdmin) {
+      setBetaExpired(false);
+      return;
+    }
+    try {
+      const { apiGet } = await import("@/lib/api");
+      const data = await apiGet<{ isBetaTester: boolean; trialExpired: boolean }>("auth/beta-status");
+      setBetaExpired(data.trialExpired === true);
+    } catch {
+      // If check fails, don't block user
+    }
+  }, [user?.id, isAdmin]);
+
+  // Check on user login/change
+  useEffect(() => {
+    if (!user || isAdmin) {
+      setBetaExpired(false);
+      return;
+    }
+    checkBeta();
+  }, [user?.id, isAdmin]);
+
+  // Re-check on navigation — but skip while user is actively choosing a plan
+  useEffect(() => {
+    if (!user || isAdmin || loading) return;
+    // Don't re-check when navigating to subscription (that's the fix path)
+    const currentTab = segments[1] as string | undefined;
+    if (choosingPlanRef.current && currentTab === "subscription") return;
+    // If user navigated away from subscription after choosing plan, re-check
+    if (choosingPlanRef.current && currentTab !== "subscription") {
+      choosingPlanRef.current = false;
+      checkBeta();
+      return;
+    }
+    checkBeta();
+  }, [segments.join("/")]);
+
+  function handleChoosePlan() {
+    choosingPlanRef.current = true;
+    setBetaExpired(false);
+    router.push("/(tabs)/subscription");
+  }
+
+  return (
+    <>
+      {children}
+      {betaExpired && (
+        <BetaTrialExpiredScreen
+          onLogout={logout}
+          onChoosePlan={handleChoosePlan}
+        />
+      )}
+    </>
+  );
 }
 
 function RootLayoutNav() {

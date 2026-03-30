@@ -11,3 +11,4 @@ export * from "./video_watched";
 export * from "./cooldown_events";
 export * from "./planner";
 export * from "./tags";
+export * from "./beta_invite_codes";
