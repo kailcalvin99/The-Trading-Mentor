@@ -1,7 +1,26 @@
-import { db, subscriptionTiersTable, adminSettingsTable } from "@workspace/db";
+import { db, subscriptionTiersTable, adminSettingsTable, pool } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { DEFAULT_ICT_SYSTEM_PROMPT } from "./routes/gemini/systemPrompts";
 import { getStripeClient } from "./stripe/stripeClient";
+
+export async function runLocalMigrations(): Promise<void> {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS beta_feedback_logs (
+        id serial PRIMARY KEY,
+        user_id integer REFERENCES users(id),
+        submitter_role text NOT NULL,
+        category text NOT NULL,
+        description text NOT NULL,
+        rating integer NOT NULL,
+        page_context text,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+  } catch (err) {
+    console.error("runLocalMigrations error:", err instanceof Error ? err.message : String(err));
+  }
+}
 
 const STANDARD_MONTHLY_PRICE = "24.99";
 const STANDARD_ANNUAL_PRICE = "239.88";

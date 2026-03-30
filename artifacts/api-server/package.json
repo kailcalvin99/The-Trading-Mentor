@@ -21,6 +21,7 @@
     "express-rate-limit": "^8.3.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^8.0.4",
     "yahoo-finance2": "^3.13.2"
   },
   "devDependencies": {
@@ -30,6 +31,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "catalog:",
+    "@types/nodemailer": "^7.0.11",
     "esbuild": "^0.27.3",
     "tsx": "catalog:"
   }

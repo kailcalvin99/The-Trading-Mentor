@@ -19,6 +19,7 @@ import calendarRouter from "./calendar";
 import signalsRouter from "./signals";
 import analyticsRouter from "./analytics";
 import replayRouter from "./replay";
+import betaRouter from "./beta";
 
 const router: IRouter = Router();
 
@@ -43,5 +44,6 @@ router.use("/calendar", calendarRouter);
 router.use("/signals", signalsRouter);
 router.use("/analytics", analyticsRouter);
 router.use("/replay", replayRouter);
+router.use("/beta", betaRouter);
 
 export default router;

@@ -1,6 +1,7 @@
 import app from "./app";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripe/stripeClient";
+import { runLocalMigrations } from "./seed";
 import { execSync, execFileSync } from "child_process";
 import net from "net";
 
@@ -249,6 +250,12 @@ const port = parseInt(rawPort, 10);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   console.error(`Invalid PORT value: "${rawPort}" — must be an integer between 1 and 65535`);
   process.exit(1);
+}
+
+try {
+  await runLocalMigrations();
+} catch (err: unknown) {
+  console.error("Local migrations failed, continuing:", err instanceof Error ? err.message : String(err));
 }
 
 try {

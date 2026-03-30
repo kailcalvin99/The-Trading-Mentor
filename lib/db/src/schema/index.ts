@@ -12,3 +12,4 @@ export * from "./cooldown_events";
 export * from "./planner";
 export * from "./tags";
 export * from "./beta_invite_codes";
+export * from "./beta_feedback_logs";

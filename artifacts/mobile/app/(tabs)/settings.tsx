@@ -12,6 +12,8 @@ import {
   Share,
   Modal,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import * as ExpoSharing from "expo-sharing";
 import * as ImagePicker from "expo-image-picker";
@@ -289,6 +291,45 @@ export default function SettingsScreen() {
   const [webhookCopied, setWebhookCopied] = useState(false);
   const [webhookStepExpanded, setWebhookStepExpanded] = useState<number | null>(null);
   const [webhookExampleCopied, setWebhookExampleCopied] = useState<number | null>(null);
+
+  const BETA_CATEGORIES = ["Bug", "Suggestion", "Usability Issue", "General Feedback"];
+  const [showBetaFeedback, setShowBetaFeedback] = useState(false);
+  const [betaCategory, setBetaCategory] = useState(BETA_CATEGORIES[0]);
+  const [betaDescription, setBetaDescription] = useState("");
+  const [betaRating, setBetaRating] = useState(0);
+  const [betaSubmitting, setBetaSubmitting] = useState(false);
+  const [betaSubmitted, setBetaSubmitted] = useState(false);
+
+  const isBetaTester = user?.isBetaTester === true;
+  const canSeeBetaFeedback = isAdmin || isBetaTester;
+
+  async function handleBetaFeedbackSubmit() {
+    if (!betaRating) { Alert.alert("Missing Rating", "Please select a star rating."); return; }
+    if (!betaDescription.trim()) { Alert.alert("Missing Description", "Please enter a description."); return; }
+    setBetaSubmitting(true);
+    try {
+      await apiPost<{ success: boolean }>("beta/feedback", {
+        category: betaCategory,
+        description: betaDescription.trim(),
+        rating: betaRating,
+        pageContext: "Settings Screen",
+      });
+      setBetaSubmitted(true);
+    } catch (e: unknown) {
+      if (isSessionExpiredError(e)) return;
+      Alert.alert("Error", e instanceof Error ? e.message : "Submission failed");
+    } finally {
+      setBetaSubmitting(false);
+    }
+  }
+
+  function closeBetaFeedback() {
+    setShowBetaFeedback(false);
+    setBetaSubmitted(false);
+    setBetaDescription("");
+    setBetaRating(0);
+    setBetaCategory(BETA_CATEGORIES[0]);
+  }
 
   useEffect(() => {
     load();
@@ -592,6 +633,87 @@ export default function SettingsScreen() {
             <Text style={ap.doneBtnText}>Done</Text>
           </TouchableOpacity>
         </View>
+      </Modal>
+
+      {/* Beta Feedback Modal */}
+      <Modal visible={showBetaFeedback} transparent animationType="slide" onRequestClose={closeBetaFeedback}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+          <TouchableOpacity style={betaS.overlay} activeOpacity={1} onPress={closeBetaFeedback} />
+          <View style={betaS.sheet}>
+            <View style={betaS.handle} />
+            {betaSubmitted ? (
+              <View style={betaS.successBox}>
+                <Ionicons name="checkmark-circle" size={52} color="#10B981" />
+                <Text style={betaS.successTitle}>Thank you!</Text>
+                <Text style={betaS.successDesc}>Your feedback has been sent to the team and saved for review.</Text>
+                <TouchableOpacity style={betaS.doneBtn} onPress={closeBetaFeedback} activeOpacity={0.8}>
+                  <Text style={betaS.doneBtnText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ padding: 16 }}>
+                <Text style={betaS.title}>Send Beta Feedback</Text>
+                <Text style={betaS.intro}>
+                  Help us improve by reporting bugs, usability issues, or suggestions. Please describe:{"\n"}
+                  • What you saw or experienced{"\n"}
+                  • What you expected to happen{"\n"}
+                  • How severe the issue is
+                </Text>
+                <Text style={betaS.label}>Category</Text>
+                <View style={betaS.categoryRow}>
+                  {BETA_CATEGORIES.map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[betaS.categoryChip, betaCategory === cat && betaS.categoryChipActive]}
+                      onPress={() => setBetaCategory(cat)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[betaS.categoryChipText, betaCategory === cat && betaS.categoryChipTextActive]}>
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={betaS.label}>Description</Text>
+                <TextInput
+                  style={betaS.textArea}
+                  value={betaDescription}
+                  onChangeText={setBetaDescription}
+                  placeholder="Describe what happened, what you expected, and severity…"
+                  placeholderTextColor={C.textSecondary}
+                  multiline
+                  numberOfLines={5}
+                />
+                <Text style={betaS.label}>Overall Experience</Text>
+                <View style={betaS.starRow}>
+                  {[1,2,3,4,5].map((s) => (
+                    <TouchableOpacity key={s} onPress={() => setBetaRating(s)} activeOpacity={0.8} style={{ padding: 4 }}>
+                      <Text style={{ fontSize: 28, color: s <= betaRating ? "#F59E0B" : C.textSecondary }}>★</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={{ fontSize: 11, color: C.textSecondary, marginBottom: 16 }}>1 = very poor · 5 = excellent</Text>
+                <View style={{ flexDirection: "row", gap: 10, marginBottom: 32 }}>
+                  <TouchableOpacity style={betaS.cancelBtn} onPress={closeBetaFeedback} activeOpacity={0.8}>
+                    <Text style={betaS.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[betaS.submitBtn, betaSubmitting && { opacity: 0.6 }]}
+                    onPress={handleBetaFeedbackSubmit}
+                    disabled={betaSubmitting}
+                    activeOpacity={0.8}
+                  >
+                    {betaSubmitting ? (
+                      <ActivityIndicator size="small" color="#0A0A0F" />
+                    ) : (
+                      <Text style={betaS.submitBtnText}>Submit</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <View style={s.pageHeader}>
@@ -1150,6 +1272,19 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Beta Feedback */}
+        {canSeeBetaFeedback && (
+          <TouchableOpacity
+            style={betaS.btn}
+            onPress={() => setShowBetaFeedback(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="flask-outline" size={18} color={C.accent} />
+            <Text style={betaS.btnText}>Send Beta Feedback</Text>
+            <Ionicons name="chevron-forward" size={16} color={C.textSecondary} />
+          </TouchableOpacity>
+        )}
+
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={18} color="#EF4444" />
@@ -1389,6 +1524,110 @@ const ap = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 13,
     alignItems: "center",
+  },
+  doneBtnText: { fontSize: 14, fontWeight: "700", color: "#0A0A0F" },
+});
+
+const betaS = StyleSheet.create({
+  btn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.accent + "40",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  btnText: { flex: 1, fontSize: 15, fontWeight: "600", color: C.accent },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)" },
+  sheet: {
+    backgroundColor: C.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "85%",
+    borderTopWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: C.cardBorder,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  title: { fontSize: 18, fontWeight: "800", color: C.text, marginBottom: 8 },
+  intro: {
+    fontSize: 13,
+    color: C.textSecondary,
+    lineHeight: 19,
+    marginBottom: 16,
+    backgroundColor: C.accent + "12",
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: C.accent + "25",
+  },
+  label: { fontSize: 12, fontWeight: "700", color: C.textSecondary, marginBottom: 8, marginTop: 12, textTransform: "uppercase", letterSpacing: 0.5 },
+  categoryRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
+  categoryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    backgroundColor: C.backgroundSecondary,
+  },
+  categoryChipActive: { borderColor: C.accent, backgroundColor: C.accent + "20" },
+  categoryChipText: { fontSize: 13, color: C.textSecondary, fontWeight: "600" },
+  categoryChipTextActive: { color: C.accent },
+  textArea: {
+    backgroundColor: C.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: C.text,
+    minHeight: 100,
+    textAlignVertical: "top",
+    marginBottom: 4,
+  },
+  starRow: { flexDirection: "row", gap: 4, marginBottom: 4 },
+  cancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  cancelBtnText: { fontSize: 14, fontWeight: "600", color: C.textSecondary },
+  submitBtn: {
+    flex: 1,
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  submitBtnText: { fontSize: 14, fontWeight: "700", color: "#0A0A0F" },
+  successBox: {
+    alignItems: "center",
+    padding: 32,
+    gap: 12,
+  },
+  successTitle: { fontSize: 20, fontWeight: "800", color: C.text },
+  successDesc: { fontSize: 14, color: C.textSecondary, textAlign: "center", lineHeight: 20 },
+  doneBtn: {
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingHorizontal: 32,
+    paddingVertical: 13,
+    marginTop: 8,
   },
   doneBtnText: { fontSize: 14, fontWeight: "700", color: "#0A0A0F" },
 });
