@@ -48,3 +48,9 @@ id = "eDT6zM7ebcauOpQ1MuA0b"
 uri = "file://marketing/captions.md"
 type = "text"
 title = "Social Media Captions (Instagram + Facebook)"
+
+[[outputs]]
+id = "Ap1_9VmeMYXC1_4x-6vVt"
+uri = "file://MASTER_REFERENCE.md"
+type = "text"
+title = "ICT Trading Mentor — Master Agent Reference"
