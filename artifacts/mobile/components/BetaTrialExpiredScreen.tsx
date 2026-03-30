@@ -18,9 +18,10 @@ const C = Colors.dark;
 interface Props {
   onLogout: () => Promise<void>;
   onChoosePlan: () => void;
+  discountPct?: number;
 }
 
-export function BetaTrialExpiredScreen({ onLogout, onChoosePlan }: Props) {
+export function BetaTrialExpiredScreen({ onLogout, onChoosePlan, discountPct = 30 }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -55,6 +56,14 @@ export function BetaTrialExpiredScreen({ onLogout, onChoosePlan }: Props) {
             To continue using the app, please choose a plan — or delete your account if you
             no longer want access.
           </Text>
+
+          <View style={s.discountBadge}>
+            <Ionicons name="gift-outline" size={16} color={C.accent} />
+            <View style={s.discountTextWrap}>
+              <Text style={s.discountTitle}>Beta Thank-You Offer</Text>
+              <Text style={s.discountBody}>{discountPct}% off forever — auto-applied when you subscribe</Text>
+            </View>
+          </View>
 
           <View style={s.actions}>
             <TouchableOpacity style={s.primaryBtn} onPress={onChoosePlan}>
@@ -169,6 +178,33 @@ const s = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 40,
+  },
+  discountBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(0,212,170,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(0,212,170,0.3)",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 24,
+    width: "100%",
+  },
+  discountTextWrap: {
+    flex: 1,
+  },
+  discountTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: C.accent,
+    marginBottom: 2,
+  },
+  discountBody: {
+    fontSize: 12,
+    color: C.textSecondary,
+    lineHeight: 18,
   },
   actions: {
     width: "100%",

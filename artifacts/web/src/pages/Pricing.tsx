@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle, Shield, FlaskConical } from "lucide-react";
+import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle, Shield, FlaskConical, Gift } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -22,6 +22,7 @@ export default function Pricing() {
   const [founderSpotsLeft, setFounderSpotsLeft] = useState(0);
   const [founderLimit, setFounderLimit] = useState(20);
   const [founderDiscountPct, setFounderDiscountPct] = useState(50);
+  const [betaTesterDiscountPct, setBetaTesterDiscountPct] = useState(30);
   const [subscribing, setSubscribing] = useState<number | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const { user, subscription, refreshUser, isAdmin, tierLevel } = useAuth();
@@ -56,6 +57,9 @@ export default function Pricing() {
         setFounderSpotsLeft(data.founderSpotsLeft);
         setFounderLimit(data.founderLimit || 20);
         setFounderDiscountPct(data.founderDiscountPct);
+        if (typeof data.betaTesterDiscountPct === "number") {
+          setBetaTesterDiscountPct(data.betaTesterDiscountPct);
+        }
       })
       .catch(() => {});
   }, []);
@@ -191,11 +195,21 @@ export default function Pricing() {
         )}
 
         {user?.isBetaTester && !user?.isFounder && (
-          <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-xl p-4 mb-8 flex items-center gap-3">
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-xl p-4 mb-4 flex items-center gap-3">
             <FlaskConical className="h-6 w-6 text-primary shrink-0" />
             <div>
               <p className="text-sm font-bold text-primary">Beta Access</p>
               <p className="text-xs text-muted-foreground">You have a 30-day free trial of the full platform. Choose a plan to continue after your trial.</p>
+            </div>
+          </div>
+        )}
+
+        {user?.isBetaTester && !user?.isFounder && user?.betaTrialEndsAt && new Date(user.betaTrialEndsAt) < new Date() && (
+          <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 mb-8 flex items-center gap-3">
+            <Gift className="h-6 w-6 text-primary shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-primary">Beta Thank-You Discount</p>
+              <p className="text-xs text-muted-foreground">Your {betaTesterDiscountPct}% beta thank-you discount will be applied at checkout automatically.</p>
             </div>
           </div>
         )}

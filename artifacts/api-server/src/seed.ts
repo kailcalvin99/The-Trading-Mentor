@@ -233,6 +233,7 @@ export async function seedDefaults() {
   const ALL_DEFAULTS: Record<string, string> = {
     founder_limit: "20",
     founder_discount_pct: "20",
+    beta_tester_discount_pct: "30",
     founder_discount_months: "6",
     annual_discount_pct: "20",
     app_name: "The Trading Mentor",

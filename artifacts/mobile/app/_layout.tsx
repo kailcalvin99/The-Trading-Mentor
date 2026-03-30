@@ -36,6 +36,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
   const [betaExpired, setBetaExpired] = useState(false);
+  const [betaDiscountPct, setBetaDiscountPct] = useState(30);
   const choosingPlanRef = useRef(false);
 
   useEffect(() => {
@@ -56,7 +57,20 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     try {
       const { apiGet } = await import("@/lib/api");
       const data = await apiGet<{ isBetaTester: boolean; trialExpired: boolean }>("auth/beta-status");
-      setBetaExpired(data.trialExpired === true);
+      const expired = data.trialExpired === true;
+      setBetaExpired(expired);
+      if (expired) {
+        try {
+          const { getApiUrl } = await import("@/lib/api");
+          const tiersRes = await fetch(`${getApiUrl()}subscriptions/tiers`);
+          const tiersData = await tiersRes.json();
+          if (typeof tiersData.betaTesterDiscountPct === "number") {
+            setBetaDiscountPct(tiersData.betaTesterDiscountPct);
+          }
+        } catch {
+          // keep default
+        }
+      }
     } catch {
       // If check fails, don't block user
     }
@@ -99,6 +113,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         <BetaTrialExpiredScreen
           onLogout={logout}
           onChoosePlan={handleChoosePlan}
+          discountPct={betaDiscountPct}
         />
       )}
     </>

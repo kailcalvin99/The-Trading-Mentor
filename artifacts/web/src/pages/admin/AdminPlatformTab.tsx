@@ -55,6 +55,7 @@ export function AdminPlatformTab({
           <SettingInput label="Founder Discount %" desc="Discount percentage for founders" value={settings.founder_discount_pct || ""} onChange={(v) => updateSetting("founder_discount_pct", v)} type="number" />
           <SettingInput label="Discount Duration (months)" desc="How many months the founder discount lasts" value={settings.founder_discount_months || ""} onChange={(v) => updateSetting("founder_discount_months", v)} type="number" />
           <SettingInput label="Annual Billing Discount %" desc="Discount for choosing annual billing" value={settings.annual_discount_pct || ""} onChange={(v) => updateSetting("annual_discount_pct", v)} type="number" />
+          <SettingInput label="Beta Tester Discount %" desc="Lifetime discount for beta testers who subscribe after their trial ends" value={settings.beta_tester_discount_pct || ""} onChange={(v) => updateSetting("beta_tester_discount_pct", v)} type="number" />
         </div>
       </SettingsSection>
 

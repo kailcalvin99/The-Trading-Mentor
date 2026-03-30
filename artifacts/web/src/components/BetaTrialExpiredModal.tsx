@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FlaskConical, CreditCard, Trash2, AlertTriangle, Loader2 } from "lucide-react";
+import { FlaskConical, Gift, CreditCard, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -26,6 +26,18 @@ export function BetaTrialExpiredModal({ onLogout }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [discountPct, setDiscountPct] = useState(30);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/subscriptions/tiers`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (typeof data.betaTesterDiscountPct === "number") {
+          setDiscountPct(data.betaTesterDiscountPct);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleDeleteAccount() {
     setDeleting(true);
@@ -119,6 +131,21 @@ export function BetaTrialExpiredModal({ onLogout }: Props) {
             Thank you for being a beta tester. Your 30-day free trial has expired.
             To continue using the app, please choose a plan — or delete your account if you no longer want access.
           </p>
+        </div>
+
+        <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 mb-5 flex items-start gap-3">
+          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+            <FlaskConical className="h-4 w-4 text-primary" />
+            <Gift className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1 bg-primary/20 border border-primary/40 rounded-full px-2 py-0.5 mb-1">
+              <span className="text-[10px] font-bold text-primary tracking-wide">BETA THANK-YOU OFFER</span>
+            </div>
+            <p className="text-sm font-semibold text-foreground">
+              Get {discountPct}% off forever — applied automatically at checkout.
+            </p>
+          </div>
         </div>
 
         <div className="space-y-3">
