@@ -18,3 +18,33 @@ id = "UKaxXlWM2k8lOpSKxCx4j"
 uri = "file://docs/video-scripts/ict-mentor-video-scripts.txt"
 type = "text"
 title = "ICT Mentor Video Scripts — All 12 Scripts (Download)"
+
+[[outputs]]
+id = "hqTRjpdcV7fyAXvJbQC-w"
+uri = "file://marketing/post-01-beta-testers-story-9x16.png"
+type = "image"
+title = "Beta Testers — Story/Reels (9:16)"
+
+[[outputs]]
+id = "bly5TAS4P7yl3UgYAozlg"
+uri = "file://marketing/post-02-beta-testers-square-1x1.png"
+type = "image"
+title = "Beta Testers — Feed Square (1:1)"
+
+[[outputs]]
+id = "c9VAZIvVgi9eh4PSlb2sW"
+uri = "file://marketing/post-03-founders-discount-story-9x16.png"
+type = "image"
+title = "Founders Discount — Story/Reels (9:16)"
+
+[[outputs]]
+id = "Lcfof8W__XiKtFH8RPGH5"
+uri = "file://marketing/post-04-features-square-1x1.png"
+type = "image"
+title = "Feature Highlight — Feed Square (1:1)"
+
+[[outputs]]
+id = "eDT6zM7ebcauOpQ1MuA0b"
+uri = "file://marketing/captions.md"
+type = "text"
+title = "Social Media Captions (Instagram + Facebook)"
