@@ -62,12 +62,12 @@ const COMMUNITY_POLL_INTERVAL = 3 * 60 * 1000;
 
 const navItems = [
   { to: "/", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard, requiredTier: 0, minSkillLevel: 0 },
-  { to: "/open-positions", label: "Open Positions", mobileLabel: "Positions", icon: Activity, requiredTier: 0, minSkillLevel: 0 },
   { to: "/academy", label: "ICT Academy", mobileLabel: "Academy", icon: GraduationCap, requiredTier: 0, minSkillLevel: 0 },
   { to: "/videos", label: "Videos", mobileLabel: "Videos", icon: Video, requiredTier: 0, minSkillLevel: 0 },
   { to: "/planner", label: "Mission Control", mobileLabel: "Mission", icon: Calendar, requiredTier: 0, minSkillLevel: 0 },
   { to: "/prop-tracker", label: "Prop Tracker", mobileLabel: "Prop", icon: Trophy, requiredTier: 1, minSkillLevel: 1 },
   { to: "/paper-trading", label: "Paper Trading", mobileLabel: "Replay", icon: CandlestickChart, requiredTier: 1, minSkillLevel: 1 },
+  { to: "/open-positions", label: "Open Positions", mobileLabel: "Positions", icon: Activity, requiredTier: 0, minSkillLevel: 0 },
   { to: "/journal", label: "Smart Journal", mobileLabel: "Journal", icon: BookOpen, requiredTier: 1, minSkillLevel: 1 },
   { to: "/analytics", label: "Analytics", mobileLabel: "Stats", icon: BarChart3, requiredTier: 2, minSkillLevel: 1 },
   { to: "/leaderboard", label: "Leaderboard", mobileLabel: "Rank", icon: Trophy, requiredTier: 2, minSkillLevel: 2 },
@@ -443,7 +443,7 @@ export default function Layout() {
     return level ? SKILL_LEVEL_NUM[level] : SKILL_LEVEL_NUM["none"];
   }, []);
 
-  const LITE_MODE_ALLOWED = ["/", "/academy", "/journal"];
+  const LITE_MODE_ALLOWED = ["/", "/academy", "/open-positions", "/journal"];
 
   const visibleNavItems = useMemo(() => {
     if (appMode === "lite") {
