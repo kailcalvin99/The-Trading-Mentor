@@ -44,6 +44,7 @@ const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
 const SpotifyCallback = lazy(() => import("./pages/SpotifyCallback"));
 const PaperTradingPage = lazy(() => import("./pages/PaperTradingPage"));
 const OpenPositionsPage = lazy(() => import("./pages/OpenPositionsPage"));
+const LifeOS = lazy(() => import("./pages/LifeOS"));
 const NotFound = lazy(() => import("./pages/not-found"));
 
 function ScrollToTop() {
@@ -86,6 +87,7 @@ function App() {
                     <Route path="/risk-disclosure" element={<RiskDisclosure />} />
                     <Route path="/pricing" element={<Pricing />} />
                     <Route path="/spotify-callback" element={<SpotifyCallback />} />
+                    <Route path="/lifeos" element={<LifeOS />} />
 
                     {/* Protected routes — AuthGuard is pathless, catches any unmatched path */}
                     <Route element={<AuthGuard />}>
