@@ -1,6 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { toast } from "@/hooks/use-toast";
+import { useState, useCallback, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -29,10 +27,6 @@ import {
   Calculator,
   CircleDot,
   OctagonAlert,
-  CheckSquare,
-  Square,
-  ClipboardCheck,
-  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,125 +38,6 @@ import {
 
 const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
-
-const CHECKLIST_STORAGE_KEY = "ict-pretrade-checklist";
-const CHECKLIST_TTL_HOURS = 4;
-
-const CHECKLIST_ITEMS = [
-  { id: "htf_bias", label: "HTF Bias confirmed on Daily chart", desc: "The Daily chart is clearly bullish or bearish — no choppy indecision." },
-  { id: "kill_zone", label: "In a Kill Zone right now", desc: "You are trading during London Open (2-5 AM EST) or Silver Bullet (10-11 AM EST)." },
-  { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", desc: "A liquidity sweep (stop hunt) or IDM (Inducement) has occurred on your entry timeframe." },
-  { id: "displacement_fvg", label: "Displacement with FVG or MSS present", desc: "Big displacement candles created an FVG or MSS — Smart Money is behind this move." },
-];
-
-function getChecklistState(): { checked: Record<string, boolean>; timestamp: number } {
-  try {
-    const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY);
-    if (!raw) return { checked: {}, timestamp: 0 };
-    const data = JSON.parse(raw);
-    const ageMs = Date.now() - (data.timestamp || 0);
-    if (ageMs > CHECKLIST_TTL_HOURS * 60 * 60 * 1000) {
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-      return { checked: {}, timestamp: 0 };
-    }
-    return data;
-  } catch { return { checked: {}, timestamp: 0 }; }
-}
-
-function saveChecklistState(checked: Record<string, boolean>) {
-  localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify({ checked, timestamp: Date.now() }));
-}
-
-function MechanicalChecklist() {
-  const [checked, setChecked] = useState<Record<string, boolean>>(() => getChecklistState().checked);
-  const [ttlAnchor, setTtlAnchor] = useState(() => getChecklistState().timestamp);
-  const allChecked = CHECKLIST_ITEMS.every((item) => checked[item.id]);
-
-  useEffect(() => {
-    if (ttlAnchor <= 0) return;
-    const expiresAt = ttlAnchor + CHECKLIST_TTL_HOURS * 60 * 60 * 1000;
-    const msLeft = expiresAt - Date.now();
-    if (msLeft <= 0) {
-      setChecked({});
-      setTtlAnchor(0);
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setChecked({});
-      setTtlAnchor(0);
-      localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-    }, msLeft);
-    return () => clearTimeout(timer);
-  }, [ttlAnchor]);
-
-  function toggle(id: string) {
-    const next = { ...checked, [id]: !checked[id] };
-    setChecked(next);
-    saveChecklistState(next);
-    if (ttlAnchor <= 0) {
-      setTtlAnchor(Date.now());
-    }
-  }
-
-  function reset() {
-    setChecked({});
-    setTtlAnchor(0);
-    localStorage.removeItem(CHECKLIST_STORAGE_KEY);
-  }
-
-  return (
-    <Card className="mb-6 border-emerald-500/30">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-emerald-500" />
-            <div>
-              <CardTitle className="text-base font-bold">Mechanical Pre-Trade Checklist</CardTitle>
-              <CardDescription className="text-xs mt-0.5">Complete all 4 criteria before the position calculator activates</CardDescription>
-            </div>
-          </div>
-          <button onClick={reset} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-            Reset
-          </button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-amber-500 font-medium">
-          Buy in Discount (below 50% of range) · Sell in Premium (above 50% of range)
-        </div>
-        {CHECKLIST_ITEMS.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => toggle(item.id)}
-            className={`w-full flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${
-              checked[item.id]
-                ? "bg-emerald-500/10 border-emerald-500/30"
-                : "bg-secondary/30 border-border hover:border-emerald-500/30"
-            }`}
-          >
-            {checked[item.id]
-              ? <CheckSquare className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-              : <Square className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />}
-            <div>
-              <div className={`text-sm font-semibold ${checked[item.id] ? "text-emerald-400" : "text-foreground"}`}>
-                {item.label}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
-            </div>
-          </button>
-        ))}
-        <div className={`rounded-xl border p-3 text-center text-sm font-bold transition-all ${
-          allChecked
-            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-            : "bg-secondary/30 border-border text-muted-foreground"
-        }`}>
-          {allChecked ? "✓ Checklist Complete — Position Calculator Active" : `${Object.values(checked).filter(Boolean).length} / ${CHECKLIST_ITEMS.length} criteria met — complete all to unlock calculator`}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 const STOP_TRADING_RULES = [
   "You hit your max daily loss — you are DONE for today",
@@ -323,17 +198,6 @@ export default function RiskShield() {
   const [lossInput, setLossInput] = useState("");
   const [pointsAtRisk, setPointsAtRisk] = useState("");
   const [customBalance, setCustomBalance] = useState("");
-  const [checklistAllDone, setChecklistAllDone] = useState(() =>
-    CHECKLIST_ITEMS.every((item) => getChecklistState().checked[item.id])
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const state = getChecklistState();
-      setChecklistAllDone(CHECKLIST_ITEMS.every((item) => state.checked[item.id]));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const [setupForm, setSetupForm] = useState({
     startingBalance: "",
@@ -375,23 +239,6 @@ export default function RiskShield() {
   const nqContracts = pts > 0 ? riskAmount / (pts * NQ_POINT_VALUE) : 0;
   const mnqContracts = pts > 0 ? riskAmount / (pts * MNQ_POINT_VALUE) : 0;
 
-  function handleUpgradeError(err: unknown, action: string) {
-    const status = (err as { status?: number })?.status;
-    if (status === 403) {
-      toast({
-        title: "Upgrade required",
-        description: `${action} requires a Standard plan or higher. Visit the Pricing page to upgrade.`,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: `Could not ${action.toLowerCase()}. Please try again.`,
-        variant: "destructive",
-      });
-    }
-  }
-
   const handleAddLoss = useCallback(async () => {
     const amount = parseFloat(lossInput);
     if (isNaN(amount) || amount <= 0) return;
@@ -399,8 +246,8 @@ export default function RiskShield() {
       await addLoss({ data: { amount } });
       setLossInput("");
       refetch();
-    } catch (err) {
-      handleUpgradeError(err, "Logging losses");
+    } catch {
+      // error handled silently
     }
   }, [lossInput, addLoss, refetch]);
 
@@ -408,8 +255,8 @@ export default function RiskShield() {
     try {
       await resetLoss();
       refetch();
-    } catch (err) {
-      handleUpgradeError(err, "Resetting daily loss");
+    } catch {
+      // error handled silently
     }
     setShowResetConfirm(false);
   }, [resetLoss, refetch]);
@@ -438,8 +285,8 @@ export default function RiskShield() {
       });
       refetch();
       setShowAccountSetup(false);
-    } catch (err) {
-      handleUpgradeError(err, "Saving account settings");
+    } catch {
+      // error handled silently
     }
   }, [setupForm, createAccount, refetch]);
 
@@ -461,8 +308,6 @@ export default function RiskShield() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <MechanicalChecklist />
-
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <Shield
@@ -656,35 +501,21 @@ export default function RiskShield() {
           </div>
 
           <div className="space-y-6">
-            <Card className={cn(!checklistAllDone && "opacity-60")}>
+            <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <Calculator className={cn("h-5 w-5", !checklistAllDone ? "text-muted-foreground" : "text-emerald-500")} />
+                  <Calculator className="h-5 w-5 text-emerald-500" />
                   <div>
                     <CardTitle className="text-base font-bold">
                       Position Size Calculator
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      {!checklistAllDone
-                        ? "Complete the Pre-Trade Checklist above first"
-                        : "Figure out how many contracts to trade so you only risk 0.5%"}
+                      Figure out how many contracts to trade so you only risk 0.5%
                     </CardDescription>
                   </div>
-                  {!checklistAllDone && (
-                    <Lock className="h-4 w-4 text-muted-foreground ml-auto" />
-                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {!checklistAllDone && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
-                    <Lock className="h-8 w-8 text-muted-foreground/40" />
-                    <p className="text-sm font-semibold text-muted-foreground">Complete checklist first</p>
-                    <p className="text-xs text-muted-foreground/70 max-w-xs">Check off all 4 pre-trade criteria above to unlock the position size calculator.</p>
-                  </div>
-                )}
-                {checklistAllDone && (
-                <>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-4">
                     <label className="text-sm text-muted-foreground whitespace-nowrap">
@@ -782,8 +613,6 @@ export default function RiskShield() {
                       Enter points at risk to calculate position size
                     </p>
                   </div>
-                )}
-                </>
                 )}
               </CardContent>
             </Card>
@@ -911,8 +740,8 @@ export default function RiskShield() {
       </Dialog>
 
       {showFocusMode && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center overflow-y-auto p-6">
-          <div className="max-w-lg w-full space-y-8 my-auto">
+        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-6">
+          <div className="max-w-lg w-full space-y-8">
             <div className="text-center">
               <h2 className="text-3xl font-bold mb-2">FOCUS MODE</h2>
               <p className="text-muted-foreground">
@@ -956,13 +785,6 @@ export default function RiskShield() {
           </div>
         </div>
       )}
-
-      <div className="max-w-4xl mx-auto px-4 pb-6">
-        <p className="text-center text-[11px] text-muted-foreground/60 border-t border-border pt-4">
-          ⚠️ For educational purposes only. Not financial advice. Trading futures and forex involves substantial risk of loss.{" "}
-          <Link to="/risk-disclosure" className="underline hover:text-muted-foreground transition-colors">Full Risk Disclosure</Link>
-        </p>
-      </div>
     </div>
   );
 }

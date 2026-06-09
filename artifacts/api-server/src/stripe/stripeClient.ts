@@ -4,55 +4,45 @@ import { StripeSync } from "stripe-replit-sync";
 let stripeClient: Stripe | null = null;
 let stripeSyncInstance: StripeSync | null = null;
 
-async function getCredentials(): Promise<{ secretKey: string }> {
-  const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
+type ReplitStripeConnection = {
+  secret?: string;
+  settings?: { secret?: string };
+  configuration?: { secret?: string };
+};
 
-  if (isProduction) {
+async function getStripeSecret(): Promise<string> {
+  const replitDeployment = process.env.REPLIT_DEPLOYMENT;
+  if (replitDeployment) {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) throw new Error("STRIPE_SECRET_KEY is required in production");
-    return { secretKey: key };
+    return key;
   }
 
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY
-    ? "repl " + process.env.REPL_IDENTITY
-    : process.env.WEB_REPL_RENEWAL
-      ? "depl " + process.env.WEB_REPL_RENEWAL
-      : null;
-
-  if (hostname && xReplitToken) {
-    try {
-      const url = new URL(`https://${hostname}/api/v2/connection`);
-      url.searchParams.set("include_secrets", "true");
-      url.searchParams.set("connector_names", "stripe");
-      url.searchParams.set("environment", "development");
-
-      const response = await fetch(url.toString(), {
-        headers: {
-          Accept: "application/json",
-          "X-Replit-Token": xReplitToken,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json() as { items?: Array<{ settings?: { secret?: string } }> };
-        const settings = data.items?.[0]?.settings;
-        if (settings?.secret) {
-          return { secretKey: settings.secret };
-        }
+  try {
+    const connectionsRes = await fetch(
+      "https://eval.replit.com/connections/stripe",
+      { headers: { "Content-Type": "application/json" } }
+    );
+    if (connectionsRes.ok) {
+      const data = (await connectionsRes.json()) as ReplitStripeConnection | ReplitStripeConnection[];
+      if (Array.isArray(data)) {
+        if (data[0]?.settings?.secret) return data[0].settings.secret;
+        if (data[0]?.configuration?.secret) return data[0].configuration.secret;
+      } else if (data.secret) {
+        return data.secret;
       }
-    } catch {}
-  }
+    }
+  } catch {}
 
   const envKey = process.env.STRIPE_SECRET_KEY;
-  if (envKey) return { secretKey: envKey };
+  if (envKey) return envKey;
 
   throw new Error("Could not find Stripe secret key");
 }
 
 export async function getUncachableStripeClient(): Promise<Stripe> {
-  const { secretKey } = await getCredentials();
-  return new Stripe(secretKey);
+  const secret = await getStripeSecret();
+  return new Stripe(secret);
 }
 
 export async function getStripeClient(): Promise<Stripe> {
@@ -64,10 +54,14 @@ export async function getStripeClient(): Promise<Stripe> {
 
 export async function getStripeSync(): Promise<StripeSync> {
   if (!stripeSyncInstance) {
-    const { secretKey } = await getCredentials();
+    const secret = await getStripeSecret();
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) throw new Error("DATABASE_URL is required");
-    stripeSyncInstance = new StripeSync({ stripeSecretKey: secretKey, databaseUrl, poolConfig: { connectionString: databaseUrl } });
+    stripeSyncInstance = new StripeSync({
+      stripeSecretKey: secret,
+      databaseUrl,
+      poolConfig: { connectionString: databaseUrl },
+    });
   }
   return stripeSyncInstance;
 }

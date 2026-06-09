@@ -8,5 +8,4 @@
 
 export interface SendGeminiMessageBody {
   content: string;
-  isCodeEditor?: boolean;
 }

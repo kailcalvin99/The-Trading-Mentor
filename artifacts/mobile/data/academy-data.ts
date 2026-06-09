@@ -13,7 +13,6 @@ export interface GlossaryItem {
   full: string;
   color: string;
   image?: string;
-  diagram?: string;
   definition: string;
   tip: string;
 }
@@ -243,30 +242,6 @@ export const COURSE_CHAPTERS: Chapter[] = [
           "This is why the sweep is step 2 in our Conservative Entry checklist. You wait for the fake-out to happen FIRST, then look for the MSS and FVG that follow. The sweep is the bait — the MSS and FVG are your signal that the real move has started."
         ],
         takeaway: "A sweep is a fake move that grabs stop-losses, then price reverses. It's the bait before the real move. Always wait for the sweep BEFORE entering."
-      },
-      {
-        id: "ch3-4b",
-        title: "Inducement (IDM) — The Trap Before the Trap",
-        chartImage: "chart-idm-inducement.png",
-        paragraphs: [
-          "Inducement (IDM) is a smaller-scale liquidity grab that happens BEFORE the main sweep. Think of it as a 'mini fake-out' designed to lure early traders into bad positions before the real move begins.",
-          "After price creates a Market Structure Shift (MSS), it often doesn't immediately go to the FVG for your entry. Instead, it creates a small counter-move first — this is the Inducement. It tricks traders into thinking the MSS was fake, shaking them out before the real move continues.",
-          "IDM typically appears as a small high or low that forms during a pullback. Smart Money uses these small levels to grab liquidity from impatient traders. Once the IDM level is swept, the REAL entry (your FVG/OTE) becomes active.",
-          "In your checklist, IDM confirmation means: after the sweep and MSS, wait for any small counter-swing (the inducement) to get taken out. Once that mini-level is swept, price is cleared to move to your FVG entry. This extra patience filter dramatically reduces false entries."
-        ],
-        takeaway: "IDM = a mini fake-out within the pullback. Wait for it to get swept before entering at your FVG. It's an extra confirmation that Smart Money is clearing all the liquidity before the real move."
-      },
-      {
-        id: "ch3-4c",
-        title: "Fibonacci Retracement — The Pullback Ruler",
-        paragraphs: [
-          "Before we get into the OTE, you need to understand one tool: the Fibonacci retracement. Don't let the name scare you — it's just a ruler that measures HOW FAR price has pulled back after a move.",
-          "Here's what 'retracement' means in plain English: price makes a big move up (or down), then pulls back a bit before continuing. That pull-back is the retracement. Fibonacci retracement puts percentage labels on that pull-back so you know exactly how deep it went.",
-          "The key levels are: 23.6%, 38.2%, 50%, 61.8%, and 78.6%. These are just percentages of the original move. If price moved 100 points up and then pulled back 61.8 points, that's a 61.8% retracement. The levels that matter most in ICT are the 61.8% and 78.6% — together they form the 62–79% zone that we call the OTE zone.",
-          "Why do traders care about these specific numbers? They come from the Fibonacci sequence — a pattern that appears repeatedly in nature and markets. The exact math isn't important. What IS important is that Smart Money watches these levels, which means price tends to react there.",
-          "How to draw it on a chart: for a bullish setup (price moved UP, now pulling back), anchor the tool at the swing LOW and drag it to the swing HIGH. The 0% level sits at the top (the high) and 100% sits at the bottom (the low). The zone between 61.8% and 78.6% is where you watch for a reaction. For a bearish setup (price moved DOWN, now pulling back upward), flip it — anchor at the swing HIGH and drag to the swing LOW."
-        ],
-        takeaway: "Fibonacci retracement is a tool that measures how far price has pulled back after a move. The key zone is 61.8%–78.6% (the 62–79% OTE zone). For bullish setups, draw from swing low to swing high. For bearish, draw from swing high to swing low."
       },
       {
         id: "ch3-5",
@@ -594,116 +569,6 @@ export const COURSE_CHAPTERS: Chapter[] = [
         takeaway: "Journal every trade — the setup, the result, and how you felt. Review weekly to find patterns. Your journal is how you learn from experience and improve over time."
       }
     ]
-  },
-  {
-    id: "ch8",
-    title: "Your Trading Toolkit",
-    color: "#0EA5E9",
-    icon: "🛠️",
-    description: "A tour of every tool built into this app — what it does, why it exists, and exactly how to use it in your daily trading workflow.",
-    lessons: [
-      {
-        id: "ch8-1",
-        title: "Mission Control — Your Daily Command Center",
-        chartImage: "lesson-morning-routine.png",
-        paragraphs: [
-          "Mission Control is the first screen you should open every morning before touching a chart. Think of it as your pre-flight checklist — pilots don't take off without it, and you shouldn't trade without it. It combines your morning routine, daily bias, and account health into one dashboard.",
-          "The morning routine portion guides you through four steps: hydrate (drink water before trading — dehydration impairs judgment), breathe (a 2-minute calming exercise), check the news calendar (so you know which red-folder events to avoid today), and set your directional bias (decide whether you're looking for buys or sells before the session opens).",
-          "The bias setting is powerful because it prevents mid-session confusion. You look at the Daily and 1-Hour charts BEFORE the market opens, decide 'today looks bullish' or 'today looks bearish,' and lock that in. If price does something unexpected during the session, you don't flip your bias on emotion — you go back to your analysis.",
-          "Once your routine is complete, Mission Control shows your daily P&L, how close you are to your daily loss limit, and whether you have any trade slots remaining. If you're at the 2% daily loss limit, Mission Control will show the lockout timer — this is the app protecting you from revenge trading. Every day starts here."
-        ],
-        takeaway: "Open Mission Control before every session. Complete the 4-step routine, set your bias, check your daily limits. This puts you in a calm, prepared state before a single chart is opened."
-      },
-      {
-        id: "ch8-2",
-        title: "Smart Journal — Your Trading Memory",
-        chartImage: "lesson-journal-habit.png",
-        paragraphs: [
-          "The Smart Journal is where every trade lives after you take it. Unlike a manual spreadsheet, the journal is structured to capture the things that actually matter: not just profit and loss, but WHY you took the trade, HOW you felt, and WHAT you could have done better. Over time, your journal becomes a mirror that shows you your patterns — both good and bad.",
-          "When you log a trade, you fill in: the instrument (NQ, MNQ, etc.), direction (long or short), your entry checklist status (were all 6 criteria checked?), entry and exit prices, and the result (TP1, TP2, or stop loss). You also select behavior tags — labels like 'Disciplined,' 'FOMO,' 'Chased,' 'Greedy,' or 'Revenge' that describe your mental state.",
-          "The behavior tags are the secret weapon. At the end of a month, you might see 'FOMO' tagged on every Friday trade — that's a signal to stop trading Fridays. Or you might see 'Disciplined' on all your winning trades and 'Chased' on all your losers — that's a signal to slow down and wait for your setup every time.",
-          "Use the journal analytics to review your stats: win rate by setup type, average winner vs. average loser, profit factor, and behavior frequency. When you see your profit factor is 2.1 on 'Disciplined' trades but 0.4 on 'FOMO' trades, you don't need a coach — the data tells you exactly what to change."
-        ],
-        takeaway: "Log every trade in the Smart Journal — entry, result, and behavior tags. Review weekly to find patterns. Your journal is how you turn experience into improvement."
-      },
-      {
-        id: "ch8-3",
-        title: "Risk Shield — Your Financial Safety Net",
-        chartImage: "lesson-risk-importance.png",
-        paragraphs: [
-          "Risk Shield is the enforcer. While the other tools guide and track, Risk Shield actually prevents you from doing damage. It's built around the same rules that prop firms like Topstep, Apex, and FTMO use in their evaluations — because if you can follow Risk Shield consistently, you can pass any funded account challenge.",
-          "The core rules are: 0.5% risk per trade (never bet more than 0.5% of your account on a single trade), 2% max daily loss (hit this and you're locked out for 24 hours), and 4% max weekly loss (hit this and you're done until Monday). These aren't suggestions — the app enforces them.",
-          "The position size calculator is Risk Shield's most practical tool. You enter your account balance, your risk percentage, and your stop-loss distance in points — and it calculates exactly how many NQ or MNQ contracts you can trade. Never guess your position size. Always run the calculator. The math takes 10 seconds and could save your account.",
-          "Risk Shield also tracks your real-time drawdown with color-coded warnings. Green means you're safe. Yellow means you're approaching the limit — trade more carefully. Red means you're at or near the limit — consider stopping. Learning to respect these colors is what separates traders who last from traders who blow up."
-        ],
-        takeaway: "Risk Shield enforces your limits: 0.5% per trade, 2% daily max, 4% weekly max. Use the position size calculator before every trade. Respect the color warnings. This is how you pass prop firm evaluations."
-      },
-      {
-        id: "ch8-4",
-        title: "Analytics — Seeing Your Progress Clearly",
-        chartImage: "lesson-discipline-toolkit.png",
-        paragraphs: [
-          "The Analytics tab transforms your journal entries into visual data that's easy to understand at a glance. Instead of scrolling through individual trades, you see the big picture: your equity curve, win rate trend, average risk:reward, best and worst performing setups, and your discipline score.",
-          "The equity curve is the most honest feedback you can get. A smooth, gradually rising curve means you're trading consistently and managing risk. A jagged, volatile curve means you're either sizing too large or letting emotional trades sneak in. You want your equity curve to look boring — steady and upward.",
-          "Pay special attention to the setup breakdown. Analytics will show you which of the 6 entry criteria setups perform best for you. Maybe your Conservative Entry win rate is 68%, but trades where you skipped step 2 (The Sweep) only win 41%. That data is telling you to never skip the sweep.",
-          "The time-of-day analysis shows when you trade best and worst. Most traders find they perform significantly better during the Silver Bullet window (10-11 AM) versus trying to trade outside their optimal window. Use Analytics to discover YOUR best window and protect it fiercely."
-        ],
-        takeaway: "Check Analytics weekly to see your equity curve, win rate, and setup performance. Use the data to find your strengths and fix your weaknesses. Data doesn't lie — your feelings do."
-      },
-      {
-        id: "ch8-5",
-        title: "AI Mentor — Your Always-On Trading Coach",
-        chartImage: "lesson-patience.png",
-        paragraphs: [
-          "The AI Mentor is your personal trading coach available 24/7. Unlike a YouTube video or a forum post, the AI Mentor can answer YOUR specific question right now, in plain English, without judgment. You can ask it anything — from 'What is an FVG?' to 'I just lost 3 trades in a row, what should I do?'",
-          "The AI Mentor is trained on ICT concepts and knows this app inside-out. Ask it to explain any lesson you found confusing. Show it a chart description and ask if it's a valid setup. Ask it to quiz you on a concept. Ask it to help you review your journal entry and find what you did wrong.",
-          "One of the most powerful ways to use the AI Mentor is during your weekly journal review. Walk through your losing trades with the AI: 'I entered this trade but it stopped me out. Here's what I saw: [description]. What did I miss?' The AI will point out common mistakes and help you see the trade differently.",
-          "The AI Mentor also provides real-time support during your morning routine. If you're unsure about your bias, describe the chart and ask. If you see conflicting signals across timeframes, ask the AI to help you resolve them. Think of it as having an experienced ICT trader sitting next to you, always available, never impatient."
-        ],
-        takeaway: "Use the AI Mentor to explain concepts, review trades, quiz yourself, and resolve chart confusion. It's your always-available coach — the more you use it, the faster you improve."
-      },
-      {
-        id: "ch8-6",
-        title: "Prop Tracker — Passing Your Funded Account Challenge",
-        chartImage: "lesson-prop-firm.png",
-        paragraphs: [
-          "Prop Tracker is specifically built for traders who are working toward a funded account — the ultimate goal for many ICT traders. It lets you set up a virtual prop firm evaluation with all the same rules as Topstep, Apex, FTMO, or any other firm, and tracks your progress in real time.",
-          "To set up Prop Tracker, enter your evaluation account size (e.g., $100,000), the profit target required (e.g., 8%), the maximum daily loss (e.g., 2%), and the maximum total drawdown (e.g., 10%). The tracker then shows you a dashboard with: current P&L, days remaining, how far you are from the profit target, and how close you are to the danger zones.",
-          "The key feature is the evaluation simulation mode. When you log trades through Risk Shield during an evaluation period, Prop Tracker automatically updates your challenge stats. You can see at a glance: 'I need $4,200 more to pass, I have 18 days left, and I'm at 1.3% drawdown out of my 10% max.' This real-time visibility keeps you focused and disciplined.",
-          "Most traders fail prop firm evaluations not because they lack skill, but because they get impatient near the end and take oversized risk to hit the profit target faster. Prop Tracker prevents this by showing you the math: consistent 0.5% daily gains get you to an 8% profit target in 16 trading days without breaking a single rule. Slow and steady is the fastest path to funded."
-        ],
-        takeaway: "Use Prop Tracker to simulate and track real prop firm evaluations. Set your targets and limits, then let the app track your progress. Consistency beats gambling — the math always wins."
-      }
-    ]
-  },
-  {
-    id: "ch9",
-    title: "A Day in the Life of an ICT Trader",
-    color: "#F97316",
-    icon: "📅",
-    description: "Follow one trader through a complete trading day — from morning prep to end-of-day review — using a real NQ Silver Bullet trade as the example.",
-    lessons: [
-      {
-        id: "ch9-1",
-        title: "A Full Trading Day — The Story of One Perfect Setup",
-        chartImage: "lesson-time-matters.png",
-        paragraphs: [
-          "Meet Marcus. He's been trading NQ Futures for eight months and is currently on his second Topstep evaluation — a $100,000 account with an 8% profit target and a 2% daily loss limit. Today is a Wednesday in March. Let's follow him through the entire day and see exactly which app tool he uses at each step.",
-          "8:00 AM — Mission Control. Marcus opens the app before even looking at a chart. He clicks through the morning routine: drinks his water (check), does the breathing exercise (check), opens ForexFactory and sees a Medium-impact ADP Employment number at 8:15 AM — he notes he'll wait until 9:15 AM before analyzing. He sets his bias: the Daily chart is in a clear bullish trend after sweeping the weekly low on Monday, and the 1-Hour has been making higher highs since Tuesday. Bias = Bullish. Mission Control confirms he has no open P&L and is 0% into his daily loss limit. He's ready.",
-          "9:15 AM — Top-Down Analysis. The ADP number is out and NQ reacted with a quick 40-point drop, then stabilized. Marcus opens TradingView. Daily: bullish, price above Tuesday's midpoint. 1-Hour: after the ADP dip, price swept the 9:00 AM session low (sell-side liquidity) and is now showing a potential bullish shift. 15-minute: he can see the sweep clearly — a sharp wick below the 9:00 low, then a big bullish displacement candle. He draws the Fibonacci from the 9:00 low to the recent 9:10 high. The OTE zone (62-79%) sits between 18,240 and 18,254. He spots a bullish FVG inside that zone — from 18,244 to 18,249. His entry criteria checklist starts forming: Step 1 (Bias) — bullish. Step 2 (Sweep) — SSL swept at 9:10 AM. Step 3 (MSS) — 5-minute bullish break above 9:05 high. He waits.",
-          "9:58 AM — The Setup Matures. Price is pulling back toward his FVG zone. Marcus opens the Smart Journal and starts a new trade draft. He records: Instrument = MNQ (he's trading micro contracts on this evaluation to stay conservative), Direction = Long, Notes = 'Silver Bullet window opens in 2 minutes. FVG at 18,244–18,249, OTE zone aligns. Waiting for price to enter the gap.' He uses Risk Shield to calculate position size: $100,000 account, 0.5% risk = $500 max risk. Stop loss = below the MSS candle low at 18,227 = 22 points of risk. MNQ = $2/point. $500 ÷ (22 × $2) = 11.36, rounded down to 11 MNQ contracts. He sets his limit order at 18,247 — the top of the FVG. Stop at 18,225. TP1 at 18,278 (the nearby high / internal liquidity). TP2 at 18,310 (the previous day's high / buy-side liquidity).",
-          "10:07 AM — Silver Bullet Window, Trade Fills. NQ dips into the FVG at 10:07 AM and Marcus's limit order fills at 18,247. He checks his entry criteria one final time: Step 1 (Bias) ✓, Step 2 (Sweep) ✓, Step 3 (MSS) ✓, Step 4 (FVG) ✓, Step 5 (OTE Fib) ✓, Step 6 (Trigger — limit placed at FVG) ✓. All 6 checked. He logs the trade in Smart Journal, marks the entry criteria as fully verified, tags his emotional state as 'Calm and Disciplined.' He sets alerts at TP1 and TP2 and walks away from the screen. No chart-watching. No second-guessing.",
-          "10:34 AM — TP1 Hit. His alert fires. NQ has rallied to 18,278 — TP1 is filled. Marcus closes 6 of his 11 MNQ contracts (roughly half his position), locking in approximately $186 profit on those 6 contracts (31 points × $2 × 6 contracts). He immediately moves the stop loss on his remaining 5 contracts to breakeven (18,247). He's now in a risk-free trade with 5 contracts riding toward TP2. He updates his Smart Journal: 'TP1 hit at 10:34 AM. Moved SL to breakeven. Feeling great — staying disciplined.'",
-          "11:52 AM — TP2 Hit. His second alert fires. NQ has reached 18,310 — TP2 is filled. His remaining 5 contracts close for 63 points of profit (18,310 − 18,247 = 63 points × $2 × 5 contracts = $630). Total trade P&L: $186 (TP1) + $630 (TP2) = $816 profit. Risk:Reward on the full trade: risked $484 ($22 stop × $2 × 11 contracts), made $816. That's approximately 1:1.7 overall, or better than 1:3 on the TP2 portion.",
-          "12:15 PM — Trade Complete, Morning Session Closed. Marcus is done trading for the day — one trade, one clean win. He opens Analytics to see his updated equity curve: it's ticked up smoothly, with no wild swings. His Prop Tracker now shows 0.82% profit progress toward the 8% target. Because he had no losing trades today, his drawdown allowance is completely intact — he hasn't touched a single cent of his 10% max drawdown. He completes his midday journal entry: reads through his trade notes, confirms the behavior tag 'Calm and Disciplined,' and writes a post-trade note: 'Perfect execution of Silver Bullet. Waited for all 6 criteria. Did not watch the screen. Trusted the plan.'",
-          "1:00 PM — Afternoon Watch. Some traders take a second session in the afternoon Silver Bullet window (2:00–3:00 PM EST). Marcus checks the 1-Hour chart briefly: NQ has been grinding sideways since his TP2 hit, and the afternoon has a Medium-impact Fed speaker at 2:30 PM. He consults the AI Mentor: 'Should I trade the afternoon Silver Bullet today with a Fed speaker at 2:30 PM?' The AI responds that scheduled speakers within the Silver Bullet window can cause unpredictable volatility — the safer choice is to skip the afternoon session and protect the morning's gain. Marcus agrees and closes his charting platform.",
-          "2:30 PM — Fed Speaker, No Trade. The Fed speaker comes and goes. NQ spikes 25 points, then drops 40 points in 8 minutes — exactly the kind of whipsaw that would have stopped out almost any position. Marcus is glad he sat out. He makes a note in the Smart Journal: 'Correctly skipped afternoon session due to Fed speaker volatility. Risk Shield discipline preserved today's gain.' This is an important lesson: sometimes the best trade is no trade.",
-          "3:30 PM — End-of-Day Prep. With 30 minutes left in the regular session, Marcus does his end-of-day review routine. He opens Mission Control one more time to log his final account state. He checks the Prop Tracker: 0.82% profit for the day, drawdown at 0% (no losing trades today — all drawdown allowance is still intact), 22 days remaining in the evaluation, and 7.18% still needed to reach the profit target. He does the math: at this pace — roughly 0.5–1% per day — he can comfortably reach the 8% target in the time remaining without ever having to take an oversized risk.",
-          "4:00 PM — Close and Reflect. Marcus closes TradingView at 4:00 PM Eastern — the regular session close. His final journal entry for the day: 'Entry criteria: 6/6. Behavior: Calm and Disciplined. Trade result: TP1 + TP2. No afternoon trade (correct decision due to news). Total daily gain: 0.82%. Key lesson: One clean trade beats three mediocre ones. Came in prepared, executed the plan, respected risk rules, protected the gain.' He saves the entry, closes the app, and goes for a walk. Tomorrow he'll do it all again — same routine, same discipline, different setup."
-        ],
-        takeaway: "One trade. One clean execution. Eight tools working together: Mission Control for prep, top-down analysis for bias, Risk Shield for position sizing, Smart Journal for logging, AI Mentor on standby, Prop Tracker for progress. This is what disciplined ICT trading looks like every day — from 8 AM to 4 PM."
-      }
-    ]
   }
 ];
 
@@ -734,7 +599,6 @@ export const GLOSSARY: GlossaryItem[] = [
     full: "Fair Value Gap",
     color: "#00C896",
     image: "chart-fvg.png",
-    diagram: "fvg",
     definition: "A gap left on the chart when price moves really fast. Picture three candles in a row — if there's a space between candle 1 and candle 3 that doesn't overlap, that's the gap. Price usually comes back to fill it, and that's where you enter your trade.",
     tip: "On NQ, a 15-minute FVG (Fair Value Gap) after a liquidity sweep is your best entry."
   },
@@ -753,13 +617,6 @@ export const GLOSSARY: GlossaryItem[] = [
     image: "chart-liquidity-sweep.png",
     definition: "When price quickly pokes above a high or below a low to grab everyone's stop-loss orders, then snaps back the other way. It's like a broom sweeping up money before the real move starts.",
     tip: "A sweep of the London session low followed by a bullish MSS (Market Structure Shift) on NQ is a great long setup."
-  },
-  {
-    term: "IDM",
-    full: "Inducement",
-    color: "#A78BFA",
-    definition: "A smaller-scale liquidity grab that happens during a pullback, designed to lure early traders into bad positions before the real move continues. After a Market Structure Shift, price often creates a small counter-swing (IDM) before reaching your entry. Once the IDM level is swept, the real entry becomes active.",
-    tip: "When you see the MSS, don't jump in immediately. Wait for a small counter-move (the inducement) to get swept first. This extra patience filter keeps you out of false entries."
   },
   {
     term: "OTE",
@@ -806,42 +663,9 @@ export const GLOSSARY: GlossaryItem[] = [
     tip: "No displacement after MSS? The shift might be fake. Wait for those big, confident candles before entering."
   },
   {
-    term: "Order Block",
-    full: "Institutional Order Zone",
-    color: "#F59E0B",
-    diagram: "order-block",
-    definition: "The last bearish candle before a bullish move (or last bullish candle before a bearish move). This is where Smart Money placed large orders. When price returns to this zone, institutions defend their positions — creating a high-probability entry. On NQ, a bullish OB is the last red candle before a strong upward displacement.",
-    tip: "Look for Order Blocks that align with an FVG and OTE zone. When all three overlap, you have a premium entry setup."
-  },
-  {
-    term: "Breaker Block",
-    full: "Failed Order Block Turned Resistance/Support",
-    color: "#A855F7",
-    diagram: "breaker-block",
-    definition: "An Order Block that failed — price broke through it instead of holding. This failure causes it to 'flip' and now act as resistance (if it was a bullish OB) or support (if it was a bearish OB). Breaker Blocks are powerful re-test zones because trapped traders who entered at the OB are now underwater.",
-    tip: "When price returns to a Breaker Block from below (for resistance), look for a bearish 5-minute MSS to confirm the rejection before shorting."
-  },
-  {
-    term: "Silver Bullet",
-    full: "10–11 AM EST High-Precision Entry Window",
-    color: "#06B6D4",
-    diagram: "silver-bullet",
-    definition: "A specific ICT strategy that operates in the 10:00–11:00 AM EST window. Price typically sweeps a liquidity pool (old high or low), creates a Market Structure Shift, and leaves a 1-minute FVG for entry. This is considered one of the highest-probability windows of the day for NQ Futures.",
-    tip: "Only use the 1-minute FVG for the Silver Bullet entry. Do NOT enter at market — wait for price to come back to the FVG."
-  },
-  {
-    term: "Judas Swing",
-    full: "False Morning Move to Trap Traders",
-    color: "#EF4444",
-    diagram: "judas-swing",
-    definition: "A deceptive price move that happens early in the NY session (typically 8:30–9:30 AM EST) designed to trap retail traders in the wrong direction. Price first moves strongly one way (sweeping Buy-Side or Sell-Side Liquidity), then sharply reverses to make the real move. 'Judas' betrayed — and so does this swing.",
-    tip: "When you see NQ spike strongly up or down at the NY open, wait before acting. If a reversal happens with displacement, THAT is your trade — not the initial spike."
-  },
-  {
     term: "Premium / Discount",
     full: "Expensive vs Cheap Zone",
     color: "#EC4899",
-    diagram: "premium-discount",
     definition: "When you divide a price range at the 50% level: Premium is above 50% (expensive — sell here) and Discount is below 50% (cheap — buy here). Like shopping — buy on sale, sell when overpriced.",
     tip: "For buys, make sure your entry is in Discount (below 50%). For sells, make sure it's in Premium (above 50%)."
   },
@@ -901,35 +725,6 @@ export const QUIZ_BANK: QuizQuestion[] = [
   { difficulty: "hard", scenario: "You've been trading for a month. Your journal shows: 60% win rate, average winner $300, average loser $250. Profit Factor = 1.8. You notice most losses are tagged 'FOMO.' What should you focus on improving?", options: ["Finding better entries to increase win rate to 80%", "Increasing position size to make more per win", "Eliminating FOMO trades — they're dragging down your stats", "Nothing — 60% win rate and 1.8 PF is already great"], answer: 2, explanation: "Your stats are good (60% win rate, 1.8 profit factor). But the FOMO tag pattern reveals the weak link. If you eliminate the FOMO trades (which are likely lower quality), your win rate and profit factor will improve even more. The journal's behavior tags are showing you exactly what to fix." },
   { difficulty: "hard", scenario: "NQ creates a bullish FVG on the 15-minute chart during the London Kill Zone. The Daily is bullish, 1H is bullish. But there was NO liquidity sweep before the MSS. Should you take the Conservative entry?", options: ["Yes — the bias and FVG are enough", "No — Step 2 (The Sweep) is missing. Skip the trade.", "Yes — but use the Aggressive entry instead", "Take it on the 1-minute chart to reduce risk"], answer: 1, explanation: "The Conservative entry requires ALL 6 steps. Step 2 (The Sweep) is missing — price didn't take out a 15-minute high or low before the MSS. Without the sweep, there's no liquidity fuel for the move. This setup has a higher chance of failing. Skip it and wait for a complete setup." },
   { difficulty: "hard", scenario: "You're managing two MNQ contracts. TP1 (internal liquidity) is hit at 1:2 reward-to-risk. What's the best way to manage the position from here?", options: ["Close both contracts at TP1", "Close 1 contract at TP1, move SL to breakeven on the remaining contract, target TP2", "Keep both contracts open and move SL to breakeven", "Close 1 contract and widen the stop on the remaining contract"], answer: 1, explanation: "The textbook approach: take partial profit (1 contract) at TP1 to lock in gains, move the stop to breakeven on the remaining contract (risk-free), and let it ride to TP2 (external liquidity). This balances taking profit with letting winners run." },
-
-  { difficulty: "easy", scenario: "What is Mission Control used for in The Trading Mentor app?", options: ["Placing trades directly in the market", "Completing your morning routine, setting daily bias, and checking risk limits before trading", "Analyzing chart patterns automatically", "Connecting to your broker account"], answer: 1, explanation: "Mission Control is your pre-trading command center. You use it to complete the 4-step morning routine (hydrate, breathe, news check, bias), confirm you're within daily loss limits, and get mentally prepared before touching a chart." },
-  { difficulty: "easy", scenario: "What does the Risk Shield's position size calculator help you determine?", options: ["Which direction to trade", "How many NQ or MNQ contracts to trade based on your account size and stop-loss distance", "When the best time to trade is", "What the daily news events are"], answer: 1, explanation: "Risk Shield calculates your position size using the formula: Contracts = Risk Amount ÷ (Stop Loss Points × Point Value). NQ = $20/point, MNQ = $2/point. Always run this before placing a trade — never guess." },
-  { difficulty: "medium", scenario: "In the 'Day in the Life' story, Marcus uses Risk Shield before entering his Silver Bullet trade. His account is $100,000, risk is 0.5%, stop loss is 22 points on MNQ ($2/point). How many MNQ contracts can he trade?", options: ["5 contracts", "8 contracts", "11 contracts", "25 contracts"], answer: 2, explanation: "Risk = $100,000 × 0.5% = $500. Stop cost per contract = 22 points × $2 = $44. Contracts = $500 ÷ $44 = 11.36, rounded down to 11. Always round DOWN, never up." },
-  { difficulty: "medium", scenario: "You've been using the Smart Journal for 6 weeks. You notice your 'FOMO' tag appears on 9 trades, all on Fridays, and all of them were losers. What is the correct action?", options: ["Ignore it — sample size is too small", "Stop trading on Fridays and review what makes Fridays different for your psychology", "Switch to a different strategy on Fridays", "Trade more on Fridays to average out the losses"], answer: 1, explanation: "Your journal data is telling you something important: Fridays trigger FOMO behavior that leads to losses. The correct response is to stop trading Fridays until you understand the pattern. The journal's behavior tags exist exactly for this purpose — to surface blind spots you can't see in the moment." },
-
-  { difficulty: "easy", scenario: "What is a 'displacement candle' in ICT terminology?", options: ["A slow, sideways candle", "A large, fast candle with a big body and small wicks showing strong momentum", "A candle that gaps between sessions", "A candle that reverses direction suddenly"], answer: 1, explanation: "Displacement candles are large, aggressive candles with big bodies and small wicks — they show Smart Money is behind the move. No displacement after an MSS? The shift is likely fake." },
-  { difficulty: "easy", scenario: "What is an 'Order Block' in ICT?", options: ["A large position held by a retail trader", "The last bullish or bearish candle before a major move, where institutions placed orders", "A support/resistance zone on a 1-minute chart", "A type of pending order at the broker"], answer: 1, explanation: "An Order Block is the last bullish or bearish candle (or series of candles) before a strong price move. This is where Smart Money placed large orders. Price often returns to this zone." },
-  { difficulty: "easy", scenario: "What is 'Turtle Soup' in ICT?", options: ["A stop-loss triggered by emotional trading", "A strategy of taking the opposite side when obvious breakout traders are trapped", "A type of order that fills at market open", "A news-based trading pattern"], answer: 1, explanation: "Turtle Soup is when price sweeps an obvious high/low to trap breakout traders (the 'turtles'), then reverses sharply. ICT traders LOVE this pattern — buy the dip after the sweep, not the breakout." },
-  { difficulty: "easy", scenario: "When does the 'Judas Swing' typically happen?", options: ["During the Silver Bullet window (10-11 AM)", "At the very start of the NY session (8:30-9:30 AM) as a false move before the real direction", "During the London close", "Overnight when volume is low"], answer: 1, explanation: "The Judas Swing is a false move at the start of the NY session designed to trap traders in the wrong direction. Price spikes one way, sweeps liquidity, then makes the REAL move the opposite way." },
-  { difficulty: "easy", scenario: "What is a 'Liquidity Void' in ICT?", options: ["A period of no trading volume", "A price gap with minimal trading where price will likely return to fill", "A zone where the broker cannot fill orders", "A gap between the daily high and low"], answer: 1, explanation: "A Liquidity Void is an area on the chart where price moved too fast and left little trading activity behind. Like a FVG, price tends to return to fill these voids because there's unfinished business there." },
-  { difficulty: "easy", scenario: "What does the term 'PDA Array' stand for?", options: ["Price Delivery Algorithm Array — the set of ICT price delivery tools", "Personal Daily Average — your average trade P&L", "Pre-Dawn Analysis — chart review before market open", "Position Directional Assessment — bias confirmation tool"], answer: 0, explanation: "PDA = Price Delivery Algorithm Array. It's the collection of ICT tools price uses to move: FVGs, Order Blocks, Breaker Blocks, Mitigation Blocks, and more. These are the 'magnets' that pull price." },
-  { difficulty: "easy", scenario: "What is a 'Breaker Block'?", options: ["A failed Order Block that now acts as support/resistance from the opposite side", "A breakout candle that sets the trend for the week", "A block trade executed by an institution", "The candle that breaks a major trendline"], answer: 0, explanation: "A Breaker Block is an Order Block that was 'broken' — price swept through it, invalidating it as support. It then flips to act as resistance (for a bullish OB that failed) or support (for a bearish OB that failed)." },
-
-  { difficulty: "medium", scenario: "It's the London session (3 AM EST). NQ sweeps the previous day's low, then creates a bullish MSS on the 15-minute chart with a clear displacement candle. What is the ideal entry strategy?", options: ["Enter immediately at market price after the MSS candle", "Wait for a 15-minute or 5-minute FVG from the displacement move, then place a limit order there", "Wait for the New York session to confirm the move", "Short because London sessions are typically bearish"], answer: 1, explanation: "Classic London Kill Zone setup! After the sweep and MSS with displacement, wait for the FVG left by the displacement candle. Place a limit order at the top of the FVG for a precise, low-risk entry." },
-  { difficulty: "medium", scenario: "NQ is in Q4 (October–December). What directional bias does ICT's Quarterly Theory suggest for this period?", options: ["Bearish — Q4 is always a decline", "Bullish — Q4 is typically a markup/accumulation into year-end", "Neutral — quarterly theory doesn't apply to NQ", "It depends only on the weekly candle"], answer: 1, explanation: "Quarterly Theory: Q1 = Accumulation, Q2 = Markup (big run up), Q3 = Distribution/pullback, Q4 = Re-distribution or final markup into year-end. Q4 is often bullish as institutions position for the next year." },
-  { difficulty: "medium", scenario: "You see a bearish Order Block on the 1-Hour chart at a price that aligns perfectly with the 70% OTE Fibonacci retracement. What should you do?", options: ["Buy aggressively — OTE is always a buy signal", "Look for a short entry from the OB if the Daily/1H bias is bearish and price reaches this zone", "Ignore both — OB and OTE together are too complex", "Trade the opposite direction since two signals conflict"], answer: 1, explanation: "When an Order Block and OTE align, it's a confluence zone — higher probability setup. If the HTF bias is bearish and price reaches this area, look for bearish confirmation (like a 5-minute MSS) to short from the OB/OTE confluence." },
-  { difficulty: "medium", scenario: "A trader is analyzing a 'Market Maker Model.' Price has swept sell-side liquidity, made a bullish MSS, and is now pulling back. Which liquidity target is NEXT for price to reach?", options: ["Old lows — price will continue down", "Buy-side liquidity (old highs) — that's the next target after a bullish shift", "A random support level", "The entry point — price will retrace fully"], answer: 1, explanation: "In the bullish Market Maker Model: Smart Money sweeps sell-side, shifts structure bullish, then delivers price to buy-side liquidity (old highs). That's the next target after the bullish MSS. Trade in the direction of the model." },
-  { difficulty: "medium", scenario: "NQ leaves a Liquidity Void (large gap) on the 15-minute chart after a fast upward move. Price is now pulling back. What do you expect?", options: ["Price will skip over the void and continue higher", "Price will retrace into the void to 'fill' the imbalance, then likely continue higher", "The void has no significance for future price action", "Price will always reverse at a liquidity void"], answer: 1, explanation: "Liquidity Voids are like magnets — price almost always returns to fill them. If the HTF bias is bullish, expect price to pull back into the void (your entry zone), then continue the bullish move." },
-  { difficulty: "medium", scenario: "You identify a bearish Breaker Block on the 1-Hour chart. Price has just touched it from below. What is the expected behavior if your HTF analysis is correct?", options: ["Price will blast through and continue up", "Price will reject from the Breaker Block and sell off — it now acts as resistance", "The Breaker Block is neutral — no action expected", "You should buy because price touched the level"], answer: 1, explanation: "A bearish Breaker Block (a failed bullish OB) now acts as resistance. When price returns to test it from below, expect a rejection and sell-off. This is one of the cleanest ICT shorting setups." },
-  { difficulty: "medium", scenario: "During the Silver Bullet window, NQ makes a fast move up, sweeps a clear high (BSL), then drops back with a bearish displacement candle on the 1-minute chart. Where do you enter short?", options: ["At the high of the sweep — as soon as price reverses", "At the first 1-minute FVG created by the displacement candle, after confirming bearish MSS", "Wait for the 15-minute chart to confirm", "Don't trade it — Silver Bullet is only for buys"], answer: 1, explanation: "Silver Bullet aggressive entry: after the BSL sweep and 1-minute bearish MSS with displacement, place a limit order at the 1-minute FVG. This gives a precise entry with tight risk. Silver Bullet works for both buys AND sells." },
-
-  { difficulty: "hard", scenario: "NQ has been in a weekly downtrend. Q1 is ending. On the daily chart, price sweeps a major sell-side liquidity pool and creates a bullish displacement candle — the largest candle in 6 weeks. What ICT concepts are at play and what is the directional bias shift signal?", options: ["Random volatility — no signal", "A potential quarterly model shift — Q2 markup beginning; daily displacement after SSL sweep signals possible HTF reversal", "This is a bearish continuation — keep shorting", "The displacement means the downtrend is accelerating"], answer: 1, explanation: "Quarterly theory (Q1 end), major SSL sweep, AND the biggest bullish displacement in weeks = potential Quarterly shift to markup. Smart Money may have accumulated at the SSL zone and is now beginning Q2 distribution of that position upward. This doesn't confirm the reversal alone, but it's a high-alert signal to watch for bullish structure on the daily." },
-  { difficulty: "hard", scenario: "You spot a bullish Order Block at 18,000 NQ. Above it sits a Liquidity Void (imbalance) from 18,050 to 18,100. Above the void sits Buy-Side Liquidity at 18,150 (old highs). The OTE zone is 17,990–18,020. Price is currently at 18,000. Build the full trade plan.", options: ["Buy at 18,000, target 18,050, stop at 17,950 — simple trade", "Limit buy inside OB at the OTE zone (17,990–18,020), target Liquidity Void midpoint (18,075) for TP1, BSL at 18,150 for TP2, stop below the OB low", "Sell short because the OB failed", "Wait for all levels to be swept before trading"], answer: 1, explanation: "Full PDA trade plan: Entry = limit at OTE/OB confluence (17,990–18,020). TP1 = Liquidity Void fill at ~18,075 (internal liquidity). TP2 = BSL at 18,150 (external liquidity). SL = below the Order Block low. This is the complete ICT framework in one trade." },
-  { difficulty: "hard", scenario: "A Judas Swing occurs at 9:35 AM EST — NQ spikes up 80 points in 3 minutes, sweeping Buy-Side Liquidity at the pre-market high, then sharply reverses with 3 consecutive bearish displacement candles. The 5-minute chart shows a bearish MSS. The 1-Hour is bearish. What is the CORRECT trade execution?", options: ["Buy the Judas Swing pullback — the initial direction was up", "Short at the 5-minute or 1-minute FVG from the displacement, with stop above the BSL sweep high, targeting the pre-market low (SSL)", "Wait for the Silver Bullet window to validate", "Skip — the 3-candle reversal is too aggressive to trust"], answer: 1, explanation: "This is a textbook bearish Judas Swing entry. The setup: BSL swept (9:35 AM spike), bearish MSS on 5-minute with 3 displacement candles, 1H bearish. Short at the FVG created by displacement, stop above the sweep high, target the pre-market SSL. Risk:reward should be at minimum 1:3 here." },
-  { difficulty: "hard", scenario: "NQ's PDA Array from highest to lowest priority on the 15-minute chart is: Bearish OB (18,200), Bearish FVG (18,150–18,170), OTE zone (18,130–18,160), and Premium zone starts at 18,100. Price is at 18,080 and the 1H is bearish. What is the highest-confluence short entry and why?", options: ["Short at the OB alone (18,200) — it's the strongest level", "Short at the FVG/OTE confluence (18,150–18,160) — overlapping levels in Premium create highest probability", "Short immediately at 18,080 — don't wait for a pullback", "Wait for price to reach 18,200 OB before entering"], answer: 1, explanation: "FVG (18,150–18,170) overlapping with OTE (18,130–18,160) creates a confluence zone within Premium — this is the highest-probability short zone. The OB at 18,200 is valid too but requires price to travel further into premium, reducing probability. Confluent levels = more institutional orders stacked = stronger reaction." },
-  { difficulty: "hard", scenario: "It's a Q3 market (historically Distribution). NQ has been making lower highs and lower lows on the Weekly. Price sweeps an old Monthly high (BSL), then the Daily closes bearish below it. You're in the Silver Bullet window the next day. What's the full-context trade bias?", options: ["Bullish — the monthly BSL sweep created a buy signal", "Strong bearish — Q3 distribution, weekly downtrend, daily bearish close after BSL sweep all align for shorts during Silver Bullet", "Neutral — conflicting signals between monthly and weekly", "The Silver Bullet window invalidates the higher timeframe bias"], answer: 1, explanation: "Every timeframe screams bearish: Q3 (distribution quarter), weekly downtrend, daily bearish close after sweeping BSL. The BSL sweep confirms Smart Money sold into the buyers who chased the breakout. During the Silver Bullet window, look for NQ to sweep another BSL or create a FVG to short. The macro alignment is powerful here." },
-  { difficulty: "hard", scenario: "You see a Turtle Soup setup: NQ breaks below last week's low by 15 points, immediately reverses and closes back above it with a strong bullish candle. The FVG from the reversal candle aligns with the 65% OTE retracement. Your 1H bias is bullish. But your daily loss is at 1.6% for today. Should you take this trade?", options: ["Yes — the setup is too perfect to miss", "No — at 1.6% daily loss, one more losing trade risks breaching the 2% daily limit. Protect your capital.", "Yes — but only with half the normal position size", "Yes — Turtle Soup setups have over 70% win rate, so it's worth the risk"], answer: 1, explanation: "Risk management wins over any setup quality. At 1.6% daily loss, you have only 0.4% of risk budget remaining. A normal 0.5% risk trade would put you at 2.1% — over the daily limit if it loses. Even with the most perfect setup, breaking the 2% rule can cost you your prop firm account. Pass on this trade." },
-  { difficulty: "hard", scenario: "A Market Maker Bearish Model unfolds: price runs BSL, creates a bearish Breaker Block at 18,300, drops to an OTE at 18,200, then creates a Liquidity Void between 18,200–18,240 on the way down. SSL sits at 18,050. At what price do you expect price to stall and potentially reverse?", options: ["18,300 — at the Breaker Block where it all began", "18,050 — at the SSL (external liquidity target); that's where Smart Money is aiming", "18,200 — at the OTE, where the model started", "The model doesn't predict a reversal point"], answer: 1, explanation: "In the bearish Market Maker Model, price is being delivered to the SSL (sell-side liquidity) at 18,050. That's the EXTERNAL LIQUIDITY target — the ultimate destination. After sweeping the SSL, price may reverse as Smart Money covers shorts and starts the next accumulation phase. The Liquidity Void at 18,200–18,240 may offer a re-entry short if you missed the Breaker Block entry." },
 ];
 
 export const PLAN_SECTIONS: {

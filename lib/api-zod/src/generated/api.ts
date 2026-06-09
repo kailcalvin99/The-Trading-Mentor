@@ -90,7 +90,6 @@ export const SendGeminiMessageParams = zod.object({
 
 export const SendGeminiMessageBody = zod.object({
   content: zod.string(),
-  isCodeEditor: zod.boolean().optional(),
 });
 
 /**
@@ -170,15 +169,6 @@ export const ListTradesResponseItem = zod.object({
   liquiditySweep: zod.boolean(),
   outcome: zod.string().optional(),
   notes: zod.string().optional(),
-  behaviorTag: zod.string().nullish(),
-  followedTimeRule: zod.boolean().nullish(),
-  hasFvgConfirmation: zod.boolean().nullish(),
-  stressLevel: zod.number().nullish(),
-  isDraft: zod.boolean().optional(),
-  ticker: zod.string().nullish(),
-  sideDirection: zod.string().nullish(),
-  coachFeedback: zod.string().nullish(),
-  setupScore: zod.number().nullish(),
   createdAt: zod.date(),
 });
 export const ListTradesResponse = zod.array(ListTradesResponseItem);
@@ -193,16 +183,6 @@ export const CreateTradeBody = zod.object({
   liquiditySweep: zod.boolean(),
   outcome: zod.string().optional(),
   notes: zod.string().optional(),
-  setupScore: zod.number().optional(),
-  behaviorTag: zod.string().optional(),
-  stressLevel: zod.number().optional(),
-  isDraft: zod.boolean().optional(),
-  sideDirection: zod.string().optional(),
-  followedTimeRule: zod.boolean().optional(),
-  hasFvgConfirmation: zod.boolean().optional(),
-  setupType: zod.string().optional(),
-  entryPrice: zod.string().optional(),
-  tradingSession: zod.string().optional(),
 });
 
 /**

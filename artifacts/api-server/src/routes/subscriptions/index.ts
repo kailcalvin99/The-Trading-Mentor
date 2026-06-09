@@ -13,21 +13,17 @@ router.get("/tiers", async (_req: Request, res: Response) => {
     const founderLimitSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_limit"));
     const founderDiscountSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_discount_pct"));
     const annualDiscountSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "annual_discount_pct"));
-    const betaTesterDiscountSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "beta_tester_discount_pct"));
 
     const [{ founderCount }] = await db
       .select({ founderCount: count() })
       .from(usersTable)
       .where(eq(usersTable.isFounder, true));
 
-    const founderLimit = parseInt(founderLimitSetting[0]?.value || "20");
     res.json({
       tiers: tiers.sort((a, b) => a.level - b.level),
-      founderSpotsLeft: Math.max(0, founderLimit - Number(founderCount)),
-      founderLimit,
+      founderSpotsLeft: Math.max(0, parseInt(founderLimitSetting[0]?.value || "20") - Number(founderCount)),
       founderDiscountPct: parseInt(founderDiscountSetting[0]?.value || "50"),
-      annualDiscountPct: parseInt(annualDiscountSetting[0]?.value || "20"),
-      betaTesterDiscountPct: parseInt(betaTesterDiscountSetting[0]?.value || "30"),
+      annualDiscountPct: parseInt(annualDiscountSetting[0]?.value || "17"),
     });
   } catch (err) {
     console.error("Get tiers error:", err);
@@ -84,8 +80,6 @@ router.post("/create-checkout-session", authRequired, async (req: Request, res: 
     const founderDiscountSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "founder_discount_pct"));
     const founderDiscountPct = parseInt(founderDiscountSetting[0]?.value || "50");
 
-    const betaDiscountSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "beta_tester_discount_pct"));
-
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       payment_method_types: ["card"],
@@ -109,20 +103,6 @@ router.post("/create-checkout-session", authRequired, async (req: Request, res: 
         name: `Founder ${founderDiscountPct}% Discount`,
       });
       sessionParams.discounts = [{ coupon: coupon.id }];
-    } else if (
-      user.isBetaTester &&
-      user.betaTrialEndsAt &&
-      new Date(user.betaTrialEndsAt) < new Date()
-    ) {
-      const betaDiscountPct = parseInt(betaDiscountSetting[0]?.value || "30");
-      if (betaDiscountPct > 0) {
-        const coupon = await stripe.coupons.create({
-          percent_off: betaDiscountPct,
-          duration: "forever",
-          name: `Beta Tester ${betaDiscountPct}% Thank-You Discount`,
-        });
-        sessionParams.discounts = [{ coupon: coupon.id }];
-      }
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);

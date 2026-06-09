@@ -71,15 +71,6 @@ export interface Trade {
   liquiditySweep: boolean;
   outcome?: string;
   notes?: string;
-  behaviorTag?: string | null;
-  followedTimeRule?: boolean | null;
-  hasFvgConfirmation?: boolean | null;
-  stressLevel?: number | null;
-  isDraft?: boolean;
-  ticker?: string | null;
-  sideDirection?: string | null;
-  coachFeedback?: string | null;
-  setupScore?: number | null;
   createdAt: string;
 }
 
@@ -87,17 +78,7 @@ export interface CreateTradeBody {
   pair: string;
   entryTime: string;
   riskPct: number;
-  liquiditySweep?: boolean;
+  liquiditySweep: boolean;
   outcome?: string;
   notes?: string;
-  setupScore?: number;
-  behaviorTag?: string;
-  stressLevel?: number;
-  isDraft?: boolean;
-  sideDirection?: string;
-  followedTimeRule?: boolean;
-  hasFvgConfirmation?: boolean;
-  setupType?: string;
-  entryPrice?: string;
-  tradingSession?: string;
 }

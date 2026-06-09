@@ -18,7 +18,7 @@ export default function NotFound() {
             to="/"
             className="mt-4 inline-block text-sm text-primary hover:underline"
           >
-            Go to Dashboard
+            Go to Daily Planner
           </Link>
         </CardContent>
       </Card>

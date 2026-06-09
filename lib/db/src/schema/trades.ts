@@ -4,7 +4,6 @@ import { z } from "zod/v4";
 
 export const tradesTable = pgTable("trades", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id"),
   pair: text("pair").notNull(),
   entryTime: text("entry_time").notNull(),
   riskPct: numeric("risk_pct", { precision: 5, scale: 2 }).notNull(),
@@ -18,13 +17,6 @@ export const tradesTable = pgTable("trades", {
   isDraft: boolean("is_draft").notNull().default(false),
   ticker: text("ticker"),
   sideDirection: text("side_direction"),
-  coachFeedback: text("coach_feedback"),
-  setupScore: integer("setup_score"),
-  setupType: text("setup_type"),
-  entryPrice: numeric("entry_price", { precision: 12, scale: 4 }),
-  stopLoss: numeric("stop_loss", { precision: 12, scale: 4 }),
-  takeProfit: numeric("take_profit", { precision: 12, scale: 4 }),
-  tradingSession: text("trading_session"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

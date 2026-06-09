@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { db, usersTable, userSubscriptionsTable, subscriptionTiersTable } from "@workspace/db";
+import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 function getJwtSecret(): string {
@@ -14,7 +14,6 @@ function getJwtSecret(): string {
 export interface AuthPayload {
   userId: number;
   email: string;
-  role?: string;
 }
 
 declare global {
@@ -25,7 +24,7 @@ declare global {
   }
 }
 
-export function signToken(payload: AuthPayload & { role?: string }): string {
+export function signToken(payload: AuthPayload): string {
   return jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
 }
 
@@ -44,25 +43,8 @@ export function setAuthCookie(res: Response, token: string): void {
   });
 }
 
-export function clearAuthCookie(res: Response): void {
-  const isReplit = !!process.env.REPL_ID;
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: isReplit || process.env.NODE_ENV === "production",
-    sameSite: isReplit ? "none" : "lax",
-    path: "/",
-  });
-}
-
 export async function authRequired(req: Request, res: Response, next: NextFunction): Promise<void> {
-  let token = req.cookies?.token;
-
-  if (!token) {
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith("Bearer ")) {
-      token = authHeader.slice(7);
-    }
-  }
+  const token = req.cookies?.token;
 
   if (!token) {
     res.status(401).json({ error: "Authentication required" });
@@ -70,13 +52,7 @@ export async function authRequired(req: Request, res: Response, next: NextFuncti
   }
 
   try {
-    const payload = verifyToken(token) as AuthPayload & { role?: string };
-
-    if (payload.role) {
-      req.user = { ...payload, role: payload.role };
-      next();
-      return;
-    }
+    const payload = verifyToken(token);
 
     const [user] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, payload.userId));
     if (!user) {
@@ -97,41 +73,4 @@ export function adminRequired(req: Request, res: Response, next: NextFunction): 
     return;
   }
   next();
-}
-
-export function tierRequired(minLevel: number) {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    if (!req.user) {
-      res.status(401).json({ error: "Authentication required" });
-      return;
-    }
-
-    if (req.user.role === "admin") {
-      next();
-      return;
-    }
-
-    try {
-      const [sub] = await db
-        .select({ tierLevel: subscriptionTiersTable.level })
-        .from(userSubscriptionsTable)
-        .innerJoin(subscriptionTiersTable, eq(userSubscriptionsTable.tierId, subscriptionTiersTable.id))
-        .where(eq(userSubscriptionsTable.userId, req.user.userId));
-
-      const tierLevel = sub?.tierLevel ?? 0;
-
-      if (tierLevel < minLevel) {
-        res.status(403).json({
-          error: "Upgrade required",
-          requiredTier: minLevel,
-          currentTier: tierLevel,
-        });
-        return;
-      }
-
-      next();
-    } catch {
-      res.status(500).json({ error: "Failed to verify subscription tier" });
-    }
-  };
 }

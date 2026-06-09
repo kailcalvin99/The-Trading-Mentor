@@ -416,32 +416,6 @@ components:
           type: string
         notes:
           type: string
-        behaviorTag:
-          type: string
-          nullable: true
-        followedTimeRule:
-          type: boolean
-          nullable: true
-        hasFvgConfirmation:
-          type: boolean
-          nullable: true
-        stressLevel:
-          type: integer
-          nullable: true
-        isDraft:
-          type: boolean
-        ticker:
-          type: string
-          nullable: true
-        sideDirection:
-          type: string
-          nullable: true
-        coachFeedback:
-          type: string
-          nullable: true
-        setupScore:
-          type: integer
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -468,20 +442,6 @@ components:
           type: string
         notes:
           type: string
-        setupScore:
-          type: integer
-        behaviorTag:
-          type: string
-        stressLevel:
-          type: integer
-        isDraft:
-          type: boolean
-        sideDirection:
-          type: string
-        followedTimeRule:
-          type: boolean
-        hasFvgConfirmation:
-          type: boolean
       required:
         - pair
         - entryTime

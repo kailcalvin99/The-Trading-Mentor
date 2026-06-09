@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,67 +11,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Animated,
-  Dimensions,
   type DimensionValue,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import {
   useListGeminiConversations,
   createGeminiConversation,
   getGeminiConversation,
   deleteGeminiConversation,
-  useGetPropAccount,
 } from "@workspace/api-client-react";
-import { streamMessage, apiPost, type ToolCallEvent, isSessionExpiredError } from "@/lib/api";
+import { streamMessage, apiPost, type ToolCallEvent } from "@/lib/api";
 import { usePlanner } from "@/contexts/PlannerContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { subscribeToAITrigger } from "@/lib/aiTrigger";
-import { useAIAssistant } from "@/contexts/AIAssistantContext";
 import Colors from "@/constants/colors";
-
-interface AITrigger {
-  message: string;
-  autoOpen?: boolean;
-  prefillPrompt?: string;
-  autoSend?: boolean;
-}
-
-const KILL_ZONES = [
-  { label: "London Kill Zone", startHour: 2, endHour: 5 },
-  { label: "New York Kill Zone", startHour: 10, endHour: 11 },
-];
-
-function getNewYorkHour(): number {
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      hour: "numeric",
-      minute: "numeric",
-      hour12: false,
-    }).formatToParts(new Date());
-    const h = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
-    const m = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
-    return h + m / 60;
-  } catch {
-    const now = new Date();
-    const utcHour = now.getUTCHours() + now.getUTCMinutes() / 60;
-    return ((utcHour - 5) % 24 + 24) % 24;
-  }
-}
-
-function getCurrentKillZone(): { active: boolean; label: string } {
-  const h = getNewYorkHour();
-  for (const kz of KILL_ZONES) {
-    if (h >= kz.startHour && h < kz.endHour) return { active: true, label: kz.label };
-  }
-  return { active: false, label: "" };
-}
-
-const KZ_NUDGE_COOLDOWN = 60 * 60 * 1000;
-const KZ_NUDGE_STORAGE_KEY = "ict-ai-kz-nudge-last";
 
 const C = Colors.dark;
 
@@ -87,12 +40,11 @@ interface Message {
   toolCalls?: ToolCallInfo[];
 }
 
-const NAV_MAP: Record<string, string> = {
-  planner: "/(tabs)/index",
+const NAV_MAP: Record<string, Href> = {
+  planner: "/(tabs)",
   academy: "/(tabs)/academy",
   "risk-shield": "/(tabs)/tracker",
   journal: "/(tabs)/journal",
-  community: "/(tabs)/community",
 };
 
 export default function AIAssistant() {
@@ -103,204 +55,18 @@ export default function AIAssistant() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [pendingToolCalls, setPendingToolCalls] = useState<ToolCallInfo[]>([]);
-  const [nudge, setNudge] = useState<AITrigger | null>(null);
-  const [nudgeExpanded, setNudgeExpanded] = useState(false);
-  const nudgeAnim = useRef(new Animated.Value(-1)).current;
-  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const killZoneCheckedRef = useRef(false);
-  const pendingAutoSendRef = useRef<string | null>(null);
-
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const planner = usePlanner();
-  const { registerOpenHandler } = useAIAssistant();
 
   const { data: conversations, refetch } = useListGeminiConversations();
-  const { data: propAccount } = useGetPropAccount();
-
-  const drawdownNudgedRef = useRef(false);
-
-  useEffect(() => {
-    registerOpenHandler((topic: string) => {
-      if (topic) setInput(`Tell me more about: ${topic}`);
-      setVisible(true);
-      if (!topic && !conversationId && (!conversations || conversations.length === 0)) {
-        startConversation();
-      }
-    });
-  }, [conversationId, conversations]);
 
   useEffect(() => {
     if (visible) {
       scrollRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages, visible]);
-
-  useEffect(() => {
-    if (visible && pendingAutoSendRef.current) {
-      const msgToSend = pendingAutoSendRef.current;
-      pendingAutoSendRef.current = null;
-      setTimeout(() => {
-        (async () => {
-          let cid = conversationId;
-          if (!cid) {
-            try {
-              const res = await createGeminiConversation({ title: msgToSend.slice(0, 40) });
-              if (res) {
-                cid = res.id;
-                setConversationId(res.id);
-                refetch();
-              }
-            } catch {
-              return;
-            }
-          }
-          if (!cid) return;
-          setMessages((prev) => [...prev, { role: "user", content: msgToSend }]);
-          setIsStreaming(true);
-          setPendingToolCalls([]);
-          let assistantMsg = "";
-          setMessages((prev) => [...prev, { role: "assistant", content: "", toolCalls: [] }]);
-          try {
-            await streamMessage(
-              cid,
-              msgToSend,
-              (chunk) => {
-                assistantMsg += chunk;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  updated[updated.length - 1] = { ...last, role: "assistant", content: assistantMsg };
-                  return updated;
-                });
-              },
-              () => { setIsStreaming(false); },
-              () => {
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role: "assistant", content: "Connection error. Please try again." };
-                  return updated;
-                });
-                setIsStreaming(false);
-              },
-              { currentPage: "Mobile App", platform: "mobile" },
-              handleToolCall
-            );
-          } catch {
-            setMessages((prev) => {
-              const updated = [...prev];
-              updated[updated.length - 1] = { role: "assistant", content: "Connection error. Please try again." };
-              return updated;
-            });
-            setIsStreaming(false);
-          }
-        })();
-      }, 300);
-    }
-  }, [visible]);
-
-  const fireTrigger = useCallback((trigger: AITrigger) => {
-    if (visible) return;
-    setNudge(trigger);
-    setNudgeExpanded(true);
-    Animated.spring(nudgeAnim, { toValue: 0, useNativeDriver: true }).start();
-    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
-    nudgeTimerRef.current = setTimeout(() => {
-      Animated.timing(nudgeAnim, { toValue: -1, duration: 300, useNativeDriver: true }).start(() => {
-        setNudgeExpanded(false);
-        setNudge(null);
-      });
-    }, 20000);
-    if (trigger.autoOpen) {
-      if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
-      autoOpenTimerRef.current = setTimeout(() => {
-        setNudge(null);
-        setNudgeExpanded(false);
-        if (trigger.prefillPrompt) {
-          if (trigger.autoSend) {
-            pendingAutoSendRef.current = trigger.prefillPrompt;
-          } else {
-            setInput(trigger.prefillPrompt);
-          }
-        }
-        setVisible(true);
-      }, 800);
-    }
-  }, [visible, nudgeAnim]);
-
-  useEffect(() => {
-    return () => {
-      if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
-      if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
-    };
-  }, []);
-
-  function dismissNudge() {
-    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
-    if (autoOpenTimerRef.current) clearTimeout(autoOpenTimerRef.current);
-    Animated.timing(nudgeAnim, { toValue: -1, duration: 250, useNativeDriver: true }).start(() => {
-      setNudgeExpanded(false);
-      setNudge(null);
-    });
-  }
-
-  function openFromNudge() {
-    const msg = nudge?.prefillPrompt || "";
-    dismissNudge();
-    setInput(msg);
-    setVisible(true);
-  }
-
-  useEffect(() => {
-    const unsubscribe = subscribeToAITrigger((trigger) => fireTrigger(trigger));
-    return unsubscribe;
-  }, [fireTrigger]);
-
-  useEffect(() => {
-    const startingBalance = propAccount?.startingBalance ?? 0;
-    const dailyLoss = propAccount?.dailyLoss ?? 0;
-    const maxDailyLoss = propAccount?.maxDailyLossPct ?? 2;
-    if (startingBalance <= 0) return;
-    const dailyLossPct = (dailyLoss / startingBalance) * 100;
-    const ratio = dailyLossPct / maxDailyLoss;
-    if (ratio >= 0.75 && !drawdownNudgedRef.current) {
-      drawdownNudgedRef.current = true;
-      fireTrigger({
-        message: "Your drawdown is near the limit — want advice?",
-        autoOpen: true,
-        prefillPrompt: "My drawdown is getting close to the limit. What should I do?",
-      });
-    } else if (ratio < 0.5) {
-      drawdownNudgedRef.current = false;
-    }
-  }, [propAccount, fireTrigger]);
-
-  useEffect(() => {
-    async function checkKillZone() {
-      if (killZoneCheckedRef.current) return;
-      const kz = getCurrentKillZone();
-      if (!kz.active) return;
-      let lastNudge = 0;
-      try {
-        const stored = await AsyncStorage.getItem(KZ_NUDGE_STORAGE_KEY);
-        lastNudge = stored ? parseInt(stored, 10) || 0 : 0;
-      } catch {}
-      if (Date.now() - lastNudge < KZ_NUDGE_COOLDOWN) return;
-      killZoneCheckedRef.current = true;
-      try {
-        await AsyncStorage.setItem(KZ_NUDGE_STORAGE_KEY, String(Date.now()));
-      } catch {}
-      fireTrigger({ message: `Kill zone is open — ready to trade? (${kz.label})` });
-    }
-    checkKillZone();
-    const interval = setInterval(() => {
-      killZoneCheckedRef.current = false;
-      checkKillZone();
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fireTrigger]);
 
   async function startConversation() {
     try {
@@ -372,7 +138,7 @@ export default function AIAssistant() {
       const page = String(result.page);
       const route = NAV_MAP[page] || NAV_MAP["planner"];
       setVisible(false);
-      router.push(route as Parameters<typeof router.push>[0]);
+      router.push(route);
     } else if (result.action === "log_trade" && result.requiresConfirmation) {
       Alert.alert(
         "Log Trade",
@@ -386,8 +152,7 @@ export default function AIAssistant() {
                 const tradeData = result.tradeData as Record<string, unknown>;
                 await apiPost("trades/", tradeData);
                 Alert.alert("Success", "Trade logged successfully.");
-              } catch (err: unknown) {
-                if (isSessionExpiredError(err)) return;
+              } catch {
                 Alert.alert("Error", "Failed to log trade.");
               }
             },
@@ -503,38 +268,19 @@ export default function AIAssistant() {
     }
   }
 
+  function openDrawer() {
+    setVisible(true);
+    if (!conversationId && (!conversations || conversations.length === 0)) {
+      startConversation();
+    }
+  }
+
   return (
     <>
-      {nudgeExpanded && nudge && (
-        <Animated.View
-          style={[
-            s.nudgeCardLeft,
-            {
-              transform: [
-                {
-                  translateX: nudgeAnim.interpolate({
-                    inputRange: [-1, 0],
-                    outputRange: [-Dimensions.get("window").width * 0.72, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <TouchableOpacity style={s.nudgeDismiss} onPress={dismissNudge}>
-            <Ionicons name="close" size={14} color={C.textSecondary} />
-          </TouchableOpacity>
-          <View style={s.nudgeHeader}>
-            <Ionicons name="sparkles" size={12} color={C.accent} />
-            <Text style={s.nudgeLabel}>AI Coach</Text>
-          </View>
-          <Text style={s.nudgeMessage}>{nudge.message}</Text>
-          <TouchableOpacity onPress={openFromNudge} style={s.nudgeAction}>
-            <Text style={s.nudgeActionText}>Open AI</Text>
-            <Ionicons name="arrow-forward" size={12} color={C.accent} />
-          </TouchableOpacity>
-        </Animated.View>
-      )}
+      <TouchableOpacity style={s.fab} onPress={openDrawer} activeOpacity={0.8}>
+        <Ionicons name="sparkles" size={24} color="#0A0A0F" />
+      </TouchableOpacity>
+
       <Modal
         visible={visible}
         animationType="slide"
@@ -794,58 +540,22 @@ const tcStyles = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
-  nudgeCardLeft: {
+  fab: {
     position: "absolute",
-    left: 14,
     bottom: 90,
-    zIndex: 99,
-    backgroundColor: C.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: C.accent + "55",
-    borderRadius: 14,
-    padding: 12,
-    width: "65%",
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  nudgeDismiss: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    padding: 2,
-  },
-  nudgeHeader: {
-    flexDirection: "row",
+    right: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: C.accent,
     alignItems: "center",
-    gap: 4,
-    marginBottom: 6,
-  },
-  nudgeLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_700Bold",
-    color: C.accent,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  nudgeMessage: {
-    fontSize: 13,
-    color: C.text,
-    lineHeight: 18,
-    marginBottom: 8,
-    paddingRight: 16,
-  },
-  nudgeAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  nudgeActionText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: C.accent,
+    justifyContent: "center",
+    elevation: 8,
+    shadowColor: C.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    zIndex: 100,
   },
   modal: {
     flex: 1,

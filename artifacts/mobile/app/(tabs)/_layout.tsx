@@ -1,233 +1,126 @@
-import { Href, Tabs, usePathname, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, StyleSheet, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
+import { isLiquidGlassAvailable } from "expo-glass-effect";
+import { Tabs } from "expo-router";
+import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
+import { SymbolView } from "expo-symbols";
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { Platform, StyleSheet } from "react-native";
 
-import FloatingToolkit from "@/components/FloatingToolkit";
-import RiskFloatingWidget from "@/components/RiskFloatingWidget";
-import TopTabBar from "@/components/TopTabBar";
-import { useAuth } from "@/contexts/AuthContext";
-import { apiGet } from "@/lib/api";
-import { ChromeCollapseProvider, useChromeCollapse } from "@/contexts/ChromeCollapseContext";
-import { ScrollDirectionProvider } from "@/contexts/ScrollDirectionContext";
-import { PropAccountProvider } from "@/contexts/PropAccountContext";
+import Colors from "@/constants/colors";
+import AIAssistant from "@/components/AIAssistant";
 
-const COMMUNITY_LAST_VISIT_KEY = "community_last_visit";
+const C = Colors.dark;
 
-const TOP_TAB_BAR_HEIGHT = 42;
-
-const TAP_MOVE_THRESHOLD = 10;
-
-
-function TabLayoutInner() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { user, appMode, isAdmin, tierLevel } = useAuth();
-  const [communityBadge, setCommunityBadge] = useState(0);
-  const [journalDraftBadge, setJournalDraftBadge] = useState(0);
-  const insets = useSafeAreaInsets();
-
-  const { resetIdleTimer, headerAnim, headerLayoutAnim, isCollapsed } = useChromeCollapse();
-
-  const headerHeight = insets.top + TOP_TAB_BAR_HEIGHT;
-
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    async function checkNewPosts() {
-      try {
-        const lastVisit = await AsyncStorage.getItem(COMMUNITY_LAST_VISIT_KEY);
-        const since = lastVisit ? new Date(parseInt(lastVisit, 10)).toISOString() : new Date(Date.now() - 24 * 3600000).toISOString();
-        const data = await apiGet<{ count: number }>(`community/new-count?since=${encodeURIComponent(since)}`);
-        setCommunityBadge(data.count);
-      } catch {
-        setCommunityBadge(0);
-      }
-    }
-    if (user) {
-      checkNewPosts();
-      const id = setInterval(checkNewPosts, 3 * 60 * 1000);
-      return () => clearInterval(id);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!user || (!isAdmin && tierLevel < 1)) return;
-    const isOnJournalPage = pathname.includes("journal");
-    if (isOnJournalPage) {
-      setJournalDraftBadge(0);
-      return;
-    }
-    async function pollDrafts() {
-      try {
-        const data = await apiGet<Array<{ isDraft?: boolean }>>("trades");
-        const count = Array.isArray(data) ? data.filter((t) => t.isDraft).length : 0;
-        setJournalDraftBadge(count);
-      } catch {
-        setJournalDraftBadge(0);
-      }
-    }
-    pollDrafts();
-    const id = setInterval(pollDrafts, 60 * 1000);
-    return () => clearInterval(id);
-  }, [user, tierLevel, isAdmin, pathname]);
-
-  useEffect(() => {
-    if (pathname.includes("community")) {
-      setCommunityBadge(0);
-    }
-  }, [pathname]);
-
-  const handleNavigate = useCallback(
-    (href: Href) => {
-      router.navigate(href);
-    },
-    [router]
+function NativeTabLayout() {
+  return (
+    <>
+    <NativeTabs>
+      <NativeTabs.Trigger name="index">
+        <Icon sf={{ default: "checklist", selected: "checklist" }} />
+        <Label>Planner</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="academy">
+        <Icon sf={{ default: "graduationcap", selected: "graduationcap.fill" }} />
+        <Label>Academy</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="tracker">
+        <Icon sf={{ default: "shield.checkered", selected: "shield.checkered" }} />
+        <Label>Risk</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="journal">
+        <Icon sf={{ default: "book", selected: "book.fill" }} />
+        <Label>Journal</Label>
+      </NativeTabs.Trigger>
+    </NativeTabs>
+    <AIAssistant />
+    </>
   );
+}
 
-  const headerTranslateY = headerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -headerHeight],
-  });
-
-  const contentPaddingTop = headerLayoutAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [headerHeight, 0],
-  });
-
-  function handleTouchStart(e: { nativeEvent: { pageX: number; pageY: number } }) {
-    touchStartRef.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
-  }
-
-  function handleTouchEnd(e: { nativeEvent: { pageX: number; pageY: number } }) {
-    if (!touchStartRef.current) return;
-    const dx = Math.abs(e.nativeEvent.pageX - touchStartRef.current.x);
-    const dy = Math.abs(e.nativeEvent.pageY - touchStartRef.current.y);
-    touchStartRef.current = null;
-    if (dx < TAP_MOVE_THRESHOLD && dy < TAP_MOVE_THRESHOLD) {
-      resetIdleTimer();
-    }
-  }
+function ClassicTabLayout() {
+  const isIOS = Platform.OS === "ios";
+  const isWeb = Platform.OS === "web";
 
   return (
-    <View
-      style={styles.root}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+    <>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: C.accent,
+        tabBarInactiveTintColor: C.tabIconDefault,
+        headerShown: false,
+        tabBarStyle: {
+          ...(isIOS ? { position: "absolute" as const } : {}),
+          backgroundColor: isIOS ? "transparent" : C.backgroundSecondary,
+          borderTopWidth: 1,
+          borderTopColor: C.cardBorder,
+          elevation: 0,
+          ...(isWeb ? { height: 64 } : {}),
+        },
+        tabBarBackground: isIOS
+          ? () => (
+              <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+            )
+          : undefined,
+      }}
     >
-      <Animated.View style={[styles.tabsWrapper, { paddingTop: contentPaddingTop }]}>
-        <Tabs
-          tabBar={() => null}
-          screenOptions={{
-            headerShown: false,
-          }}
-          initialRouteName="dashboard"
-        >
-          <Tabs.Screen
-            name="dashboard"
-            options={{ title: "Dashboard" }}
-          />
-          <Tabs.Screen
-            name="index"
-            options={{ title: "Mission Control" }}
-          />
-          <Tabs.Screen
-            name="academy"
-            options={{ title: "Academy" }}
-          />
-          <Tabs.Screen
-            name="videos"
-            options={{ title: "Videos" }}
-          />
-          <Tabs.Screen
-            name="journal"
-            options={{ title: "Journal" }}
-          />
-          <Tabs.Screen
-            name="tags"
-            options={{ title: "Tags" }}
-          />
-          <Tabs.Screen
-            name="community"
-            options={{ title: "Community" }}
-          />
-          <Tabs.Screen
-            name="analytics"
-            options={{ title: "Analytics" }}
-          />
-          <Tabs.Screen
-            name="tracker"
-            options={{ title: "Prop Tracker" }}
-          />
-          <Tabs.Screen
-            name="subscription"
-            options={{ title: "Subscription" }}
-          />
-          <Tabs.Screen
-            name="settings"
-            options={{ title: "Settings" }}
-          />
-          <Tabs.Screen
-            name="admin"
-            options={{ title: "Admin" }}
-          />
-          <Tabs.Screen
-            name="code-editor"
-            options={{ title: "Code Editor" }}
-          />
-        </Tabs>
-      </Animated.View>
-
-      <Animated.View
-        style={[
-          styles.headerWrapper,
-          { transform: [{ translateY: headerTranslateY }] },
-        ]}
-        pointerEvents={isCollapsed ? "none" : "box-none"}
-      >
-        <TopTabBar
-          pathname={pathname}
-          onNavigate={handleNavigate}
-          isAdmin={isAdmin}
-          tierLevel={tierLevel}
-          appMode={appMode}
-          userName={user?.name ?? ""}
-          communityBadge={communityBadge}
-          journalDraftBadge={journalDraftBadge}
-        />
-      </Animated.View>
-
-      <FloatingToolkit />
-      <RiskFloatingWidget />
-    </View>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Planner",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="checklist" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="checkbox-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="academy"
+        options={{
+          title: "Academy",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="graduationcap.fill" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="school-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="tracker"
+        options={{
+          title: "Risk",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="shield.checkered" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="shield-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="journal"
+        options={{
+          title: "Journal",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="book.fill" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="book-outline" size={22} color={color} />
+            ),
+        }}
+      />
+    </Tabs>
+    <AIAssistant />
+    </>
   );
 }
 
 export default function TabLayout() {
-  return (
-    <PropAccountProvider>
-      <ChromeCollapseProvider>
-        <ScrollDirectionProvider>
-          <TabLayoutInner />
-        </ScrollDirectionProvider>
-      </ChromeCollapseProvider>
-    </PropAccountProvider>
-  );
+  if (isLiquidGlassAvailable()) {
+    return <NativeTabLayout />;
+  }
+  return <ClassicTabLayout />;
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  headerWrapper: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-  },
-  tabsWrapper: {
-    flex: 1,
-  },
-});

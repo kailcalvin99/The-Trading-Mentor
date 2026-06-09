@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,35 +11,21 @@ import {
   useWindowDimensions,
   Platform,
 } from "react-native";
-import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  useGetPropAccount,
   useCreatePropAccount,
   useAddDailyLoss,
   useResetDailyLoss,
-  useListTrades,
 } from "@workspace/api-client-react";
-import { usePropAccount } from "@/contexts/PropAccountContext";
 import Colors from "@/constants/colors";
-import type { Trade } from "@workspace/api-client-react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { isSessionExpiredError } from "@/lib/api";
 
 const C = Colors.dark;
 
 const NQ_POINT_VALUE = 20;
 const MNQ_POINT_VALUE = 2;
 const WIDE_BREAKPOINT = 768;
-
-const CHECKLIST_STORAGE_KEY = "ict-checklist-state";
-const CHECKLIST_TTL_HOURS = 4;
-const CHECKLIST_ITEMS = [
-  { id: "htf_bias", label: "HTF Bias confirmed on Daily", icon: "trending-up" as const },
-  { id: "kill_zone", label: "In a Kill Zone right now", icon: "time" as const },
-  { id: "sweep_idm", label: "Liquidity sweep or IDM confirmed", icon: "water" as const },
-  { id: "displacement_fvg", label: "Displacement with FVG or MSS", icon: "flash" as const },
-];
 
 const STOP_TRADING_RULES = [
   "You hit your max daily loss — you are DONE for today",
@@ -49,18 +35,24 @@ const STOP_TRADING_RULES = [
   "Come back tomorrow with a fresh start",
 ];
 
+const EXIT_RULES = [
+  "Keep your stop loss where you set it — no exceptions",
+  "Don't move your stop to breakeven too early",
+  "Wait for price to reach your target — don't exit early",
+  "Get out right away if the market turns against you (MSS — Market Structure Shift)",
+  "Only have one trade open at a time — don't add to a losing trade",
+];
+
 function GaugeMeter({
   value,
   max,
   label,
   color,
-  hidden = false,
 }: {
   value: number;
   max: number;
   label: string;
   color: string;
-  hidden?: boolean;
 }) {
   const pct = Math.min(value / max, 1);
   return (
@@ -68,18 +60,18 @@ function GaugeMeter({
       <View style={gaugeStyles.header}>
         <Text style={gaugeStyles.label}>{label}</Text>
         <Text style={[gaugeStyles.value, { color }]}>
-          {hidden ? "·····" : `${value.toFixed(2)}%`}
+          {value.toFixed(2)}%
         </Text>
       </View>
       <View style={gaugeStyles.track}>
         <View
           style={[
             gaugeStyles.fill,
-            { width: hidden ? "0%" : `${pct * 100}%`, backgroundColor: color },
+            { width: `${pct * 100}%`, backgroundColor: color },
           ]}
         />
       </View>
-      <Text style={gaugeStyles.max}>{hidden ? "Limit: ·····" : `Limit: ${max}%`}</Text>
+      <Text style={gaugeStyles.max}>Limit: {max}%</Text>
     </View>
   );
 }
@@ -90,184 +82,30 @@ function getGaugeColor(pct: number) {
   return C.accent;
 }
 
-type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
-
-interface MobileInsight {
-  icon: IoniconsName;
-  headline: string;
-  stat: string;
-  sentiment: "positive" | "negative" | "neutral";
-}
-
-function parseHourMobile(entryTime: string): number | null {
-  const match = entryTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-  if (!match) return null;
-  let hour = parseInt(match[1]);
-  const period = match[3]?.toUpperCase();
-  if (period === "PM" && hour !== 12) hour += 12;
-  if (period === "AM" && hour === 12) hour = 0;
-  return hour;
-}
-
-function computeMobileInsights(trades: Trade[]): MobileInsight[] {
-  if (trades.length < 10) return [];
-  const insights: MobileInsight[] = [];
-  const wins = trades.filter((t) => t.outcome === "win");
-  const overallWinRate = (wins.length / trades.length) * 100;
-
-  const highStress = trades.filter((t) => t.stressLevel != null && t.stressLevel > 6);
-  const lowStress = trades.filter((t) => t.stressLevel != null && t.stressLevel <= 6);
-  if (highStress.length >= 3 && lowStress.length >= 3) {
-    const highWR = (highStress.filter((t) => t.outcome === "win").length / highStress.length) * 100;
-    const lowWR = (lowStress.filter((t) => t.outcome === "win").length / lowStress.length) * 100;
-    if (Math.abs(lowWR - highWR) >= 10) {
-      insights.push({
-        icon: lowWR > highWR ? "flame-outline" : "flash-outline",
-        headline: lowWR > highWR ? "High Stress = Low Win Rate" : "You Thrive Under Pressure",
-        stat: lowWR > highWR
-          ? `${Math.round(lowWR)}% calm vs ${Math.round(highWR)}% stressed`
-          : `${Math.round(highWR)}% stressed vs ${Math.round(lowWR)}% calm`,
-        sentiment: lowWR > highWR ? "negative" : "positive",
-      });
-    }
-  }
-
-  for (const tag of ["FOMO", "Chased", "Greedy", "Disciplined"]) {
-    const tagged = trades.filter((t) => t.behaviorTag === tag);
-    if (tagged.length >= 3) {
-      const tagWR = (tagged.filter((t) => t.outcome === "win").length / tagged.length) * 100;
-      const tagLosses = tagged.filter((t) => t.outcome === "loss").length;
-      if (tag !== "Disciplined" && tagWR < 30) {
-        insights.push({ icon: "alert-circle-outline", headline: `${tag} Trades Cost You`, stat: `${Math.round(tagWR)}% WR on ${tagged.length} trades — ${tagLosses} losses`, sentiment: "negative" });
-        break;
-      } else if (tag === "Disciplined" && tagWR > overallWinRate + 10) {
-        insights.push({ icon: "checkmark-circle-outline", headline: "Discipline Pays Off", stat: `${Math.round(tagWR)}% disciplined vs ${Math.round(overallWinRate)}% overall`, sentiment: "positive" });
-        break;
-      }
-    }
-  }
-
-  const pairMap: Record<string, { wins: number; total: number }> = {};
-  trades.forEach((t) => { const p = t.pair; if (!pairMap[p]) pairMap[p] = { wins: 0, total: 0 }; pairMap[p].total++; if (t.outcome === "win") pairMap[p].wins++; });
-  const pairs = Object.entries(pairMap).filter(([, d]) => d.total >= 3);
-  if (pairs.length >= 2) {
-    pairs.sort((a, b) => (b[1].wins / b[1].total) - (a[1].wins / a[1].total));
-    const best = pairs[0]; const worst = pairs[pairs.length - 1];
-    const bestWR = Math.round((best[1].wins / best[1].total) * 100);
-    const worstWR = Math.round((worst[1].wins / worst[1].total) * 100);
-    if (bestWR - worstWR >= 15) {
-      insights.push({ icon: "trophy-outline", headline: `${best[0]} Is Your Best`, stat: `${bestWR}% vs ${worstWR}% on ${worst[0]}`, sentiment: "positive" });
-    }
-  }
-
-  const followed = trades.filter((t) => t.followedTimeRule === true);
-  const notFollowed = trades.filter((t) => t.followedTimeRule === false);
-  if (followed.length >= 3 && notFollowed.length >= 3) {
-    const fWR = (followed.filter((t) => t.outcome === "win").length / followed.length) * 100;
-    const nWR = (notFollowed.filter((t) => t.outcome === "win").length / notFollowed.length) * 100;
-    if (fWR - nWR >= 10) {
-      insights.push({ icon: "time-outline", headline: "Time Rule Works", stat: `${Math.round(fWR)}% in zone vs ${Math.round(nWR)}% outside`, sentiment: "positive" });
-    } else if (nWR - fWR >= 10) {
-      insights.push({ icon: "time-outline", headline: "Time Rule Isn't Helping", stat: `${Math.round(nWR)}% outside zone vs ${Math.round(fWR)}% inside — rethink timing`, sentiment: "negative" });
-    }
-  }
-
-  const withFVG = trades.filter((t) => t.hasFvgConfirmation === true);
-  const noFVG = trades.filter((t) => t.hasFvgConfirmation === false);
-  if (withFVG.length >= 3 && noFVG.length >= 3) {
-    const fvgWR = (withFVG.filter((t) => t.outcome === "win").length / withFVG.length) * 100;
-    const noWR = (noFVG.filter((t) => t.outcome === "win").length / noFVG.length) * 100;
-    if (fvgWR - noWR >= 10) {
-      insights.push({ icon: "shield-checkmark-outline", headline: "FVG Boosts Wins", stat: `${Math.round(fvgWR)}% with vs ${Math.round(noWR)}% without`, sentiment: "positive" });
-    }
-  }
-
-  const sorted = [...trades].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  let maxStreak = 0; let cur = 0;
-  for (const t of sorted) { if (t.outcome === "loss") { cur++; maxStreak = Math.max(maxStreak, cur); } else { cur = 0; } }
-  if (maxStreak >= 3) {
-    insights.push({ icon: "warning-outline", headline: `${maxStreak}-Trade Losing Streak`, stat: `Consider stepping away after 2 consecutive losses`, sentiment: "negative" });
-  }
-
-  const sessionMap: Record<string, { wins: number; total: number }> = {};
-  trades.forEach((t) => {
-    const h = parseHourMobile(t.entryTime);
-    if (h === null) return;
-    const session = h >= 9 && h <= 11 ? "NY AM" : h >= 13 && h <= 15 ? "NY PM" : "Other";
-    if (!sessionMap[session]) sessionMap[session] = { wins: 0, total: 0 };
-    sessionMap[session].total++;
-    if (t.outcome === "win") sessionMap[session].wins++;
-  });
-  const sessions = Object.entries(sessionMap).filter(([, d]) => d.total >= 3);
-  if (sessions.length >= 2) {
-    sessions.sort((a, b) => (b[1].wins / b[1].total) - (a[1].wins / a[1].total));
-    const bestS = sessions[0];
-    const bestSWR = Math.round((bestS[1].wins / bestS[1].total) * 100);
-    if (bestSWR > overallWinRate + 5) {
-      insights.push({ icon: "flash-outline", headline: `${bestS[0]} Is Your Best Session`, stat: `${bestSWR}% win rate (${bestS[1].total} trades)`, sentiment: "positive" });
-    }
-  }
-
-  return insights.slice(0, 6);
-}
-
 export default function RiskShieldScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
+
   const [pointsAtRisk, setPointsAtRisk] = useState("");
   const [customBalance, setCustomBalance] = useState("");
   const [lossInput, setLossInput] = useState("");
-  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [showMonkMode, setShowMonkMode] = useState(false);
   const [showAccountSetup, setShowAccountSetup] = useState(false);
   const [setupBalance, setSetupBalance] = useState("");
   const [setupDailyPct, setSetupDailyPct] = useState("");
   const [setupTotalPct, setSetupTotalPct] = useState("");
-  const [checklistChecked, setChecklistChecked] = useState<Record<string, boolean>>({});
-  const allChecklistDone = CHECKLIST_ITEMS.every((item) => checklistChecked[item.id]);
 
-  useEffect(() => {
-    const checkTTL = () => {
-      AsyncStorage.getItem(CHECKLIST_STORAGE_KEY).then((raw) => {
-        if (!raw) return;
-        try {
-          const data = JSON.parse(raw);
-          const ageMs = Date.now() - (data.timestamp || 0);
-          if (ageMs > CHECKLIST_TTL_HOURS * 60 * 60 * 1000) {
-            AsyncStorage.removeItem(CHECKLIST_STORAGE_KEY);
-            setChecklistChecked({});
-            return;
-          }
-          setChecklistChecked(data.checked || {});
-        } catch { /* ignore */ }
-      });
-    };
-    checkTTL();
-    const interval = setInterval(checkTTL, 60_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  function toggleChecklist(id: string) {
-    const next = { ...checklistChecked, [id]: !checklistChecked[id] };
-    setChecklistChecked(next);
-    AsyncStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify({ checked: next, timestamp: Date.now() }));
-  }
-
-  function resetChecklist() {
-    setChecklistChecked({});
-    AsyncStorage.removeItem(CHECKLIST_STORAGE_KEY);
-  }
-
-  const { data: rawTrades } = useListTrades();
-  const completedTrades = useMemo(() => {
-    if (!rawTrades) return [];
-    return (rawTrades as Trade[]).filter(Boolean).filter((t) => !t.isDraft);
-  }, [rawTrades]);
-  const mobileInsights = useMemo(() => computeMobileInsights(completedTrades), [completedTrades]);
-
-  const { balance, startingBalance, dailyLoss, maxDailyLoss, maxTotalLoss, hasAccount, refetch } = usePropAccount();
+  const { data: account, refetch } = useGetPropAccount();
   const { mutateAsync: createAccount } = useCreatePropAccount();
   const { mutateAsync: addLoss } = useAddDailyLoss();
   const { mutateAsync: resetLoss } = useResetDailyLoss();
+
+  const hasAccount = !!account;
+  const balance = account?.currentBalance ?? 50000;
+  const startingBalance = account?.startingBalance ?? 50000;
+  const dailyLoss = account?.dailyLoss ?? 0;
+  const maxDailyLoss = account?.maxDailyLossPct ?? 2;
+  const maxTotalLoss = account?.maxTotalDrawdownPct ?? 10;
 
   const dailyLossPct = startingBalance > 0 ? (dailyLoss / startingBalance) * 100 : 0;
   const totalLossPct =
@@ -297,19 +135,8 @@ export default function RiskShieldScreen() {
       await addLoss({ data: { amount } });
       setLossInput("");
       refetch();
-    } catch (err: unknown) {
-      if (isSessionExpiredError(err)) return;
-      const apiMessage =
-        err &&
-        typeof err === "object" &&
-        "data" in err &&
-        err.data &&
-        typeof err.data === "object" &&
-        "error" in err.data &&
-        typeof (err.data as Record<string, unknown>).error === "string"
-          ? (err.data as Record<string, string>).error
-          : null;
-      Alert.alert("Error", apiMessage ?? "Could not log loss");
+    } catch {
+      Alert.alert("Error", "Could not log loss");
     }
   }, [lossInput, addLoss, refetch]);
 
@@ -353,8 +180,7 @@ export default function RiskShieldScreen() {
       });
       refetch();
       setShowAccountSetup(false);
-    } catch (err: unknown) {
-      if (isSessionExpiredError(err)) return;
+    } catch {
       Alert.alert("Error", "Could not save account");
     }
   }, [setupBalance, setupDailyPct, setupTotalPct, createAccount, refetch]);
@@ -369,28 +195,26 @@ export default function RiskShieldScreen() {
             { color: isStopTrading ? "#FF4444" : C.accent },
           ]}
         >
-          {isFocusMode ? "$ ·····" : `$${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+          ${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
         </Text>
         <Text style={styles.cardSub}>
-          {isFocusMode ? "Starting: ·····" : `Starting: $${startingBalance.toLocaleString()}`}
+          Starting: ${startingBalance.toLocaleString()}
         </Text>
       </View>
 
       <View style={[styles.card, isStopTrading && styles.cardRed]}>
         <GaugeMeter
-          value={isFocusMode ? 0 : dailyLossPct}
+          value={dailyLossPct}
           max={maxDailyLoss}
           label="Daily Drawdown (Lost Today)"
-          color={isFocusMode ? C.cardBorder : dailyGaugeColor}
-          hidden={isFocusMode}
+          color={dailyGaugeColor}
         />
         <View style={styles.divider} />
         <GaugeMeter
-          value={isFocusMode ? 0 : totalLossPct}
+          value={totalLossPct}
           max={maxTotalLoss}
           label="Total Drawdown (Lost Overall)"
-          color={isFocusMode ? C.cardBorder : totalGaugeColor}
-          hidden={isFocusMode}
+          color={totalGaugeColor}
         />
       </View>
 
@@ -424,53 +248,9 @@ export default function RiskShieldScreen() {
     </View>
   );
 
-  const checklistSection = (
-    <View style={checklistStyles.container}>
-      <View style={checklistStyles.headerRow}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Ionicons name="clipboard-outline" size={18} color="#00C896" />
-          <Text style={checklistStyles.title}>Pre-Trade Checklist</Text>
-        </View>
-        {allChecklistDone && (
-          <TouchableOpacity onPress={resetChecklist}>
-            <Ionicons name="refresh" size={16} color={C.textSecondary} />
-          </TouchableOpacity>
-        )}
-      </View>
-      <Text style={checklistStyles.subtitle}>Complete all 4 checks before using the calculator</Text>
-      <View style={{ backgroundColor: "rgba(245,158,11,0.1)", borderRadius: 10, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: "rgba(245,158,11,0.2)" }}>
-        <Text style={{ fontSize: 12, color: "#F59E0B", fontFamily: "Inter_600SemiBold" }}>Buy in Discount (below 50% of range) · Sell in Premium (above 50% of range)</Text>
-      </View>
-      {CHECKLIST_ITEMS.map((item) => (
-        <TouchableOpacity key={item.id} style={checklistStyles.item} onPress={() => toggleChecklist(item.id)}>
-          <View style={[checklistStyles.checkbox, checklistChecked[item.id] && checklistStyles.checkboxChecked]}>
-            {checklistChecked[item.id] && <Ionicons name="checkmark" size={14} color="#0A0A0F" />}
-          </View>
-          <Ionicons name={item.icon} size={16} color={checklistChecked[item.id] ? C.accent : C.textSecondary} />
-          <Text style={[checklistStyles.itemLabel, checklistChecked[item.id] && { color: C.text }]}>{item.label}</Text>
-        </TouchableOpacity>
-      ))}
-      {allChecklistDone && (
-        <View style={checklistStyles.unlocked}>
-          <Ionicons name="lock-open" size={14} color="#00C896" />
-          <Text style={checklistStyles.unlockedText}>Calculator unlocked — all checks passed</Text>
-        </View>
-      )}
-    </View>
-  );
-
   const rightColumn = (
     <View style={isWide ? { flex: 1 } : undefined}>
-      {checklistSection}
       <Text style={styles.sectionTitle2}>Position Size Calculator</Text>
-      {!allChecklistDone ? (
-        <View style={[styles.card, { opacity: 0.4 }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 24 }}>
-            <Ionicons name="lock-closed" size={20} color={C.textSecondary} />
-            <Text style={{ color: C.textSecondary, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>Complete the Pre-Trade Checklist first</Text>
-          </View>
-        </View>
-      ) : (
       <View style={styles.card}>
         <Text style={styles.calcSubtitle}>
           Figure out how many contracts to trade so you only risk 0.5%
@@ -556,14 +336,13 @@ export default function RiskShieldScreen() {
           </View>
         )}
       </View>
-      )}
     </View>
   );
 
   return (
     <SafeAreaView
       style={[styles.safe, isStopTrading && styles.safeRed]}
-      edges={["bottom"]}
+      edges={["top"]}
     >
       {isStopTrading && (
         <View style={styles.stopBanner}>
@@ -575,14 +354,7 @@ export default function RiskShieldScreen() {
         </View>
       )}
 
-      {isFocusMode && (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: C.accent + "18", borderBottomWidth: 1, borderBottomColor: C.accent + "44" }}>
-          <Ionicons name="eye-off" size={14} color={C.accent} />
-          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.accent, flex: 1 }}>FOCUS MODE — P&L hidden to reduce emotional bias</Text>
-        </View>
-      )}
-
-      <KeyboardAwareScrollViewCompat
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
@@ -608,15 +380,15 @@ export default function RiskShieldScreen() {
               <Text style={styles.settingsBtnText}>Account</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.monkBtn, isFocusMode && { backgroundColor: C.accent + "20", borderColor: C.accent }]}
-              onPress={() => setIsFocusMode((prev) => !prev)}
+              style={styles.monkBtn}
+              onPress={() => setShowMonkMode(true)}
             >
               <Ionicons
-                name={isFocusMode ? "eye-outline" : "eye-off-outline"}
+                name="eye-off-outline"
                 size={16}
                 color={C.accent}
               />
-              <Text style={styles.monkBtnText}>{isFocusMode ? "Show P&L" : "Focus Mode"}</Text>
+              <Text style={styles.monkBtnText}>Focus Mode</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -656,53 +428,8 @@ export default function RiskShieldScreen() {
           </>
         )}
 
-        {completedTrades.length >= 10 && mobileInsights.length > 0 ? (
-          <View style={insightStyles.section}>
-            <View style={insightStyles.headerRow}>
-              <Ionicons name="bulb-outline" size={18} color={C.accent} />
-              <Text style={insightStyles.sectionTitle}>Your Insights</Text>
-            </View>
-            <Text style={insightStyles.sectionSub}>Patterns from your recent trading</Text>
-            {mobileInsights.map((insight, i) => (
-              <View
-                key={i}
-                style={[
-                  insightStyles.card,
-                  insight.sentiment === "positive" && insightStyles.cardPositive,
-                  insight.sentiment === "negative" && insightStyles.cardNegative,
-                ]}
-              >
-                <View style={insightStyles.cardHeader}>
-                  <Ionicons
-                    name={insight.icon}
-                    size={16}
-                    color={insight.sentiment === "positive" ? "#22C55E" : insight.sentiment === "negative" ? "#EF4444" : C.accent}
-                  />
-                  <Text style={insightStyles.headline}>{insight.headline}</Text>
-                </View>
-                <Text style={insightStyles.stat}>{insight.stat}</Text>
-              </View>
-            ))}
-          </View>
-        ) : completedTrades.length > 0 && completedTrades.length < 10 ? (
-          <View style={insightStyles.placeholder}>
-            <Ionicons name="bulb-outline" size={20} color={C.textSecondary} />
-            <View style={{ flex: 1 }}>
-              <Text style={insightStyles.placeholderTitle}>Log more trades to unlock insights</Text>
-              <Text style={insightStyles.placeholderSub}>{10 - completedTrades.length} more needed</Text>
-            </View>
-          </View>
-        ) : null}
-
-        <View style={styles.disclaimer}>
-          <Ionicons name="warning-outline" size={12} color={C.textSecondary} />
-          <Text style={styles.disclaimerText}>
-            For educational purposes only. Not financial advice. Trading futures involves significant risk of loss and is not suitable for all investors.
-          </Text>
-        </View>
-
         <View style={{ height: Platform.OS === "ios" ? 100 : 20 }} />
-      </KeyboardAwareScrollViewCompat>
+      </ScrollView>
 
       <Modal
         visible={showAccountSetup}
@@ -780,6 +507,42 @@ export default function RiskShieldScreen() {
         </View>
       </Modal>
 
+      <Modal visible={showMonkMode} animationType="fade" statusBarTranslucent>
+        <View style={monkStyles.overlay}>
+          <View style={monkStyles.header}>
+            <Text style={monkStyles.title}>FOCUS MODE</Text>
+            <Text style={monkStyles.subtitle}>
+              Your profit and loss is hidden — stay focused on the process
+            </Text>
+          </View>
+
+          <View style={monkStyles.rulesCard}>
+            <Text style={monkStyles.rulesTitle}>EXIT RULES</Text>
+            {EXIT_RULES.map((rule, i) => (
+              <View key={i} style={monkStyles.ruleRow}>
+                <View style={monkStyles.ruleBullet} />
+                <Text style={monkStyles.ruleText}>{rule}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={monkStyles.mindsetCard}>
+            <Text style={monkStyles.mindsetTitle}>MINDSET ANCHOR</Text>
+            <Text style={monkStyles.mindsetText}>
+              "I follow my plan, not my emotions. My job is to take the
+              right setup. If I do that, the results will come."
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={monkStyles.exitBtn}
+            onPress={() => setShowMonkMode(false)}
+          >
+            <Ionicons name="eye-outline" size={18} color="#0A0A0F" />
+            <Text style={monkStyles.exitBtnText}>Exit Focus Mode</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -804,7 +567,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   scroll: { flex: 1 },
-  content: { padding: 16, paddingTop: 20 },
+  content: { padding: 16 },
   contentWide: { paddingHorizontal: 32, maxWidth: 1200 },
   headerRow: {
     flexDirection: "row",
@@ -1031,23 +794,6 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   resetSmallText: { fontSize: 13, color: C.textSecondary },
-  disclaimer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
-    marginTop: 16,
-    marginHorizontal: 4,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: C.cardBorder,
-  },
-  disclaimerText: {
-    flex: 1,
-    fontSize: 10,
-    color: C.textSecondary,
-    lineHeight: 15,
-    opacity: 0.7,
-  },
 });
 
 const gaugeStyles = StyleSheet.create({
@@ -1154,92 +900,85 @@ const setupStyles = StyleSheet.create({
   },
 });
 
-
-const insightStyles = StyleSheet.create({
-  section: {
-    marginTop: 8,
-    marginBottom: 8,
+const monkStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "#050505",
+    padding: 24,
+    justifyContent: "center",
   },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
+  header: { alignItems: "center", marginBottom: 32 },
+  title: {
+    fontSize: 28,
     fontFamily: "Inter_700Bold",
     color: C.text,
+    marginBottom: 6,
   },
-  sectionSub: {
-    fontSize: 13,
-    color: C.textSecondary,
+  subtitle: { fontSize: 14, color: C.textSecondary },
+  rulesCard: {
+    backgroundColor: "#0F1A14",
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: C.accent + "44",
+    marginBottom: 16,
+  },
+  rulesTitle: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: C.accent,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginBottom: 16,
+  },
+  ruleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
     marginBottom: 12,
   },
-  card: {
-    backgroundColor: C.backgroundSecondary,
-    borderRadius: 12,
-    padding: 14,
+  ruleBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: C.accent,
+    marginTop: 7,
+  },
+  ruleText: { flex: 1, fontSize: 15, color: C.text, lineHeight: 24 },
+  mindsetCard: {
+    backgroundColor: "#111",
+    borderRadius: 14,
+    padding: 18,
     borderWidth: 1,
     borderColor: C.cardBorder,
+    marginBottom: 32,
+  },
+  mindsetTitle: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: C.textSecondary,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
     marginBottom: 10,
   },
-  cardPositive: {
-    borderColor: "rgba(34,197,94,0.3)",
-    backgroundColor: "rgba(34,197,94,0.05)",
+  mindsetText: {
+    fontSize: 14,
+    color: C.textSecondary,
+    lineHeight: 23,
+    fontStyle: "italic",
   },
-  cardNegative: {
-    borderColor: "rgba(239,68,68,0.3)",
-    backgroundColor: "rgba(239,68,68,0.05)",
-  },
-  cardHeader: {
+  exitBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
-    marginBottom: 4,
+    backgroundColor: C.accent,
+    borderRadius: 16,
+    padding: 18,
   },
-  headline: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: C.text,
+  exitBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#0A0A0F",
   },
-  stat: {
-    fontSize: 12,
-    color: C.textSecondary,
-    lineHeight: 18,
-  },
-  placeholder: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: C.backgroundSecondary,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: C.cardBorder,
-    marginTop: 8,
-  },
-  placeholderTitle: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: C.text,
-  },
-  placeholderSub: {
-    fontSize: 12,
-    color: C.textSecondary,
-    marginTop: 2,
-  },
-});
-
-const checklistStyles = StyleSheet.create({
-  container: { backgroundColor: C.backgroundSecondary, borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: "rgba(0,200,150,0.2)" },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
-  title: { fontSize: 16, fontFamily: "Inter_700Bold", color: C.text },
-  subtitle: { fontSize: 12, color: C.textSecondary, marginBottom: 12 },
-  item: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)" },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: C.cardBorder, alignItems: "center", justifyContent: "center" },
-  checkboxChecked: { backgroundColor: C.accent, borderColor: C.accent },
-  itemLabel: { fontSize: 14, color: C.textSecondary, flex: 1 },
-  unlocked: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(0,200,150,0.2)" },
-  unlockedText: { fontSize: 12, color: "#00C896", fontFamily: "Inter_600SemiBold" },
 });

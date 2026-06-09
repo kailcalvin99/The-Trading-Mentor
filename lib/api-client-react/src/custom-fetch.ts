@@ -6,31 +6,6 @@ export type ErrorType<T = unknown> = ApiError<T>;
 
 export type BodyType<T> = T;
 
-let _authTokenProvider: (() => string | null | Promise<string | null>) | null = null;
-let _defaultCredentials: RequestCredentials | undefined = undefined;
-let _on401Callback: (() => void) | null = null;
-let _baseUrl: string | (() => string) | undefined = undefined;
-
-export function configureAuth(opts: {
-  tokenProvider?: (() => string | null | Promise<string | null>) | null;
-  credentials?: RequestCredentials;
-  baseUrl?: string | (() => string);
-}): void {
-  if (opts.tokenProvider !== undefined) _authTokenProvider = opts.tokenProvider;
-  if (opts.credentials !== undefined) _defaultCredentials = opts.credentials;
-  if (opts.baseUrl !== undefined) _baseUrl = opts.baseUrl;
-}
-
-function resolveBaseUrl(): string | undefined {
-  if (_baseUrl === undefined) return undefined;
-  if (typeof _baseUrl === "function") return _baseUrl();
-  return _baseUrl;
-}
-
-export function configureOn401(callback: (() => void) | null): void {
-  _on401Callback = callback;
-}
-
 const NO_BODY_STATUS = new Set([204, 205, 304]);
 const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
@@ -322,32 +297,12 @@ export async function customFetch<T = unknown>(
     headers.set("accept", DEFAULT_JSON_ACCEPT);
   }
 
-  if (_authTokenProvider && !headers.has("authorization")) {
-    const token = await _authTokenProvider();
-    if (token) headers.set("authorization", `Bearer ${token}`);
-  }
+  const requestInfo = { method, url: resolveUrl(input) };
 
-  if (_defaultCredentials && !init.credentials) {
-    init.credentials = _defaultCredentials;
-  }
-
-  let resolvedInput = input;
-  const effectiveBaseUrl = resolveBaseUrl();
-  const rawUrl = resolveUrl(input);
-  if (rawUrl.startsWith("/") && effectiveBaseUrl) {
-    const base = effectiveBaseUrl.endsWith("/") ? effectiveBaseUrl.slice(0, -1) : effectiveBaseUrl;
-    resolvedInput = `${base}${rawUrl}`;
-  }
-
-  const requestInfo = { method, url: resolveUrl(resolvedInput) };
-
-  const response = await fetch(resolvedInput, { ...init, method, headers });
+  const response = await fetch(input, { ...init, method, headers });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
-    if (response.status === 401 && _on401Callback) {
-      _on401Callback();
-    }
     throw new ApiError(response, errorData, requestInfo);
   }
 

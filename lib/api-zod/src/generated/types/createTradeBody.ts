@@ -13,14 +13,4 @@ export interface CreateTradeBody {
   liquiditySweep: boolean;
   outcome?: string;
   notes?: string;
-  setupScore?: number;
-  behaviorTag?: string;
-  stressLevel?: number;
-  isDraft?: boolean;
-  sideDirection?: string;
-  followedTimeRule?: boolean;
-  hasFvgConfirmation?: boolean;
-  setupType?: string;
-  entryPrice?: string;
-  tradingSession?: string;
 }

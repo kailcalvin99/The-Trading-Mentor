@@ -57,24 +57,6 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes("node_modules/lightweight-charts")) {
-            return "vendor-charts";
-          }
-          if (id.includes("node_modules/framer-motion")) {
-            return "vendor-animation";
-          }
-          if (id.includes("node_modules/@radix-ui")) {
-            return "vendor-radix";
-          }
-          if (id.includes("node_modules/")) {
-            return "vendor";
-          }
-        },
-      },
-    },
   },
   server: {
     port,

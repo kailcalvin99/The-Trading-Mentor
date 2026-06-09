@@ -21,11 +21,12 @@ export interface AppConfig {
   feature_hall_of_fame: string;
   feature_win_rate_estimator: string;
   feature_casino_elements: string;
+  feature_daily_spin: string;
   [key: string]: string;
 }
 
 const DEFAULTS: AppConfig = {
-  app_name: "The Trading Mentor",
+  app_name: "ICT AI Trading Mentor",
   app_tagline: "AI-Powered Trading Intelligence",
   founder_limit: "20",
   founder_discount_pct: "50",
@@ -43,6 +44,7 @@ const DEFAULTS: AppConfig = {
   feature_hall_of_fame: "true",
   feature_win_rate_estimator: "true",
   feature_casino_elements: "true",
+  feature_daily_spin: "true",
 };
 
 interface AppConfigCtx {

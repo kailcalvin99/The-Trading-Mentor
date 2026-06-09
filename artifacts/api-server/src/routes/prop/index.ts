@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { propAccountTable } from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
-import { authRequired, tierRequired } from "../../middleware/auth";
+import { authRequired } from "../../middleware/auth";
 
 const router: IRouter = Router();
 
@@ -40,7 +40,7 @@ router.get("/account", authRequired, async (req, res) => {
   }
 });
 
-router.post("/account", authRequired, tierRequired(1), async (req, res) => {
+router.post("/account", authRequired, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const { startingBalance, maxDailyLossPct = 2, maxTotalDrawdownPct = 5 } = req.body;
@@ -102,17 +102,12 @@ router.post("/account", authRequired, tierRequired(1), async (req, res) => {
   }
 });
 
-router.post("/account/daily-loss", authRequired, tierRequired(1), async (req, res) => {
+router.post("/account/daily-loss", authRequired, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const { amount } = req.body;
-    if (amount === undefined || amount === null) {
+    if (amount === undefined) {
       res.status(400).json({ error: "Amount required" });
-      return;
-    }
-    const numericAmount = typeof amount === "number" ? amount : parseFloat(amount);
-    if (!isFinite(numericAmount) || numericAmount <= 0) {
-      res.status(400).json({ error: "Amount must be a positive number" });
       return;
     }
 
@@ -126,8 +121,8 @@ router.post("/account/daily-loss", authRequired, tierRequired(1), async (req, re
       return;
     }
 
-    const currentDailyLoss = parseFloat(existing.dailyLoss) + numericAmount;
-    const newBalance = Math.max(0, parseFloat(existing.currentBalance) - numericAmount);
+    const currentDailyLoss = parseFloat(existing.dailyLoss) + amount;
+    const newBalance = parseFloat(existing.currentBalance) - amount;
     const totalDrawdown = parseFloat(existing.startingBalance) - newBalance;
 
     const [updated] = await db
@@ -156,7 +151,7 @@ router.post("/account/daily-loss", authRequired, tierRequired(1), async (req, re
   }
 });
 
-router.post("/account/reset-daily", authRequired, tierRequired(1), async (req, res) => {
+router.post("/account/reset-daily", authRequired, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const [existing] = await db

@@ -1,125 +1,117 @@
-import { lazy, Suspense, useEffect } from "react";
-import {
-  Navigate,
-  Route,
-  BrowserRouter as Router,
-  Routes,
-  useLocation,
-} from "react-router-dom";
-import { Toaster } from "sonner";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "./contexts/AuthContext";
-import { AppConfigProvider } from "./contexts/AppConfigContext";
-import Layout from "./components/Layout";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import { SpotifyProvider } from "./contexts/SpotifyContext";
-import { AuthGuard, AdminGuard, TierGuard } from "./components/AuthGuard";
-import { TourGuideProvider } from "./contexts/TourGuideContext";
-import { PlannerProvider } from "./contexts/PlannerContext";
-import { ThemeProvider } from "./components/ThemeProvider";
-import PageSkeleton from "./components/PageSkeleton";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { PlannerProvider } from "@/contexts/PlannerContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AppConfigProvider } from "@/contexts/AppConfigContext";
+import Layout from "@/components/Layout";
+import Welcome from "@/pages/Welcome";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
+import Pricing from "@/pages/Pricing";
+import DailyPlanner from "@/pages/DailyPlanner";
+import IctAcademy from "@/pages/IctAcademy";
+import RiskShield from "@/pages/RiskShield";
+import SmartJournal from "@/pages/SmartJournal";
+import Analytics from "@/pages/Analytics";
+import Admin from "@/pages/Admin";
+import Settings from "@/pages/Settings";
+import Dashboard from "@/pages/Dashboard";
+import NotFound from "@/pages/not-found";
 
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const SmartJournal = lazy(() => import("./pages/SmartJournal"));
-const DailyPlanner = lazy(() => import("./pages/DailyPlanner"));
-const IctAcademy = lazy(() => import("./pages/IctAcademy"));
-const Analytics = lazy(() => import("./pages/Analytics"));
-const PropTracker = lazy(() => import("./pages/PropTracker"));
-const Community = lazy(() => import("./pages/Community"));
-const Leaderboard = lazy(() => import("./pages/Leaderboard"));
-const Admin = lazy(() => import("./pages/Admin"));
-const Pricing = lazy(() => import("./pages/Pricing"));
-const VideoLibrary = lazy(() => import("./pages/VideoLibrary"));
-const TradingViewWebhooks = lazy(() => import("./pages/TradingViewWebhooks"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Welcome = lazy(() => import("./pages/Welcome"));
-const VideoTourPage = lazy(() => import("./pages/VideoTourPage"));
-const RefundPolicy = lazy(() => import("./pages/RefundPolicy"));
-const TermsOfService = lazy(() => import("./pages/TermsOfService"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
-const SpotifyCallback = lazy(() => import("./pages/SpotifyCallback"));
-const PaperTradingPage = lazy(() => import("./pages/PaperTradingPage"));
-const OpenPositionsPage = lazy(() => import("./pages/OpenPositionsPage"));
-const NotFound = lazy(() => import("./pages/not-found"));
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60,
+      retry: 1,
+    },
+  },
+});
 
-function ScrollToTop() {
-  const { pathname } = useLocation();
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-
+function ResetApp() {
+  localStorage.clear();
+  window.location.href = import.meta.env.BASE_URL + "welcome";
   return null;
 }
 
-const queryClient = new QueryClient();
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
 
-const basename = import.meta.env.BASE_URL.replace(/\/$/, "");
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function IndexRedirect() {
+  const seen = localStorage.getItem("ict-welcome-seen");
+  if (!seen) return <Navigate to="/welcome" replace />;
+  return <Navigate to="/dashboard" replace />;
+}
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <AuthProvider>
-          <AppConfigProvider>
-            <SpotifyProvider>
-              <TourGuideProvider>
-                <PlannerProvider>
-                  <Router basename={basename}>
-                  <ScrollToTop />
-                  <Suspense fallback={<PageSkeleton />}>
-                  <Routes>
-                    {/* Public routes */}
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/signup" element={<Signup />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/welcome" element={<Welcome />} />
-                    <Route path="/video-tour" element={<VideoTourPage />} />
-                    <Route path="/refund-policy" element={<RefundPolicy />} />
-                    <Route path="/terms-of-service" element={<TermsOfService />} />
-                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                    <Route path="/risk-disclosure" element={<RiskDisclosure />} />
-                    <Route path="/pricing" element={<Pricing />} />
-                    <Route path="/spotify-callback" element={<SpotifyCallback />} />
+      <TooltipProvider>
+        <AppConfigProvider>
+          <AuthProvider>
+            <PlannerProvider>
+            <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Routes>
+                <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
+                <Route path="signup" element={<PublicRoute><Signup /></PublicRoute>} />
 
-                    {/* Protected routes — AuthGuard is pathless, catches any unmatched path */}
-                    <Route element={<AuthGuard />}>
-                      <Route path="/" element={<Layout />}>
-                        <Route index element={<Dashboard />} />
-                        <Route path="academy" element={<IctAcademy />} />
-                        <Route path="videos" element={<VideoLibrary />} />
-                        <Route path="planner" element={<DailyPlanner />} />
-                        <Route path="risk-shield" element={<Navigate to="/planner" replace />} />
-                        <Route path="dashboard" element={<Navigate to="/" replace />} />
-                        <Route path="prop-tracker" element={<TierGuard requiredTier={1}><PropTracker /></TierGuard>} />
-                        <Route path="open-positions" element={<OpenPositionsPage />} />
-                        <Route path="journal" element={<SmartJournal />} />
-                        <Route path="analytics" element={<TierGuard requiredTier={2}><Analytics /></TierGuard>} />
-                        <Route path="leaderboard" element={<TierGuard requiredTier={2}><Leaderboard /></TierGuard>} />
-                        <Route path="webhooks" element={<TierGuard requiredTier={2}><TradingViewWebhooks /></TierGuard>} />
-                        <Route path="paper-trading" element={<TierGuard requiredTier={1}><PaperTradingPage /></TierGuard>} />
-                        <Route path="community" element={<Community />} />
-                        <Route path="settings" element={<Settings />} />
-                        <Route path="admin" element={<AdminGuard><Admin /></AdminGuard>} />
-                      </Route>
-                    </Route>
+                <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                  <Route index element={<IndexRedirect />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="welcome" element={<Welcome />} />
+                  <Route path="academy" element={<IctAcademy />} />
+                  <Route path="planner" element={<DailyPlanner />} />
+                  <Route path="risk-shield" element={<RiskShield />} />
+                  <Route path="journal" element={<SmartJournal />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="pricing" element={<Pricing />} />
+                  <Route path="admin" element={<Admin />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
 
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                  </Suspense>
-                  <Toaster richColors position="top-right" />
-                </Router>
-                </PlannerProvider>
-              </TourGuideProvider>
-            </SpotifyProvider>
-          </AppConfigProvider>
-        </AuthProvider>
-      </ThemeProvider>
+                <Route path="reset" element={<ResetApp />} />
+              </Routes>
+            </BrowserRouter>
+            <Toaster />
+            </PlannerProvider>
+          </AuthProvider>
+        </AppConfigProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

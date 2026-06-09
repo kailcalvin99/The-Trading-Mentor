@@ -1,75 +1,194 @@
-# The Trading Mentor App
+# ICT NQ Futures Trading Mentor App
 
 ## Overview
 
-This project is a full-stack mobile trading application designed to mentor users in ICT (Inner Circle Trader) NQ Futures trading. It features a premium dark-themed UI with gold accents, built using Expo React Native and an Express API. The application offers four core modules, including comprehensive trading tools, an academy, risk management features, and a smart journal. Key capabilities include user authentication, subscription management with Stripe integration, and an admin dashboard for platform configuration. The overarching vision is to provide a sophisticated, gamified, and AI-assisted platform for futures traders to enhance their discipline, skills, and trading performance.
+Full-stack mobile trading app built with Expo React Native + Express API. Gold/black premium dark-themed professional UI with 4 core modules for ICT (Inner Circle Trader) NQ Futures trading. Includes authentication, subscription management, and admin dashboard.
 
-## User Preferences
+## Stack
 
-I prefer concise and direct communication. I value iterative development and clear explanations of technical decisions. I expect the agent to ask for confirmation before implementing significant architectural changes or adding new external dependencies. When making changes, please prioritize security, performance, and maintainability.
+- **Monorepo tool**: pnpm workspaces
+- **Node.js version**: 24
+- **Package manager**: pnpm
+- **TypeScript version**: 5.9
+- **API framework**: Express 5
+- **Database**: PostgreSQL + Drizzle ORM
+- **Validation**: Zod (`zod/v4`), `drizzle-zod`
+- **API codegen**: Orval (from OpenAPI spec)
+- **Build**: esbuild (CJS bundle)
+- **Auth**: JWT (jsonwebtoken) + bcryptjs, httpOnly cookies only (no localStorage tokens)
 
-## System Architecture
+## Structure
 
-The application is built as a pnpm monorepo, leveraging Node.js 24 and TypeScript 5.9.
+```text
+artifacts-monorepo/
+├── artifacts/              # Deployable applications
+│   ├── api-server/         # Express API server
+│   ├── web/                # React + Vite web app
+│   ├── mobile/             # Expo React Native app
+│   └── mockup-sandbox/     # Component preview server
+├── lib/                    # Shared libraries
+│   ├── api-spec/           # OpenAPI spec + Orval codegen config
+│   ├── api-client-react/   # Generated React Query hooks
+│   ├── api-zod/            # Generated Zod schemas from OpenAPI
+│   └── db/                 # Drizzle ORM schema + DB connection
+├── scripts/                # Utility scripts
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+├── tsconfig.json
+└── package.json
+```
 
-**UI/UX Decisions:**
-- **Aesthetic:** Sophisticated, minimal, and expensive look with a gold and deep navy-black color scheme (`hsl(43 76% 52%)` and `hsl(240 25% 4%)`).
-- **Typography:** Playfair Display for headings and Inter for body text.
-- **Branding:** Gold gradient SVG chart-line logo with "ICT" text.
-- **Gamification:** Features like daily streaks, XP, achievements, and a Hall of Fame are integrated to enhance user engagement.
-- **Feature Locking:** UI elements and features are dynamically locked or unlocked based on the user's subscription tier.
+## Design System
 
-**Technical Implementations:**
-- **API:** Express 5 server providing authenticated routes for user management, subscriptions, trading data, and admin functions.
-- **Database:** PostgreSQL with Drizzle ORM for schema management and data interaction.
-- **Authentication:** JWT-based authentication using `httpOnly` cookies only, enhanced with `bcryptjs` for password hashing. The first registered user automatically gains admin privileges, and the first 20 users receive "Founder" status with a discount.
-- **API Specification:** OpenAPI for API definition, with Orval used for client-side API code generation (React Query hooks and Zod schemas).
-- **Monorepo Structure:** Divided into `artifacts` (deployable applications like API, web, mobile, mockup sandbox) and `lib` (shared libraries like `api-spec`, `api-client-react`, `api-zod`, `db`).
-- **Build System:** `esbuild` for CJS bundling and `tsc` for type-checking across all packages.
+- **Primary color**: Gold (`hsl(43 76% 52%)`) — #D4AF37 family
+- **Background**: Deep navy-black (`hsl(240 25% 4%)`)
+- **Fonts**: Playfair Display (serif, headings), Inter (sans-serif, body)
+- **Aesthetic**: Sophisticated, expensive, minimal with gold accents on dark backgrounds
+- **Logo**: SVG chart-line icon with gold gradient and "ICT" text
 
-**Feature Specifications:**
-- **Authentication & Authorization:** JWT-based, secure cookie management, role-based access (user/admin), founder program.
-- **Subscription Management:** Multiple tiers (Free, Standard, Premium) with defined features, integrated with Stripe for payments and webhook processing.
-- **Admin Panel:** Comprehensive control over branding, founder program settings, discipline rules (cooldown, risk limits), daily planner items, AI mentor system prompts, and feature toggles.
-- **AI Assistant:** A global, persistent AI chat assistant (Gemini-powered) with function-calling capabilities, offering personalized guidance and access to user-specific tools (e.g., navigate, log_trade, get_journal_entries).
-- **Discipline & Psychology Tools:**
-    - **Discipline Gate:** Daily quiz to ensure mindful trading access.
-    - **Adaptive Glossary:** Tiered glossary terms unlocking based on lesson completion.
-    - **Win-Rate Estimator:** Projects win-rate based on historical trade data.
-    - **Setup Quality Score:** Scores trade setups based on various criteria.
-    - **Sit-Out Warning:** Alerts users to potential overtrading based on recent losses or high-stress trades.
-    - **Cool Down Timers:** Enforces breaks after consecutive losses.
-    - **Hall of Fame:** Tracks discipline streaks and achievements.
-- **Video Library:** Dedicated video library on both web and mobile platforms. 30 curated ICT-relevant YouTube videos organized by 7 Academy chapters with difficulty levels (Beginner/Intermediate/Advanced). Web: `/videos` route with chapter filter tabs, difficulty filters, search, video cards with YouTube thumbnails, and in-page YouTube iframe player modal. Mobile: `videos.tsx` tab screen with chapter/difficulty filter chips and full-screen YouTube embed via `react-native-webview`. Watched state persisted per-user via API (`GET/POST /api/videos/watched`). Academy lessons show "Related Videos" buttons linking to the video player modal. DB table: `video_watched` (userId, videoId, watchedAt).
-- **TradingView Indicators:** Curated list of recommended indicators with descriptions and setup instructions.
-- **Community Hub:** A Reddit-style forum with categories, post creation, and replies, available across all tiers.
-- **Risk Disclosure:** Public legal page at `/risk-disclosure` covering educational purpose, no-financial-advice, trading risk warning, ICT methodology disclaimer, AI limitations, prop trading notice, and user responsibility. Cross-linked from all legal page footers and the Login page footer.
-- **Spotify Mini-Player:** Floating Spotify integration for the web app. Users connect via Spotify OAuth (PKCE flow with state parameter for CSRF protection) from the Settings page. Once connected, a compact floating player appears in the bottom-right corner showing current track, album art, and play/pause + skip controls. Persists across page navigation (mounted in Layout.tsx). Requires Spotify Premium for in-browser playback via the Web Playback SDK; non-Premium users see a clear message. Connect/disconnect managed via `SpotifyContext` provider. Env var: `VITE_SPOTIFY_CLIENT_ID`. Callback route: `/spotify-callback`. Files: `SpotifyContext.tsx`, `SpotifyPlayer.tsx`, `SpotifyCallback.tsx`, `spotify.d.ts`.
-- **Tour Guide System:** Full-featured 11-step interactive video tour using HeyGen embedded iframes. Managed via a `useReducer`-based state machine with states: IDLE → INTRODUCING → PLAYING_VIDEO → NAVIGATING → COMPLETED. State is persisted to localStorage (`ict-tour-state`). Auto-triggers for new users (2s delay, `ict-tour-auto-shown` flag). Floating guide card (bottom-right) shows intro text, progress bar, and Watch Video / Skip / Back / Next controls. Full-screen video player with postMessage listener for `heygen:video:ended` and manual "Continue" fallback. After each video, navigates to the relevant page then reappears. Collapsible checklist panel shows all 11 steps with strikethroughs. "Tour" button on Dashboard and "Start Tour" button in Settings page. Components: `tourConfig.ts` (config + types), `TourGuide.tsx` (component + hook), `TourChecklist.tsx` (panel), `TourGuideContext.tsx` (React context). Mounted in Layout.tsx so it persists across navigation.
-- **Share Stats:** ShareButton component on the Analytics page that generates a formatted performance summary (win rate, cumulative P&L, profit factor, total trades). Uses Web Share API with clipboard popup fallback.
-- **Security Hardening:** `helmet` middleware for HTTP security headers (CSP/COEP disabled for SPA compatibility), `express-rate-limit` applied globally (300 req/15min), to Gemini AI routes (30 req/min), and to auth login (10 req/15min). `trust proxy` set for accurate IP detection behind Replit's reverse proxy.
-- **Mission Control (Daily Planner):** Upgraded to a gamified pre-trade Mission Control experience. Includes: Probability Meter (SVG circular dial 0-100% scoring 10 criteria), Bias Gate (locks tools until bullish/bearish selected), Conservative/Aggressive strategy branch toggle, preset key level buttons (PDH, PDL, Midnight Open, NWOG, ODL, ODH), expanded position sizer with 8 futures assets (NQ/ES/GC/CL + micros) and tick value cheat sheet, contracts calculator (Account × Risk% / StopTicks × TickValue), voice note via Web Speech API (web) with speech-to-text, "Send to Journal" confirmation modal, and daily halt banner (ties into prop account daily loss limits). Components: `ProbabilityMeter.tsx` (web + mobile). Audio: `chime.wav` in web/public/sounds and mobile/assets/sounds.
+## Authentication & Subscriptions
 
-- **Cross-Platform Data Sync:** All user data (planner, academy progress, XP/streak, tags, routine times, widget preferences) is synced via API-backed storage, enabling seamless switching between web and mobile. Local storage (localStorage on web, AsyncStorage on mobile) serves as offline fallback. New DB tables: `planner_entries` (daily planner data per date), `user_tags` (custom trade tags). New columns on `users` table: `total_xp`, `login_streak`, `last_login_date`, `routine_times`, `widget_prefs`. New API routes: `/api/planner` (CRUD for daily planner entries), `/api/tags` (CRUD for user tags). Extended `/api/user-settings` with sections: `gamification`, `progress`, `routineTimes`, `widgetPrefs`. Tag management UI added to web Settings page.
+### Auth System
+- JWT-based authentication with httpOnly cookies only (secure + SameSite=None on Replit)
+- CORS restricted to Replit domains, localhost, and configurable ALLOWED_ORIGINS
+- First registered user automatically becomes admin
+- First 20 users get "Founder" status with 50% discount for 6 months
+- Password hashing with bcryptjs (12 rounds)
+- Post-signup redirect goes directly to Daily Planner (skips Welcome)
 
-## GitHub Repository
+### Database Tables
+- `users` — id, email, password_hash, name, role (user/admin), is_founder, founder_number
+- `subscription_tiers` — id, name, level (0=Free, 1=Standard, 2=Premium), monthly_price, annual_price, features (jsonb)
+- `user_subscriptions` — user_id, tier_id, status, billing_cycle, custom prices, founder discount tracking
+- `admin_settings` — key-value store for global config (branding, founder, discipline, planner, AI mentor, feature toggles)
 
-The project is connected to GitHub at:
-**https://github.com/kailcalvin99/The-Trading-Mentor**
+### Subscription Tiers
+- **Free** (Level 0): Academy (5 lessons), Daily Planner, AI Mentor (3/day), Daily Spin
+- **Standard** (Level 1, $29.99/mo): Full Academy, Risk Shield, unlimited AI Mentor
+- **Premium** (Level 2, $59.99/mo): Everything + Smart Journal, Analytics, Leaderboard, TradingView Webhooks
 
-- Remote: `origin` → `https://github.com/kailcalvin99/The-Trading-Mentor.git`
-- Default branch on GitHub: `main`
-- The GitHub repo was bootstrapped with a clean orphan commit (single initial commit) from the current HEAD. This was done to avoid carrying historical commits that had a Stripe test key in an old `.replit` file.
-- To push future changes: set `GITHUB_TOKEN` env var and run `git push origin master:main` (or use the Replit Git panel).
-- Note: the Replit local branch is `master`; GitHub branch is `main`.
+### Stripe Payment Integration
+- **Stripe SDK**: `stripe` + `stripe-replit-sync` installed at workspace root
+- **Stripe Client**: `artifacts/api-server/src/stripe/stripeClient.ts` — fetches key from `STRIPE_SECRET_KEY` env var
+- **Webhook Handler**: `artifacts/api-server/src/stripe/webhookHandlers.ts` — processes webhook via `stripe-replit-sync`
+- **Webhook Route**: Registered in `app.ts` BEFORE `express.json()` at `/api/stripe/webhook` with `express.raw()`
+- **Stripe Init**: `index.ts` runs `runMigrations` → `getStripeSync` → `findOrCreateManagedWebhook` → `syncBackfill` on startup
+- **Seed Script**: `scripts/src/seed-stripe-products.ts` — creates Stripe products/prices and writes Price IDs to `subscription_tiers` table
+  - Run: `STRIPE_SECRET_KEY=<key> pnpm --filter @workspace/scripts run seed-stripe`
+- **Checkout Flow**: `POST /api/subscriptions/create-checkout-session` creates Stripe Checkout session, redirects user to Stripe
+- **Free Downgrade**: `POST /api/subscriptions/subscribe` handles free-tier downgrade (cancels Stripe subscription)
+- **Founder Discount**: Auto-applies coupon (repeating, 6 months) for founder users during checkout
+- **Webhook Secret**: Managed by `stripe-replit-sync` via `findOrCreateManagedWebhook()` — no manual `STRIPE_WEBHOOK_SECRET` env var needed
+- **Env Vars**: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` set as shared env vars
+- **DB Columns**: `stripe_price_id_monthly`, `stripe_price_id_annual` on tiers; `stripe_customer_id`, `stripe_subscription_id`, `stripe_checkout_session_id` on user_subscriptions
 
-## External Dependencies
+### API Routes
+- `POST /api/auth/register` — register (auto-founder for first 20)
+- `POST /api/auth/login` — login, returns JWT in cookie
+- `GET /api/auth/me` — current user + subscription
+- `POST /api/auth/logout` — clear cookie
+- `GET /api/subscriptions/tiers` — list tiers + founder spots
+- `POST /api/subscriptions/subscribe` — subscribe/downgrade to free tier
+- `POST /api/subscriptions/create-checkout-session` — create Stripe Checkout session for paid tiers
+- `GET /api/subscriptions/my` — current subscription
+- `POST /api/stripe/webhook` — Stripe webhook endpoint (raw body, before express.json)
+- `POST /api/stripe/checkout-completed` — internal Stripe event handler
+- `GET/PUT /api/admin/users` — manage users
+- `PUT /api/admin/users/:id/subscription` — set custom pricing per user
+- `GET/PUT /api/admin/tiers` — manage tier pricing
+- `GET/PUT /api/admin/settings` — global config (admin-only)
+- `GET /api/admin/app-config` — public endpoint returning non-sensitive config (branding, toggles, discipline settings, routine items)
 
-- **Database:** PostgreSQL
-- **ORM:** Drizzle ORM
-- **Authentication:** `jsonwebtoken`, `bcryptjs`
-- **Payment Processing:** Stripe (`stripe`, `stripe-replit-sync`)
-- **API Specification/Generation:** OpenAPI, Orval
-- **Validation:** Zod (`zod/v4`), `drizzle-zod`
-- **AI/LLM:** Google Gemini API
-- **Frontend Frameworks/Libraries:** React Native (Expo), React, Vite
+### Admin Configuration Panel (Settings Tab)
+Seven collapsible sections:
+1. **Branding**: App name, tagline (drives Login/Layout/Header text)
+2. **Founder Program**: Founder limit, discount %, duration, annual discount
+3. **Discipline & Risk**: Cooldown duration (hours), consecutive loss threshold, gate lockout (minutes), daily/weekly risk limits
+4. **Daily Planner**: Configurable routine checklist items (label, description, icon)
+5. **AI Mentor**: Custom system prompt override (blank = built-in ICT prompt)
+6. **Feature Toggles**: On/off switches for Discipline Gate, Cooldown Timer, Hall of Fame, Win Rate Estimator, Casino Elements, Daily Spin
+7. **Danger Zone**: Hard reset with 2-step confirmation
+
+- `AppConfigContext.tsx` provides `useAppConfig()` hook — fetches `/api/admin/app-config` once, shares config to all components
+- Feature toggles control runtime rendering of features across DailyPlanner, CoolDownOverlay, DisciplineGate
+- Tier features are now editable from the admin Tiers tab (add/remove feature text)
+- AI mentor system prompt is kept server-side only (excluded from public config endpoint)
+
+### Frontend Features
+- Login/Signup pages with gold branding and serif headings
+- **Dashboard** (`/dashboard`): Main hub landing page with ICT mascot, gamified status row (level/rank/streak/badges), daily spin wheel, slot machine daily challenge, ICT quick reference flip-cards (12 terms), live market sessions board, achievements, premium teaser, and quick-nav cards
+- **ICT Academy** now at `/academy` (previously at `/`)
+- **IndexRedirect** (`/`) → redirects to `/dashboard` after welcome tour
+- Founder welcome modal with crown animation
+- Pricing page with monthly/annual toggle and founder discount display
+- Admin dashboard with user management, tier editing, global settings, AI Assistant panel
+- Casino-game elements: daily streak, spin wheel, achievements, premium teasers, slot machine mission generator
+- Sidebar shows user profile, subscription status, founder badge; Dashboard is first nav item
+- Feature locking based on subscription tier
+
+### AI Assistant (Persistent Global Chat)
+- **Web**: Top bar input (desktop) + floating action button (mobile) with slide-out side drawer
+- **Mobile**: Floating action button on all tabs with full-screen modal drawer
+- **Component**: `artifacts/web/src/components/AIAssistant.tsx` (web), `artifacts/mobile/components/AIAssistant.tsx` (mobile)
+- **Backend**: `artifacts/api-server/src/routes/gemini/index.ts` — Gemini function calling with tool declarations
+- **User tools**: navigate, log_trade, get_journal_entries, get_analytics_summary, calculate_position_size, complete_planner_items, get_user_context
+- **Admin tools**: list_users_summary, get_platform_stats, get_inactive_users, suggest_system_prompt
+- **Context injection**: Current page, route, user name, tier level, admin status, routine completion sent with each message
+- **Admin AI panel**: Dedicated AI chat in Admin page with "Generate Platform Summary" and "AI-Draft System Prompt" buttons
+- **Mentor tab removed**: Previously in ICT Academy (web and mobile), now replaced by persistent global AI assistant
+
+### Discipline & Psychology Features
+- **Discipline Gate** (`DisciplineGate.tsx`): Daily 3-question quiz (narrative/math/awareness) before accessing trading tools. 3/3 required, configurable lockout on failure (default 60 min). Respects `feature_discipline_gate` toggle. Stored per day in localStorage.
+- **Adaptive Glossary**: Glossary terms have basic + advanced tiers. Advanced unlocks when user completes related lessons (`requiredLessons` field). Terms with advanced tiers: FVG, MSS, Liquidity Sweep, OTE, Kill Zone.
+- **Win-Rate Estimator**: Shows projected win-rate in Trade Plan section based on API trade history. Filters by bias and session focus. Respects `feature_win_rate_estimator` toggle.
+- **Cool Down Timers** (`CoolDownOverlay.tsx`): Tracks consecutive losses via `recordTradeResult()` (wired into SmartJournal). Configurable threshold (default 2) and duration (default 4 hours). Duration stored at activation time to survive reloads. Respects `feature_cooldown_timer` toggle.
+- **Hall of Fame** (`HallOfFame.tsx`): Discipline streak tracking (current/best/total). 7 achievements (First Step → ICT Elite). Recorded when morning routine is completed. Respects `feature_hall_of_fame` toggle. Data in localStorage.
+- **Graduation Celebration** (`GraduationCelebration.tsx`): Full-screen confetti + diploma animation when all lessons + quiz completed.
+- **TradingView Indicators** (Tools tab in Academy): 12 recommended indicators organized by category (Core/Supporting/Optional). Each card expands to show description, ICT concept mapping, setup instructions, and TradingView search term. Includes "Recommended Starter Setup" section. Data in `RECOMMENDED_INDICATORS` array in `academy-data.ts`.
+
+## TypeScript & Composite Projects
+
+Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references.
+
+## Root Scripts
+
+- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages
+- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly`
+
+## Packages
+
+### `artifacts/api-server` (`@workspace/api-server`)
+
+Express 5 API server with auth middleware, subscription management, and admin routes.
+
+- Entry: `src/index.ts` — reads `PORT`, starts Express
+- App setup: `src/app.ts` — mounts CORS (restricted origins), cookie-parser, JSON/urlencoded, routes at `/api`, seeds defaults
+- Middleware: `src/middleware/auth.ts` — JWT auth with httpOnly cookies, secure+SameSite=None on Replit, admin role check
+- Routes: auth, subscriptions, admin, gemini, prop, trades, webhook
+- Seed: `src/seed.ts` — creates default tiers and admin settings on startup
+
+### `lib/db` (`@workspace/db`)
+
+Database layer using Drizzle ORM with PostgreSQL.
+
+- Schema files: users.ts, subscriptions.ts, admin_settings.ts, conversations.ts, messages.ts, trades.ts, prop_account.ts
+- Production migrations handled by Replit on publish. Dev: `pnpm --filter @workspace/db run push`
+
+### `artifacts/web` (`@workspace/web`)
+
+React + Vite web application with auth-gated access.
+
+- Auth: `src/contexts/AuthContext.tsx` — JWT session management via cookies, tier checking
+- Pages: Login, Signup (with founder modal), Pricing (with annual toggle), Admin dashboard
+- Casino elements: `src/components/CasinoElements.tsx` — daily streak, spin wheel, achievements, premium teasers
+- Layout: Subscription-aware navigation with user menu, admin link, upgrade prompts
+- Free users see casino sidebar on right with spin wheel, streaks, achievements, and blurred premium content
+- Preview path: `/web/`
+
+### `artifacts/mobile` (`@workspace/mobile`)
+
+Expo React Native mobile app with 4 tabs (same as before, no auth changes yet).
+
+### `artifacts/mockup-sandbox` (`@workspace/mockup-sandbox`)
+
+Vite + React component preview server for canvas mockups.

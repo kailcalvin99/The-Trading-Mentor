@@ -50,7 +50,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-1",
         title: "What is Trading?",
-        chartImage: "lesson-what-is-trading.webp",
+        chartImage: "lesson-what-is-trading.png",
         paragraphs: [
           "Trading is simply buying and selling things to make money from price changes. Imagine you buy a pair of sneakers for $100. A week later, they're selling for $150. If you sell them, you just made $50. That's trading!",
           "In the stock market, instead of sneakers, people buy and sell stocks (tiny pieces of companies), currencies (like dollars and euros), and futures contracts (agreements to buy/sell something at a future date). The goal is the same — buy low, sell high.",
@@ -62,7 +62,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-2",
         title: "What are Futures? What is NQ?",
-        chartImage: "lesson-futures-nq.webp",
+        chartImage: "lesson-futures-nq.png",
         paragraphs: [
           "A futures contract is an agreement to buy or sell something at a set price on a future date. Think of it like pre-ordering a video game — you agree to pay a price now, and you get the game when it comes out. If the game's price goes up before release, your pre-order was a great deal!",
           "NQ stands for the Nasdaq-100 E-mini Futures. The Nasdaq-100 is a list of the 100 biggest tech companies — Apple, Google, Amazon, Microsoft, and more. When you trade NQ, you're trading the combined value of all these companies. One point of movement in NQ = $20 in your account.",
@@ -74,7 +74,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-3",
         title: "What is a Candlestick Chart?",
-        chartImage: "lesson-candlestick.webp",
+        chartImage: "lesson-candlestick.png",
         videoFile: "video-candlestick.mp4",
         paragraphs: [
           "A candlestick chart is the most common way traders look at price movements. Each 'candlestick' on the chart represents a specific time period — it could show 1 minute, 5 minutes, 1 hour, or even a whole day of price action.",
@@ -87,7 +87,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-4",
         title: "What are Timeframes?",
-        chartImage: "lesson-timeframes.webp",
+        chartImage: "lesson-timeframes.png",
         paragraphs: [
           "A timeframe is how much time each candle on your chart represents. A 1-minute chart means each candle shows 1 minute of price action. A 1-hour chart means each candle shows 1 hour. A daily chart means each candle shows a full day.",
           "Different timeframes show different pictures of the same market. The daily chart shows the BIG picture — where price has been going over weeks and months. The 1-hour chart shows the MEDIUM picture. The 5-minute and 1-minute charts show the CLOSE-UP — every tiny move.",
@@ -99,7 +99,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-5",
         title: "What is a Broker and Trading Platform?",
-        chartImage: "lesson-broker-platform.webp",
+        chartImage: "lesson-broker-platform.png",
         paragraphs: [
           "A broker is the company that connects you to the market. You can't just walk up to the stock exchange and start trading — you need a broker to place your trades for you. Think of a broker like a phone company — you need them to make calls, and they charge you for the service.",
           "A trading platform is the app or software you use to see charts, place trades, and manage your money. Popular platforms for NQ Futures include NinjaTrader, TradingView, and Tradovate. These platforms show you live price charts and let you click buttons to buy or sell.",
@@ -111,7 +111,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch1-6",
         title: "What is a Prop Firm?",
-        chartImage: "lesson-prop-firm.webp",
+        chartImage: "lesson-prop-firm.png",
         paragraphs: [
           "A prop firm (short for 'proprietary trading firm') is a company that gives you THEIR money to trade with. Instead of risking your own savings, you trade with the prop firm's capital. If you make profits, you keep a percentage (usually 80-90%). If you lose, the firm takes the hit.",
           "To get funded by a prop firm, you first need to pass an 'evaluation.' This is like a test where you trade on a simulated account and prove you can follow the rules and make money. The rules usually include: don't lose more than 2% in a day, don't lose more than 5-10% total, and reach a profit target.",
@@ -132,7 +132,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-1",
         title: "Who Moves the Market?",
-        chartImage: "lesson-who-moves-market.webp",
+        chartImage: "lesson-who-moves-market.png",
         paragraphs: [
           "Here's a secret most beginners don't know: the market is NOT moved by regular people like you and me. It's moved by huge banks, hedge funds, and institutions — we call them 'Smart Money.' These players control billions of dollars and can push prices wherever they want.",
           "Regular traders (called 'retail traders') only make up about 10-15% of the market. We're the small fish. The banks are the whales. When a whale wants to buy, they need to find enough sellers. When they want to sell, they need buyers. The problem? There aren't always enough people on the other side of the trade.",
@@ -144,7 +144,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-2",
         title: "What is Liquidity?",
-        chartImage: "lesson-liquidity.webp",
+        chartImage: "lesson-liquidity.png",
         paragraphs: [
           "Liquidity is one of the MOST important concepts in ICT trading. In simple terms, liquidity is where people's stop-loss orders are sitting. A stop-loss is an automatic order that closes your trade to limit your losses — like an emergency exit.",
           "Here's where it gets interesting: the big players NEED these stop-loss orders to fill their own trades. When a bank wants to buy a massive amount of NQ, they need a lot of sellers. Where are the sellers? Right where everyone's stop-losses are! When those stops get hit, they create a flood of sell orders — exactly what the bank needed.",
@@ -156,7 +156,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-3",
         title: "Buy-Side vs Sell-Side Liquidity",
-        chartImage: "lesson-buyside-sellside.webp",
+        chartImage: "lesson-buyside-sellside.png",
         paragraphs: [
           "Now that you know what liquidity is, let's learn where it sits. There are two types: Buy-Side Liquidity (BSL) and Sell-Side Liquidity (SSL).",
           "Buy-Side Liquidity sits ABOVE recent highs. When price makes a high, traders who are short (betting price will drop) place their stop-losses just above that high. There are also traders waiting to buy a breakout above the high. All those orders sitting above = Buy-Side Liquidity.",
@@ -168,7 +168,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-4",
         title: "What is Smart Money?",
-        chartImage: "lesson-smart-money.webp",
+        chartImage: "lesson-smart-money.png",
         paragraphs: [
           "Smart Money refers to the big institutional players — JP Morgan, Goldman Sachs, Citadel, and other major banks and hedge funds. They have access to more information, faster technology, and way more money than retail traders. They're called 'smart' because they consistently make money while most retail traders lose.",
           "The ICT method is all about learning to read what Smart Money is doing by looking at the clues they leave on the chart. These clues include: liquidity sweeps (fake-out moves), displacement candles (big, fast candles that show real intent), and fair value gaps (price gaps they create).",
@@ -180,7 +180,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch2-5",
         title: "Internal vs External Liquidity",
-        chartImage: "lesson-internal-external.webp",
+        chartImage: "lesson-internal-external.png",
         paragraphs: [
           "Once you understand liquidity, you need to know about two types of targets: Internal Liquidity and External Liquidity. These are used to set your profit targets (where to exit your trade).",
           "External Liquidity is the BIG target — it's an old high or low that hasn't been taken out yet. If price is going up, your external target might be a previous swing high or the high of the previous day. These are the 'end of the move' targets.",
@@ -201,7 +201,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch3-1",
         title: "Market Structure — Highs, Lows, Trends",
-        chartImage: "lesson-market-structure.webp",
+        chartImage: "lesson-market-structure.png",
         paragraphs: [
           "Market structure is the foundation of everything. It simply means: is price making higher highs and higher lows (uptrend), or lower highs and lower lows (downtrend)?",
           "In an uptrend, price goes up, pulls back a little, then goes up even higher. Each pullback low is higher than the last, and each push up is higher than the last. Think of it like climbing stairs — each step is higher than the one before.",
@@ -213,7 +213,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch3-2",
         title: "Market Structure Shift (MSS)",
-        chartImage: "chart-mss.webp",
+        chartImage: "chart-mss.png",
         paragraphs: [
           "A Market Structure Shift (MSS) is the moment the trend changes direction. It's like a U-turn sign on the highway — the market was going one way, and now it's going the other.",
           "For a BULLISH MSS (shift from down to up): price breaks above a recent swing high and closes above it. This means the downtrend is over and price is now moving up. It's your signal to start looking for buy setups.",
@@ -225,7 +225,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch3-3",
         title: "Fair Value Gap (FVG)",
-        chartImage: "chart-fvg.webp",
+        chartImage: "chart-fvg.png",
         videoFile: "video-fvg.mp4",
         paragraphs: [
           "A Fair Value Gap (FVG) is a gap left on the chart when price moves too fast. It's where you actually enter your trades. Think of it as a 'price hole' that the market usually comes back to fill.",
@@ -238,7 +238,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch3-4",
         title: "Liquidity Sweep — The Fake-Out",
-        chartImage: "chart-liquidity-sweep.webp",
+        chartImage: "chart-liquidity-sweep.png",
         videoFile: "video-liquidity-sweep.mp4",
         paragraphs: [
           "A liquidity sweep is when price quickly pokes above a high or below a low to grab everyone's stop-loss orders, then snaps back the other way. It's the fake-out before the real move. Think of it like a broom sweeping up money.",
@@ -249,33 +249,9 @@ export const COURSE_CHAPTERS: Chapter[] = [
         takeaway: "A sweep is a fake move that grabs stop-losses, then price reverses. It's the bait before the real move. Always wait for the sweep BEFORE entering."
       },
       {
-        id: "ch3-4b",
-        title: "IDM — Inducement (The Trap Before the Move)",
-        chartImage: "chart-idm-inducement.webp",
-        paragraphs: [
-          "IDM stands for Inducement — it's a trap that Smart Money sets for retail traders just before the real move. It looks like a breakout, but it's actually bait designed to get you into the wrong trade.",
-          "Here's how it works: in an uptrend, price creates a small swing low (a pullback). Retail traders see this as 'support' and place their buy stop orders just above it, expecting price to bounce. Smart Money knows those orders are there. Instead of bouncing, price dips below that swing low — triggering all those buy orders (filling the Smart Money's sell side). Then the real move down begins.",
-          "Think of IDM like a fishing lure. The small swing low (or high) is the lure. When price grabs it, retail traders think 'the move is starting!' — but they just got hooked. The real move comes AFTER the grab.",
-          "In practice: after a liquidity sweep (a larger move), watch for price to create a small fake swing in the opposite direction. That small swing is the IDM — the inducement. The real entry comes AFTER the IDM is taken out and the MSS confirms the direction. IDM often appears just before a beautiful FVG entry."
-        ],
-        takeaway: "IDM = Inducement — a fake mini-swing that tricks retail traders into the wrong side. The real move comes AFTER the IDM is swept. Always wait for IDM + MSS confirmation before entering."
-      },
-      {
-        id: "ch3-4c",
-        title: "Fibonacci Retracement — The Pullback Ruler",
-        paragraphs: [
-          "Before we get into the OTE, you need to understand one tool: the Fibonacci retracement. Don't let the name scare you — it's just a ruler that measures HOW FAR price has pulled back after a move.",
-          "Here's what 'retracement' means in plain English: price makes a big move up (or down), then pulls back a bit before continuing. That pull-back is the retracement. Fibonacci retracement puts percentage labels on that pull-back so you know exactly how deep it went.",
-          "The key levels are: 23.6%, 38.2%, 50%, 61.8%, and 78.6%. These are just percentages of the original move. If price moved 100 points up and then pulled back 61.8 points, that's a 61.8% retracement. The levels that matter most in ICT are the 61.8% and 78.6% — together they form the 62–79% zone that we call the OTE zone.",
-          "Why do traders care about these specific numbers? They come from the Fibonacci sequence — a pattern that appears repeatedly in nature and markets. The exact math isn't important. What IS important is that Smart Money watches these levels, which means price tends to react there.",
-          "How to draw it on a chart: for a bullish setup (price moved UP, now pulling back), anchor the tool at the swing LOW and drag it to the swing HIGH. The 0% level sits at the top (the high) and 100% sits at the bottom (the low). The zone between 61.8% and 78.6% is where you watch for a reaction. For a bearish setup (price moved DOWN, now pulling back upward), flip it — anchor at the swing HIGH and drag to the swing LOW."
-        ],
-        takeaway: "Fibonacci retracement is a tool that measures how far price has pulled back after a move. The key zone is 61.8%–78.6% (the 62–79% OTE zone). For bullish setups, draw from swing low to swing high. For bearish, draw from swing high to swing low."
-      },
-      {
         id: "ch3-5",
         title: "Optimal Trade Entry (OTE)",
-        chartImage: "chart-ote.webp",
+        chartImage: "chart-ote.png",
         paragraphs: [
           "The Optimal Trade Entry (OTE) is the sweet spot to enter a trade. It uses the Fibonacci retracement tool, specifically the zone between 62% and 79%. This zone gives you the best risk-to-reward ratio.",
           "After a sweep and MSS, price usually pulls back before continuing in the new direction. The OTE zone tells you HOW FAR price is likely to pull back. If your FVG lines up with this zone, you have a very high-probability entry.",
@@ -287,7 +263,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch3-6",
         title: "Premium vs Discount",
-        chartImage: "lesson-premium-discount.webp",
+        chartImage: "lesson-premium-discount.png",
         paragraphs: [
           "Premium and Discount tell you whether price is 'expensive' or 'cheap' relative to a range. It's like shopping — you want to buy when things are on sale (Discount) and sell when they're overpriced (Premium).",
           "To find Premium and Discount, take any price range (like the current day's range) and find the 50% level (the midpoint). Everything ABOVE the 50% level is Premium (expensive). Everything BELOW is Discount (cheap).",
@@ -299,7 +275,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch3-7",
         title: "Displacement — The Power Candle",
-        chartImage: "lesson-displacement.webp",
+        chartImage: "lesson-displacement.png",
         paragraphs: [
           "Displacement is a big, aggressive candle (or group of candles) that shows real intent from Smart Money. It's a fast, powerful move that creates Fair Value Gaps and tells you the big players are involved.",
           "You can recognize displacement by its characteristics: large candle bodies with very small wicks (or no wicks at all), multiple candles in the same direction closing near their highs or lows, and volume behind the move. It looks 'violent' compared to the choppy candles before it.",
@@ -320,7 +296,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch4-1",
         title: "Why Time Matters in Trading",
-        chartImage: "lesson-time-matters.webp",
+        chartImage: "lesson-time-matters.png",
         paragraphs: [
           "Not all hours of the day are equal for trading. The market has rhythms — certain times when setups work reliably, and other times when the market is choppy and unpredictable. Trading at the wrong time is like fishing in an empty pond.",
           "Big institutions (the Smart Money) are most active during specific sessions. When they're trading, the market moves with purpose and creates the patterns we're looking for (sweeps, MSS, FVGs). When they're not active, price chops around randomly.",
@@ -332,7 +308,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch4-2",
         title: "London Kill Zone (2-5 AM EST)",
-        chartImage: "chart-killzone.webp",
+        chartImage: "chart-killzone.png",
         videoFile: "video-killzone.mp4",
         paragraphs: [
           "The London Kill Zone runs from 2:00 AM to 5:00 AM Eastern Time. This is when European banks and institutions start their trading day. The London session is the first major session to open and often sets the tone for the rest of the day.",
@@ -345,7 +321,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch4-3",
         title: "NY Open Kill Zone (9:30-10 AM EST)",
-        chartImage: "lesson-ny-open.webp",
+        chartImage: "lesson-ny-open.png",
         paragraphs: [
           "The New York Open Kill Zone runs from about 9:30 AM to 10:00 AM Eastern Time. This is when the U.S. stock market opens and American institutions enter the scene. Volume spikes dramatically.",
           "The NY Open is known for volatile, fast moves. Price often makes a fake move in one direction right at 9:30 AM, then reverses sharply. This is because institutions are completing their orders from the London session.",
@@ -357,7 +333,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch4-4",
         title: "Silver Bullet Window (10-11 AM EST)",
-        chartImage: "lesson-silver-bullet-window.webp",
+        chartImage: "lesson-silver-bullet-window.png",
         paragraphs: [
           "The Silver Bullet Window is 10:00 AM to 11:00 AM Eastern Time. This is the BEST and most reliable time to trade NQ Futures. If you only trade during one window all day, make it this one.",
           "By 10 AM, the chaos of the NY Open has settled. The Smart Money has shown their hand during London and the NY Open. Now they often make one more push — this is the Silver Bullet. It's cleaner, calmer, and more predictable than the earlier sessions.",
@@ -369,7 +345,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch4-5",
         title: "When NOT to Trade",
-        chartImage: "lesson-when-not-trade.webp",
+        chartImage: "lesson-when-not-trade.png",
         paragraphs: [
           "Knowing when NOT to trade is just as important as knowing when to trade. Some days and times are simply too dangerous or unreliable. Staying out of the market during these times will save you a lot of money.",
           "Red Folder News: These are high-impact economic events listed on ForexFactory.com (marked with a red folder icon). Events like NFP (Non-Farm Payrolls), CPI (inflation data), and FOMC (Federal Reserve meetings) cause wild, unpredictable price swings. Don't trade within 5 minutes before or after these events.",
@@ -390,7 +366,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-1",
         title: "The Top-Down Approach",
-        chartImage: "lesson-top-down.webp",
+        chartImage: "lesson-top-down.png",
         paragraphs: [
           "The Top-Down Approach means you always start your analysis on the big charts and work your way down to the small charts. Never start on the 5-minute chart! Always start on the Daily, then 1-Hour, then 15-minute, then 5-minute.",
           "On the Daily chart, you're asking: 'What's the overall trend? Is the market bullish (going up) or bearish (going down)?' This gives you your BIAS — the direction you want to trade.",
@@ -402,7 +378,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-2",
         title: "Conservative Entry — All 6 Steps",
-        chartImage: "chart-conservative-entry.webp",
+        chartImage: "chart-conservative-entry.png",
         paragraphs: [
           "The Conservative Entry is our main trading setup. It has 6 checkpoints that must ALL be met before you enter a trade. No exceptions. This is your bread and butter.",
           "Step 1 — Bias Check: Is the 1-Hour chart clearly going up (Bullish) or down (Bearish)? If it's sideways and choppy, there's no trade. You need a clear direction. Step 2 — The Sweep: Wait for price to take out a 15-minute high or low. This is the liquidity grab that fuels the real move.",
@@ -414,7 +390,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-3",
         title: "Aggressive Entry (Silver Bullet)",
-        chartImage: "chart-silver-bullet.webp",
+        chartImage: "chart-silver-bullet.png",
         paragraphs: [
           "The Aggressive Entry is a faster, simpler setup used specifically during the Silver Bullet window (10-11 AM EST). It has only 4 steps and uses the 1-minute chart for entries.",
           "Step 1 — Time Check: It MUST be between 10:00 AM and 11:00 AM EST. No exceptions. This setup relies on the specific market behavior during this window. Step 2 — Identify POI: Price must be heading toward a clear high or low (a Point of Interest) where stops are sitting.",
@@ -426,7 +402,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-4",
         title: "Where to Put Your Stop Loss",
-        chartImage: "lesson-stop-loss.webp",
+        chartImage: "lesson-stop-loss.png",
         paragraphs: [
           "A stop loss is your emergency exit — it automatically closes your trade if price goes against you past a certain point. EVERY trade must have a stop loss. No exceptions. Trading without a stop loss is like driving without a seatbelt.",
           "For our setups, the stop loss goes at the high or low of the candle that created the MSS. This is the logical place because if price goes back beyond the MSS candle, the setup has failed — the shift wasn't real.",
@@ -438,7 +414,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-5",
         title: "Setting Targets — TP1 and TP2",
-        chartImage: "lesson-targets.webp",
+        chartImage: "lesson-targets.png",
         paragraphs: [
           "TP stands for 'Take Profit' — the price level where you exit the trade with a profit. We use two targets: TP1 (first target) and TP2 (main target).",
           "TP1 is your first target. It's usually the nearest high or low — what we call 'Internal Liquidity.' For a buy trade, TP1 might be the nearest swing high above your entry. The goal is a 1:1 or 1:2 reward-to-risk ratio. Meaning if you're risking 10 points, your TP1 is 10-20 points of profit.",
@@ -450,7 +426,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch5-6",
         title: "Moving Stop to Breakeven",
-        chartImage: "lesson-breakeven.webp",
+        chartImage: "lesson-breakeven.png",
         paragraphs: [
           "Moving your stop to breakeven (BE) is one of the most important risk management techniques. It means moving your stop loss to your entry price after TP1 is hit. If price comes back to your entry, you get stopped out at zero loss instead of a full loss.",
           "Here's the process: You enter a buy trade at 18,500 with a stop loss at 18,480 (20 points of risk). TP1 is 18,520 (20 points of profit). When price hits 18,520, you move your stop from 18,480 to 18,500 (your entry price). Now you can't lose money on this trade.",
@@ -471,7 +447,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-1",
         title: "Why Risk Management is More Important Than Entries",
-        chartImage: "lesson-risk-importance.webp",
+        chartImage: "lesson-risk-importance.png",
         paragraphs: [
           "Here's a truth that shocks most beginners: your ENTRIES are not what make you profitable. Your RISK MANAGEMENT is. You could have a strategy that's right only 40% of the time and still make money — if your winners are bigger than your losers.",
           "Think of it like baseball. A great hitter gets a hit 3 out of 10 times (a .300 batting average) and is considered elite. Trading is similar. You don't need to be right all the time. You need to win BIG when you're right and lose SMALL when you're wrong.",
@@ -483,7 +459,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-2",
         title: "The Risk-Per-Trade Rule",
-        chartImage: "lesson-risk-per-trade.webp",
+        chartImage: "lesson-risk-per-trade.png",
         paragraphs: [
           "The core rule: never risk more than 0.5-1% of your account on a single trade. For a $100,000 prop firm account, that means risking a maximum of $500-$1,000 per trade.",
           "Why so small? Because losing streaks happen to EVERYONE. Even the best traders have 3, 4, or 5 losses in a row. If you risk 5% per trade and lose 4 times in a row, you've lost 20% of your account. But if you risk 0.5%, four losses is only 2%. You're still in the game.",
@@ -495,7 +471,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-3",
         title: "Position Sizing — How Many Contracts",
-        chartImage: "lesson-position-sizing.webp",
+        chartImage: "lesson-position-sizing.png",
         paragraphs: [
           "Position sizing means figuring out how many contracts to trade based on your risk rule. It's simple math, but it's the most important calculation you'll make before every trade.",
           "The formula: Contracts = Risk Amount ÷ (Stop Loss Points × Point Value). For NQ: each point = $20. For MNQ: each point = $2. If your account is $100,000, your max risk is $500 (at 0.5%), and your stop is 25 points: $500 ÷ (25 × $20) = 1 NQ contract, or $500 ÷ (25 × $2) = 10 MNQ contracts.",
@@ -507,7 +483,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-4",
         title: "Daily and Weekly Loss Limits",
-        chartImage: "lesson-loss-limits.webp",
+        chartImage: "lesson-loss-limits.png",
         paragraphs: [
           "Beyond individual trade risk, you need hard daily and weekly loss limits. These are the circuit breakers that prevent a bad day from becoming a catastrophe.",
           "Max Daily Loss: 2%. If you lose 2% of your account in a single day, you're DONE for the day. Close your platform, walk away, and come back tomorrow. Our app enforces this automatically — it locks you out for 24 hours. This prevents 'revenge trading' (trying to win back losses by taking bad trades).",
@@ -519,7 +495,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch6-5",
         title: "What Happens When You Break the Rules",
-        chartImage: "lesson-breaking-rules.webp",
+        chartImage: "lesson-breaking-rules.png",
         paragraphs: [
           "Breaking the risk rules has consequences — both in the app and in real trading. Understanding these consequences will motivate you to stay disciplined.",
           "If you hit the 2% daily loss limit, the app stops you from logging new trades for 24 hours. This forced break gives you time to cool down, review what went wrong, and come back with a clear head. On a prop firm, hitting the daily loss limit could mean failing the evaluation — months of effort gone in one bad day.",
@@ -540,7 +516,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-1",
         title: "Why Most Traders Lose",
-        chartImage: "lesson-why-lose.webp",
+        chartImage: "lesson-why-lose.png",
         paragraphs: [
           "About 90% of retail traders lose money. That sounds scary, but here's the thing — they don't lose because trading is impossible. They lose because they can't control their emotions. Strategy is only 20% of the game. Psychology is the other 80%.",
           "The market is designed to trigger your emotions. When price goes up fast, you feel FOMO (fear of missing out) and jump in without a setup. When you lose, you feel angry and take revenge trades. When you're winning, you feel invincible and take too much risk.",
@@ -552,7 +528,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-2",
         title: "FOMO — Fear of Missing Out",
-        chartImage: "lesson-fomo.webp",
+        chartImage: "lesson-fomo.png",
         paragraphs: [
           "FOMO is the feeling of 'I NEED to get in NOW or I'll miss the move!' It happens when you see price moving fast without you and you jump in without your setup being complete. It's one of the most common and destructive emotions in trading.",
           "Here's the truth about FOMO: the market gives you opportunities EVERY DAY. If you miss one move, there will be another one tomorrow. And the next day. And the next. There is no 'last train.' The trades that feel most urgent (like you HAVE to take them) are usually the worst trades.",
@@ -564,7 +540,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-3",
         title: "Revenge Trading — The #1 Account Killer",
-        chartImage: "lesson-revenge-trading.webp",
+        chartImage: "lesson-revenge-trading.png",
         paragraphs: [
           "Revenge trading is when you take another trade immediately after a loss, trying to 'win back' the money. It's driven by anger and frustration, not strategy. It is the single fastest way to destroy a trading account.",
           "Here's what typically happens: You take a trade, it hits your stop loss, you lose $200. Instead of walking away and reviewing what happened, you feel angry and jump right back in. 'I'll get it back.' You take a worse setup because you're emotional. You lose again. Now you're down $400 and even more emotional. The spiral continues until you've blown your daily limit or worse.",
@@ -576,7 +552,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-4",
         title: "The Morning Routine — Preparation Beats Prediction",
-        chartImage: "lesson-morning-routine.webp",
+        chartImage: "lesson-morning-routine.png",
         paragraphs: [
           "Our app requires you to complete a morning routine before you can log any trades. This isn't just a gimmick — it's one of the most powerful tools for consistent trading. Preparation beats prediction every single time.",
           "The routine is simple: Drink water (hydration helps your brain think clearly), do a 2-minute breathing exercise (calms your nervous system), check the news calendar (so you know when to avoid trading), and set your daily bias (so you know which direction to trade).",
@@ -588,7 +564,7 @@ export const COURSE_CHAPTERS: Chapter[] = [
       {
         id: "ch7-5",
         title: "Building a Trading Journal Habit",
-        chartImage: "lesson-journal-habit.webp",
+        chartImage: "lesson-journal-habit.png",
         paragraphs: [
           "A trading journal is your most powerful learning tool. After every trade — win or loss — you write down what happened, why you took the trade, and how you felt. Over time, patterns emerge that you can't see in the moment.",
           "Our Smart Journal makes this easy. For every trade, you record: the entry criteria (was your checklist fully checked?), the instrument and direction, what happened (did it hit TP1, TP2, or stop loss?), and your emotional state (were you calm, scared, excited?).",
@@ -596,116 +572,6 @@ export const COURSE_CHAPTERS: Chapter[] = [
           "Review your journal every weekend. Look for patterns: What times do you trade best? What setups have the highest win rate? When do you break rules? Your journal turns your experience into data, and data helps you improve faster than any course or mentor."
         ],
         takeaway: "Journal every trade — the setup, the result, and how you felt. Review weekly to find patterns. Your journal is how you learn from experience and improve over time."
-      }
-    ]
-  },
-  {
-    id: "ch8",
-    title: "Your Trading Toolkit",
-    color: "#0EA5E9",
-    icon: "🛠️",
-    description: "A tour of every tool built into this app — what it does, why it exists, and exactly how to use it in your daily trading workflow.",
-    lessons: [
-      {
-        id: "ch8-1",
-        title: "Mission Control — Your Daily Command Center",
-        chartImage: "lesson-morning-routine.webp",
-        paragraphs: [
-          "Mission Control is the first screen you should open every morning before touching a chart. Think of it as your pre-flight checklist — pilots don't take off without it, and you shouldn't trade without it. It combines your morning routine, daily bias, and account health into one dashboard.",
-          "The morning routine portion guides you through four steps: hydrate (drink water before trading — dehydration impairs judgment), breathe (a 2-minute calming exercise), check the news calendar (so you know which red-folder events to avoid today), and set your directional bias (decide whether you're looking for buys or sells before the session opens).",
-          "The bias setting is powerful because it prevents mid-session confusion. You look at the Daily and 1-Hour charts BEFORE the market opens, decide 'today looks bullish' or 'today looks bearish,' and lock that in. If price does something unexpected during the session, you don't flip your bias on emotion — you go back to your analysis.",
-          "Once your routine is complete, Mission Control shows your daily P&L, how close you are to your daily loss limit, and whether you have any trade slots remaining. If you're at the 2% daily loss limit, Mission Control will show the lockout timer — this is the app protecting you from revenge trading. Every day starts here."
-        ],
-        takeaway: "Open Mission Control before every session. Complete the 4-step routine, set your bias, check your daily limits. This puts you in a calm, prepared state before a single chart is opened."
-      },
-      {
-        id: "ch8-2",
-        title: "Smart Journal — Your Trading Memory",
-        chartImage: "lesson-journal-habit.webp",
-        paragraphs: [
-          "The Smart Journal is where every trade lives after you take it. Unlike a manual spreadsheet, the journal is structured to capture the things that actually matter: not just profit and loss, but WHY you took the trade, HOW you felt, and WHAT you could have done better. Over time, your journal becomes a mirror that shows you your patterns — both good and bad.",
-          "When you log a trade, you fill in: the instrument (NQ, MNQ, etc.), direction (long or short), your entry checklist status (were all 6 criteria checked?), entry and exit prices, and the result (TP1, TP2, or stop loss). You also select behavior tags — labels like 'Disciplined,' 'FOMO,' 'Chased,' 'Greedy,' or 'Revenge' that describe your mental state.",
-          "The behavior tags are the secret weapon. At the end of a month, you might see 'FOMO' tagged on every Friday trade — that's a signal to stop trading Fridays. Or you might see 'Disciplined' on all your winning trades and 'Chased' on all your losers — that's a signal to slow down and wait for your setup every time.",
-          "Use the journal analytics to review your stats: win rate by setup type, average winner vs. average loser, profit factor, and behavior frequency. When you see your profit factor is 2.1 on 'Disciplined' trades but 0.4 on 'FOMO' trades, you don't need a coach — the data tells you exactly what to change."
-        ],
-        takeaway: "Log every trade in the Smart Journal — entry, result, and behavior tags. Review weekly to find patterns. Your journal is how you turn experience into improvement."
-      },
-      {
-        id: "ch8-3",
-        title: "Risk Shield — Your Financial Safety Net",
-        chartImage: "lesson-risk-importance.webp",
-        paragraphs: [
-          "Risk Shield is the enforcer. While the other tools guide and track, Risk Shield actually prevents you from doing damage. It's built around the same rules that prop firms like Topstep, Apex, and FTMO use in their evaluations — because if you can follow Risk Shield consistently, you can pass any funded account challenge.",
-          "The core rules are: 0.5% risk per trade (never bet more than 0.5% of your account on a single trade), 2% max daily loss (hit this and you're locked out for 24 hours), and 4% max weekly loss (hit this and you're done until Monday). These aren't suggestions — the app enforces them.",
-          "The position size calculator is Risk Shield's most practical tool. You enter your account balance, your risk percentage, and your stop-loss distance in points — and it calculates exactly how many NQ or MNQ contracts you can trade. Never guess your position size. Always run the calculator. The math takes 10 seconds and could save your account.",
-          "Risk Shield also tracks your real-time drawdown with color-coded warnings. Green means you're safe. Yellow means you're approaching the limit — trade more carefully. Red means you're at or near the limit — consider stopping. Learning to respect these colors is what separates traders who last from traders who blow up."
-        ],
-        takeaway: "Risk Shield enforces your limits: 0.5% per trade, 2% daily max, 4% weekly max. Use the position size calculator before every trade. Respect the color warnings. This is how you pass prop firm evaluations."
-      },
-      {
-        id: "ch8-4",
-        title: "Analytics — Seeing Your Progress Clearly",
-        chartImage: "lesson-discipline-toolkit.webp",
-        paragraphs: [
-          "The Analytics tab transforms your journal entries into visual data that's easy to understand at a glance. Instead of scrolling through individual trades, you see the big picture: your equity curve, win rate trend, average risk:reward, best and worst performing setups, and your discipline score.",
-          "The equity curve is the most honest feedback you can get. A smooth, gradually rising curve means you're trading consistently and managing risk. A jagged, volatile curve means you're either sizing too large or letting emotional trades sneak in. You want your equity curve to look boring — steady and upward.",
-          "Pay special attention to the setup breakdown. Analytics will show you which of the 6 entry criteria setups perform best for you. Maybe your Conservative Entry win rate is 68%, but trades where you skipped step 2 (The Sweep) only win 41%. That data is telling you to never skip the sweep.",
-          "The time-of-day analysis shows when you trade best and worst. Most traders find they perform significantly better during the Silver Bullet window (10-11 AM) versus trying to trade outside their optimal window. Use Analytics to discover YOUR best window and protect it fiercely."
-        ],
-        takeaway: "Check Analytics weekly to see your equity curve, win rate, and setup performance. Use the data to find your strengths and fix your weaknesses. Data doesn't lie — your feelings do."
-      },
-      {
-        id: "ch8-5",
-        title: "AI Mentor — Your Always-On Trading Coach",
-        chartImage: "lesson-patience.webp",
-        paragraphs: [
-          "The AI Mentor is your personal trading coach available 24/7. Unlike a YouTube video or a forum post, the AI Mentor can answer YOUR specific question right now, in plain English, without judgment. You can ask it anything — from 'What is an FVG?' to 'I just lost 3 trades in a row, what should I do?'",
-          "The AI Mentor is trained on ICT concepts and knows this app inside-out. Ask it to explain any lesson you found confusing. Show it a chart description and ask if it's a valid setup. Ask it to quiz you on a concept. Ask it to help you review your journal entry and find what you did wrong.",
-          "One of the most powerful ways to use the AI Mentor is during your weekly journal review. Walk through your losing trades with the AI: 'I entered this trade but it stopped me out. Here's what I saw: [description]. What did I miss?' The AI will point out common mistakes and help you see the trade differently.",
-          "The AI Mentor also provides real-time support during your morning routine. If you're unsure about your bias, describe the chart and ask. If you see conflicting signals across timeframes, ask the AI to help you resolve them. Think of it as having an experienced ICT trader sitting next to you, always available, never impatient."
-        ],
-        takeaway: "Use the AI Mentor to explain concepts, review trades, quiz yourself, and resolve chart confusion. It's your always-available coach — the more you use it, the faster you improve."
-      },
-      {
-        id: "ch8-6",
-        title: "Prop Tracker — Passing Your Funded Account Challenge",
-        chartImage: "lesson-prop-firm.webp",
-        paragraphs: [
-          "Prop Tracker is specifically built for traders who are working toward a funded account — the ultimate goal for many ICT traders. It lets you set up a virtual prop firm evaluation with all the same rules as Topstep, Apex, FTMO, or any other firm, and tracks your progress in real time.",
-          "To set up Prop Tracker, enter your evaluation account size (e.g., $100,000), the profit target required (e.g., 8%), the maximum daily loss (e.g., 2%), and the maximum total drawdown (e.g., 10%). The tracker then shows you a dashboard with: current P&L, days remaining, how far you are from the profit target, and how close you are to the danger zones.",
-          "The key feature is the evaluation simulation mode. When you log trades through Risk Shield during an evaluation period, Prop Tracker automatically updates your challenge stats. You can see at a glance: 'I need $4,200 more to pass, I have 18 days left, and I'm at 1.3% drawdown out of my 10% max.' This real-time visibility keeps you focused and disciplined.",
-          "Most traders fail prop firm evaluations not because they lack skill, but because they get impatient near the end and take oversized risk to hit the profit target faster. Prop Tracker prevents this by showing you the math: consistent 0.5% daily gains get you to an 8% profit target in 16 trading days without breaking a single rule. Slow and steady is the fastest path to funded."
-        ],
-        takeaway: "Use Prop Tracker to simulate and track real prop firm evaluations. Set your targets and limits, then let the app track your progress. Consistency beats gambling — the math always wins."
-      }
-    ]
-  },
-  {
-    id: "ch9",
-    title: "A Day in the Life of an ICT Trader",
-    color: "#F97316",
-    icon: "📅",
-    description: "Follow one trader through a complete trading day — from morning prep to end-of-day review — using a real NQ Silver Bullet trade as the example.",
-    lessons: [
-      {
-        id: "ch9-1",
-        title: "A Full Trading Day — The Story of One Perfect Setup",
-        chartImage: "lesson-time-matters.webp",
-        paragraphs: [
-          "Meet Marcus. He's been trading NQ Futures for eight months and is currently on his second Topstep evaluation — a $100,000 account with an 8% profit target and a 2% daily loss limit. Today is a Wednesday in March. Let's follow him through the entire day and see exactly which app tool he uses at each step.",
-          "8:00 AM — Mission Control. Marcus opens the app before even looking at a chart. He clicks through the morning routine: drinks his water (check), does the breathing exercise (check), opens ForexFactory and sees a Medium-impact ADP Employment number at 8:15 AM — he notes he'll wait until 9:15 AM before analyzing. He sets his bias: the Daily chart is in a clear bullish trend after sweeping the weekly low on Monday, and the 1-Hour has been making higher highs since Tuesday. Bias = Bullish. Mission Control confirms he has no open P&L and is 0% into his daily loss limit. He's ready.",
-          "9:15 AM — Top-Down Analysis. The ADP number is out and NQ reacted with a quick 40-point drop, then stabilized. Marcus opens TradingView. Daily: bullish, price above Tuesday's midpoint. 1-Hour: after the ADP dip, price swept the 9:00 AM session low (sell-side liquidity) and is now showing a potential bullish shift. 15-minute: he can see the sweep clearly — a sharp wick below the 9:00 low, then a big bullish displacement candle. He draws the Fibonacci from the 9:00 low to the recent 9:10 high. The OTE zone (62-79%) sits between 18,240 and 18,254. He spots a bullish FVG inside that zone — from 18,244 to 18,249. His entry criteria checklist starts forming: Step 1 (Bias) — bullish. Step 2 (Sweep) — SSL swept at 9:10 AM. Step 3 (MSS) — 5-minute bullish break above 9:05 high. He waits.",
-          "9:58 AM — The Setup Matures. Price is pulling back toward his FVG zone. Marcus opens the Smart Journal and starts a new trade draft. He records: Instrument = MNQ (he's trading micro contracts on this evaluation to stay conservative), Direction = Long, Notes = 'Silver Bullet window opens in 2 minutes. FVG at 18,244–18,249, OTE zone aligns. Waiting for price to enter the gap.' He uses Risk Shield to calculate position size: $100,000 account, 0.5% risk = $500 max risk. Stop loss = below the MSS candle low at 18,227 = 22 points of risk. MNQ = $2/point. $500 ÷ (22 × $2) = 11.36, rounded down to 11 MNQ contracts. He sets his limit order at 18,247 — the top of the FVG. Stop at 18,225. TP1 at 18,278 (the nearby high / internal liquidity). TP2 at 18,310 (the previous day's high / buy-side liquidity).",
-          "10:07 AM — Silver Bullet Window, Trade Fills. NQ dips into the FVG at 10:07 AM and Marcus's limit order fills at 18,247. He checks his entry criteria one final time: Step 1 (Bias) ✓, Step 2 (Sweep) ✓, Step 3 (MSS) ✓, Step 4 (FVG) ✓, Step 5 (OTE Fib) ✓, Step 6 (Trigger — limit placed at FVG) ✓. All 6 checked. He logs the trade in Smart Journal, marks the entry criteria as fully verified, tags his emotional state as 'Calm and Disciplined.' He sets alerts at TP1 and TP2 and walks away from the screen. No chart-watching. No second-guessing.",
-          "10:34 AM — TP1 Hit. His alert fires. NQ has rallied to 18,278 — TP1 is filled. Marcus closes 6 of his 11 MNQ contracts (roughly half his position), locking in approximately $186 profit on those 6 contracts (31 points × $2 × 6 contracts). He immediately moves the stop loss on his remaining 5 contracts to breakeven (18,247). He's now in a risk-free trade with 5 contracts riding toward TP2. He updates his Smart Journal: 'TP1 hit at 10:34 AM. Moved SL to breakeven. Feeling great — staying disciplined.'",
-          "11:52 AM — TP2 Hit. His second alert fires. NQ has reached 18,310 — TP2 is filled. His remaining 5 contracts close for 63 points of profit (18,310 − 18,247 = 63 points × $2 × 5 contracts = $630). Total trade P&L: $186 (TP1) + $630 (TP2) = $816 profit. Risk:Reward on the full trade: risked $484 ($22 stop × $2 × 11 contracts), made $816. That's approximately 1:1.7 overall, or better than 1:3 on the TP2 portion.",
-          "12:15 PM — Trade Complete, Morning Session Closed. Marcus is done trading for the day — one trade, one clean win. He opens Analytics to see his updated equity curve: it's ticked up smoothly, with no wild swings. His Prop Tracker now shows 0.82% profit progress toward the 8% target. Because he had no losing trades today, his drawdown allowance is completely intact — he hasn't touched a single cent of his 10% max drawdown. He completes his midday journal entry: reads through his trade notes, confirms the behavior tag 'Calm and Disciplined,' and writes a post-trade note: 'Perfect execution of Silver Bullet. Waited for all 6 criteria. Did not watch the screen. Trusted the plan.'",
-          "1:00 PM — Afternoon Watch. Some traders take a second session in the afternoon Silver Bullet window (2:00–3:00 PM EST). Marcus checks the 1-Hour chart briefly: NQ has been grinding sideways since his TP2 hit, and the afternoon has a Medium-impact Fed speaker at 2:30 PM. He consults the AI Mentor: 'Should I trade the afternoon Silver Bullet today with a Fed speaker at 2:30 PM?' The AI responds that scheduled speakers within the Silver Bullet window can cause unpredictable volatility — the safer choice is to skip the afternoon session and protect the morning's gain. Marcus agrees and closes his charting platform.",
-          "2:30 PM — Fed Speaker, No Trade. The Fed speaker comes and goes. NQ spikes 25 points, then drops 40 points in 8 minutes — exactly the kind of whipsaw that would have stopped out almost any position. Marcus is glad he sat out. He makes a note in the Smart Journal: 'Correctly skipped afternoon session due to Fed speaker volatility. Risk Shield discipline preserved today's gain.' This is an important lesson: sometimes the best trade is no trade.",
-          "3:30 PM — End-of-Day Prep. With 30 minutes left in the regular session, Marcus does his end-of-day review routine. He opens Mission Control one more time to log his final account state. He checks the Prop Tracker: 0.82% profit for the day, drawdown at 0% (no losing trades today — all drawdown allowance is still intact), 22 days remaining in the evaluation, and 7.18% still needed to reach the profit target. He does the math: at this pace — roughly 0.5–1% per day — he can comfortably reach the 8% target in the time remaining without ever having to take an oversized risk.",
-          "4:00 PM — Close and Reflect. Marcus closes TradingView at 4:00 PM Eastern — the regular session close. His final journal entry for the day: 'Entry criteria: 6/6. Behavior: Calm and Disciplined. Trade result: TP1 + TP2. No afternoon trade (correct decision due to news). Total daily gain: 0.82%. Key lesson: One clean trade beats three mediocre ones. Came in prepared, executed the plan, respected risk rules, protected the gain.' He saves the entry, closes the app, and goes for a walk. Tomorrow he'll do it all again — same routine, same discipline, different setup."
-        ],
-        takeaway: "One trade. One clean execution. Eight tools working together: Mission Control for prep, top-down analysis for bias, Risk Shield for position sizing, Smart Journal for logging, AI Mentor on standby, Prop Tracker for progress. This is what disciplined ICT trading looks like every day — from 8 AM to 4 PM."
       }
     ]
   }
@@ -737,7 +603,7 @@ export const GLOSSARY: GlossaryItem[] = [
     term: "FVG",
     full: "Fair Value Gap",
     color: "#00C896",
-    image: "chart-fvg.webp",
+    image: "chart-fvg.png",
     definition: "A gap left on the chart when price moves really fast. Picture three candles in a row — if there's a space between candle 1 and candle 3 that doesn't overlap, that's the gap. Price usually comes back to fill it, and that's where you enter your trade.",
     tip: "On NQ, a 15-minute FVG (Fair Value Gap) after a liquidity sweep is your best entry.",
     advancedTerm: "Inversion FVG / Consequent Encroachment",
@@ -749,7 +615,7 @@ export const GLOSSARY: GlossaryItem[] = [
     term: "MSS",
     full: "Market Structure Shift",
     color: "#818CF8",
-    image: "chart-mss.webp",
+    image: "chart-mss.png",
     definition: "When price breaks past a recent high or low and closes beyond it, telling you the trend just flipped direction. Think of it like a U-turn sign — the market was going one way and now it's going the other.",
     tip: "Wait for the MSS (Market Structure Shift) candle to fully close — don't jump in early.",
     advancedTerm: "BOS vs MSS / Internal vs External Structure",
@@ -761,7 +627,7 @@ export const GLOSSARY: GlossaryItem[] = [
     term: "Liquidity Sweep",
     full: "Stop Hunt / Liquidity Grab",
     color: "#F59E0B",
-    image: "chart-liquidity-sweep.webp",
+    image: "chart-liquidity-sweep.png",
     definition: "When price quickly pokes above a high or below a low to grab everyone's stop-loss orders, then snaps back the other way. It's like a broom sweeping up money before the real move starts.",
     tip: "A sweep of the London session low followed by a bullish MSS (Market Structure Shift) on NQ is a great long setup.",
     advancedTerm: "Engineered Liquidity / Judas Swing",
@@ -773,7 +639,7 @@ export const GLOSSARY: GlossaryItem[] = [
     term: "OTE",
     full: "Optimal Trade Entry",
     color: "#EC4899",
-    image: "chart-ote.webp",
+    image: "chart-ote.png",
     definition: "The sweet spot to enter a trade — between 62% and 79% of a price swing. After a sweep and MSS (Market Structure Shift), you want to enter in this zone for the best risk-to-reward. For buys, this lines up with the 'discount' (cheap) area.",
     tip: "Combine OTE (Optimal Trade Entry) with a FVG (Fair Value Gap) in the same zone for an even stronger entry.",
     advancedTerm: "Fibonacci Confluence / Institutional Order Flow Entry",
@@ -785,7 +651,7 @@ export const GLOSSARY: GlossaryItem[] = [
     term: "Kill Zone",
     full: "High-Probability Trading Session",
     color: "#06B6D4",
-    image: "chart-killzone.webp",
+    image: "chart-killzone.png",
     definition: "The best times of day to trade, when setups work most often: London Open (2-5 AM EST) and the Silver Bullet window (10-11 AM EST). These are when the big players are most active and the market moves the cleanest.",
     tip: "The Silver Bullet window (10-11 AM) is the most reliable time for NQ Futures.",
     advancedTerm: "Macro Time / Power of Three",
@@ -826,21 +692,7 @@ export const GLOSSARY: GlossaryItem[] = [
     full: "Expensive vs Cheap Zone",
     color: "#EC4899",
     definition: "When you divide a price range at the 50% level: Premium is above 50% (expensive — sell here) and Discount is below 50% (cheap — buy here). Like shopping — buy on sale, sell when overpriced.",
-    tip: "For buys, make sure your entry is in Discount (below 50%). For sells, make sure it's in Premium (above 50%).",
-    advancedTerm: "Premium/Discount + Kill Zone Alignment",
-    advancedDefinition: "The Premium/Discount concept becomes most powerful when combined with Kill Zone timing. A discount zone that forms during the London open is much more powerful than one that forms mid-session. Look for price to come into a Discount zone (below 50%) DURING a Kill Zone for the highest-probability buy setups. For sells, Premium zone + Kill Zone = A+ opportunity.",
-    advancedTip: "Rule: Only buy in Discount (below 50%), only sell in Premium (above 50%). Breaking this rule is the #1 reason traders enter at the wrong time and get stopped out before the real move."
-  },
-  {
-    term: "IDM",
-    full: "Inducement",
-    color: "#F97316",
-    definition: "A fake mini-swing that Smart Money creates to trap retail traders into the wrong position. After a liquidity sweep, price makes a small move in the opposite direction (the IDM). This grabs retail buy/sell orders before the real move begins. You enter AFTER the IDM is taken out, confirmed by an MSS.",
-    tip: "Spot the IDM by looking for a small, weak swing after the main liquidity sweep. When that small swing gets taken out — that's your MSS signal to enter.",
-    advancedTerm: "IDM + FVG Entry",
-    advancedDefinition: "The most powerful IDM-based entries combine three elements: (1) A major liquidity sweep creates the initial move, (2) An IDM forms as a small counter-swing, (3) When the IDM is taken out, an FVG appears in the OTE zone. Entering on this FVG gives you the tightest stops and largest reward potential — you're entering right as Smart Money shows their hand.",
-    advancedTip: "After spotting an IDM, mark the high/low of the IDM candle. When price takes it out with an MSS candle, look immediately for the FVG that MSS created — that's your entry zone.",
-    requiredLessons: ["ch3-4", "ch3-4b", "ch3-2"]
+    tip: "For buys, make sure your entry is in Discount (below 50%). For sells, make sure it's in Premium (above 50%)."
   },
   {
     term: "Prop Firm",
@@ -898,11 +750,6 @@ export const QUIZ_BANK: QuizQuestion[] = [
   { difficulty: "hard", scenario: "You've been trading for a month. Your journal shows: 60% win rate, average winner $300, average loser $250. Profit Factor = 1.8. You notice most losses are tagged 'FOMO.' What should you focus on improving?", options: ["Finding better entries to increase win rate to 80%", "Increasing position size to make more per win", "Eliminating FOMO trades — they're dragging down your stats", "Nothing — 60% win rate and 1.8 PF is already great"], answer: 2, explanation: "Your stats are good (60% win rate, 1.8 profit factor). But the FOMO tag pattern reveals the weak link. If you eliminate the FOMO trades (which are likely lower quality), your win rate and profit factor will improve even more. The journal's behavior tags are showing you exactly what to fix." },
   { difficulty: "hard", scenario: "NQ creates a bullish FVG on the 15-minute chart during the London Kill Zone. The Daily is bullish, 1H is bullish. But there was NO liquidity sweep before the MSS. Should you take the Conservative entry?", options: ["Yes — the bias and FVG are enough", "No — Step 2 (The Sweep) is missing. Skip the trade.", "Yes — but use the Aggressive entry instead", "Take it on the 1-minute chart to reduce risk"], answer: 1, explanation: "The Conservative entry requires ALL 6 steps. Step 2 (The Sweep) is missing — price didn't take out a 15-minute high or low before the MSS. Without the sweep, there's no liquidity fuel for the move. This setup has a higher chance of failing. Skip it and wait for a complete setup." },
   { difficulty: "hard", scenario: "You're managing two MNQ contracts. TP1 (internal liquidity) is hit at 1:2 reward-to-risk. What's the best way to manage the position from here?", options: ["Close both contracts at TP1", "Close 1 contract at TP1, move SL to breakeven on the remaining contract, target TP2", "Keep both contracts open and move SL to breakeven", "Close 1 contract and widen the stop on the remaining contract"], answer: 1, explanation: "The textbook approach: take partial profit (1 contract) at TP1 to lock in gains, move the stop to breakeven on the remaining contract (risk-free), and let it ride to TP2 (external liquidity). This balances taking profit with letting winners run." },
-
-  { difficulty: "easy", scenario: "What is Mission Control used for in The Trading Mentor app?", options: ["Placing trades directly in the market", "Completing your morning routine, setting daily bias, and checking risk limits before trading", "Analyzing chart patterns automatically", "Connecting to your broker account"], answer: 1, explanation: "Mission Control is your pre-trading command center. You use it to complete the 4-step morning routine (hydrate, breathe, news check, bias), confirm you're within daily loss limits, and get mentally prepared before touching a chart." },
-  { difficulty: "easy", scenario: "What does the Risk Shield's position size calculator help you determine?", options: ["Which direction to trade", "How many NQ or MNQ contracts to trade based on your account size and stop-loss distance", "When the best time to trade is", "What the daily news events are"], answer: 1, explanation: "Risk Shield calculates your position size using the formula: Contracts = Risk Amount ÷ (Stop Loss Points × Point Value). NQ = $20/point, MNQ = $2/point. Always run this before placing a trade — never guess." },
-  { difficulty: "medium", scenario: "In the 'Day in the Life' story, Marcus uses Risk Shield before entering his Silver Bullet trade. His account is $100,000, risk is 0.5%, stop loss is 22 points on MNQ ($2/point). How many MNQ contracts can he trade?", options: ["5 contracts", "8 contracts", "11 contracts", "25 contracts"], answer: 2, explanation: "Risk = $100,000 × 0.5% = $500. Stop cost per contract = 22 points × $2 = $44. Contracts = $500 ÷ $44 = 11.36, rounded down to 11. Always round DOWN, never up." },
-  { difficulty: "medium", scenario: "You've been using the Smart Journal for 6 weeks. You notice your 'FOMO' tag appears on 9 trades, all on Fridays, and all of them were losers. What is the correct action?", options: ["Ignore it — sample size is too small", "Stop trading on Fridays and review what makes Fridays different for your psychology", "Switch to a different strategy on Fridays", "Trade more on Fridays to average out the losses"], answer: 1, explanation: "Your journal data is telling you something important: Fridays trigger FOMO behavior that leads to losses. The correct response is to stop trading Fridays until you understand the pattern. The journal's behavior tags exist exactly for this purpose — to surface blind spots you can't see in the moment." },
 ];
 
 export const PLAN_SECTIONS: {
@@ -933,7 +780,7 @@ export const PLAN_SECTIONS: {
   {
     title: "Conservative Entry",
     color: "#00C896",
-    image: "chart-conservative-entry.webp",
+    image: "chart-conservative-entry.png",
     items: [
       { label: "1. Bias Check", desc: "Is the 1-Hour chart going up (Bullish) or down (Bearish)?" },
       { label: "2. The Sweep", desc: "Wait for price to take out a 15-min high or low." },
@@ -946,7 +793,7 @@ export const PLAN_SECTIONS: {
   {
     title: "Aggressive Entry (Silver Bullet)",
     color: "#F59E0B",
-    image: "chart-silver-bullet.webp",
+    image: "chart-silver-bullet.png",
     items: [
       { label: "Time Check", desc: "It must be between 10:00 AM and 11:00 AM EST." },
       { label: "Identify POI", desc: "Price must be heading toward a clear high or low." },
@@ -957,7 +804,7 @@ export const PLAN_SECTIONS: {
   {
     title: "Exit Criteria",
     color: "#06B6D4",
-    image: "chart-exit-criteria.webp",
+    image: "chart-exit-criteria.png",
     items: [
       { label: "Stop Loss", desc: "Place it at the high/low of the candle that created the MSS (Market Structure Shift)." },
       { label: "TP1 (First Target)", desc: "The next nearby high or low (1:1 or 1:2 reward ratio)." },

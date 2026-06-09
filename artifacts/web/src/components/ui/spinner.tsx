@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils"
 
 function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
   return (
-    // @ts-ignore
     <Loader2Icon
       role="status"
       aria-label="Loading"

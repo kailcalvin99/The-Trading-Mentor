@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
-import { Eye, EyeOff, UserPlus, Crown, Sparkles, PartyPopper, FlaskConical } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Crown, Sparkles, PartyPopper } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -16,8 +16,6 @@ export default function Signup() {
   const [founderSpotsLeft, setFounderSpotsLeft] = useState<number | null>(null);
   const [showFounderModal, setShowFounderModal] = useState(false);
   const [founderNum, setFounderNum] = useState(0);
-  const [inviteCode, setInviteCode] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -31,17 +29,13 @@ export default function Signup() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!agreedToTerms) {
-      setError("You must agree to the Terms of Service and Privacy Policy to continue");
-      return;
-    }
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
     setLoading(true);
 
-    const result = await register(email, password, name, inviteCode.trim() || undefined);
+    const result = await register(email, password, name);
     setLoading(false);
 
     if (result.success) {
@@ -116,12 +110,11 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8 justify-center">
           <Logo size={44} />
-          <span className="text-xl font-bold text-foreground">The Trading Mentor</span>
+          <span className="text-xl font-bold text-foreground">ICT AI Trading Mentor</span>
         </div>
 
         {founderSpotsLeft !== null && founderSpotsLeft > 0 && (
@@ -194,40 +187,9 @@ export default function Signup() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5 flex items-center gap-1.5">
-                <FlaskConical className="h-3.5 w-3.5 text-muted-foreground" />
-                Beta Invite Code
-                <span className="text-xs font-normal text-muted-foreground">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 font-mono uppercase tracking-wider transition-colors"
-                placeholder="BETA-XXXXXXXX"
-                autoComplete="off"
-              />
-            </div>
-
-            <label className="flex items-start gap-2.5 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer"
-              />
-              <span className="text-xs text-muted-foreground leading-relaxed">
-                I agree to the{" "}
-                <Link to="/terms" className="underline hover:text-foreground transition-colors">Terms of Service</Link>
-                {" "}and{" "}
-                <Link to="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
-              </span>
-            </label>
-
             <button
               type="submit"
-              disabled={loading || !agreedToTerms}
+              disabled={loading}
               className="w-full bg-primary text-primary-foreground font-semibold py-3 rounded-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
@@ -247,29 +209,8 @@ export default function Signup() {
               Sign in
             </Link>
           </p>
-
-          <p className="text-center text-xs text-muted-foreground mt-2">
-            <Link to="/pricing" className="underline hover:text-foreground transition-colors">View pricing plans</Link>
-          </p>
-
-          <p className="text-center text-[10px] text-muted-foreground/60 mt-3">
-            For educational purposes only. Not financial advice. Trading involves substantial risk of loss.
-          </p>
         </div>
       </div>
-      </div>
-      <footer className="w-full border-t border-border bg-card/30 py-4 px-6">
-        <div className="max-w-md mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-muted-foreground/60">
-          <p>© {new Date().getFullYear()} The Trading Mentor. For educational purposes only.</p>
-          <div className="flex items-center gap-3">
-            <Link to="/terms" className="hover:text-muted-foreground transition-colors">Terms</Link>
-            <span>·</span>
-            <Link to="/privacy" className="hover:text-muted-foreground transition-colors">Privacy</Link>
-            <span>·</span>
-            <Link to="/pricing" className="hover:text-muted-foreground transition-colors">Pricing</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

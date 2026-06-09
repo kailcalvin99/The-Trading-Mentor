@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle, Shield, FlaskConical, Gift } from "lucide-react";
+import Logo from "@/components/Logo";
+import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -20,12 +21,9 @@ export default function Pricing() {
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [annual, setAnnual] = useState(false);
   const [founderSpotsLeft, setFounderSpotsLeft] = useState(0);
-  const [founderLimit, setFounderLimit] = useState(20);
   const [founderDiscountPct, setFounderDiscountPct] = useState(50);
-  const [betaTesterDiscountPct, setBetaTesterDiscountPct] = useState(30);
   const [subscribing, setSubscribing] = useState<number | null>(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const { user, subscription, refreshUser, isAdmin, tierLevel } = useAuth();
+  const { user, subscription, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -55,22 +53,13 @@ export default function Pricing() {
       .then((data) => {
         setTiers(data.tiers);
         setFounderSpotsLeft(data.founderSpotsLeft);
-        setFounderLimit(data.founderLimit || 20);
         setFounderDiscountPct(data.founderDiscountPct);
-        if (typeof data.betaTesterDiscountPct === "number") {
-          setBetaTesterDiscountPct(data.betaTesterDiscountPct);
-        }
       })
       .catch(() => {});
   }, []);
 
   async function handleUpgrade(tierId: number, tierLevel: number) {
-    if (!user) {
-      navigate("/signup");
-      return;
-    }
     setSubscribing(tierId);
-    setCheckoutError(null);
     try {
       if (tierLevel === 0) {
         const res = await fetch(`${API_BASE}/subscriptions/subscribe`, {
@@ -82,9 +71,6 @@ export default function Pricing() {
         if (res.ok) {
           await refreshUser();
           navigate("/");
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          setCheckoutError(errData.error || "Failed to switch plan. Please try again.");
         }
       } else {
         const res = await fetch(`${API_BASE}/subscriptions/create-checkout-session`, {
@@ -98,22 +84,14 @@ export default function Pricing() {
           if (data.url) {
             window.location.href = data.url;
             return;
-          } else {
-            setCheckoutError("No checkout URL returned. Please try again.");
           }
         } else {
           const errData = await res.json().catch(() => ({}));
-          const errMsg = errData.error || "";
-          if (errMsg.toLowerCase().includes("stripe") && (errMsg.toLowerCase().includes("key") || errMsg.toLowerCase().includes("not found") || errMsg.toLowerCase().includes("configure"))) {
-            setCheckoutError("Checkout is temporarily unavailable. Please contact support.");
-          } else {
-            setCheckoutError(errMsg || "Failed to start checkout. Please try again.");
-          }
+          console.error("Checkout error:", errData.error);
         }
       }
     } catch (err) {
       console.error("Upgrade error:", err);
-      setCheckoutError("Failed to start checkout. Please check your connection and try again.");
     }
     setSubscribing(null);
   }
@@ -135,23 +113,11 @@ export default function Pricing() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <button onClick={() => {
-            if (window.history.length > 1) {
-              navigate(-1);
-            } else {
-              navigate(user ? "/" : "/login");
-            }
-          }} className="text-muted-foreground hover:text-foreground">
+          <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </button>
+          <Logo size={32} />
           <span className="text-lg font-bold text-foreground">Choose Your Plan</span>
-        </div>
-
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-6 flex items-center gap-2">
-          <Shield className="h-4 w-4 text-amber-500 shrink-0" />
-          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-            Trading involves significant risk of loss and is not suitable for all investors. Past performance is not indicative of future results.
-          </p>
         </div>
 
         {paymentSuccess && (
@@ -174,69 +140,12 @@ export default function Pricing() {
           </div>
         )}
 
-        {checkoutError && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 flex items-center gap-3 animate-in fade-in duration-300">
-            <XCircle className="h-6 w-6 text-red-500 shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-red-500">Checkout failed</p>
-              <p className="text-xs text-muted-foreground">{checkoutError}</p>
-            </div>
-          </div>
-        )}
-
         {user?.isFounder && (
           <div className="bg-gradient-to-r from-amber-500/10 to-primary/10 border border-amber-500/30 rounded-xl p-4 mb-8 flex items-center gap-3">
             <Crown className="h-6 w-6 text-amber-500 shrink-0" />
             <div>
               <p className="text-sm font-bold text-amber-500">Founder Member #{user.founderNumber}</p>
               <p className="text-xs text-muted-foreground">You get {founderDiscountPct}% off any paid plan for 6 months!</p>
-            </div>
-          </div>
-        )}
-
-        {user?.isBetaTester && !user?.isFounder && (
-          <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-xl p-4 mb-4 flex items-center gap-3">
-            <FlaskConical className="h-6 w-6 text-primary shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-primary">Beta Access</p>
-              <p className="text-xs text-muted-foreground">You have a 30-day free trial of the full platform. Choose a plan to continue after your trial.</p>
-            </div>
-          </div>
-        )}
-
-        {user?.isBetaTester && !user?.isFounder && user?.betaTrialEndsAt && new Date(user.betaTrialEndsAt) < new Date() && (
-          <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 mb-8 flex items-center gap-3">
-            <Gift className="h-6 w-6 text-primary shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-primary">Beta Thank-You Discount</p>
-              <p className="text-xs text-muted-foreground">Your {betaTesterDiscountPct}% beta thank-you discount will be applied at checkout automatically.</p>
-            </div>
-          </div>
-        )}
-
-        {founderSpotsLeft > 0 && !user?.isFounder && (
-          <div className="mb-8 max-w-md mx-auto">
-            <div className="bg-gradient-to-r from-amber-500/10 to-primary/10 border border-amber-500/30 rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Crown className="h-5 w-5 text-amber-500" />
-                <span className="text-sm font-bold text-amber-500">Founder Phase 1</span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                <span>{founderLimit - founderSpotsLeft} of {founderLimit} spots claimed</span>
-                <span className="text-amber-500 font-bold">{founderSpotsLeft} left</span>
-              </div>
-              <div className="w-full h-2.5 bg-background/50 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-primary transition-all duration-700"
-                  style={{
-                    width: `${((founderLimit - founderSpotsLeft) / founderLimit) * 100}%`,
-                    boxShadow: "0 0 8px rgba(212, 175, 55, 0.5)",
-                  }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-3 italic">
-                Founder pricing ends when all spots are claimed — price locks in for life once you join
-              </p>
             </div>
           </div>
         )}
@@ -251,7 +160,7 @@ export default function Pricing() {
           </button>
           <span className={`text-sm font-medium ${annual ? "text-foreground" : "text-muted-foreground"}`}>
             Annual
-            <span className="ml-1.5 text-xs text-primary font-bold">Save 20%</span>
+            <span className="ml-1.5 text-xs text-primary font-bold">Save 17%</span>
           </span>
         </div>
 
@@ -259,7 +168,7 @@ export default function Pricing() {
           {tiers.map((tier, i) => {
             const Icon = tierIcons[i] || Star;
             const price = getPrice(tier);
-            const isCurrentTier = isAdmin ? tier.level === tierLevel : subscription?.tierId === tier.id;
+            const isCurrentTier = subscription?.tierId === tier.id;
             const originalPrice = annual ? parseFloat(tier.annualPrice) / 12 : parseFloat(tier.monthlyPrice);
             const hasFounderDiscount = user?.isFounder && tier.level > 0;
 
@@ -282,13 +191,8 @@ export default function Pricing() {
                 <p className="text-xs text-muted-foreground mb-4">{tier.description}</p>
 
                 <div className="mb-6">
-                  {tier.level > 0 && (
-                    <div className="text-sm text-muted-foreground line-through mb-0.5">
-                      ${(originalPrice * 2).toFixed(2)}/mo
-                    </div>
-                  )}
                   {hasFounderDiscount && (
-                    <div className="text-xs text-muted-foreground line-through mb-0.5">
+                    <div className="text-xs text-muted-foreground line-through mb-1">
                       ${originalPrice.toFixed(2)}/mo
                     </div>
                   )}
@@ -318,78 +222,42 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                {!isAdmin && (
-                  <button
-                    onClick={() => handleUpgrade(tier.id, tier.level)}
-                    disabled={isCurrentTier || subscribing === tier.id}
-                    className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                      isCurrentTier
-                        ? "bg-muted text-muted-foreground cursor-default"
-                        : tier.level === 2
-                          ? "bg-gradient-to-r from-amber-500 to-primary text-white hover:opacity-90"
-                          : tier.level === 1
-                            ? "bg-primary text-primary-foreground hover:opacity-90"
-                            : "bg-secondary text-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {subscribing === tier.id ? (
-                      <div className="h-5 w-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                    ) : isCurrentTier ? (
-                      "Current Plan"
-                    ) : tier.level === 0 ? (
-                      "Downgrade to Free"
-                    ) : (
-                      `Upgrade to ${tier.name}`
-                    )}
-                  </button>
-                )}
-                {isAdmin && isCurrentTier && (
-                  <div className="w-full py-3 rounded-xl font-bold text-center bg-muted text-muted-foreground cursor-default">
-                    Current Plan
-                  </div>
-                )}
+                <button
+                  onClick={() => handleUpgrade(tier.id, tier.level)}
+                  disabled={isCurrentTier || subscribing === tier.id}
+                  className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                    isCurrentTier
+                      ? "bg-muted text-muted-foreground cursor-default"
+                      : tier.level === 2
+                        ? "bg-gradient-to-r from-amber-500 to-primary text-white hover:opacity-90"
+                        : tier.level === 1
+                          ? "bg-primary text-primary-foreground hover:opacity-90"
+                          : "bg-secondary text-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {subscribing === tier.id ? (
+                    <div className="h-5 w-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                  ) : isCurrentTier ? (
+                    "Current Plan"
+                  ) : tier.level === 0 ? (
+                    "Downgrade to Free"
+                  ) : (
+                    `Upgrade to ${tier.name}`
+                  )}
+                </button>
               </div>
             );
           })}
         </div>
 
-        <div className="mt-10 rounded-2xl border border-border bg-card/50 p-6">
-          <h4 className="text-sm font-bold text-foreground mb-4 text-center">Why traders choose us over the alternatives</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-muted-foreground">
-            <div className="space-y-1.5">
-              <p className="font-semibold text-foreground">Trading Journal alone</p>
-              <p>TraderSync, Tradervue, Edgewonk — $30–$80/mo just for journaling. No education. No AI. No risk tools.</p>
-            </div>
-            <div className="space-y-1.5">
-              <p className="font-semibold text-foreground">Trading Education courses</p>
-              <p>Most ICT courses cost $500–$2,000 one-time or $50+/mo. No ongoing AI support or live tools included.</p>
-            </div>
-            <div className="space-y-1.5">
-              <p className="font-semibold text-foreground">The Trading Mentor</p>
-              <p className="text-primary font-semibold">Journal + Full ICT Academy + AI Mentor + Risk Shield + Prop Tracker — all in one plan.</p>
-            </div>
+        {founderSpotsLeft > 0 && !user?.isFounder && (
+          <div className="mt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              <Crown className="h-4 w-4 inline text-amber-500 mr-1" />
+              <span className="text-amber-500 font-bold">{founderSpotsLeft}</span> founder spots remaining - sign up now for 50% off!
+            </p>
           </div>
-        </div>
-
-        <div className="mt-6 text-center">
-          <Link to="/refund" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <Shield className="h-4 w-4" />
-            7-Day Money-Back Guarantee
-          </Link>
-        </div>
-
-        <div className="mt-6 text-center">
-          <p className="text-xs text-muted-foreground/60 max-w-md mx-auto">
-            The Trading Mentor is an educational platform. Content is for informational purposes only and does not constitute financial advice. Trading involves substantial risk of loss and is not suitable for all investors.
-          </p>
-          <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground/50">
-            <Link to="/terms" className="hover:text-muted-foreground transition-colors">Terms of Service</Link>
-            <span>·</span>
-            <Link to="/privacy" className="hover:text-muted-foreground transition-colors">Privacy Policy</Link>
-            <span>·</span>
-            <Link to="/refund" className="hover:text-muted-foreground transition-colors">Refund Policy</Link>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
