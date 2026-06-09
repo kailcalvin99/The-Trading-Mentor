@@ -18,7 +18,12 @@ GitHub remote:
 
 Corrected draft PR:
 
-Pending.
+`https://github.com/kailcalvin99/The-Trading-Mentor/pull/7`
+
+Open issues:
+
+- Stripe key rotation: `https://github.com/kailcalvin99/The-Trading-Mentor/issues/8`
+- Mobile TypeScript baseline: `https://github.com/kailcalvin99/The-Trading-Mentor/issues/9`
 
 Live domain:
 
@@ -98,12 +103,13 @@ Notes:
 
 ## Current Best Next Action
 
-Open and review the corrected draft PR, then rotate exposed Stripe test keys before more product work.
+Review corrected draft PR #7, then rotate exposed Stripe test keys before more product work.
 
 Recommended next task:
 
-1. Open and review the corrected draft PR from `codex/trading-mentor-foundation-v2`.
-2. Rotate the exposed Stripe test keys.
-3. Decide whether `master` or `main` should become the canonical GitHub base branch.
-4. Create staging hosting and managed Postgres.
-5. Continue Replit migration with Stripe checkout/webhook URLs, CORS, cookies, and Gemini env handling.
+1. Review corrected draft PR #7.
+2. Rotate the exposed Stripe test keys tracked in issue #8.
+3. Fix existing mobile TypeScript baseline failures tracked in issue #9.
+4. Decide whether `master` or `main` should become the canonical GitHub base branch.
+5. Create staging hosting and managed Postgres.
+6. Continue Replit migration with Stripe checkout/webhook URLs, CORS, cookies, and Gemini env handling.

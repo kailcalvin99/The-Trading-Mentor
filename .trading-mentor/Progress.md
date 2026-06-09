@@ -41,11 +41,18 @@
 - Opened draft PR #6: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/6`.
 - Reviewed PR #6 and found it was too broad because it deleted many files that exist on `origin/master`.
 - Created corrected branch `codex/trading-mentor-foundation-v2` from `origin/master` with only project-brain docs and ignore rules.
+- Opened corrected draft PR #7: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/7`.
+- Commented on PR #6 that it is superseded by PR #7.
+- Deleted unusable orphan branch `codex/trading-mentor-foundation` locally and remotely.
+- Created issue #8 for Stripe key rotation.
+- Created issue #9 for existing mobile TypeScript baseline failures.
 - Left Replit remotes in place until founder review.
 
 ## Not Yet Complete
 
-- corrected draft PR review.
+- founder review of corrected draft PR #7.
+- Stripe key rotation issue #8.
+- mobile TypeScript baseline issue #9.
 - branch/default-base decision for `main` versus `master`.
 - production hosting decision.
 - database migration.

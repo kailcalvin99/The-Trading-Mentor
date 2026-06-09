@@ -53,8 +53,10 @@ Not allowed in this task:
 - Repo is moved out of Downloads.
 - Global pnpm works.
 - GitHub `origin` is configured.
-- Corrected branch `codex/trading-mentor-foundation-v2` is ready for a new draft PR.
+- Corrected draft PR #7 is open.
+- Stripe key rotation is tracked in issue #8.
+- Existing mobile TypeScript baseline failures are tracked in issue #9.
 
 ## Next Task After This
 
-Open the corrected draft PR, rotate exposed Stripe test keys, then decide whether `master` or `main` should become the canonical base branch before merging.
+Review PR #7, rotate exposed Stripe test keys, and fix the existing mobile typecheck baseline before production migration work.
