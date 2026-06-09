@@ -45,19 +45,19 @@ Mitigation:
 
 ## High
 
-### GitHub Remote Missing
+### Branch Confusion
 
-The repo has been moved into `/Users/kail/Documents/GitHub/the-trading-mentor`, but no GitHub `origin` remote exists yet.
+GitHub `origin/main` appears to contain older LifeOS prototype work, while `origin/master` is the Trading Mentor line used for draft PR #6.
 
 Impact:
 
-- Work is still not backed by a durable GitHub remote or PR review flow.
+- Merging or changing the default branch without review could make the wrong project look canonical.
 
 Mitigation:
 
-- Create or confirm the canonical GitHub repo.
-- Add it as `origin`.
-- Push a review branch before removing Replit remotes.
+- Review PR #6 against `master`.
+- Decide whether to keep `master`, rename it to `main`, or reset `main` only after founder review.
+- Do not remove Replit remotes until the GitHub base branch is confirmed.
 
 ### Database Migration Unknown
 

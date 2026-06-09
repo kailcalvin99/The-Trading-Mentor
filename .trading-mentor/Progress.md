@@ -36,10 +36,15 @@
 - Added explicit mobile `babel-preset-expo` dev dependency so Expo Metro can resolve the Babel preset under pnpm.
 - Confirmed `pnpm run typecheck` passes from the moved repo.
 - Confirmed `PORT=5173 BASE_PATH=/web/ EXPO_PUBLIC_DOMAIN=thetradingmentorai.com pnpm run build` passes from the moved repo.
+- Added GitHub `origin` as `git@github.com:kailcalvin99/The-Trading-Mentor.git`.
+- Pushed sanitized PR branch `codex/trading-mentor-foundation-pr`.
+- Opened draft PR #6: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/6`.
+- Left Replit remotes in place until founder review.
 
 ## Not Yet Complete
 
-- GitHub canonical repo setup.
+- founder review of draft PR #6.
+- branch/default-base decision for `main` versus `master`.
 - production hosting decision.
 - database migration.
 - Stripe webhook migration.

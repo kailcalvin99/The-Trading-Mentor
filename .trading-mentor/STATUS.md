@@ -10,7 +10,15 @@ Local repo:
 
 Branch:
 
-`master`
+`codex/trading-mentor-foundation-pr`
+
+GitHub remote:
+
+`git@github.com:kailcalvin99/The-Trading-Mentor.git`
+
+Draft PR:
+
+`https://github.com/kailcalvin99/The-Trading-Mentor/pull/6`
 
 Live domain:
 
@@ -82,19 +90,20 @@ Notes:
 - Stripe test keys were stored in `.replit`; they have been removed locally and should be rotated.
 - `.config/` was untracked and is now ignored.
 - The repo has been moved out of Downloads.
-- A GitHub remote is still not configured.
-- Multiple Replit remotes still exist.
+- GitHub `origin` is configured.
+- Multiple Replit remotes still exist and should not be removed until the PR is reviewed.
 - `stripe-replit-sync` is still tied into server startup and webhooks, though API startup no longer requires top-level await and can use explicit non-Replit domain env vars.
 - Stripe success/cancel URLs use Replit domain env fallback.
 - CORS and cookies contain Replit-specific behavior.
 
 ## Current Best Next Action
 
-Connect the moved local repo to a durable GitHub remote before more product work.
+Review draft PR #6 and rotate exposed Stripe test keys before more product work.
 
 Recommended next task:
 
-1. Create or confirm the GitHub repo for The Trading Mentor.
-2. Add it as `origin`.
-3. Create staging hosting and managed Postgres.
-4. Continue Replit migration with Stripe checkout/webhook URLs, CORS, cookies, and Gemini env handling.
+1. Review draft PR #6.
+2. Rotate the exposed Stripe test keys.
+3. Decide whether `master` or `main` should become the canonical GitHub base branch.
+4. Create staging hosting and managed Postgres.
+5. Continue Replit migration with Stripe checkout/webhook URLs, CORS, cookies, and Gemini env handling.

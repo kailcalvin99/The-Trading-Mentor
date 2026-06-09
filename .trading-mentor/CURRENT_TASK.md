@@ -2,11 +2,11 @@
 
 ## Active Task
 
-Move local repo and prepare GitHub handoff.
+GitHub handoff and founder review.
 
 ## Status
 
-Blocked on canonical GitHub repo URL.
+Ready for founder review.
 
 ## Scope
 
@@ -52,7 +52,9 @@ Not allowed in this task:
 - Production build passes with explicit local env.
 - Repo is moved out of Downloads.
 - Global pnpm works.
+- GitHub `origin` is configured.
+- Draft PR #6 is open.
 
 ## Next Task After This
 
-Add the canonical GitHub repo as `origin`, push a review branch, and create a draft PR. This requires the GitHub repo URL or a connector flow that can create the repo.
+Review draft PR #6, rotate exposed Stripe test keys, then decide whether `master` or `main` should become the canonical base branch before merging.
