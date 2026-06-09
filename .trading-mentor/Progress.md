@@ -43,6 +43,7 @@
 - Created corrected branch `codex/trading-mentor-foundation-v2` from `origin/master` with only project-brain docs and ignore rules.
 - Opened corrected draft PR #7: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/7`.
 - Commented on PR #6 that it is superseded by PR #7.
+- Deleted superseded branch `codex/trading-mentor-foundation-pr` locally and remotely.
 - Deleted unusable orphan branch `codex/trading-mentor-foundation` locally and remotely.
 - Created issue #8 for Stripe key rotation.
 - Created issue #9 for existing mobile TypeScript baseline failures.
