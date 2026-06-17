@@ -43,6 +43,10 @@ Read these before code changes:
 
 This project uses pnpm. Do not use `npm install`.
 
+For the current Mac local-run path, use:
+
+- `.trading-mentor/LOCAL_MAC_SETUP.md`
+
 Baseline checks with global pnpm:
 
 ```bash
