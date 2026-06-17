@@ -45,8 +45,9 @@ Code assumptions:
 Fastest safe path:
 
 - Keep Express API as a normal Node service.
-- Use managed PostgreSQL.
-- Serve web static assets from the same host or a static host.
+- Use Neon Postgres as the managed PostgreSQL database.
+- Serve the Vite web app from Cloudflare Pages.
+- Run the Express API on Railway as a normal Node service.
 - Use direct Stripe SDK and explicit webhook secret.
 - Use explicit env vars for public app URL and API URL.
 - Keep mobile app deferred until web/API production is stable.
@@ -57,7 +58,15 @@ Why not Cloudflare Workers first:
 - Stripe webhook raw-body handling and current server startup are Node-shaped.
 - A Workers migration would be a backend refactor, not a simple host move.
 
-Cloudflare can still be useful for DNS, Pages, or later edge work after the first migration.
+Cloudflare is useful now for Pages/static hosting. Cloudflare Workers should wait until a later backend refactor, if ever needed.
+
+Current cheapest staging recommendation:
+
+- Web: Cloudflare Pages
+- API: Railway
+- DB: Neon Postgres
+
+Cost-control note: re-check provider pricing before production cutover. This recommendation is for the smallest staging path, not a final long-term infrastructure contract.
 
 ## Phase 1: Freeze and Backup
 
@@ -72,14 +81,23 @@ Before migration code changes:
 
 ## Phase 2: Local Baseline
 
-Status: complete for temporary local pnpm.
+Status: documented for local Mac web/API startup in `LOCAL_MAC_SETUP.md`.
 
-1. Install pnpm. Temporary `pnpm@10` through `npm exec` verified.
-2. Install dependencies. Complete.
-3. Run typecheck. Passing.
-4. Run build with explicit env. Passing with `PORT=5173 BASE_PATH=/web/ EXPO_PUBLIC_DOMAIN=thetradingmentorai.com`.
-5. Record all failures. Complete in `Progress.md`.
-6. Fix only launch-blocking setup issues. Complete.
+Current local blockers found during the cost-control setup pass:
+
+- Docker is not installed on this Mac, so the documented local PostgreSQL container path cannot run yet.
+- The shell does not currently have `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, or Gemini env vars set.
+- API startup should be verified after those env vars and a local PostgreSQL database are available.
+- The web dev server can be started with explicit `PORT`, `BASE_PATH`, and `VITE_API_URL`, but useful authenticated app testing still needs the API.
+
+Next local baseline steps:
+
+1. Create a Neon Postgres database or install Docker Desktop.
+2. Prefer Neon if Docker is missing or Alex wants the fastest staging-like path.
+3. Export the minimum API env vars from `LOCAL_MAC_SETUP.md`.
+4. Run `pnpm --filter @workspace/db push`.
+5. Run API and web in separate terminals.
+6. Keep Replit live until staging passes smoke tests.
 
 ## Phase 3: Make Config Portable
 
@@ -115,6 +133,18 @@ Required changes:
 7. Backup before production cutover.
 
 ## Phase 6: Staging Deploy
+
+Smallest safe staging option for the current architecture:
+
+- Deploy the Express API as a Railway Node web service.
+- Use Neon Postgres for staging `DATABASE_URL`.
+- Serve the Vite web build from Cloudflare Pages.
+- Use explicit staging env vars instead of Replit-injected domains.
+- Keep Stripe in test mode for staging.
+
+This is preferred over a Cloudflare Workers rewrite because the current backend is Express/Node-shaped.
+
+Mobile remains frozen in this phase. Expo/mobile validation should not block the web/API/DB staging path unless a web or API change explicitly touches mobile behavior.
 
 Smoke test:
 
