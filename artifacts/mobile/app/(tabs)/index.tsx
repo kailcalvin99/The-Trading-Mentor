@@ -1417,7 +1417,7 @@ function PlannerScreen() {
                   voiceNoteUri: plan.voiceNoteUri || null,
                 }));
                 savePlan({ ...DEFAULT_PLAN });
-                router.push("/(tabs)/journal");
+                router.push("/(tabs)/journal" as Parameters<typeof router.push>[0]);
               }}>
                 <Text style={styles.modalConfirmLabel}>Log to Journal</Text>
               </TouchableOpacity>

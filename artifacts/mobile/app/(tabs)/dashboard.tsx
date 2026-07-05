@@ -2007,7 +2007,8 @@ function RiskShieldLockCard() {
 
   if (hasAccount) {
     const bal = account.startingBalance ?? 0;
-    const drawdown = account.maxDailyLoss ?? 0;
+    const drawdownPctValue = account.maxDailyLossPct ?? 0;
+    const drawdown = (bal * drawdownPctValue) / 100;
     const drawdownPct = bal > 0 ? Math.round((drawdown / bal) * 100) : 0;
     return (
       <View style={[styles.card, { borderColor: "#00C89620" }]}>
@@ -3594,4 +3595,3 @@ const mobileChartStyles = StyleSheet.create({
     letterSpacing: -0.5,
   },
 });
-

@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { apiPost } from "@/lib/api";
 import { useAuth, handleAuthResponse } from "@/contexts/AuthContext";
@@ -39,7 +39,7 @@ export default function LoginScreen() {
       await handleAuthResponse(data as Parameters<typeof handleAuthResponse>[0]);
       await refresh();
       const isAdmin = (data.user as { role?: string })?.role === "admin";
-      router.replace(isAdmin ? "/(tabs)" : "/(tabs)/dashboard");
+      router.replace((isAdmin ? "/(tabs)" : "/(tabs)/dashboard") as Href);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Login failed";
       Alert.alert("Login Failed", msg);
@@ -114,7 +114,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={s.registerLink} onPress={() => router.push("/register")}>
+          <TouchableOpacity style={s.registerLink} onPress={() => router.push("/register" as Href)}>
             <Text style={s.registerLinkText}>
               Don't have an account?{" "}
               <Text style={s.registerLinkAccent}>Create one</Text>

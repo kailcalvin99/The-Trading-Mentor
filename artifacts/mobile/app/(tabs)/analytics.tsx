@@ -575,7 +575,7 @@ function IctBreakdownMobileSection() {
               </Text>
               <TouchableOpacity
                 style={{ backgroundColor: C.accent, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 }}
-                onPress={() => router.push("/(tabs)/subscription")}
+                onPress={() => router.push("/(tabs)/subscription" as Parameters<typeof router.push>[0])}
               >
                 <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#000" }}>View Plans</Text>
               </TouchableOpacity>

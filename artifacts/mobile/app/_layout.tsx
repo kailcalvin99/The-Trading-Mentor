@@ -6,7 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { type Href, Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -43,9 +43,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (loading) return;
     const inAuthScreen = segments[0] === "login" || segments[0] === "register";
     if (!user && !inAuthScreen) {
-      router.replace("/login");
+      router.replace("/login" as Href);
     } else if (user && inAuthScreen) {
-      router.replace("/(tabs)/dashboard");
+      router.replace("/(tabs)/dashboard" as Href);
     }
   }, [user, loading, segments, router]);
 
@@ -103,7 +103,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   function handleChoosePlan() {
     choosingPlanRef.current = true;
     setBetaExpired(false);
-    router.push("/(tabs)/subscription");
+    router.push("/(tabs)/subscription" as Href);
   }
 
   return (

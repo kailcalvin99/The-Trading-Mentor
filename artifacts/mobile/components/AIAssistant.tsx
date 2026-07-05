@@ -428,7 +428,7 @@ export default function AIAssistant() {
       );
     } else if (result.action === "position_size" && result.navigateTo) {
       setVisible(false);
-      router.push("/(tabs)/tracker");
+      router.push("/(tabs)/tracker" as Parameters<typeof router.push>[0]);
     }
     setPendingToolCalls((prev) => prev.filter((p) => p !== tc));
   }
