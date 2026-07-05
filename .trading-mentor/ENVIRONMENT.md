@@ -79,14 +79,12 @@ Enter real secrets only in your local Mac Terminal session or in the deployment 
 
 Do not paste real `DATABASE_URL`, Gemini keys, Stripe keys, or session secrets into chat, screenshots, docs, Git commits, GitHub issues, or pull requests.
 
-Minimum API env vars:
+Minimum API startup env vars:
 
 - `PORT`
 - `DATABASE_URL`
 - `SESSION_SECRET` or `JWT_SECRET`
 - `ADMIN_EMAIL`
-- `AI_INTEGRATIONS_GEMINI_BASE_URL`
-- `AI_INTEGRATIONS_GEMINI_API_KEY`
 
 No-Docker local/staging database value:
 
@@ -119,6 +117,8 @@ PORT=5173 BASE_PATH=/web/ VITE_API_URL=http://localhost:8080/api pnpm --filter @
 Optional but needed for full feature testing:
 
 - `STRIPE_SECRET_KEY`
+- `AI_INTEGRATIONS_GEMINI_BASE_URL`
+- `AI_INTEGRATIONS_GEMINI_API_KEY`
 - `TWELVE_DATA_API_KEY`
 - `FINNHUB_API_KEY`
 - SMTP variables

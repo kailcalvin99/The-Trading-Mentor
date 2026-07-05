@@ -13,7 +13,7 @@ The project is a pnpm workspace with:
 - Express API: `artifacts/api-server`
 - React/Vite web app: `artifacts/web`
 - PostgreSQL/Drizzle data layer: `lib/db`
-- Gemini AI integration through explicit environment variables outside Replit
+- Optional Gemini AI integration through explicit environment variables outside Replit
 
 Keep mobile deferred unless it blocks web/API validation.
 
@@ -22,7 +22,7 @@ Keep mobile deferred unless it blocks web/API validation.
 - Node.js
 - pnpm
 - Neon Postgres, Docker Desktop, or another PostgreSQL 16 path
-- Gemini API key
+- Gemini API key only when testing AI Assistant features
 
 Verified on this Mac during the setup pass:
 
@@ -79,6 +79,8 @@ printf '\nSESSION_SECRET is set for this shell only.\n'
 export ADMIN_EMAIL="alexcalvin.ac@gmail.com"
 ```
 
+Optional AI Assistant variables:
+
 ```bash
 export AI_INTEGRATIONS_GEMINI_BASE_URL="https://generativelanguage.googleapis.com"
 ```
@@ -92,6 +94,7 @@ printf '\nGemini API key is set for this shell only.\n'
 Optional local feature variables:
 
 - `STRIPE_SECRET_KEY`: needed to test paid checkout locally.
+- `AI_INTEGRATIONS_GEMINI_BASE_URL` and `AI_INTEGRATIONS_GEMINI_API_KEY`: needed to test AI Assistant features.
 - `TWELVE_DATA_API_KEY`: needed for Chart Lab candle data.
 - `FINNHUB_API_KEY`: needed for live market/economic calendar data.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`: needed for outbound email.
@@ -115,7 +118,6 @@ Safe presence check:
 ```bash
 test -n "$DATABASE_URL" && echo "DATABASE_URL is set"
 test -n "$SESSION_SECRET" && echo "SESSION_SECRET is set"
-test -n "$AI_INTEGRATIONS_GEMINI_API_KEY" && echo "Gemini API key is set"
 ```
 
 These checks confirm that values exist without printing the values.
@@ -221,7 +223,7 @@ Expected result:
 {"status":"ok"}
 ```
 
-Known current blocker: this command requires `DATABASE_URL`, `SESSION_SECRET` or `JWT_SECRET`, `ADMIN_EMAIL`, `AI_INTEGRATIONS_GEMINI_BASE_URL`, and `AI_INTEGRATIONS_GEMINI_API_KEY`.
+Known current blocker: this command requires `DATABASE_URL`, `SESSION_SECRET` or `JWT_SECRET`, and `ADMIN_EMAIL`.
 
 Stripe is intentionally not part of this local startup command. Do not refactor Stripe during the staging-readiness step. Paid checkout can be tested later with Stripe test mode after the API and DB path are stable.
 
@@ -262,7 +264,7 @@ Cheapest recommended staging shape:
 - Web: Cloudflare Pages serving the Vite static build
 - API: Railway running `@workspace/api-server` as a Node service
 - DB: Neon Postgres using `DATABASE_URL`
-- Explicit staging env vars for app URL, API URL, CORS, cookies, Gemini, and Stripe test mode
+- Explicit staging env vars for app URL, API URL, CORS, cookies, and Stripe test mode. Gemini is needed only for AI Assistant smoke testing.
 - Replit live deployment and DNS left untouched until staging passes smoke tests
 
 Avoid Cloudflare Workers for the first staging move. The current API is Express/Node-shaped and Stripe webhook raw-body behavior is already built for Node.
