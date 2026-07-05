@@ -73,6 +73,12 @@ PORT=5173 BASE_PATH=/web/ EXPO_PUBLIC_DOMAIN=thetradingmentorai.com npm exec --y
 
 Detailed local Mac commands live in `LOCAL_MAC_SETUP.md`.
 
+### Local Secret Entry Rule
+
+Enter real secrets only in your local Mac Terminal session or in the deployment host secret manager.
+
+Do not paste real `DATABASE_URL`, Gemini keys, Stripe keys, or session secrets into chat, screenshots, docs, Git commits, GitHub issues, or pull requests.
+
 Minimum API env vars:
 
 - `PORT`
@@ -85,18 +91,15 @@ Minimum API env vars:
 No-Docker local/staging database value:
 
 ```bash
-export DATABASE_URL="postgresql://USER:PASSWORD@HOST.neon.tech/DBNAME?sslmode=require"
+read -r -s -p "Paste Neon DATABASE_URL for this shell only: " DATABASE_URL
+export DATABASE_URL
+printf '\nDATABASE_URL is set for this shell only.\n'
 ```
 
-Exact API dev command:
+After the required API env vars are set in the same Terminal window, start the API with:
 
 ```bash
 PORT=8080 \
-DATABASE_URL="postgresql://USER:PASSWORD@HOST.neon.tech/DBNAME?sslmode=require" \
-SESSION_SECRET="replace_with_a_long_random_string_at_least_32_chars" \
-ADMIN_EMAIL="alexcalvin.ac@gmail.com" \
-AI_INTEGRATIONS_GEMINI_API_KEY="replace_with_real_gemini_key" \
-AI_INTEGRATIONS_GEMINI_BASE_URL="https://generativelanguage.googleapis.com" \
 NODE_ENV=development \
 pnpm --filter @workspace/api-server dev
 ```

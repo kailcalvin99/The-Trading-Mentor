@@ -51,6 +51,12 @@ Fastest no-Docker path:
 
 ## Required Local Environment Variables
 
+Secret rule:
+
+- Type or paste real secrets only into your local Mac Terminal session.
+- Do not paste real `DATABASE_URL`, Gemini keys, Stripe keys, or session secrets into chat, screenshots, docs, commits, GitHub issues, or pull requests.
+- The `read -r -s -p` commands below hide what you type and keep the values in the current shell only.
+
 Minimum API startup:
 
 ```bash
@@ -58,11 +64,15 @@ export PORT=8080
 ```
 
 ```bash
-export DATABASE_URL="postgresql://USER:PASSWORD@HOST.neon.tech/DBNAME?sslmode=require"
+read -r -s -p "Paste Neon DATABASE_URL for this shell only: " DATABASE_URL
+export DATABASE_URL
+printf '\nDATABASE_URL is set for this shell only.\n'
 ```
 
 ```bash
-export SESSION_SECRET="replace_with_a_long_random_string_at_least_32_chars"
+read -r -s -p "Create a local SESSION_SECRET for this shell only: " SESSION_SECRET
+export SESSION_SECRET
+printf '\nSESSION_SECRET is set for this shell only.\n'
 ```
 
 ```bash
@@ -74,7 +84,9 @@ export AI_INTEGRATIONS_GEMINI_BASE_URL="https://generativelanguage.googleapis.co
 ```
 
 ```bash
-export AI_INTEGRATIONS_GEMINI_API_KEY="replace_with_real_gemini_key"
+read -r -s -p "Paste Gemini API key for this shell only: " AI_INTEGRATIONS_GEMINI_API_KEY
+export AI_INTEGRATIONS_GEMINI_API_KEY
+printf '\nGemini API key is set for this shell only.\n'
 ```
 
 Optional local feature variables:
@@ -98,7 +110,17 @@ export BASE_PATH="/web/"
 export VITE_API_URL="http://localhost:8080/api"
 ```
 
-Never commit real `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, or Gemini values.
+Safe presence check:
+
+```bash
+test -n "$DATABASE_URL" && echo "DATABASE_URL is set"
+test -n "$SESSION_SECRET" && echo "SESSION_SECRET is set"
+test -n "$AI_INTEGRATIONS_GEMINI_API_KEY" && echo "Gemini API key is set"
+```
+
+These checks confirm that values exist without printing the values.
+
+Never commit real `DATABASE_URL`, `SESSION_SECRET`, Gemini values, Stripe values, or other provider secrets.
 
 ## Managed PostgreSQL With Neon
 
@@ -114,7 +136,9 @@ Database actions:
 Terminal command:
 
 ```bash
-export DATABASE_URL="postgresql://USER:PASSWORD@HOST.neon.tech/DBNAME?sslmode=require"
+read -r -s -p "Paste Neon DATABASE_URL for this shell only: " DATABASE_URL
+export DATABASE_URL
+printf '\nDATABASE_URL is set for this shell only.\n'
 ```
 
 Push the existing Drizzle schema into Neon:
@@ -128,6 +152,8 @@ Do not edit the database schema for this staging-readiness step. The goal is onl
 ## Local PostgreSQL With Docker
 
 Use this only after Docker Desktop is installed and running.
+
+The password in this Docker command is a local throwaway value for a disposable development database only. Do not reuse it for Neon, Railway, production, staging, or any shared environment.
 
 ```bash
 docker run --name trading-mentor-postgres -e POSTGRES_USER=tradingmentor -e POSTGRES_PASSWORD=tradingmentor -e POSTGRES_DB=trading_mentor -p 5432:5432 -d postgres:16
@@ -175,13 +201,10 @@ Terminal 1:
 cd /Users/kail/Documents/GitHub/the-trading-mentor
 ```
 
+Set the required API environment variables above in this same Terminal 1 window first. Then start the API without putting secret values into the command:
+
 ```bash
 PORT=8080 \
-DATABASE_URL="postgresql://USER:PASSWORD@HOST.neon.tech/DBNAME?sslmode=require" \
-SESSION_SECRET="replace_with_a_long_random_string_at_least_32_chars" \
-ADMIN_EMAIL="alexcalvin.ac@gmail.com" \
-AI_INTEGRATIONS_GEMINI_API_KEY="replace_with_real_gemini_key" \
-AI_INTEGRATIONS_GEMINI_BASE_URL="https://generativelanguage.googleapis.com" \
 NODE_ENV=development \
 pnpm --filter @workspace/api-server dev
 ```
