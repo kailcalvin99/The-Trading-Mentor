@@ -4,7 +4,6 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import router from "./routes";
-import { seedDefaults } from "./seed";
 import { WebhookHandlers } from "./stripe/webhookHandlers";
 
 const app: Express = express();
@@ -129,7 +128,5 @@ app.use("/", generalApiLimiter);
 app.use("/gemini", aiLimiter);
 app.use("/webhook", webhookLimiter);
 app.use("/", router);
-
-seedDefaults().catch((err) => console.error("Seed error:", err));
 
 export default app;
