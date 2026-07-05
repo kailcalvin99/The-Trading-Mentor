@@ -11,6 +11,7 @@ Use an ignored `.env` file locally and host secret managers in production.
 Server/API:
 
 - `PORT`
+- `ENABLE_STARTUP_DB_JOBS`
 - `DATABASE_URL`
 - `SESSION_SECRET`
 - `JWT_SECRET`
@@ -117,6 +118,7 @@ PORT=5173 BASE_PATH=/web/ VITE_API_URL=http://localhost:8080/api pnpm --filter @
 Optional but needed for full feature testing:
 
 - `STRIPE_SECRET_KEY`
+- `ENABLE_STARTUP_DB_JOBS=true` when intentionally running startup DB maintenance, seed defaults, and Stripe sync
 - `AI_INTEGRATIONS_GEMINI_BASE_URL`
 - `AI_INTEGRATIONS_GEMINI_API_KEY`
 - `TWELVE_DATA_API_KEY`

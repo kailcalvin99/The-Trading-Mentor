@@ -1,7 +1,7 @@
 import app from "./app";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripe/stripeClient";
-import { runLocalMigrations } from "./seed";
+import { runLocalMigrations, seedDefaults } from "./seed";
 import { execSync, execFileSync } from "child_process";
 import net from "net";
 
@@ -36,6 +36,18 @@ async function initStripe() {
   } catch (error: unknown) {
     console.error("Failed to initialize Stripe:", error instanceof Error ? error.message : String(error));
   }
+}
+
+function envFlagEnabled(name: string): boolean {
+  const value = process.env[name];
+  return value === "1" || value?.toLowerCase() === "true";
+}
+
+function shouldRunStartupDbJobs(): boolean {
+  if (envFlagEnabled("SKIP_STARTUP_DB_JOBS")) return false;
+  if (envFlagEnabled("ENABLE_STARTUP_DB_JOBS")) return true;
+
+  return Boolean(process.env.REPLIT_DEPLOYMENT || process.env.REPLIT_DEV_DOMAIN);
 }
 
 function isPortInUse(port: number): Promise<boolean> {
@@ -252,16 +264,26 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   process.exit(1);
 }
 
-try {
-  await runLocalMigrations();
-} catch (err: unknown) {
-  console.error("Local migrations failed, continuing:", err instanceof Error ? err.message : String(err));
-}
+if (shouldRunStartupDbJobs()) {
+  try {
+    await runLocalMigrations();
+  } catch (err: unknown) {
+    console.error("Local migrations failed, continuing:", err instanceof Error ? err.message : String(err));
+  }
 
-try {
-  await initStripe();
-} catch (err: unknown) {
-  console.error("Stripe initialization failed, continuing without Stripe:", err instanceof Error ? err.message : String(err));
+  try {
+    await seedDefaults();
+  } catch (err: unknown) {
+    console.error("Seed error:", err);
+  }
+
+  try {
+    await initStripe();
+  } catch (err: unknown) {
+    console.error("Stripe initialization failed, continuing without Stripe:", err instanceof Error ? err.message : String(err));
+  }
+} else {
+  console.log("Startup DB jobs skipped. Set ENABLE_STARTUP_DB_JOBS=true to run local migrations, seed defaults, and Stripe sync.");
 }
 
 await startServer(port);

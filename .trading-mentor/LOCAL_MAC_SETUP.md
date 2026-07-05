@@ -64,6 +64,10 @@ export PORT=8080
 ```
 
 ```bash
+export ENABLE_STARTUP_DB_JOBS=false
+```
+
+```bash
 read -r -s -p "Paste Neon DATABASE_URL for this shell only: " DATABASE_URL
 export DATABASE_URL
 printf '\nDATABASE_URL is set for this shell only.\n'
@@ -121,6 +125,14 @@ test -n "$SESSION_SECRET" && echo "SESSION_SECRET is set"
 ```
 
 These checks confirm that values exist without printing the values.
+
+Repo helper:
+
+```bash
+pnpm run check:local-env
+```
+
+This reports which required local values are present or missing without printing secret values.
 
 Never commit real `DATABASE_URL`, `SESSION_SECRET`, Gemini values, Stripe values, or other provider secrets.
 
@@ -208,6 +220,7 @@ Set the required API environment variables above in this same Terminal 1 window 
 ```bash
 PORT=8080 \
 NODE_ENV=development \
+ENABLE_STARTUP_DB_JOBS=false \
 pnpm --filter @workspace/api-server dev
 ```
 
