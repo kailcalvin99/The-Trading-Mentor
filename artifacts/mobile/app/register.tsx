@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { apiPost } from "@/lib/api";
 import { useAuth, handleAuthResponse } from "@/contexts/AuthContext";
@@ -56,7 +56,7 @@ export default function RegisterScreen() {
       const data = await apiPost<{ token?: string; user: unknown }>("auth/register", body);
       await handleAuthResponse(data as Parameters<typeof handleAuthResponse>[0]);
       await refresh();
-      router.replace("/(tabs)/dashboard");
+      router.replace("/(tabs)/dashboard" as Href);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Registration failed";
       Alert.alert("Registration Failed", msg);
@@ -183,7 +183,7 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={s.loginLink} onPress={() => router.replace("/login")}>
+          <TouchableOpacity style={s.loginLink} onPress={() => router.replace("/login" as Href)}>
             <Text style={s.loginLinkText}>
               Already have an account?{" "}
               <Text style={s.loginLinkAccent}>Sign In</Text>

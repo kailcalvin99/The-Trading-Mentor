@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 
 export default function SwipeModeScreen() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/(tabs)/academy");
+    router.replace("/(tabs)/academy" as Href);
   }, []);
   return null;
 }

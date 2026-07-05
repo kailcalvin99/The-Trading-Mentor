@@ -21,8 +21,8 @@ import * as ImageManipulator from "expo-image-manipulator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { apiGet, apiPatch, getBaseUrl, isSessionExpiredError } from "@/lib/api";
+import { type Href, useRouter } from "expo-router";
+import { apiGet, apiPatch, apiPost, getBaseUrl, isSessionExpiredError } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
 import {
@@ -382,7 +382,7 @@ export default function SettingsScreen() {
   function handleAppModeChange(mode: "full" | "lite") {
     setCurrentAppMode(mode);
     if (mode === "lite") {
-      router.replace("/(tabs)/dashboard");
+      router.replace("/(tabs)/dashboard" as Href);
     }
     setAppMode(mode);
   }

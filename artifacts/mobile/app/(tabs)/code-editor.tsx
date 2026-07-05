@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import { apiGet, apiPost, streamMessage, isSessionExpiredError } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Colors from "@/constants/colors";
@@ -76,7 +76,7 @@ export default function CodeEditorScreen() {
   useEffect(() => {
     if (authLoading) return;
     if (user?.role !== "admin") {
-      router.replace("/dashboard");
+      router.replace("/(tabs)/dashboard" as Href);
       return;
     }
     if (initialized.current) return;

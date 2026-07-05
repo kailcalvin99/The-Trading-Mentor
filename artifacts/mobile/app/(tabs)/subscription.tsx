@@ -57,7 +57,7 @@ function TierIcon({ level }: { level: number }) {
       ? "star-outline"
       : level === 3
       ? "diamond-outline"
-      : "crown-outline";
+      : "star-outline";
   const color = TIER_ACCENT_COLORS[level] ?? C.accent;
   return <Ionicons name={iconName} size={18} color={color} />;
 }
@@ -192,7 +192,7 @@ export default function SubscriptionScreen() {
           </View>
           {user?.isFounder && (
             <View style={s.founderBadge}>
-              <Ionicons name="crown" size={11} color="#E53E3E" />
+              <Ionicons name="star" size={11} color="#E53E3E" />
               <Text style={s.founderBadgeText}>Founder #{user.founderNumber}</Text>
             </View>
           )}
