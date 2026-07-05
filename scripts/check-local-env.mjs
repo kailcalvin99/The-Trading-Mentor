@@ -36,6 +36,21 @@ function hasValue(key, dotenvValues) {
   return Boolean(process.env[key] || dotenvValues[key]);
 }
 
+function getValue(key, dotenvValues) {
+  return process.env[key] || dotenvValues[key] || "";
+}
+
+function isPostgresUrl(value) {
+  if (!value) return false;
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "postgres:" || parsed.protocol === "postgresql:";
+  } catch {
+    return false;
+  }
+}
+
 function printCheck(label, ok, detail) {
   const status = ok ? "PASS" : "MISSING";
   console.log(`${status}: ${label}${detail ? ` (${detail})` : ""}`);
@@ -52,7 +67,11 @@ if (dotenv.exists && dotenv.malformedLines > 0) {
 }
 
 const checks = [
-  ["DATABASE_URL", hasValue("DATABASE_URL", dotenv.values), "required for API/database boot"],
+  [
+    "DATABASE_URL",
+    isPostgresUrl(getValue("DATABASE_URL", dotenv.values)),
+    "required for API/database boot; must start with postgres:// or postgresql://",
+  ],
   [
     "SESSION_SECRET or JWT_SECRET",
     hasValue("SESSION_SECRET", dotenv.values) || hasValue("JWT_SECRET", dotenv.values),
