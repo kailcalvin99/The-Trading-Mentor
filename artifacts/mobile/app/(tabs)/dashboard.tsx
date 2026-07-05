@@ -3127,7 +3127,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.backgroundSecondary,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: C.cardBorder,
     overflow: "hidden",
   },
   lcNextThumb: {

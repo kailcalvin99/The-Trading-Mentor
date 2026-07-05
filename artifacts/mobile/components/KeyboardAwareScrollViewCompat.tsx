@@ -3,7 +3,7 @@ import {
   KeyboardAwareScrollViewProps,
 } from "react-native-keyboard-controller";
 import { Platform, ScrollView, ScrollViewProps } from "react-native";
-import { forwardRef, type ElementRef, type Ref } from "react";
+import { forwardRef, type Ref } from "react";
 
 type Props = KeyboardAwareScrollViewProps & ScrollViewProps;
 
@@ -21,7 +21,7 @@ export const KeyboardAwareScrollViewCompat = forwardRef<ScrollView, Props>(funct
   }
   return (
     <KeyboardAwareScrollView
-      ref={ref as Ref<ElementRef<typeof KeyboardAwareScrollView>>}
+      ref={ref as any}
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       {...props}
     >

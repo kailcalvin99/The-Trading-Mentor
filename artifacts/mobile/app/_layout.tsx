@@ -89,7 +89,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user || isAdmin || loading) return;
     // Don't re-check when navigating to subscription (that's the fix path)
-    const currentTab = segments[1] as string | undefined;
+    const currentTab = (segments as readonly string[])[1];
     if (choosingPlanRef.current && currentTab === "subscription") return;
     // If user navigated away from subscription after choosing plan, re-check
     if (choosingPlanRef.current && currentTab !== "subscription") {
