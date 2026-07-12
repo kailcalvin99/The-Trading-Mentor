@@ -22,11 +22,11 @@ Draft review: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
 - Synthetic local registration/login and authenticated API persistence passed for three-chart and no-chart trades; authenticated Risk Shield rendered in the browser.
 - Rendered Smart Journal saves now reach the configured API, create exactly one row per submission, and show saved entries after re-fetch.
 - The tour introduction route guard prevents the reproduced maximum-update-depth remount cycle.
+- Production Smart Journal file inputs and handlers pass focused component validation for three compressed previews, independent removal/replacement, one final three-field payload, and a single no-image payload.
 
 ## Proposed
 
-- Founder reviews the RC1 draft PR.
-- Repeat browser image selection, preview, remove, and replacement using an approved file-upload-capable browser path.
+- Founder reviews draft PR #18; no merge or deployment is authorized in this lane.
 
 ## Protected / Manual
 
@@ -35,9 +35,8 @@ Draft review: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
 
 ## Production-Unverified
 
-- Production hosting, database, AI, Stripe, and customer workflows remain untouched.
-- Browser file attachment remains unavailable through the installed bridge; rendered selection, preview, remove, and replacement are therefore unverified.
+- Production hosting, live browser/provider configuration, live AI, live Stripe, and customer workflows remain unverified by design.
 
 ## Acceptance Decision
 
-RC1 remains `RC1 CODEBASE INCOMPLETE` because rendered three-image selection, preview, remove, and replacement remain unverified. The rendered save and update-loop blockers now pass.
+All authorized RC1 codebase acceptance criteria pass. Decision: `RC1 CODEBASE COMPLETE — PRODUCTION UNVERIFIED`.

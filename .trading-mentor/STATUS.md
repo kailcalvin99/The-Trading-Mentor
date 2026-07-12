@@ -32,10 +32,10 @@ Date: 2026-07-12 local CDT
 - Disposable PostgreSQL 16 execution passed for fresh, exact-legacy, and missing-foreign-key states. Legacy rows remained intact, the foreign key was singular, the three chart columns were nullable, and the Drizzle journal recorded all three migrations.
 - A synthetic local account passed registration, login, authenticated Risk Shield rendering, API-backed three-chart persistence and re-fetch, no-image trade compatibility, chart-payload rejection cases, and deterministic disabled-AI behavior.
 - Rendered synthetic-account validation passed for stable tour transition, two single-submit no-image journal saves, exact database row counts, and the saved three-chart layout after an authenticated API-created test entry.
+- A focused jsdom/Vitest render of the production Smart Journal component passed JPEG, PNG, and WebP selection through the real file inputs, FileReader, compression, preview, independent remove/replace, accessible labels, payload validation, single-submit, and no-image paths.
 
 ## Proposed
 
-- Complete rendered three-image selection, preview, remove, and replacement evidence with an approved browser file-upload path.
 - Re-run checkout with Stripe test-mode configuration and AI with an approved non-production provider only in a later protected staging lane if live-provider staging is desired.
 
 ## Protected / Manual
@@ -46,5 +46,5 @@ Date: 2026-07-12 local CDT
 ## Production-Unverified
 
 - Production migration, production authentication, live AI, live Stripe, deployment, and customer workflows were not exercised.
-- Rendered browser file upload, preview, and remove/replace remain unverified because the available Chrome bridge denies local file attachment. Rendered save and the maximum-update-depth loop are corrected and validated.
+- Production browser/provider execution remains unverified; the RC1 file-control contract is validated autonomously with synthetic browser `File` objects through the production component and handlers.
 - No production system, customer data, credential, provider, payment, or deployment was accessed.

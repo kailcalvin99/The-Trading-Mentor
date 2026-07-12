@@ -18,6 +18,9 @@
 - Traced the update loop to tour introduction navigation: persisted `INTRODUCING` state navigated to an already-current route, remounted the tour, reset its ref guard, and repeated. Added a current-route guard and reproduced a stable transition with no new console errors.
 - Configured the generated web client with the normalized `VITE_API_URL` origin. Two rendered no-image submissions created exactly two rows with no duplicates, and the saved entries survived re-fetch.
 - Rendered the saved three-chart layout from an authenticated API-created synthetic entry. Browser-selected previews and remove/replace remain unverified because the existing Chrome bridge denies local file attachment.
+- Added a narrowly scoped Vitest/jsdom component harness because no existing web file-input test tooling was present. Synthetic JPEG, PNG, and WebP `File` objects now exercise the production Smart Journal inputs, FileReader, compression, preview lifecycle, remove/replace controls, payload validation, and submit handler directly.
+- Confirmed three independent valid compressed previews, removal preserving the other two, targeted replacement, all three final payload fields, limits compliance, exactly one mutation, a null-image submission, no update-depth error, and no unhandled rejection.
+- Completed RC1 codebase acceptance with all required regression commands passing sequentially. Production deployment, production migration, live AI, and live Stripe remain unverified and protected.
 
 ## 2026-06-08
 

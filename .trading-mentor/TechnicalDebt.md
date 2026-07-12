@@ -10,11 +10,12 @@ Completed:
 - Smart Journal trade contracts now carry all three Multi-Chart images.
 - Risk Shield and public legal routes match registered application routes.
 - Smart Journal generated-client requests now use the configured API origin, and tour introduction navigation no longer loops on an already-current route.
+- Smart Journal file controls have direct production-component coverage through a focused Vitest/jsdom harness using synthetic browser files.
 
 Production-unverified:
 
 - Disposable PostgreSQL migration and authenticated image persistence have direct local evidence; production migration remains unverified.
-- Browser-selected image preview/remove/replace behavior remains unverified because the available Chrome bridge cannot attach local files.
+- Live production browser/provider behavior remains unverified; the codebase file-control contract and disposable-database persistence paths pass.
 - Live AI, live Stripe, deployment, DNS, and production data remain untested by design.
 
 ## Critical
