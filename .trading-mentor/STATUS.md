@@ -27,11 +27,13 @@ Date: 2026-07-12 local CDT
 - Frozen pnpm install, library/mobile/root TypeScript, API build, web build, Drizzle static check, 15 focused RC1 tests, and `git diff --check` pass.
 - Rendered local checks passed for landing, login navigation, signup form, pricing surface, and corrected legal links.
 - Static migration tests cover fresh, exact-legacy, incompatible-contract, row-preservation, foreign-key, idempotency, journal, and startup-authority contracts.
+- Disposable PostgreSQL 16 execution passed for fresh, exact-legacy, and missing-foreign-key states. Legacy rows remained intact, the foreign key was singular, the three chart columns were nullable, and the Drizzle journal recorded all three migrations.
+- A synthetic local account passed registration, login, authenticated Risk Shield rendering, API-backed three-chart persistence and re-fetch, no-image trade compatibility, chart-payload rejection cases, and deterministic disabled-AI behavior.
 
 ## Proposed
 
-- Execute migrations and the authenticated smoke flow against a disposable staging database before any production cutover.
-- Re-run checkout with Stripe test-mode configuration and AI with an approved non-production provider only in a later protected staging lane.
+- Correct and re-run the Smart Journal browser save flow, then complete rendered three-image preview and remove/replace evidence with an approved browser file-upload path.
+- Re-run checkout with Stripe test-mode configuration and AI with an approved non-production provider only in a later protected staging lane if live-provider staging is desired.
 
 ## Protected / Manual
 
@@ -40,6 +42,6 @@ Date: 2026-07-12 local CDT
 
 ## Production-Unverified
 
-- Database migrations were not executed because no existing disposable local PostgreSQL instance was available.
-- Authenticated Risk Shield, Multi-Chart persistence, AI, and checkout were not exercised against a running database/service stack.
+- Production migration, production authentication, live AI, live Stripe, deployment, and customer workflows were not exercised.
+- Rendered browser file upload, preview, remove/replace, and Smart Journal save remain incomplete: the available Chrome bridge could not attach local files, and a no-image browser save attempt created no trade while the console reported repeated maximum-update-depth errors.
 - No production system, customer data, credential, provider, payment, or deployment was accessed.

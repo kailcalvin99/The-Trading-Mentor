@@ -10,7 +10,11 @@
 - Restored the standalone Risk Shield route and corrected stale legal routes across public pages.
 - Added 15 focused tests for environment parity, migration contracts, chart images, routes, AI-disabled behavior, and checkout isolation.
 - Passed frozen install, all requested TypeScript baselines, API/web builds, Drizzle static check, focused tests, and diff check.
-- Rendered public-flow QA passed; authenticated/database execution remains explicitly unverified because no disposable PostgreSQL instance was available.
+- Rendered public-flow QA passed; the later disposable-database audit supplied direct authenticated API and migration evidence described below.
+- Installed an approved local container runtime and executed PostgreSQL 16 migrations in an isolated, localhost-only disposable container.
+- Passed fresh, exact-legacy, missing-foreign-key, repeated-migration, row-preservation, journal, nullable-chart-column, and legacy no-image-read checks.
+- Passed synthetic registration/login, authenticated Risk Shield rendering, API three-chart persistence/re-fetch, no-chart compatibility, all four chart rejection cases, and disabled-AI evidence without live providers.
+- Browser Multi-Chart controls rendered, but local-file attachment was unavailable through the existing Chrome bridge. A no-image UI save created no row and coincided with maximum-update-depth console errors, so RC1 remains incomplete pending a focused browser-flow correction and recheck.
 
 ## 2026-06-08
 
