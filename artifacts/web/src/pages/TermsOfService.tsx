@@ -72,7 +72,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-base font-semibold text-foreground mb-2">5. Refund Policy</h2>
               <p>
-                New subscribers may request a full refund within 7 days of their initial purchase. For complete details — including the 24-hour drawdown lock feature and subscription cancellation terms — please see our <Link to="/refund" className="text-primary hover:underline">Refund Policy</Link>.
+                New subscribers may request a full refund within 7 days of their initial purchase. For complete details — including the 24-hour drawdown lock feature and subscription cancellation terms — please see our <Link to="/refund-policy" className="text-primary hover:underline">Refund Policy</Link>.
               </p>
             </div>
 
@@ -142,8 +142,8 @@ export default function TermsOfService() {
           <div className="border-t border-border pt-4 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-3">
             <span>Last updated: March 2026</span>
             <div className="flex flex-wrap gap-4">
-              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
-              <Link to="/refund" className="hover:text-foreground transition-colors">Refund Policy</Link>
+              <Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link to="/refund-policy" className="hover:text-foreground transition-colors">Refund Policy</Link>
               <Link to="/risk-disclosure" className="hover:text-foreground transition-colors">Risk Disclosure</Link>
             </div>
           </div>

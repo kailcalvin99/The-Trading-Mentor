@@ -4,6 +4,7 @@ import { tradesTable } from "@workspace/db";
 import { eq, desc, gte, lte, and, isNull, isNotNull, or, type SQL } from "drizzle-orm";
 import { authRequired, tierRequired } from "../../middleware/auth";
 import { ai } from "@workspace/integrations-gemini-ai";
+import { validateChartImages } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -145,6 +146,9 @@ router.post("/", authRequired, async (req, res) => {
       stopLoss,
       takeProfit,
       tradingSession,
+      higherTimeframeChart,
+      setupTimeframeChart,
+      entryTimeframeChart,
     } = req.body;
 
     if (!pair || !entryTime || riskPct === undefined) {
@@ -155,6 +159,16 @@ router.post("/", authRequired, async (req, res) => {
     const riskPctNum = parseFloat(riskPct);
     if (isNaN(riskPctNum) || riskPctNum <= 0 || riskPctNum > 100) {
       res.status(400).json({ error: "Risk % must be between 0 and 100" });
+      return;
+    }
+
+    const chartImageError = validateChartImages({
+      higherTimeframeChart,
+      setupTimeframeChart,
+      entryTimeframeChart,
+    });
+    if (chartImageError) {
+      res.status(400).json({ error: chartImageError });
       return;
     }
 
@@ -181,6 +195,9 @@ router.post("/", authRequired, async (req, res) => {
         stopLoss: stopLoss ? stopLoss.toString() : null,
         takeProfit: takeProfit ? takeProfit.toString() : null,
         tradingSession: tradingSession || null,
+        higherTimeframeChart: higherTimeframeChart || null,
+        setupTimeframeChart: setupTimeframeChart || null,
+        entryTimeframeChart: entryTimeframeChart || null,
       })
       .returning();
 
@@ -214,6 +231,13 @@ router.post("/:id/coach", authRequired, tierRequired(2), async (req, res) => {
     }
     if (trade.coachFeedback) {
       res.json({ feedback: trade.coachFeedback });
+      return;
+    }
+    if (!process.env.AI_INTEGRATIONS_GEMINI_BASE_URL || !process.env.AI_INTEGRATIONS_GEMINI_API_KEY) {
+      res.status(503).json({
+        error: "AI mentor is unavailable because this environment has no AI provider configured.",
+        disabled: true,
+      });
       return;
     }
 

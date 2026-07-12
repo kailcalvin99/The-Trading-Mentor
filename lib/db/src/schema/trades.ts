@@ -25,6 +25,9 @@ export const tradesTable = pgTable("trades", {
   stopLoss: numeric("stop_loss", { precision: 12, scale: 4 }),
   takeProfit: numeric("take_profit", { precision: 12, scale: 4 }),
   tradingSession: text("trading_session"),
+  higherTimeframeChart: text("higher_timeframe_chart"),
+  setupTimeframeChart: text("setup_timeframe_chart"),
+  entryTimeframeChart: text("entry_timeframe_chart"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

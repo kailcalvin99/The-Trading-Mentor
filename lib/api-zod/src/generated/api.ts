@@ -179,6 +179,12 @@ export const ListTradesResponseItem = zod.object({
   sideDirection: zod.string().nullish(),
   coachFeedback: zod.string().nullish(),
   setupScore: zod.number().nullish(),
+  setupType: zod.string().nullish(),
+  entryPrice: zod.string().nullish(),
+  tradingSession: zod.string().nullish(),
+  higherTimeframeChart: zod.string().nullish(),
+  setupTimeframeChart: zod.string().nullish(),
+  entryTimeframeChart: zod.string().nullish(),
   createdAt: zod.date(),
 });
 export const ListTradesResponse = zod.array(ListTradesResponseItem);
@@ -190,7 +196,7 @@ export const CreateTradeBody = zod.object({
   pair: zod.string(),
   entryTime: zod.string(),
   riskPct: zod.number(),
-  liquiditySweep: zod.boolean(),
+  liquiditySweep: zod.boolean().optional(),
   outcome: zod.string().optional(),
   notes: zod.string().optional(),
   setupScore: zod.number().optional(),
@@ -203,6 +209,9 @@ export const CreateTradeBody = zod.object({
   setupType: zod.string().optional(),
   entryPrice: zod.string().optional(),
   tradingSession: zod.string().optional(),
+  higherTimeframeChart: zod.string().nullish(),
+  setupTimeframeChart: zod.string().nullish(),
+  entryTimeframeChart: zod.string().nullish(),
 });
 
 /**

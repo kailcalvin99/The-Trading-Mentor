@@ -318,6 +318,8 @@ components:
       properties:
         content:
           type: string
+        isCodeEditor:
+          type: boolean
       required:
         - content
 
@@ -442,6 +444,24 @@ components:
         setupScore:
           type: integer
           nullable: true
+        setupType:
+          type: string
+          nullable: true
+        entryPrice:
+          type: string
+          nullable: true
+        tradingSession:
+          type: string
+          nullable: true
+        higherTimeframeChart:
+          type: string
+          nullable: true
+        setupTimeframeChart:
+          type: string
+          nullable: true
+        entryTimeframeChart:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -482,8 +502,22 @@ components:
           type: boolean
         hasFvgConfirmation:
           type: boolean
+        setupType:
+          type: string
+        entryPrice:
+          type: string
+        tradingSession:
+          type: string
+        higherTimeframeChart:
+          type: string
+          nullable: true
+        setupTimeframeChart:
+          type: string
+          nullable: true
+        entryTimeframeChart:
+          type: string
+          nullable: true
       required:
         - pair
         - entryTime
         - riskPct
-        - liquiditySweep

@@ -418,6 +418,9 @@ export default function Welcome() {
               <span className={`text-sm font-medium ${!annual ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
               <button
                 onClick={() => setAnnual((a) => !a)}
+                type="button"
+                aria-label="Toggle annual billing"
+                aria-pressed={annual}
                 className={`relative w-11 h-6 rounded-full transition-colors ${annual ? "bg-primary" : "bg-secondary border border-border"}`}
               >
                 <span
@@ -520,7 +523,7 @@ export default function Welcome() {
                             : "bg-secondary border border-border text-foreground hover:bg-secondary/80"
                         }`}
                       >
-                        {isFree ? "Get Started Free" : "Start Free Trial"}
+                        {isFree ? "Get Started Free" : "Choose Plan"}
                       </Link>
                     </div>
                   );
@@ -616,9 +619,9 @@ export default function Welcome() {
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Legal</p>
               <ul className="space-y-2">
                 {[
-                  { label: "Terms of Service", to: "/terms" },
-                  { label: "Privacy Policy", to: "/privacy" },
-                  { label: "Refund Policy", to: "/refund" },
+                  { label: "Terms of Service", to: "/terms-of-service" },
+                  { label: "Privacy Policy", to: "/privacy-policy" },
+                  { label: "Refund Policy", to: "/refund-policy" },
                   { label: "Risk Disclosure", to: "/risk-disclosure" },
                 ].map((l) => (
                   <li key={l.label}>

@@ -29,6 +29,7 @@ export interface CreateGeminiConversationBody {
 
 export interface SendGeminiMessageBody {
   content: string;
+  isCodeEditor?: boolean;
 }
 
 export interface GeminiConversationWithMessages {
@@ -80,6 +81,12 @@ export interface Trade {
   sideDirection?: string | null;
   coachFeedback?: string | null;
   setupScore?: number | null;
+  setupType?: string | null;
+  entryPrice?: string | null;
+  tradingSession?: string | null;
+  higherTimeframeChart?: string | null;
+  setupTimeframeChart?: string | null;
+  entryTimeframeChart?: string | null;
   createdAt: string;
 }
 
@@ -100,4 +107,7 @@ export interface CreateTradeBody {
   setupType?: string;
   entryPrice?: string;
   tradingSession?: string;
+  higherTimeframeChart?: string | null;
+  setupTimeframeChart?: string | null;
+  entryTimeframeChart?: string | null;
 }
