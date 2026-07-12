@@ -1,5 +1,17 @@
 # The Trading Mentor Progress
 
+## 2026-07-12 — RC1 Finish
+
+- Verified `origin/master` at `d2e8eabd499ea85cc67933d72e447bc04f558ed1` and isolated work in a non-cloud `/tmp` worktree.
+- Unified local `.env` loading between API development startup and the environment checker using Node's built-in loader.
+- Removed API-startup table creation and made Drizzle migrations the schema authority.
+- Hardened migration `0001` for fresh and exact legacy `beta_feedback_logs` states without deleting rows or duplicating its foreign key.
+- Added three nullable Multi-Chart Review images to trades across database, API, generated types, and Smart Journal UI.
+- Restored the standalone Risk Shield route and corrected stale legal routes across public pages.
+- Added 15 focused tests for environment parity, migration contracts, chart images, routes, AI-disabled behavior, and checkout isolation.
+- Passed frozen install, all requested TypeScript baselines, API/web builds, Drizzle static check, focused tests, and diff check.
+- Rendered public-flow QA passed; authenticated/database execution remains explicitly unverified because no disposable PostgreSQL instance was available.
+
 ## 2026-06-08
 
 - Located likely canonical project at `/Users/kail/Documents/GitHub/the-trading-mentor`.

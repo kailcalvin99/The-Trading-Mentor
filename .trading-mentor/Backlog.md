@@ -2,7 +2,9 @@
 
 ## Highest ROI
 
-- Connect the moved local repo to a real GitHub remote.
+- Run RC1 migrations and the authenticated customer flow against a disposable staging database.
+- Complete founder review of the RC1 draft pull request; do not merge until review is complete.
+- Complete the protected Stripe key-rotation and host secret-manager confirmation tracked in issue #8.
 - Replace Replit-specific Stripe webhook setup with portable Stripe webhook handling.
 - Replace Replit domain assumptions in checkout success/cancel URLs.
 - Replace Replit Gemini integration with a provider-independent AI adapter.
@@ -11,6 +13,7 @@
 
 ## Product Hardening
 
+- Verify Multi-Chart image persistence and Risk Shield rendering in an authenticated staging session.
 - Audit onboarding for first-time traders.
 - Audit dashboard for over-gamification and casino energy.
 - Tighten free versus paid feature gates.

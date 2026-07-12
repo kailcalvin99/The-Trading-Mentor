@@ -6,6 +6,16 @@ Do not commit secrets.
 
 Use an ignored `.env` file locally and host secret managers in production.
 
+Local development requires Node.js 20.12.0 or newer because API startup and `check:local-env` share Node's built-in environment-file loader. Existing shell or host values take precedence over `.env` values.
+
+Apply committed Drizzle migrations only after confirming the database is disposable or explicitly approved:
+
+```bash
+pnpm --filter @workspace/db migrate
+```
+
+The migration command refuses to run when `DATABASE_URL` is absent. Never point it at an unknown or production database without an approved migration window.
+
 ## Current Variables Seen In Code
 
 Server/API:

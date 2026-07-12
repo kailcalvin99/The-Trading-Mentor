@@ -1,5 +1,27 @@
 # Off-Replit Migration Plan
 
+## RC1 Codebase Status — 2026-07-12
+
+Completed:
+
+- Development `.env` loading and the local environment checker use the same Node runtime path.
+- Drizzle migrations are the only schema authority for `beta_feedback_logs`.
+- Migration `0001` supports fresh and exact legacy-table states while rejecting incompatible structures.
+- `pnpm --filter @workspace/db migrate` refuses to run without `DATABASE_URL`.
+
+Validated:
+
+- Static Drizzle migration consistency and RC1 SQL/journal contract tests pass.
+
+Protected/manual:
+
+- Production database identity, export/import, Stripe, hosting, DNS, and secrets remain outside RC1 scope.
+
+Production-unverified:
+
+- No PostgreSQL migration was executed; no existing disposable local PostgreSQL instance was available.
+- Do not run migrations against Replit, Neon staging, production, or an unidentified database from this status alone.
+
 ## Goal
 
 Move The Trading Mentor off Replit without breaking the current live site, losing data, or breaking payments.

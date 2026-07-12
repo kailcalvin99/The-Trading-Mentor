@@ -2,61 +2,36 @@
 
 ## Active Task
 
-GitHub handoff and founder review.
+Trading Mentor Release Candidate 1 codebase finish and founder review.
 
-## Status
+## Completed
 
-Ready for founder review.
+- Environment checker/runtime parity.
+- Safe legacy `beta_feedback_logs` migration handling and Drizzle-only schema authority.
+- Smart Journal Multi-Chart Review with three persisted nullable image fields.
+- Risk Shield route, public legal-route, CTA truth, and accessibility corrections.
+- Deterministic disabled-AI and mocked-checkout safety tests.
 
-## Scope
+## Validated
 
-Documentation, governance, project setup, repo hygiene, dependency setup, and narrow launch-blocking TypeScript/build fixes.
+- Required install, typecheck, build, Drizzle static check, focused tests, and diff checks pass.
+- Public landing, login, signup, pricing, and legal-link rendering were checked locally.
 
-Allowed changes:
+## Proposed
 
-- AGENTS.md
-- CONSTITUTION.md
-- TRADING_MENTOR_AGENT.md
-- CODEX_WORKFLOW.md
-- CODEX_AUTOMATION_WORKFLOW.md
-- /agents
-- .trading-mentor/*
-- README.md
-- .env.example
-- .gitignore
-- secret removal from `.replit`
-- package manifests and lockfile
-- TypeScript fixes needed for baseline checks
-- API startup changes needed for non-Replit builds
-- local repo move to `/Users/kail/Documents/GitHub/the-trading-mentor`
-- global pnpm setup
+- Founder reviews the RC1 draft PR.
+- A later staging lane supplies a disposable database and test-only providers for full authenticated execution.
 
-Not allowed in this task:
+## Protected / Manual
 
-- UI changes
-- database schema changes
-- Gemini/AI behavior changes
-- DNS changes
-- hosting changes
+- Keep Stripe rotation issue #8 open.
+- Do not merge, deploy, migrate production data, change DNS, or use live Stripe/AI in this lane.
 
-## Acceptance Criteria
+## Production-Unverified
 
-- Project brain exists in-repo.
-- Replit migration risks are documented.
-- Business operating plan exists.
-- Repo ignores local env files and `.config/`.
-- No secret values remain in `.replit`.
-- `git diff --check` passes.
-- Dependency install passes.
-- Typecheck passes.
-- Production build passes with explicit local env.
-- Repo is moved out of Downloads.
-- Global pnpm works.
-- GitHub `origin` is configured.
-- Corrected draft PR #7 is open.
-- Stripe key rotation is tracked in issue #8.
-- Existing mobile TypeScript baseline failures are tracked in issue #9.
+- PostgreSQL migration execution and authenticated end-to-end persistence remain unverified.
+- Production hosting, database, AI, Stripe, and customer workflows remain untouched.
 
-## Next Task After This
+## Acceptance Decision
 
-Review PR #7, rotate exposed Stripe test keys, and fix the existing mobile typecheck baseline before production migration work.
+RC1 code is prepared for review, but the final decision remains `RC1 CODEBASE INCOMPLETE` while protected authenticated flow steps lack direct safe execution evidence.
