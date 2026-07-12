@@ -8,6 +8,7 @@ Date: 2026-07-12 local CDT
 - Canonical branch: `master`
 - Verified RC1 base: `d2e8eabd499ea85cc67933d72e447bc04f558ed1`
 - RC1 branch: `codex/trading-mentor-rc1-finish-v1`
+- Draft PR: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
 - Live domain remains unchanged: `https://thetradingmentorai.com/`
 
 ## Completed

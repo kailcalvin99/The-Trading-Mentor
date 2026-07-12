@@ -4,6 +4,8 @@
 
 Trading Mentor Release Candidate 1 codebase finish and founder review.
 
+Draft review: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
+
 ## Completed
 
 - Environment checker/runtime parity.
