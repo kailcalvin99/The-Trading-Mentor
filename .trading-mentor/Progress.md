@@ -15,6 +15,9 @@
 - Passed fresh, exact-legacy, missing-foreign-key, repeated-migration, row-preservation, journal, nullable-chart-column, and legacy no-image-read checks.
 - Passed synthetic registration/login, authenticated Risk Shield rendering, API three-chart persistence/re-fetch, no-chart compatibility, all four chart rejection cases, and disabled-AI evidence without live providers.
 - Browser Multi-Chart controls rendered, but local-file attachment was unavailable through the existing Chrome bridge. A no-image UI save created no row and coincided with maximum-update-depth console errors, so RC1 remains incomplete pending a focused browser-flow correction and recheck.
+- Traced the update loop to tour introduction navigation: persisted `INTRODUCING` state navigated to an already-current route, remounted the tour, reset its ref guard, and repeated. Added a current-route guard and reproduced a stable transition with no new console errors.
+- Configured the generated web client with the normalized `VITE_API_URL` origin. Two rendered no-image submissions created exactly two rows with no duplicates, and the saved entries survived re-fetch.
+- Rendered the saved three-chart layout from an authenticated API-created synthetic entry. Browser-selected previews and remove/replace remain unverified because the existing Chrome bridge denies local file attachment.
 
 ## 2026-06-08
 

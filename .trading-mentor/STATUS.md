@@ -21,18 +21,21 @@ Date: 2026-07-12 local CDT
 - Public legal links use the routes registered by the application.
 - Misleading paid-plan free-trial and contradictory founder-lifetime wording were removed.
 - Missing AI configuration returns a deterministic disabled response without calling a provider.
+- Generated web API requests use the configured API origin, so rendered Smart Journal saves reach the local API instead of the Vite origin.
+- Tour introduction navigation stops when the current route already matches, preventing the persisted introduction/remount update loop.
 
 ## Validated
 
-- Frozen pnpm install, library/mobile/root TypeScript, API build, web build, Drizzle static check, 15 focused RC1 tests, and `git diff --check` pass.
+- Frozen pnpm install, library/mobile/root TypeScript, API build, web build, Drizzle static check, 17 focused RC1 tests, and `git diff --check` pass.
 - Rendered local checks passed for landing, login navigation, signup form, pricing surface, and corrected legal links.
 - Static migration tests cover fresh, exact-legacy, incompatible-contract, row-preservation, foreign-key, idempotency, journal, and startup-authority contracts.
 - Disposable PostgreSQL 16 execution passed for fresh, exact-legacy, and missing-foreign-key states. Legacy rows remained intact, the foreign key was singular, the three chart columns were nullable, and the Drizzle journal recorded all three migrations.
 - A synthetic local account passed registration, login, authenticated Risk Shield rendering, API-backed three-chart persistence and re-fetch, no-image trade compatibility, chart-payload rejection cases, and deterministic disabled-AI behavior.
+- Rendered synthetic-account validation passed for stable tour transition, two single-submit no-image journal saves, exact database row counts, and the saved three-chart layout after an authenticated API-created test entry.
 
 ## Proposed
 
-- Correct and re-run the Smart Journal browser save flow, then complete rendered three-image preview and remove/replace evidence with an approved browser file-upload path.
+- Complete rendered three-image selection, preview, remove, and replacement evidence with an approved browser file-upload path.
 - Re-run checkout with Stripe test-mode configuration and AI with an approved non-production provider only in a later protected staging lane if live-provider staging is desired.
 
 ## Protected / Manual
@@ -43,5 +46,5 @@ Date: 2026-07-12 local CDT
 ## Production-Unverified
 
 - Production migration, production authentication, live AI, live Stripe, deployment, and customer workflows were not exercised.
-- Rendered browser file upload, preview, remove/replace, and Smart Journal save remain incomplete: the available Chrome bridge could not attach local files, and a no-image browser save attempt created no trade while the console reported repeated maximum-update-depth errors.
+- Rendered browser file upload, preview, and remove/replace remain unverified because the available Chrome bridge denies local file attachment. Rendered save and the maximum-update-depth loop are corrected and validated.
 - No production system, customer data, credential, provider, payment, or deployment was accessed.

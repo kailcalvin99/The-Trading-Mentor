@@ -20,11 +20,13 @@ Draft review: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
 - Public landing, login, signup, pricing, and legal-link rendering were checked locally.
 - Disposable PostgreSQL migration execution passed for fresh and exact legacy states, including row preservation, foreign-key idempotency, journal truth, and nullable chart columns.
 - Synthetic local registration/login and authenticated API persistence passed for three-chart and no-chart trades; authenticated Risk Shield rendered in the browser.
+- Rendered Smart Journal saves now reach the configured API, create exactly one row per submission, and show saved entries after re-fetch.
+- The tour introduction route guard prevents the reproduced maximum-update-depth remount cycle.
 
 ## Proposed
 
 - Founder reviews the RC1 draft PR.
-- Fix and repeat the browser Smart Journal save, preview, and remove/replace flow using an approved file-upload-capable browser path.
+- Repeat browser image selection, preview, remove, and replacement using an approved file-upload-capable browser path.
 
 ## Protected / Manual
 
@@ -34,8 +36,8 @@ Draft review: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
 ## Production-Unverified
 
 - Production hosting, database, AI, Stripe, and customer workflows remain untouched.
-- Browser file attachment was unavailable through the installed bridge, and the attempted no-image Smart Journal browser save did not persist a row while React reported maximum-update-depth errors.
+- Browser file attachment remains unavailable through the installed bridge; rendered selection, preview, remove, and replacement are therefore unverified.
 
 ## Acceptance Decision
 
-RC1 remains `RC1 CODEBASE INCOMPLETE` because the rendered Smart Journal save path failed and the three-image preview/remove/replace path remains unverified, despite successful disposable-database and API persistence evidence.
+RC1 remains `RC1 CODEBASE INCOMPLETE` because rendered three-image selection, preview, remove, and replacement remain unverified. The rendered save and update-loop blockers now pass.

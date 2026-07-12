@@ -9,11 +9,12 @@ Completed:
 - Exact legacy migration collision handling rejects incompatible structures and creates its foreign key idempotently.
 - Smart Journal trade contracts now carry all three Multi-Chart images.
 - Risk Shield and public legal routes match registered application routes.
+- Smart Journal generated-client requests now use the configured API origin, and tour introduction navigation no longer loops on an already-current route.
 
 Production-unverified:
 
-- Migration SQL has static contract coverage but was not executed because no disposable local PostgreSQL instance was available.
-- Image persistence has API/schema/type tests but no authenticated running-database proof.
+- Disposable PostgreSQL migration and authenticated image persistence have direct local evidence; production migration remains unverified.
+- Browser-selected image preview/remove/replace behavior remains unverified because the available Chrome bridge cannot attach local files.
 - Live AI, live Stripe, deployment, DNS, and production data remain untested by design.
 
 ## Critical
