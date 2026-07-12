@@ -1,5 +1,23 @@
 # The Trading Mentor Technical Debt
 
+## RC1 Corrections — 2026-07-12
+
+Completed:
+
+- Local `.env` checker/runtime drift is removed through one Node built-in loader.
+- `beta_feedback_logs` creation is removed from API startup; Drizzle migrations are authoritative.
+- Exact legacy migration collision handling rejects incompatible structures and creates its foreign key idempotently.
+- Smart Journal trade contracts now carry all three Multi-Chart images.
+- Risk Shield and public legal routes match registered application routes.
+- Smart Journal generated-client requests now use the configured API origin, and tour introduction navigation no longer loops on an already-current route.
+- Smart Journal file controls have direct production-component coverage through a focused Vitest/jsdom harness using synthetic browser files.
+
+Production-unverified:
+
+- Disposable PostgreSQL migration and authenticated image persistence have direct local evidence; production migration remains unverified.
+- Live production browser/provider behavior remains unverified; the codebase file-control contract and disposable-database persistence paths pass.
+- Live AI, live Stripe, deployment, DNS, and production data remain untested by design.
+
 ## Critical
 
 ### Replit-Specific Stripe Startup

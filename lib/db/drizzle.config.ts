@@ -1,15 +1,13 @@
 import { defineConfig } from "drizzle-kit";
 import path from "path";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
-}
-
 export default defineConfig({
   schema: path.join(__dirname, "./src/schema/index.ts"),
   out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    // Static commands such as `drizzle-kit check` do not connect. Runtime
+    // migration commands are separately guarded and never use this fallback.
+    url: process.env.DATABASE_URL ?? "postgresql://unconfigured:unconfigured@127.0.0.1:1/unconfigured",
   },
 });

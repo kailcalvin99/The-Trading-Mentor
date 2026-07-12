@@ -15,6 +15,13 @@
       "when": 1783234574870,
       "tag": "0001_numerous_mysterio",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783894313993,
+      "tag": "0002_daily_molten_man",
+      "breakpoints": true
     }
   ]
 }

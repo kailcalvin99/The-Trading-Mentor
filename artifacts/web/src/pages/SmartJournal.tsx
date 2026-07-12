@@ -36,11 +36,18 @@ import {
   Download,
   Angry,
   Repeat,
+  ImageIcon,
 } from "lucide-react";
 
 import type { Trade, CreateTradeBody } from "@workspace/api-client-react";
 import { recordTradeResult } from "@/components/CoolDownOverlay";
 import { dispatchAITrigger } from "@/hooks/useAITrigger";
+import {
+  CHART_IMAGE_FIELDS,
+  MAX_CHART_IMAGE_BYTES,
+  validateChartImages,
+  type ChartImageField,
+} from "@workspace/api-zod";
 
 type BehaviorTag = "FOMO" | "Chased" | "Disciplined" | "Greedy" | "Revenge" | "Angry" | "Overtrading";
 type OutcomeType = "win" | "loss" | "breakeven" | "";
@@ -55,6 +62,9 @@ interface ExtendedTrade extends Trade {
   setupScore?: number | null;
   tradingSession?: string | null;
   entryPrice?: string | null;
+  higherTimeframeChart?: string | null;
+  setupTimeframeChart?: string | null;
+  entryTimeframeChart?: string | null;
 }
 
 const BEHAVIOR_TAGS: { tag: BehaviorTag; label: string; color: string; icon: typeof Zap }[] = [
@@ -80,6 +90,9 @@ interface TradeFormData {
   sideDirection: "BUY" | "SELL" | "";
   tradingSession: string;
   entryPrice: string;
+  higherTimeframeChart: string | null;
+  setupTimeframeChart: string | null;
+  entryTimeframeChart: string | null;
 }
 
 const DEFAULT_FORM: TradeFormData = {
@@ -93,7 +106,49 @@ const DEFAULT_FORM: TradeFormData = {
   sideDirection: "",
   tradingSession: "",
   entryPrice: "",
+  higherTimeframeChart: null,
+  setupTimeframeChart: null,
+  entryTimeframeChart: null,
 };
+
+const CHART_LABELS: Record<ChartImageField, string> = {
+  higherTimeframeChart: "Higher timeframe",
+  setupTimeframeChart: "Setup timeframe",
+  entryTimeframeChart: "Entry timeframe",
+};
+
+async function compressChartImage(file: File): Promise<string> {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    throw new Error("Choose a JPEG, PNG, or WebP image.");
+  }
+
+  const source = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("The image could not be read."));
+    reader.readAsDataURL(file);
+  });
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const element = new Image();
+    element.onload = () => resolve(element);
+    element.onerror = () => reject(new Error("The image could not be decoded."));
+    element.src = source;
+  });
+
+  const scale = Math.min(1, 1600 / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Image compression is unavailable in this browser.");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  for (const quality of [0.82, 0.72, 0.62, 0.52]) {
+    const result = canvas.toDataURL("image/webp", quality);
+    if (!validateChartImages({ higherTimeframeChart: result })) return result;
+  }
+  throw new Error(`Compressed image still exceeds ${Math.floor(MAX_CHART_IMAGE_BYTES / 1024)} KB.`);
+}
 
 function calculateSetupScore(stressLevel: number, riskPct: number): number {
   let score = 40;
@@ -158,6 +213,7 @@ export default function SmartJournal() {
   const [showForm, setShowForm] = useState(false);
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
   const [form, setForm] = useState<TradeFormData>({ ...DEFAULT_FORM });
+  const [chartImageError, setChartImageError] = useState<string | null>(null);
   const [expandedTradeId, setExpandedTradeId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [coachLoading, setCoachLoading] = useState<Record<number, boolean>>({});
@@ -254,6 +310,7 @@ export default function SmartJournal() {
   }
 
   const [coachError, setCoachError] = useState<Record<number, boolean>>({});
+  const [coachDisabled, setCoachDisabled] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     fetch(`${API_BASE}/user/settings`, { credentials: "include", headers: getAuthHeaders() })
@@ -338,6 +395,8 @@ export default function SmartJournal() {
         }
       } else if (res.status === 403) {
         setCoachUpgrade((prev) => ({ ...prev, [tradeId]: true }));
+      } else if (res.status === 503) {
+        setCoachDisabled((prev) => ({ ...prev, [tradeId]: true }));
       } else {
         setCoachError((prev) => ({ ...prev, [tradeId]: true }));
       }
@@ -395,6 +454,9 @@ export default function SmartJournal() {
       tradingSession: sessionFromDefaults,
       entryPrice: "",
       notes: notesFromDefaults,
+      higherTimeframeChart: null,
+      setupTimeframeChart: null,
+      entryTimeframeChart: null,
     });
     setShowForm(true);
     dispatchAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
@@ -423,6 +485,9 @@ export default function SmartJournal() {
       sideDirection: (draft.sideDirection as "BUY" | "SELL" | "") || "",
       tradingSession: draft.tradingSession || "",
       entryPrice: draft.entryPrice || "",
+      higherTimeframeChart: draft.higherTimeframeChart || null,
+      setupTimeframeChart: draft.setupTimeframeChart || null,
+      entryTimeframeChart: draft.entryTimeframeChart || null,
     });
     setShowForm(true);
     dispatchAITrigger({ message: "Ready to log a trade? I can coach you on this setup!" });
@@ -436,6 +501,12 @@ export default function SmartJournal() {
     const parsedRisk = parseFloat(form.riskPct);
     if (isNaN(parsedRisk) || parsedRisk <= 0) {
       toast({ title: "Invalid Risk %", description: "Enter a valid positive number for risk percentage.", variant: "destructive" });
+      return;
+    }
+    const imageError = validateChartImages(form);
+    if (imageError) {
+      setChartImageError(imageError);
+      toast({ title: "Chart image error", description: imageError, variant: "destructive" });
       return;
     }
     try {
@@ -453,6 +524,9 @@ export default function SmartJournal() {
         sideDirection: form.sideDirection || undefined,
         entryPrice: form.entryPrice || undefined,
         tradingSession: form.tradingSession || undefined,
+        higherTimeframeChart: form.higherTimeframeChart,
+        setupTimeframeChart: form.setupTimeframeChart,
+        entryTimeframeChart: form.entryTimeframeChart,
       };
       const result = await createTradeMut({ data: payload });
       qc.setQueryData(getListTradesQueryKey(), (old: unknown) => {
@@ -520,6 +594,20 @@ export default function SmartJournal() {
       }
     }
   }, [form, editingDraftId, createTradeMut, deleteTradeMut, qc, appMode]);
+
+  async function handleChartFile(field: ChartImageField, file: File | undefined) {
+    if (!file) return;
+    setChartImageError(null);
+    try {
+      const image = await compressChartImage(file);
+      const next = { ...form, [field]: image };
+      const error = validateChartImages(next);
+      if (error) throw new Error(error);
+      setForm(next);
+    } catch (error) {
+      setChartImageError(error instanceof Error ? error.message : "Could not prepare chart image.");
+    }
+  }
 
   const handleDelete = useCallback(async (id: number) => {
     try {
@@ -889,6 +977,40 @@ export default function SmartJournal() {
                   />
                 </div>
 
+                <div className="space-y-3" aria-describedby={chartImageError ? "chart-image-error" : undefined}>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-primary" />
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Multi-Chart Review</h4>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">Add up to three chart screenshots. Images are compressed before saving.</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {CHART_IMAGE_FIELDS.map((field) => {
+                      const value = form[field];
+                      const inputId = `chart-${field}`;
+                      return (
+                        <div key={field} className="rounded-lg border border-border bg-card p-2">
+                          <label htmlFor={inputId} className="mb-2 block text-xs font-semibold">{CHART_LABELS[field]}</label>
+                          {value ? (
+                            <div className="space-y-2">
+                              <img src={value} alt={`${CHART_LABELS[field]} chart preview`} className="h-24 w-full rounded object-cover" />
+                              <div className="flex gap-2">
+                                <label htmlFor={inputId} className="cursor-pointer text-xs font-semibold text-primary hover:underline">Replace</label>
+                                <button type="button" aria-label={`Remove ${CHART_LABELS[field]} chart`} onClick={() => setField(field, null)} className="text-xs text-muted-foreground hover:text-destructive">Remove</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label htmlFor={inputId} className="flex h-24 cursor-pointer items-center justify-center rounded border border-dashed border-border text-center text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground">Choose image</label>
+                          )}
+                          <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label={`Upload ${CHART_LABELS[field]} chart`} onChange={(event) => { void handleChartFile(field, event.target.files?.[0]); event.target.value = ""; }} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {chartImageError && <p id="chart-image-error" role="alert" className="text-xs text-destructive">{chartImageError}</p>}
+                </div>
+
                 <div className={`flex items-center justify-between p-3 rounded-lg border ${scoreBorderColor(liveSetupScore)} ${scoreBgColor(liveSetupScore)}`}>
                   <div className="flex items-center gap-2">
                     <Target className={`h-4 w-4 ${scoreColor(liveSetupScore)}`} />
@@ -1090,7 +1212,18 @@ export default function SmartJournal() {
                             <p className="text-sm text-muted-foreground italic">{notes}</p>
                           )}
 
-                          {(coachFeedback[trade.id] || coachLoading[trade.id] || coachError[trade.id] || coachUpgrade[trade.id] || trade.coachFeedback) && (
+                          {CHART_IMAGE_FIELDS.some((field) => Boolean(trade[field])) && (
+                            <div className="grid gap-2 sm:grid-cols-3" aria-label="Saved multi-chart review">
+                              {CHART_IMAGE_FIELDS.map((field) => trade[field] ? (
+                                <figure key={field} className="space-y-1">
+                                  <img src={trade[field] || undefined} alt={`${CHART_LABELS[field]} saved chart`} className="h-32 w-full rounded-lg border border-border object-cover" />
+                                  <figcaption className="text-[10px] font-semibold text-muted-foreground">{CHART_LABELS[field]}</figcaption>
+                                </figure>
+                              ) : null)}
+                            </div>
+                          )}
+
+                          {(coachFeedback[trade.id] || coachLoading[trade.id] || coachError[trade.id] || coachUpgrade[trade.id] || coachDisabled[trade.id] || trade.coachFeedback) && (
                             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2">
                               <div className="flex items-center gap-1.5 mb-1.5">
                                 <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -1106,6 +1239,8 @@ export default function SmartJournal() {
                                   <span>AI coaching requires a Premium plan.</span>
                                   <a href="/pricing" className="underline hover:text-primary transition-colors" onClick={(e) => e.stopPropagation()}>Upgrade</a>
                                 </div>
+                              ) : coachDisabled[trade.id] ? (
+                                <p className="text-xs text-muted-foreground">AI mentor is unavailable in this environment. Your journal entry was saved normally.</p>
                               ) : coachError[trade.id] ? (
                                 <div className="flex items-center gap-2 text-xs text-red-400">
                                   <span>Failed to load feedback.</span>

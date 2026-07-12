@@ -129,4 +129,13 @@ app.use("/gemini", aiLimiter);
 app.use("/webhook", webhookLimiter);
 app.use("/", router);
 
+app.use((error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const bodyError = error as { type?: string };
+  if (bodyError?.type === "entity.too.large") {
+    res.status(400).json({ error: "Request body exceeds the 2 MB API limit" });
+    return;
+  }
+  next(error);
+});
+
 export default app;

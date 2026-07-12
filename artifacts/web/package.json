@@ -76,6 +76,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@workspace/api-zod": "workspace:*",
     "lightweight-charts": "^4.2.3",
     "react-router-dom": "^7.13.1"
   }

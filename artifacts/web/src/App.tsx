@@ -44,6 +44,7 @@ const RiskDisclosure = lazy(() => import("./pages/RiskDisclosure"));
 const SpotifyCallback = lazy(() => import("./pages/SpotifyCallback"));
 const PaperTradingPage = lazy(() => import("./pages/PaperTradingPage"));
 const OpenPositionsPage = lazy(() => import("./pages/OpenPositionsPage"));
+const RiskShield = lazy(() => import("./pages/RiskShield"));
 const NotFound = lazy(() => import("./pages/not-found"));
 
 function ScrollToTop() {
@@ -94,7 +95,7 @@ function App() {
                         <Route path="academy" element={<IctAcademy />} />
                         <Route path="videos" element={<VideoLibrary />} />
                         <Route path="planner" element={<DailyPlanner />} />
-                        <Route path="risk-shield" element={<Navigate to="/planner" replace />} />
+                        <Route path="risk-shield" element={<RiskShield />} />
                         <Route path="dashboard" element={<Navigate to="/" replace />} />
                         <Route path="prop-tracker" element={<TierGuard requiredTier={1}><PropTracker /></TierGuard>} />
                         <Route path="open-positions" element={<OpenPositionsPage />} />

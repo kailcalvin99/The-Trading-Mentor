@@ -219,9 +219,9 @@ export default function Signup() {
               />
               <span className="text-xs text-muted-foreground leading-relaxed">
                 I agree to the{" "}
-                <Link to="/terms" className="underline hover:text-foreground transition-colors">Terms of Service</Link>
+                <Link to="/terms-of-service" className="underline hover:text-foreground transition-colors">Terms of Service</Link>
                 {" "}and{" "}
-                <Link to="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
+                <Link to="/privacy-policy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
               </span>
             </label>
 
@@ -262,9 +262,9 @@ export default function Signup() {
         <div className="max-w-md mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-muted-foreground/60">
           <p>© {new Date().getFullYear()} The Trading Mentor. For educational purposes only.</p>
           <div className="flex items-center gap-3">
-            <Link to="/terms" className="hover:text-muted-foreground transition-colors">Terms</Link>
+            <Link to="/terms-of-service" className="hover:text-muted-foreground transition-colors">Terms</Link>
             <span>·</span>
-            <Link to="/privacy" className="hover:text-muted-foreground transition-colors">Privacy</Link>
+            <Link to="/privacy-policy" className="hover:text-muted-foreground transition-colors">Privacy</Link>
             <span>·</span>
             <Link to="/pricing" className="hover:text-muted-foreground transition-colors">Pricing</Link>
           </div>

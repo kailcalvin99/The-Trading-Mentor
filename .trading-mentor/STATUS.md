@@ -2,114 +2,49 @@
 
 ## Snapshot
 
-Date: 2026-06-09 local CDT
+Date: 2026-07-12 local CDT
 
-Local repo:
+- Canonical repository: `/Users/kail/Documents/GitHub/the-trading-mentor`
+- Canonical branch: `master`
+- Verified RC1 base: `d2e8eabd499ea85cc67933d72e447bc04f558ed1`
+- RC1 branch: `codex/trading-mentor-rc1-finish-v1`
+- Draft PR: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
+- Live domain remains unchanged: `https://thetradingmentorai.com/`
 
-`/Users/kail/Documents/GitHub/the-trading-mentor`
+## Completed
 
-Branch:
+- Local development startup and `check:local-env` share Node's built-in environment-file loader.
+- Drizzle migrations are the sole authority for migrated tables; API startup no longer creates `beta_feedback_logs`.
+- Migration `0001` supports a fresh database or the exact legacy table while rejecting incompatible structures and avoiding duplicate foreign keys.
+- Smart Journal supports three nullable, compressed chart screenshots through schema, API, generated contracts, form controls, and saved-entry display.
+- `/risk-shield` renders the existing Risk Shield page.
+- Public legal links use the routes registered by the application.
+- Misleading paid-plan free-trial and contradictory founder-lifetime wording were removed.
+- Missing AI configuration returns a deterministic disabled response without calling a provider.
+- Generated web API requests use the configured API origin, so rendered Smart Journal saves reach the local API instead of the Vite origin.
+- Tour introduction navigation stops when the current route already matches, preventing the persisted introduction/remount update loop.
 
-`codex/trading-mentor-foundation-v2`
+## Validated
 
-GitHub remote:
+- Frozen pnpm install, library/mobile/root TypeScript, API build, web build, Drizzle static check, 17 focused RC1 tests, and `git diff --check` pass.
+- Rendered local checks passed for landing, login navigation, signup form, pricing surface, and corrected legal links.
+- Static migration tests cover fresh, exact-legacy, incompatible-contract, row-preservation, foreign-key, idempotency, journal, and startup-authority contracts.
+- Disposable PostgreSQL 16 execution passed for fresh, exact-legacy, and missing-foreign-key states. Legacy rows remained intact, the foreign key was singular, the three chart columns were nullable, and the Drizzle journal recorded all three migrations.
+- A synthetic local account passed registration, login, authenticated Risk Shield rendering, API-backed three-chart persistence and re-fetch, no-image trade compatibility, chart-payload rejection cases, and deterministic disabled-AI behavior.
+- Rendered synthetic-account validation passed for stable tour transition, two single-submit no-image journal saves, exact database row counts, and the saved three-chart layout after an authenticated API-created test entry.
+- A focused jsdom/Vitest render of the production Smart Journal component passed JPEG, PNG, and WebP selection through the real file inputs, FileReader, compression, preview, independent remove/replace, accessible labels, payload validation, single-submit, and no-image paths.
 
-`git@github.com:kailcalvin99/The-Trading-Mentor.git`
+## Proposed
 
-Corrected draft PR:
+- Re-run checkout with Stripe test-mode configuration and AI with an approved non-production provider only in a later protected staging lane if live-provider staging is desired.
 
-`https://github.com/kailcalvin99/The-Trading-Mentor/pull/7`
+## Protected / Manual
 
-Open issues:
+- Issue #8 remains open for Stripe key rotation and host secret-manager confirmation.
+- Deployment, DNS, production database migration, live Stripe, and live AI require separate founder approval.
 
-- Stripe key rotation: `https://github.com/kailcalvin99/The-Trading-Mentor/issues/8`
-- Mobile TypeScript baseline: `https://github.com/kailcalvin99/The-Trading-Mentor/issues/9`
+## Production-Unverified
 
-Live domain:
-
-`https://thetradingmentorai.com/`
-
-Current live hosting clue:
-
-- DNS resolves to `34.111.179.208`.
-- HTTP response reports `server: Google Frontend`.
-- The site is publicly reachable.
-
-## Product State
-
-The app is a full-stack pnpm monorepo originally built on Replit.
-
-Major surfaces documented in `replit.md`:
-
-- Dashboard
-- ICT Academy
-- Daily Planner
-- Risk Shield
-- Smart Journal
-- Analytics
-- Pricing
-- Admin
-- Settings
-- Persistent AI Assistant
-
-Core stack:
-
-- pnpm workspaces
-- React + Vite web app
-- Expo mobile app
-- Express API server
-- PostgreSQL + Drizzle ORM
-- Stripe subscriptions
-- Gemini AI integration through Replit-style env vars
-
-## Current Business Read
-
-MVP estimate: 70%
-
-The product appears feature-rich and close to useful, but not business-ready until the infrastructure, trust, payment, and migration risks are handled.
-
-## Local Baseline
-
-Status: passing
-
-Commands verified:
-
-```bash
-npm exec --yes pnpm@10 -- install
-npm exec --yes pnpm@10 -- run typecheck
-PORT=5173 BASE_PATH=/web/ EXPO_PUBLIC_DOMAIN=thetradingmentorai.com npm exec --yes pnpm@10 -- run build
-pnpm run typecheck
-PORT=5173 BASE_PATH=/web/ EXPO_PUBLIC_DOMAIN=thetradingmentorai.com pnpm run build
-git diff --check
-```
-
-Notes:
-
-- `pnpm@10.34.1` is installed globally.
-- The full production build now completes for API, web, mockup sandbox, and mobile static Expo output.
-- Build artifacts are ignored through `.gitignore`.
-
-## Confirmed Risks
-
-- Replit-specific deployment assumptions still remain in code and config.
-- Stripe test keys were stored in `.replit`; they have been removed locally and should be rotated.
-- `.config/` was untracked and is now ignored.
-- The repo has been moved out of Downloads.
-- GitHub `origin` is configured.
-- Multiple Replit remotes still exist and should not be removed until the PR is reviewed.
-- `stripe-replit-sync` is still tied into server startup and webhooks, though API startup no longer requires top-level await and can use explicit non-Replit domain env vars.
-- Stripe success/cancel URLs use Replit domain env fallback.
-- CORS and cookies contain Replit-specific behavior.
-
-## Current Best Next Action
-
-Review corrected draft PR #7, then rotate exposed Stripe test keys before more product work.
-
-Recommended next task:
-
-1. Review corrected draft PR #7.
-2. Rotate the exposed Stripe test keys tracked in issue #8.
-3. Fix existing mobile TypeScript baseline failures tracked in issue #9.
-4. Decide whether `master` or `main` should become the canonical GitHub base branch.
-5. Create staging hosting and managed Postgres.
-6. Continue Replit migration with Stripe checkout/webhook URLs, CORS, cookies, and Gemini env handling.
+- Production migration, production authentication, live AI, live Stripe, deployment, and customer workflows were not exercised.
+- Production browser/provider execution remains unverified; the RC1 file-control contract is validated autonomously with synthetic browser `File` objects through the production component and handlers.
+- No production system, customer data, credential, provider, payment, or deployment was accessed.

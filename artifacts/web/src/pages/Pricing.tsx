@@ -235,7 +235,7 @@ export default function Pricing() {
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-3 italic">
-                Founder pricing ends when all spots are claimed — price locks in for life once you join
+                Founder access is limited to available spots. The displayed discount terms apply.
               </p>
             </div>
           </div>
@@ -245,6 +245,9 @@ export default function Pricing() {
           <span className={`text-sm font-medium ${!annual ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
           <button
             onClick={() => setAnnual(!annual)}
+            type="button"
+            aria-label="Toggle annual billing"
+            aria-pressed={annual}
             className={`relative w-14 h-7 rounded-full transition-colors ${annual ? "bg-primary" : "bg-muted"}`}
           >
             <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full transition-transform shadow ${annual ? "translate-x-7.5" : "translate-x-0.5"}`} />
@@ -372,7 +375,7 @@ export default function Pricing() {
         </div>
 
         <div className="mt-6 text-center">
-          <Link to="/refund" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <Link to="/refund-policy" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <Shield className="h-4 w-4" />
             7-Day Money-Back Guarantee
           </Link>
@@ -383,11 +386,11 @@ export default function Pricing() {
             The Trading Mentor is an educational platform. Content is for informational purposes only and does not constitute financial advice. Trading involves substantial risk of loss and is not suitable for all investors.
           </p>
           <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground/50">
-            <Link to="/terms" className="hover:text-muted-foreground transition-colors">Terms of Service</Link>
+            <Link to="/terms-of-service" className="hover:text-muted-foreground transition-colors">Terms of Service</Link>
             <span>·</span>
-            <Link to="/privacy" className="hover:text-muted-foreground transition-colors">Privacy Policy</Link>
+            <Link to="/privacy-policy" className="hover:text-muted-foreground transition-colors">Privacy Policy</Link>
             <span>·</span>
-            <Link to="/refund" className="hover:text-muted-foreground transition-colors">Refund Policy</Link>
+            <Link to="/refund-policy" className="hover:text-muted-foreground transition-colors">Refund Policy</Link>
           </div>
         </div>
       </div>

@@ -5,10 +5,12 @@ import App from "./App";
 import "./index.css";
 
 const TOKEN_KEY = "ICT_TRADING_MENTOR_TOKEN";
+const GENERATED_API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "");
 
 configureAuth({
   tokenProvider: () => localStorage.getItem(TOKEN_KEY),
   credentials: "include",
+  baseUrl: GENERATED_API_BASE_URL,
 });
 
 const queryClient = new QueryClient();

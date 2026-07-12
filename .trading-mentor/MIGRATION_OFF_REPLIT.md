@@ -1,5 +1,28 @@
 # Off-Replit Migration Plan
 
+## RC1 Codebase Status — 2026-07-12
+
+Completed:
+
+- Development `.env` loading and the local environment checker use the same Node runtime path.
+- Drizzle migrations are the only schema authority for `beta_feedback_logs`.
+- Migration `0001` supports fresh and exact legacy-table states while rejecting incompatible structures.
+- `pnpm --filter @workspace/db migrate` refuses to run without `DATABASE_URL`.
+
+Validated:
+
+- Static Drizzle migration consistency and RC1 SQL/journal contract tests pass.
+- Disposable PostgreSQL 16 execution passed for fresh, exact-legacy, and missing-foreign-key migration states. The exact legacy row survived, the required foreign key existed exactly once, repeated migration runs were stable, all three migrations were journaled, and chart columns were nullable.
+
+Protected/manual:
+
+- Production database identity, export/import, Stripe, hosting, DNS, and secrets remain outside RC1 scope.
+
+Production-unverified:
+
+- No production or externally hosted PostgreSQL migration was executed. Disposable local evidence does not establish production database identity or cutover readiness.
+- Do not run migrations against Replit, Neon staging, production, or an unidentified database from this status alone.
+
 ## Goal
 
 Move The Trading Mentor off Replit without breaking the current live site, losing data, or breaking payments.
@@ -85,10 +108,10 @@ Status: documented for local Mac web/API startup in `LOCAL_MAC_SETUP.md`.
 
 Current local blockers found during the cost-control setup pass:
 
-- Docker is not installed on this Mac, so the documented local PostgreSQL container path cannot run yet.
-- The shell does not currently have `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, or Gemini env vars set.
-- API startup should be verified after those env vars and a local PostgreSQL database are available.
-- The web dev server can be started with explicit `PORT`, `BASE_PATH`, and `VITE_API_URL`, but useful authenticated app testing still needs the API.
+- An approved container runtime is now installed; the RC1 audit used a temporary localhost-only PostgreSQL container and removed it after evidence collection.
+- Persistent host `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, and Gemini configuration remain intentionally unset.
+- API startup and synthetic authenticated persistence were verified with ephemeral local-only values. Live AI and Stripe were not configured or called.
+- The remaining local blocker is the rendered Smart Journal save/upload flow, not database availability.
 
 Next local baseline steps:
 

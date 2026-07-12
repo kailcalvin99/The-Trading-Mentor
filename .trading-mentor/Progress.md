@@ -1,5 +1,27 @@
 # The Trading Mentor Progress
 
+## 2026-07-12 — RC1 Finish
+
+- Verified `origin/master` at `d2e8eabd499ea85cc67933d72e447bc04f558ed1` and isolated work in a non-cloud `/tmp` worktree.
+- Unified local `.env` loading between API development startup and the environment checker using Node's built-in loader.
+- Removed API-startup table creation and made Drizzle migrations the schema authority.
+- Hardened migration `0001` for fresh and exact legacy `beta_feedback_logs` states without deleting rows or duplicating its foreign key.
+- Added three nullable Multi-Chart Review images to trades across database, API, generated types, and Smart Journal UI.
+- Restored the standalone Risk Shield route and corrected stale legal routes across public pages.
+- Added 15 focused tests for environment parity, migration contracts, chart images, routes, AI-disabled behavior, and checkout isolation.
+- Passed frozen install, all requested TypeScript baselines, API/web builds, Drizzle static check, focused tests, and diff check.
+- Rendered public-flow QA passed; the later disposable-database audit supplied direct authenticated API and migration evidence described below.
+- Installed an approved local container runtime and executed PostgreSQL 16 migrations in an isolated, localhost-only disposable container.
+- Passed fresh, exact-legacy, missing-foreign-key, repeated-migration, row-preservation, journal, nullable-chart-column, and legacy no-image-read checks.
+- Passed synthetic registration/login, authenticated Risk Shield rendering, API three-chart persistence/re-fetch, no-chart compatibility, all four chart rejection cases, and disabled-AI evidence without live providers.
+- Browser Multi-Chart controls rendered, but local-file attachment was unavailable through the existing Chrome bridge. A no-image UI save created no row and coincided with maximum-update-depth console errors, so RC1 remains incomplete pending a focused browser-flow correction and recheck.
+- Traced the update loop to tour introduction navigation: persisted `INTRODUCING` state navigated to an already-current route, remounted the tour, reset its ref guard, and repeated. Added a current-route guard and reproduced a stable transition with no new console errors.
+- Configured the generated web client with the normalized `VITE_API_URL` origin. Two rendered no-image submissions created exactly two rows with no duplicates, and the saved entries survived re-fetch.
+- Rendered the saved three-chart layout from an authenticated API-created synthetic entry. Browser-selected previews and remove/replace remain unverified because the existing Chrome bridge denies local file attachment.
+- Added a narrowly scoped Vitest/jsdom component harness because no existing web file-input test tooling was present. Synthetic JPEG, PNG, and WebP `File` objects now exercise the production Smart Journal inputs, FileReader, compression, preview lifecycle, remove/replace controls, payload validation, and submit handler directly.
+- Confirmed three independent valid compressed previews, removal preserving the other two, targeted replacement, all three final payload fields, limits compliance, exactly one mutation, a null-image submission, no update-depth error, and no unhandled rejection.
+- Completed RC1 codebase acceptance with all required regression commands passing sequentially. Production deployment, production migration, live AI, and live Stripe remain unverified and protected.
+
 ## 2026-06-08
 
 - Located likely canonical project at `/Users/kail/Documents/GitHub/the-trading-mentor`.

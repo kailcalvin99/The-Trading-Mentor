@@ -1,5 +1,5 @@
 import { useReducer, useEffect, useLayoutEffect, useCallback, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   X,
   ChevronRight,
@@ -268,6 +268,7 @@ const WELCOME_VIDEO_SRC = `${BASE_URL}videos/intro.mp4`.replace(/\/\//g, "/");
 export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuideProps) {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const location = useLocation();
   const navigateRef = useRef(navigate);
   useLayoutEffect(() => { navigateRef.current = navigate; });
   const navigatingRef = useRef(false);
@@ -319,14 +320,14 @@ export function TourGuide({ onClose, onNeverShow, state, dispatch }: TourGuidePr
     if (state.machineState === "INTRODUCING") {
       const targetRoute = TOUR_STEPS[state.currentStep]?.targetRoute;
       const key = `${state.currentStep}:${targetRoute}`;
-      if (targetRoute && introducingNavigatedRef.current !== key) {
+      if (targetRoute && location.pathname !== targetRoute && introducingNavigatedRef.current !== key) {
         introducingNavigatedRef.current = key;
         navigateRef.current(targetRoute, { replace: true });
       }
     } else {
       introducingNavigatedRef.current = null;
     }
-  }, [state.machineState, state.currentStep]);
+  }, [state.machineState, state.currentStep, location.pathname]);
 
   useEffect(() => {
     if (state.machineState === "COMPLETED") {

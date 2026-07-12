@@ -337,9 +337,9 @@ export default function Login() {
           <p>© {new Date().getFullYear()} {appName}. For educational purposes only. Not financial advice.</p>
           <div className="flex items-center gap-4">
             <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
-            <Link to="/refund" className="hover:text-foreground transition-colors">Refund Policy</Link>
-            <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
-            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+            <Link to="/refund-policy" className="hover:text-foreground transition-colors">Refund Policy</Link>
+            <Link to="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</Link>
+            <Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
             <Link to="/risk-disclosure" className="hover:text-foreground transition-colors">Risk Disclosure</Link>
           </div>
         </div>

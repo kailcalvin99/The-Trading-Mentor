@@ -2,61 +2,41 @@
 
 ## Active Task
 
-GitHub handoff and founder review.
+Trading Mentor Release Candidate 1 codebase finish and founder review.
 
-## Status
+Draft review: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
 
-Ready for founder review.
+## Completed
 
-## Scope
+- Environment checker/runtime parity.
+- Safe legacy `beta_feedback_logs` migration handling and Drizzle-only schema authority.
+- Smart Journal Multi-Chart Review with three persisted nullable image fields.
+- Risk Shield route, public legal-route, CTA truth, and accessibility corrections.
+- Deterministic disabled-AI and mocked-checkout safety tests.
 
-Documentation, governance, project setup, repo hygiene, dependency setup, and narrow launch-blocking TypeScript/build fixes.
+## Validated
 
-Allowed changes:
+- Required install, typecheck, build, Drizzle static check, focused tests, and diff checks pass.
+- Public landing, login, signup, pricing, and legal-link rendering were checked locally.
+- Disposable PostgreSQL migration execution passed for fresh and exact legacy states, including row preservation, foreign-key idempotency, journal truth, and nullable chart columns.
+- Synthetic local registration/login and authenticated API persistence passed for three-chart and no-chart trades; authenticated Risk Shield rendered in the browser.
+- Rendered Smart Journal saves now reach the configured API, create exactly one row per submission, and show saved entries after re-fetch.
+- The tour introduction route guard prevents the reproduced maximum-update-depth remount cycle.
+- Production Smart Journal file inputs and handlers pass focused component validation for three compressed previews, independent removal/replacement, one final three-field payload, and a single no-image payload.
 
-- AGENTS.md
-- CONSTITUTION.md
-- TRADING_MENTOR_AGENT.md
-- CODEX_WORKFLOW.md
-- CODEX_AUTOMATION_WORKFLOW.md
-- /agents
-- .trading-mentor/*
-- README.md
-- .env.example
-- .gitignore
-- secret removal from `.replit`
-- package manifests and lockfile
-- TypeScript fixes needed for baseline checks
-- API startup changes needed for non-Replit builds
-- local repo move to `/Users/kail/Documents/GitHub/the-trading-mentor`
-- global pnpm setup
+## Proposed
 
-Not allowed in this task:
+- Founder reviews draft PR #18; no merge or deployment is authorized in this lane.
 
-- UI changes
-- database schema changes
-- Gemini/AI behavior changes
-- DNS changes
-- hosting changes
+## Protected / Manual
 
-## Acceptance Criteria
+- Keep Stripe rotation issue #8 open.
+- Do not merge, deploy, migrate production data, change DNS, or use live Stripe/AI in this lane.
 
-- Project brain exists in-repo.
-- Replit migration risks are documented.
-- Business operating plan exists.
-- Repo ignores local env files and `.config/`.
-- No secret values remain in `.replit`.
-- `git diff --check` passes.
-- Dependency install passes.
-- Typecheck passes.
-- Production build passes with explicit local env.
-- Repo is moved out of Downloads.
-- Global pnpm works.
-- GitHub `origin` is configured.
-- Corrected draft PR #7 is open.
-- Stripe key rotation is tracked in issue #8.
-- Existing mobile TypeScript baseline failures are tracked in issue #9.
+## Production-Unverified
 
-## Next Task After This
+- Production hosting, live browser/provider configuration, live AI, live Stripe, and customer workflows remain unverified by design.
 
-Review PR #7, rotate exposed Stripe test keys, and fix the existing mobile typecheck baseline before production migration work.
+## Acceptance Decision
+
+All authorized RC1 codebase acceptance criteria pass. Decision: `RC1 CODEBASE COMPLETE — PRODUCTION UNVERIFIED`.

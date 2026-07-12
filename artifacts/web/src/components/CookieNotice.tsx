@@ -31,7 +31,7 @@ export default function CookieNotice() {
           <p className="text-sm text-foreground font-medium">We use cookies</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             This site uses essential cookies to keep you logged in and remember your preferences.{" "}
-            <Link to="/privacy" className="underline hover:text-foreground transition-colors">
+            <Link to="/privacy-policy" className="underline hover:text-foreground transition-colors">
               Learn more
             </Link>
           </p>

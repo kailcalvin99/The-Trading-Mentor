@@ -24,5 +24,10 @@ export interface Trade {
   coachFeedback?: string | null;
   setupScore?: number | null;
   setupType?: string | null;
+  entryPrice?: string | null;
+  tradingSession?: string | null;
+  higherTimeframeChart?: string | null;
+  setupTimeframeChart?: string | null;
+  entryTimeframeChart?: string | null;
   createdAt: Date;
 }
