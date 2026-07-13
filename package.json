@@ -6,6 +6,7 @@
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "check:local-env": "node scripts/check-local-env.mjs",
+    "stripe:bootstrap": "tsx scripts/stripe-bootstrap.ts",
     "test:rc1": "tsx --test tests/rc1/*.test.ts",
     "test:rc1:file-controls": "vitest run --config vitest.rc1.config.ts",
     "typecheck:libs": "tsc --build",

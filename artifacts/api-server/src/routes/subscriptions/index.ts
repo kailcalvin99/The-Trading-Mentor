@@ -4,6 +4,7 @@ import { db, subscriptionTiersTable, userSubscriptionsTable, adminSettingsTable,
 import { eq, count } from "drizzle-orm";
 import { authRequired } from "../../middleware/auth";
 import { getStripeClient } from "../../stripe/stripeClient";
+import { buildCheckoutUrls } from "../../config/publicAppUrl";
 
 const router = Router();
 
@@ -86,13 +87,14 @@ router.post("/create-checkout-session", authRequired, async (req: Request, res: 
 
     const betaDiscountSetting = await db.select().from(adminSettingsTable).where(eq(adminSettingsTable.key, "beta_tester_discount_pct"));
 
+    const { successUrl, cancelUrl } = buildCheckoutUrls();
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `https://${process.env.REPLIT_DEV_DOMAIN || req.get("host")}/web/pricing?success=1`,
-      cancel_url: `https://${process.env.REPLIT_DEV_DOMAIN || req.get("host")}/web/pricing?canceled=1`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         userId: String(user.id),
         tierId: String(tierId),
