@@ -21,7 +21,6 @@ The migration command refuses to run when `DATABASE_URL` is absent. Never point 
 Server/API:
 
 - `PORT`
-- `ENABLE_STARTUP_DB_JOBS`
 - `DATABASE_URL`
 - `SESSION_SECRET`
 - `JWT_SECRET`
@@ -30,6 +29,10 @@ Server/API:
 - `PUBLIC_DOMAIN`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_PUBLISHABLE_KEY`
+- `ADMIN_EMAIL`
+- `PUBLIC_APP_URL`
+- `AI_ENABLED`
+- `ENABLE_DESTRUCTIVE_ADMIN_RESET`
 - `REPLIT_DOMAINS`
 - `REPLIT_DEV_DOMAIN`
 - `REPLIT_DEPLOYMENT`
@@ -55,9 +58,8 @@ Mobile:
 
 ## Migration Target Variables
 
-These should be introduced or confirmed during migration:
+These remain future or provider-specific migration variables:
 
-- `PUBLIC_APP_URL`
 - `PUBLIC_API_URL`
 - `STRIPE_WEBHOOK_SECRET`
 - `COOKIE_SECURE`
@@ -95,7 +97,8 @@ Minimum API startup env vars:
 - `PORT`
 - `DATABASE_URL`
 - `SESSION_SECRET` or `JWT_SECRET`
-- `ADMIN_EMAIL`
+- `PUBLIC_APP_URL`
+- `ADMIN_EMAIL` only when testing explicit administrator assignment
 
 No-Docker local/staging database value:
 
@@ -128,7 +131,8 @@ PORT=5173 BASE_PATH=/web/ VITE_API_URL=http://localhost:8080/api pnpm --filter @
 Optional but needed for full feature testing:
 
 - `STRIPE_SECRET_KEY`
-- `ENABLE_STARTUP_DB_JOBS=true` when intentionally running startup DB maintenance, seed defaults, and Stripe sync
+- `AI_ENABLED=true` plus provider variables only for an explicitly approved AI test
+- `pnpm stripe:bootstrap` only in an explicitly approved Stripe test lane; never during API startup
 - `AI_INTEGRATIONS_GEMINI_BASE_URL`
 - `AI_INTEGRATIONS_GEMINI_API_KEY`
 - `TWELVE_DATA_API_KEY`

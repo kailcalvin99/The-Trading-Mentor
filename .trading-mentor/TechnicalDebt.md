@@ -1,5 +1,19 @@
 # The Trading Mentor Technical Debt
 
+## Staging-readiness corrections — 2026-07-12
+
+Completed:
+
+- Normal startup no longer runs `stripe-replit-sync`, creates webhooks, backfills Stripe, seeds data, or infers jobs from Replit variables.
+- Checkout redirect authority is `PUBLIC_APP_URL`; first-user admin promotion is removed.
+- AI is globally disabled by default before request writes/streams/provider calls.
+- Readiness probes the database with a timeout, shutdown closes the pool, and production cannot invoke the destructive reset.
+
+Remaining / protected:
+
+- The explicit Stripe bootstrap still uses `stripe-replit-sync` and must be replaced or validated only during approved Stripe test staging.
+- Production database baseline adoption, backups, monitoring, hosting, secrets, provider configuration, deployment, and DNS remain unverified.
+
 ## RC1 Corrections — 2026-07-12
 
 Completed:
@@ -20,7 +34,7 @@ Production-unverified:
 
 ## Critical
 
-### Replit-Specific Stripe Startup
+### Legacy Stripe Bootstrap
 
 Files:
 
@@ -30,9 +44,7 @@ Files:
 
 Debt:
 
-- Server startup runs `stripe-replit-sync` migrations and managed webhook setup.
-- Webhook base URL can now use explicit non-Replit domain env vars, but `stripe-replit-sync` remains.
-- Stripe secret lookup calls a Replit connection endpoint in development.
+- Ordinary startup is clean. The separately invoked `pnpm stripe:bootstrap` command still uses `stripe-replit-sync` temporarily.
 
 Target:
 
@@ -40,7 +52,7 @@ Target:
 - Use explicit `STRIPE_WEBHOOK_SECRET`.
 - Use configured public app/API URL.
 
-### Replit Domain Checkout URLs
+### Trusted Checkout URLs
 
 File:
 
@@ -48,7 +60,7 @@ File:
 
 Debt:
 
-- Checkout success/cancel URLs depend on `REPLIT_DEV_DOMAIN` or request host.
+- Corrected: checkout success/cancel URLs use validated `PUBLIC_APP_URL` only.
 
 Target:
 

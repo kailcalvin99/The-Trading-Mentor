@@ -64,7 +64,7 @@ export PORT=8080
 ```
 
 ```bash
-export ENABLE_STARTUP_DB_JOBS=false
+export PUBLIC_APP_URL="http://localhost:5173"
 ```
 
 ```bash
@@ -220,7 +220,6 @@ Set the required API environment variables above in this same Terminal 1 window 
 ```bash
 PORT=8080 \
 NODE_ENV=development \
-ENABLE_STARTUP_DB_JOBS=false \
 pnpm --filter @workspace/api-server dev
 ```
 
@@ -236,9 +235,9 @@ Expected result:
 {"status":"ok"}
 ```
 
-Known current blocker: this command requires `DATABASE_URL`, `SESSION_SECRET` or `JWT_SECRET`, and `ADMIN_EMAIL`.
+This command requires `DATABASE_URL` and `SESSION_SECRET` or `JWT_SECRET`. `ADMIN_EMAIL` is optional and controls explicit admin assignment only.
 
-Stripe is intentionally not part of this local startup command. Do not refactor Stripe during the staging-readiness step. Paid checkout can be tested later with Stripe test mode after the API and DB path are stable.
+Stripe is intentionally not part of this local startup command. The legacy bootstrap is separately invoked and remains protected; paid checkout can be tested later with Stripe test mode after the API and DB path are stable.
 
 ## Start Web
 
@@ -306,13 +305,13 @@ Do not remove these yet:
 - `.replitignore`
 - Replit remotes
 - `replit.md`
-- `stripe-replit-sync`
+- `stripe-replit-sync` in the explicit legacy `pnpm stripe:bootstrap` job only
 - `@replit/connectors-sdk`
 - `@replit/vite-plugin-*`
 
 Later migration work should replace:
 
-- Replit domain fallbacks in Stripe success/cancel URLs.
+- The remaining legacy Stripe bootstrap implementation after test-staging webhook design is approved.
 - Replit managed Stripe webhook setup.
 - Replit CORS allowances.
 - Cookie policy based on `REPL_ID`.

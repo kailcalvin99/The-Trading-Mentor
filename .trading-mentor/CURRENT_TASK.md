@@ -2,9 +2,7 @@
 
 ## Active Task
 
-Trading Mentor Release Candidate 1 codebase finish and founder review.
-
-Draft review: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
+Repository-controlled portable staging readiness. RC1 is merged; this task creates no external resources.
 
 ## Completed
 
@@ -26,12 +24,12 @@ Draft review: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
 
 ## Proposed
 
-- Founder reviews draft PR #18; no merge or deployment is authorized in this lane.
+- Founder reviews the staging-readiness draft PR. A separately approved lane selects and creates isolated staging resources.
 
 ## Protected / Manual
 
 - Keep Stripe rotation issue #8 open.
-- Do not merge, deploy, migrate production data, change DNS, or use live Stripe/AI in this lane.
+- Do not merge, deploy, create resources, install secrets, migrate production data, change DNS, or use live Stripe/AI in this lane.
 
 ## Production-Unverified
 

@@ -246,7 +246,7 @@ The current Drizzle schema can help recreate the database structure, but it is n
 Known note:
 
 - `beta_feedback_logs` exists in current Drizzle schema.
-- It is created by API startup local migration if missing.
+- It is owned by committed Drizzle migrations; API startup does not create migrated tables.
 - A full production dump/restore should preserve whether it exists in production and any rows already stored.
 
 After restore, use Drizzle only to compare or manage future migrations. Do not run `pnpm --filter @workspace/db push` against production until the migration plan explicitly approves it.

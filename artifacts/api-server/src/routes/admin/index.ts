@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { authRequired, adminRequired, clearAuthCookie } from "../../middleware/auth";
 import { seedDefaults } from "../../seed";
 import { getStripeClient } from "../../stripe/stripeClient";
+import { requireDestructiveResetEnabled } from "../../security/destructiveReset";
 
 const WORKSPACE_ROOT = path.resolve(process.cwd(), "../..");
 const ARTIFACTS_ROOT = path.resolve(WORKSPACE_ROOT, "artifacts");
@@ -361,7 +362,7 @@ router.put("/settings", async (req, res) => {
   }
 });
 
-router.post("/reset", async (req, res) => {
+router.post("/reset", requireDestructiveResetEnabled, async (req, res) => {
   try {
     const { confirmCode } = req.body;
     if (confirmCode !== "RESET-EVERYTHING") {
@@ -369,6 +370,7 @@ router.post("/reset", async (req, res) => {
       return;
     }
 
+    console.warn(JSON.stringify({ event: "destructive_admin_reset", actorUserId: req.user?.userId }));
     await db.delete(messages);
     await db.delete(conversations);
     await db.delete(tradesTable);

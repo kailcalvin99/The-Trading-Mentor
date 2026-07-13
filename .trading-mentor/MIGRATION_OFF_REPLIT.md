@@ -1,5 +1,17 @@
 # Off-Replit Migration Plan
 
+## Portable staging contract — 2026-07-12
+
+Completed and validated in the repository:
+
+- Normal API startup performs no migrations, seeds, Stripe synchronization, webhook creation, or backfill.
+- `PUBLIC_APP_URL`, explicit admin ownership, global disabled AI, `/api/healthz`, `/api/readyz`, pool shutdown, and production destructive-reset denial are implemented and deterministically tested.
+- Provider-neutral build/start/routing/environment requirements are documented in `PORTABLE_STAGING.md`.
+
+Protected/manual and production-unverified:
+
+- No host/database was selected or created; no secrets were installed; no Stripe, AI, deployment, migration, DNS, backup, or restore action occurred.
+
 ## RC1 Codebase Status — 2026-07-12
 
 Completed:
@@ -56,8 +68,8 @@ Environment:
 
 Code assumptions:
 
-- Stripe managed webhook setup depends on Replit domain env.
-- Checkout success/cancel URLs use Replit env fallback.
+- Legacy Stripe bootstrap remains an explicit, non-startup command pending direct webhook-secret migration.
+- Checkout success/cancel URLs use trusted `PUBLIC_APP_URL` only.
 - CORS allows Replit domains.
 - Cookie behavior changes based on Replit env.
 - Mobile scripts infer deployment domains from Replit env.

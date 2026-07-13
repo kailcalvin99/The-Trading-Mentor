@@ -1,7 +1,7 @@
 import app from "./app";
-import { runMigrations } from "stripe-replit-sync";
-import { getStripeSync } from "./stripe/stripeClient";
-import { seedDefaults } from "./seed";
+import { pool } from "@workspace/db";
+import { closeServerAndPool } from "./operations/shutdown";
+import { getPublicAppUrl } from "./config/publicAppUrl";
 import { execSync, execFileSync } from "child_process";
 import net from "net";
 
@@ -9,46 +9,6 @@ process.on("unhandledRejection", (reason) => {
   console.error("Unhandled promise rejection:", reason);
 });
 
-async function initStripe() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.warn("DATABASE_URL not set, skipping Stripe init");
-    return;
-  }
-
-  try {
-    console.log("Initializing Stripe schema...");
-    await runMigrations({ databaseUrl });
-    console.log("Stripe schema ready");
-
-    const stripeSync = await getStripeSync();
-    console.log("Stripe sync initialized");
-
-    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
-    const webhookResult = await stripeSync.findOrCreateManagedWebhook(
-      `${webhookBaseUrl}/api/stripe/webhook`
-    );
-    console.log("Webhook configured:", webhookResult?.url || "setup complete");
-
-    stripeSync.syncBackfill()
-      .then(() => console.log("Stripe data synced"))
-      .catch((err: unknown) => console.error("Error syncing Stripe data:", err instanceof Error ? err.message : String(err)));
-  } catch (error: unknown) {
-    console.error("Failed to initialize Stripe:", error instanceof Error ? error.message : String(error));
-  }
-}
-
-function envFlagEnabled(name: string): boolean {
-  const value = process.env[name];
-  return value === "1" || value?.toLowerCase() === "true";
-}
-
-function shouldRunStartupDbJobs(): boolean {
-  if (envFlagEnabled("SKIP_STARTUP_DB_JOBS")) return false;
-  if (envFlagEnabled("ENABLE_STARTUP_DB_JOBS")) return true;
-
-  return Boolean(process.env.REPLIT_DEPLOYMENT || process.env.REPLIT_DEV_DOMAIN);
-}
 
 function isPortInUse(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -235,10 +195,10 @@ async function startServer(requestedPort: number): Promise<void> {
 
     console.log(`Received ${signal}. Closing server gracefully...`);
     openSockets.forEach((s) => s.destroy());
-    server!.close(() => {
-      console.log("Server closed. Exiting.");
+    void closeServerAndPool(server!, pool).then(() => {
+      console.log("Server and database pool closed. Exiting.");
       process.exit(0);
-    });
+    }).catch(() => process.exit(1));
 
     setTimeout(() => {
       console.warn("Forced shutdown after timeout.");
@@ -264,25 +224,6 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   process.exit(1);
 }
 
-if (shouldRunStartupDbJobs()) {
-  try {
-  } catch (err: unknown) {
-    console.error("Local migrations failed, continuing:", err instanceof Error ? err.message : String(err));
-  }
-
-  try {
-    await seedDefaults();
-  } catch (err: unknown) {
-    console.error("Seed error:", err);
-  }
-
-  try {
-    await initStripe();
-  } catch (err: unknown) {
-    console.error("Stripe initialization failed, continuing without Stripe:", err instanceof Error ? err.message : String(err));
-  }
-} else {
-  console.log("Startup DB jobs skipped. Set ENABLE_STARTUP_DB_JOBS=true to run local migrations, seed defaults, and Stripe sync.");
-}
+if (process.env.NODE_ENV === "production") getPublicAppUrl();
 
 await startServer(port);

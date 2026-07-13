@@ -2,10 +2,10 @@
 
 ## Highest ROI
 
-- Complete founder review of the RC1 draft pull request; do not merge until review is complete.
+- Review the portable staging-readiness draft pull request; do not merge until founder review is complete.
 - Complete the protected Stripe key-rotation and host secret-manager confirmation tracked in issue #8.
-- Replace Replit-specific Stripe webhook setup with portable Stripe webhook handling.
-- Replace Replit domain assumptions in checkout success/cancel URLs.
+- Replace the temporary explicit `stripe-replit-sync` bootstrap with direct webhook-secret lifecycle after Stripe test staging is approved.
+- Select and create isolated staging hosting/database resources after approval.
 - Replace Replit Gemini integration with a provider-independent AI adapter.
 - Choose managed Postgres and create backup/restore process.
 - Create staging deployment before DNS cutover.

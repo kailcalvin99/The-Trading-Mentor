@@ -1,12 +1,35 @@
 # The Trading Mentor Status
 
+## Staging-readiness repository work — 2026-07-12
+
+Completed:
+
+- Removed Stripe synchronization, webhook creation, backfill, seeding, and database jobs from ordinary API startup; the legacy Stripe bootstrap is explicit only.
+- Checkout redirects use validated `PUBLIC_APP_URL`, never request or forwarded host headers.
+- Registration grants administrator only to the normalized configured `ADMIN_EMAIL`; the first registrant is no longer privileged.
+- `AI_ENABLED` is a centralized deny-by-default gate applied before AI-backed writes, streams, or provider calls.
+- Added process liveness, bounded database readiness, PostgreSQL pool shutdown, and production denial for the destructive reset.
+- Added the provider-neutral contract in `PORTABLE_STAGING.md`.
+
+Validated:
+
+- Deterministic tests cover startup Stripe isolation, public URL validation, admin ownership, AI denial, readiness success/failure/timeout, pool shutdown, and destructive reset policy.
+
+Protected / manual:
+
+- Host/database selection, resource creation, secrets, Stripe dashboard work, AI provider enablement, deployment, DNS, production migration, and merge remain protected.
+
+Production-unverified:
+
+- No staging or production resource was created and no live provider, customer, credential, or production system was accessed.
+
 ## Snapshot
 
 Date: 2026-07-12 local CDT
 
 - Canonical repository: `/Users/kail/Documents/GitHub/the-trading-mentor`
 - Canonical branch: `master`
-- Verified RC1 base: `d2e8eabd499ea85cc67933d72e447bc04f558ed1`
+- Verified merged RC1 commit: `97064658a48d0d446a2c680399f272b669f0d8c6`
 - RC1 branch: `codex/trading-mentor-rc1-finish-v1`
 - Draft PR: `https://github.com/kailcalvin99/The-Trading-Mentor/pull/18`
 - Live domain remains unchanged: `https://thetradingmentorai.com/`
