@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import { db, usersTable, userSubscriptionsTable, subscriptionTiersTable, adminSettingsTable, passwordResetTokensTable, betaInviteCodesTable, tradesTable, conversations, messages, propAccountTable, communityPostsTable, communityRepliesTable, postLikesTable } from "@workspace/db";
 import { eq, count, and, gt, desc, inArray, sql } from "drizzle-orm";
 import { signToken, authRequired, setAuthCookie, clearAuthCookie } from "../../middleware/auth";
+import { roleForRegistration } from "../../security/adminRole";
 
 async function upsertAdminSubscription(userId: number): Promise<void> {
   try {
@@ -150,8 +151,6 @@ router.post("/register", registerLimiter, async (req, res) => {
 
     const [founderCountResult] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.isFounder, true));
     const currentFounderCount = founderCountResult.count;
-    const [userCountResult] = await db.select({ count: count() }).from(usersTable);
-    const currentUserCount = userCountResult.count;
     // Beta testers do not get founder status
     const isFounder = !betaCodeRecord && currentFounderCount < founderLimit;
     const founderNumber = isFounder ? currentFounderCount + 1 : null;
@@ -160,8 +159,7 @@ router.post("/register", registerLimiter, async (req, res) => {
     const betaTrialEndsAt = isBetaTester ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null;
 
     // FIX #4: read admin email from environment variable — never hardcode personal emails
-    const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
-    const isAdmin = currentUserCount === 0 || (adminEmail !== "" && normalizedEmail === adminEmail);
+    const isAdmin = roleForRegistration(normalizedEmail) === "admin";
 
     const [user] = await db.insert(usersTable).values({
       email: normalizedEmail,
