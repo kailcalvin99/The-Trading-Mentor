@@ -30,6 +30,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /readyz:
+    get:
+      operationId: readinessCheck
+      tags: [health]
+      summary: Database readiness check
+      responses:
+        "200":
+          description: Ready
+        "503":
+          description: Database unavailable or timed out
+
   /gemini/conversations:
     get:
       operationId: listGeminiConversations
