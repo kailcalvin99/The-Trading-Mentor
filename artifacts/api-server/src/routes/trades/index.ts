@@ -5,6 +5,7 @@ import { eq, desc, gte, lte, and, isNull, isNotNull, or, type SQL } from "drizzl
 import { authRequired, tierRequired } from "../../middleware/auth";
 import { ai } from "@workspace/integrations-gemini-ai";
 import { validateChartImages } from "@workspace/api-zod";
+import { requireAiEnabled } from "../../config/ai";
 
 const router: IRouter = Router();
 
@@ -209,7 +210,7 @@ router.post("/", authRequired, async (req, res) => {
 });
 
 // FIX #3: ownership check — only the trade owner can get coaching
-router.post("/:id/coach", authRequired, tierRequired(2), async (req, res) => {
+router.post("/:id/coach", authRequired, tierRequired(2), requireAiEnabled, async (req, res) => {
   try {
     const id = parseInt(String(req.params.id));
     if (isNaN(id) || id <= 0) {
@@ -233,14 +234,6 @@ router.post("/:id/coach", authRequired, tierRequired(2), async (req, res) => {
       res.json({ feedback: trade.coachFeedback });
       return;
     }
-    if (!process.env.AI_INTEGRATIONS_GEMINI_BASE_URL || !process.env.AI_INTEGRATIONS_GEMINI_API_KEY) {
-      res.status(503).json({
-        error: "AI mentor is unavailable because this environment has no AI provider configured.",
-        disabled: true,
-      });
-      return;
-    }
-
     const prompt = `You are an expert ICT (Inner Circle Trader) coach. Analyze this trade and provide a short, personalised critique in 3-5 sentences. First acknowledge what was done well, then give one specific critique based on ICT methodology, and finally one actionable tip for next time. Keep it supportive but honest. Use plain language.
 
 Trade Data:

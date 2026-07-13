@@ -14,12 +14,13 @@ import {
   selectTools,
   runAgenticStream,
 } from "./geminiStream";
+import { requireAiEnabled } from "../../config/ai";
 
 const router: IRouter = Router();
 
 router.use(authRequired);
 
-router.post("/transcribe", async (req, res) => {
+router.post("/transcribe", requireAiEnabled, async (req, res) => {
   try {
     const { audioBase64, mimeType } = req.body as { audioBase64: string; mimeType: string };
     if (!audioBase64 || !mimeType) {
@@ -63,7 +64,7 @@ router.get("/conversations", async (req, res) => {
   }
 });
 
-router.post("/conversations", async (req, res) => {
+router.post("/conversations", requireAiEnabled, async (req, res) => {
   try {
     const body = CreateGeminiConversationBody.parse(req.body);
     const userId = req.user?.userId;
@@ -80,7 +81,7 @@ router.post("/conversations", async (req, res) => {
 
 router.get("/conversations/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     const userId = req.user?.userId;
     const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
     if (!conv) { res.status(404).json({ error: "Conversation not found" }); return; }
@@ -98,7 +99,7 @@ router.get("/conversations/:id", async (req, res) => {
 
 router.delete("/conversations/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     const userId = req.user?.userId;
     const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
     if (!conv) { res.status(404).json({ error: "Not found" }); return; }
@@ -116,7 +117,7 @@ router.delete("/conversations/:id", async (req, res) => {
 
 router.get("/conversations/:id/messages", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     const userId = req.user?.userId;
     const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
     if (!conv) { res.status(404).json({ error: "Conversation not found" }); return; }
@@ -132,9 +133,9 @@ router.get("/conversations/:id/messages", async (req, res) => {
   }
 });
 
-router.post("/conversations/:id/messages", async (req, res) => {
+router.post("/conversations/:id/messages", requireAiEnabled, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(String(req.params.id));
     const body = SendGeminiMessageBody.parse(req.body);
     const pageContext = req.body.pageContext || null;
     const isAdmin = req.user?.role === "admin";
