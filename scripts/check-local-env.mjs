@@ -45,7 +45,6 @@ const checks = [
     hasValue("SESSION_SECRET") || hasValue("JWT_SECRET"),
     "required for auth cookies/tokens",
   ],
-  ["ADMIN_EMAIL", hasValue("ADMIN_EMAIL"), "required for first admin role"],
 ];
 
 console.log("\nRequired for local API startup:");
@@ -54,7 +53,10 @@ for (const [label, ok, detail] of checks) {
 }
 
 const optionalChecks = [
+  ["PUBLIC_APP_URL", hasValue("PUBLIC_APP_URL"), "required for paid checkout redirect URLs"],
+  ["ADMIN_EMAIL", hasValue("ADMIN_EMAIL"), "matching registrations receive the admin role"],
   ["STRIPE_SECRET_KEY", hasValue("STRIPE_SECRET_KEY"), "needed for paid checkout tests"],
+  ["AI_ENABLED", getValue("AI_ENABLED").toLowerCase() === "true", "AI is disabled unless explicitly enabled"],
   [
     "AI_INTEGRATIONS_GEMINI_API_KEY",
     hasValue("AI_INTEGRATIONS_GEMINI_API_KEY"),

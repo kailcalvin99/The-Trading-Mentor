@@ -1,5 +1,11 @@
 # The Trading Mentor Progress
 
+## 2026-07-12 — Portable staging-readiness safeguards
+
+- Made ordinary API startup free of Stripe configuration mutations and automatic database/seed jobs.
+- Added trusted `PUBLIC_APP_URL` checkout redirects, explicit admin ownership, centralized disabled AI, database-aware readiness, PostgreSQL pool shutdown, and production-safe destructive reset denial.
+- Added deterministic tests and a provider-neutral staging contract. No staging or production resources were created.
+
 ## 2026-07-12 — RC1 Finish
 
 - Verified `origin/master` at `d2e8eabd499ea85cc67933d72e447bc04f558ed1` and isolated work in a non-cloud `/tmp` worktree.

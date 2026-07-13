@@ -45,7 +45,7 @@ test("AI and checkout acceptance boundaries are deterministic mocks", () => {
   assert.deepEqual(mockedCheckout(), { boundary: "mock", url: null });
   assert.equal(aiCalls, 0);
   assert.equal(stripeCalls, 0);
-  assert.match(tradeRoute, /AI mentor is unavailable because this environment has no AI provider configured/);
+  assert.match(tradeRoute, /requireAiEnabled/);
   assert.match(pricing, /create-checkout-session/);
   assert.doesNotMatch(pricing, /price locks in for life/);
 });
